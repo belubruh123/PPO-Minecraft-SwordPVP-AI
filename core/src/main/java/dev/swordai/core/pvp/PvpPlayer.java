@@ -176,12 +176,24 @@ public final class PvpPlayer {
 
 	/**
 	 * A punish crit is the crit "on the way down" after their hit (B1): for one that goes by the file, only when it can come,
-	 * the sword back by then (half charged now) and not thrown out of reach by a sprint hit. 24 Oct, in the game: of the
-	 * teacher's falls after a hit, 7% had them in reach with the sword back, and 12% of its punish crits paid.
+	 * the sword nearly back already and them close, not thrown out of reach by a sprint hit. 24 Oct, in the game: of the
+	 * teacher's falls after a hit in reach, 15% had the sword back; waiting for punish crits that could not come, the crit
+	 * family cost it 20 damage a fight against the installed model (half a gate, charge 0.5, changed nothing).
 	 */
 	private boolean punishable(Duel d, Events e) {
-		return !style.onlyWhenItWorks || d.me.charge >= 0.5f && e.theyHit != Events.SPRINT;
+		return !style.onlyWhenItWorks || d.me.charge >= 0.8f && d.reach <= 2.6 && e.theyHit != Events.SPRINT;
 	}
+
+	/**
+	 * A jump for a crit waits until the sword is a third back, for one that goes by the file: the sword takes about as long to
+	 * come back after a hit as a jump takes to come down, so a jump the very tick after the hit comes down before it (24 Oct,
+	 * in the game: of the teacher's in-reach falls in the crit family, 16% had the sword back, and no weak swings are made).
+	 */
+	private boolean waitsForTheSword(Body me) {
+		return style.onlyWhenItWorks && me.charge < JUMP_FOR_CRIT_CHARGE;
+	}
+
+	static final float JUMP_FOR_CRIT_CHARGE = 0.3f;
 
 	/** The double crit "only works if the opponent tries to punish-crit you" (T1): for one that goes by the file, only then. */
 	private boolean punishes() {
@@ -208,7 +220,7 @@ public final class PvpPlayer {
 		}
 		// What a hit calls for comes first, on the tick it is felt; a hit taken last, as it decides the next ticks.
 		if (e.iHit != Events.NONE) {
-			hitLanded(e);
+			hitLanded(d, e);
 		}
 		if (e.theyHit != Events.NONE) {
 			hitTaken(d, e);
@@ -395,7 +407,7 @@ public final class PvpPlayer {
 	}
 
 	/** On the tick a hit of mine lands. */
-	private void hitLanded(Events e) {
+	private void hitLanded(Duel d, Events e) {
 		Plan was = plan;
 		if (e.iHit == Events.CRIT) {
 			if (was == Plan.T1 || was == Plan.T1B || was == Plan.T1C) {
@@ -424,7 +436,10 @@ public final class PvpPlayer {
 				begin(Plan.C6);
 				return;
 			}
-			if (roll(Technique.T2)) {
+			// T2 "when": the sprint hit "did not take enough knockback to be put in a combo", as one hit in the air does
+			// (K1). For one that goes by the file only then; else the hit is a combo's start (24 Oct, in the game: a standing
+			// crit after every sprint hit cost about 13 damage a fight against the installed model).
+			if ((!style.onlyWhenItWorks || !d.them.onGround) && roll(Technique.T2)) {
 				begin(Plan.T2);
 				return;
 			}
@@ -576,6 +591,9 @@ public final class PvpPlayer {
 				if (phase == 0) {
 					if (!me.onGround) {
 						return ABORT;
+					}
+					if (waitsForTheSword(me) && planT < 8) {
+						return RUN;
 					}
 					k.jump = true;
 					phase = 1;
@@ -820,6 +838,10 @@ public final class PvpPlayer {
 			if (d.reach > from + 0.1) {
 				k.forward = 1;
 				k.sprint = running || d.reach > from + 1.0;
+				return planT < 40 ? RUN : ABORT;
+			}
+			if (waitsForTheSword(me)) {
+				k.forward = d.reach > 1.2 ? 1 : 0;
 				return planT < 40 ? RUN : ABORT;
 			}
 			k.jump = true;

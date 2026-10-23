@@ -22,6 +22,11 @@ public final class Teacher {
 	static final float SURE = 0.99f;
 	/** A key the target holds at least this much of is one the teacher asks for (alone, or with others alike). */
 	public static final float ANY = 0.3f;
+	/**
+	 * Whether it teaches the file's ordinary fight (part 0) between the techniques. Off when the installed model teaches that
+	 * instead (the overlay): the file's techniques at their moments, the installed model's fighting between them.
+	 */
+	public boolean ordinaryFight = true;
 
 	private final PvpPlayer player = new PvpPlayer();
 	private final Keys keys = new Keys();
@@ -93,6 +98,9 @@ public final class Teacher {
 	 * {@link ActionSpace} head bits; else 0.
 	 */
 	public int target(float[] target) {
+		if (keys.technique == Technique.BASE && !ordinaryFight) {
+			return 0;
+		}
 		if (keys.technique == Technique.BASE) {
 			// The ordinary fight of part 0: sprint at them, the sprint hit with the sword back, W-tap after a hit, S-tap
 			// to keep the spacing while it comes back; and no jump in it, every jump of the file being a technique's

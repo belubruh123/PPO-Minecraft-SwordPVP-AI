@@ -27,6 +27,8 @@ public final class TeacherReplay {
 	 * {@link Technique#BASE}'s slot, learned with the installed teacher's pull.
 	 */
 	private final boolean shadow;
+	/** See {@link SchoolPpo.Settings#installedBody}. */
+	public boolean installedBody;
 	static final int SHADOW_EVERY = 3;
 	private long shadowSeen;
 	private int size;
@@ -73,8 +75,8 @@ public final class TeacherReplay {
 				if (r.teacherWeight[i] <= 0f || (shadowSeen++ % SHADOW_EVERY) != 0) {
 					continue;
 				}
-				// The installed model teaches the camera only: the rest is the file's (its ordinary fight and techniques).
-				h = (1 << ActionSpace.YAW | 1 << ActionSpace.PITCH) & ~h;
+				// The installed model teaches the camera; in the overlay, every key where no technique teacher speaks.
+				h = (installedBody && h == 0 ? ActionSpace.ALL_HEADS : 1 << ActionSpace.YAW | 1 << ActionSpace.PITCH) & ~h;
 				t = Technique.BASE.ordinal();
 				if (h == 0) {
 					continue;

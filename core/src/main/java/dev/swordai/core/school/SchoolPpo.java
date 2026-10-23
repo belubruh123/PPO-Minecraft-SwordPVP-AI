@@ -52,6 +52,8 @@ public final class SchoolPpo implements AutoCloseable {
 		/** The pulls of the teachers for this update: each technique's teacher's ({@code Technique} ordinal), and the installed network's. */
 		public float[] techPulls = new float[dev.swordai.core.pvp.Technique.COUNT];
 		public float oldPull;
+		/** The installed model teaches every key where no technique teacher speaks (the overlay), not the camera only. */
+		public boolean installedBody;
 		/** Learn the critic only. */
 		public boolean criticOnly;
 		/** After the update, minibatches of the technique teachers' kept examples ({@link TeacherReplay}), and their step. */
@@ -206,10 +208,11 @@ public final class SchoolPpo implements AutoCloseable {
 				}
 				boolean byTech = (tech & (1 << h)) != 0;
 				int which = r.teacherTechnique[i];
-				// The installed model teaches the camera only (yaw and pitch); every other key is the file's teachers'.
+				// The installed model teaches the camera (yaw and pitch); in the overlay every key between the techniques too.
 				boolean camera = h == ActionSpace.YAW || h == ActionSpace.PITCH;
-				float pull = byTech ? (which >= 0 ? set.techPulls[which] : 0f) : old && camera ? set.oldPull : 0f;
-				if (!byTech && !camera) {
+				boolean installedHere = old && (camera || set.installedBody && tech == 0);
+				float pull = byTech ? (which >= 0 ? set.techPulls[which] : 0f) : installedHere ? set.oldPull : 0f;
+				if (!byTech && !installedHere) {
 					continue;
 				}
 				int off = ActionSpace.OFFSETS[h];

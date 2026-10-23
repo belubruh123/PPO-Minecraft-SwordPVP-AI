@@ -145,6 +145,12 @@ public final class SchoolSession implements AgentSession {
 	private final long[][] critTrace = new long[2][9];
 	private int critWantedFor;
 	private static final boolean[] CRIT_WANTED = new boolean[Technique.COUNT];
+	/**
+	 * The overlay: the installed model teaches the fighting between the techniques (and the camera), the file's teachers
+	 * the technique moments. 24 Oct, in the game: the file's own ordinary fight, keys pressed exactly, lost 22 a fight to
+	 * the installed model, and the student does not get past its teacher.
+	 */
+	static final boolean OVERLAY = true;
 
 	static {
 		for (Technique t : new Technique[] {Technique.B1, Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2,
@@ -570,6 +576,7 @@ public final class SchoolSession implements AgentSession {
 		AgentController.release(mc);
 		mc.player.getInventory().setSelectedSlot(0);
 		// One teacher against every bot: every technique of the families reached so far.
+		teacher.ordinaryFight = !OVERLAY;
 		teacher.start(checkTaught != null ? checkTaught : stages.taught(), cfg.swingMinCharge, seed ^ 0x7EAC4L);
 		reader.reset();
 		perf.reset();
@@ -782,7 +789,8 @@ public final class SchoolSession implements AgentSession {
 			}
 			// The installed model teaches the camera; the body is the file's ordinary fight and techniques (one teacher
 			// for it: two that disagree in the same spot teach neither, 24 Oct 01:50).
-			for (int h = 0; h <= ActionSpace.PITCH; h++) {
+			int upTo = OVERLAY && step.teacherHeads == 0 ? ActionSpace.HEADS - 1 : ActionSpace.PITCH;
+			for (int h = 0; h <= upTo; h++) {
 				if ((step.teacherHeads & (1 << h)) == 0) {
 					System.arraycopy(oldProbs, ActionSpace.OFFSETS[h], step.teacher, ActionSpace.OFFSETS[h], ActionSpace.SIZES[h]);
 				}
@@ -995,6 +1003,7 @@ public final class SchoolSession implements AgentSession {
 		SchoolPpo.Settings set = new SchoolPpo.Settings();
 		set.techPulls = stages.techPulls();
 		set.oldPull = stages.oldPull();
+		set.installedBody = OVERLAY;
 		set.criticOnly = warmupLeft > 0;
 		if (warmupLeft > 0) {
 			warmupLeft--;
