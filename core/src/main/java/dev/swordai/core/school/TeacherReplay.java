@@ -21,6 +21,14 @@ import java.util.Random;
  */
 public final class TeacherReplay {
 	public final int capacity;
+	/**
+	 * Kept from the installed model as a teacher instead: on the heads no technique teacher had, what the installed
+	 * fighter (its network and rules) would have pressed; one step in {@link #SHADOW_EVERY}. All under technique
+	 * {@link Technique#BASE}'s slot, learned with the installed teacher's pull.
+	 */
+	private final boolean shadow;
+	static final int SHADOW_EVERY = 3;
+	private long shadowSeen;
 	private int size;
 	private int next;
 	private final byte[][] peri;
@@ -35,7 +43,12 @@ public final class TeacherReplay {
 	private long baseSeen;
 
 	public TeacherReplay(int capacity) {
+		this(capacity, false);
+	}
+
+	public TeacherReplay(int capacity, boolean shadow) {
 		this.capacity = capacity;
+		this.shadow = shadow;
 		peri = new byte[capacity][ObsSpec.PERI_SIZE];
 		fovea = new byte[capacity][ObsSpec.FOVEA_SIZE];
 		vec = new float[capacity][ObsSpec.VEC];
@@ -56,8 +69,20 @@ public final class TeacherReplay {
 		for (int i = 0; i < r.size; i++) {
 			int h = r.teacherHeads[i];
 			int t = r.teacherTechnique[i];
+			if (shadow) {
+				if (r.teacherWeight[i] <= 0f || (shadowSeen++ % SHADOW_EVERY) != 0) {
+					continue;
+				}
+				h = ActionSpace.ALL_HEADS & ~h;
+				t = Technique.BASE.ordinal();
+				if (h == 0) {
+					continue;
+				}
+			}
+			// Not a key the network could not press there (a swing before its sword was back).
+			h &= r.headMask[i];
 			// The ordinary fight's no-jump is on most steps: one in six of them is kept, so it does not crowd the techniques out.
-			if (h == 0 || t < 0 || t == Technique.BASE.ordinal() && (baseSeen++ % 6) != 0) {
+			if (!shadow && (h == 0 || t < 0 || t == Technique.BASE.ordinal() && (baseSeen++ % 6) != 0)) {
 				continue;
 			}
 			int j = next;

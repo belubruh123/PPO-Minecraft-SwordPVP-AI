@@ -11,7 +11,9 @@ import dev.swordai.core.rl.ActionSpace;
  * <b>paid</b> when it was done and the damage traded over it and the {@link #AFTER} ticks after was not a
  * loss.
  *
- * <p>Which way to strafe is the teacher's coin toss, so any strafe counts as its strafe.
+ * <p>Which way to strafe is the teacher's coin toss, so any strafe counts as its strafe. And where the file lets a
+ * technique stop or hold S alike (T6: "stop, S or strafe"), the teacher tosses for that too: there either counts as
+ * the other. Only where S is the technique itself (C2, C3, C4: holding S is how they get out) must it be S, on time.
  */
 public final class Performance {
 	/** Share of a moment's ticks on which the keys have to be the teacher's. */
@@ -203,7 +205,8 @@ public final class Performance {
 			}
 			int want = argmax(target, h);
 			int got = action[h];
-			boolean same = h == ActionSpace.STRAFE ? (want == 0) == (got == 0) : want == got;
+			boolean same = h == ActionSpace.STRAFE ? (want == 0) == (got == 0)
+					: h == ActionSpace.FORWARD && !sNeeded(current) ? (want == 1) == (got == 1) : want == got;
 			all &= same;
 			taughtTicks[current][h]++;
 			offTicks[current][h] += same ? 0 : 1;
@@ -213,7 +216,7 @@ public final class Performance {
 			} else if (h == ActionSpace.ATTACK) {
 				wanted |= want == 1 ? K_ATTACK : 0;
 				pressed |= got == 1 ? K_ATTACK : 0;
-			} else if (h == ActionSpace.FORWARD) {
+			} else if (h == ActionSpace.FORWARD && sNeeded(current)) {
 				wanted |= want == 2 ? K_BACK : 0;
 				pressed |= got == 2 ? K_BACK : 0;
 			}
@@ -251,6 +254,11 @@ public final class Performance {
 		if (listener != null) {
 			listener.moment(t, closingDone, gain);
 		}
+	}
+
+	/** The techniques where holding S is the technique itself, not one way among others of not going in. */
+	private static boolean sNeeded(int technique) {
+		return technique == Technique.C2.ordinal() || technique == Technique.C3.ordinal() || technique == Technique.C4.ordinal();
 	}
 
 	private static int argmax(float[] target, int h) {

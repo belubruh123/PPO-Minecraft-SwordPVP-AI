@@ -107,8 +107,9 @@ public final class SchoolStages {
 	public static final float FLOOR = 0.65f;
 	public static final float MASTERED = 0.85f;
 	/** The installed network's pull at the school's start; it fades to nothing over the first three stages' least steps. */
-	public static final float OLD_PULL = 0.5f;
-	private static final long OLD_FADE = 3 * MIN;
+	public static final float OLD_PULL = 1.0f;
+	/** About six hours on the screen: it is the network's anchor until it plays as well as the installed one. */
+	private static final long OLD_FADE = 1_500_000L;
 
 	private static int[] allSpecialists() {
 		int[] b = new int[Specialists.COUNT];

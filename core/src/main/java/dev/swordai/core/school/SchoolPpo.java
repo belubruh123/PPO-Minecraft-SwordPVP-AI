@@ -56,6 +56,8 @@ public final class SchoolPpo implements AutoCloseable {
 		public boolean criticOnly;
 		/** After the update, minibatches of the technique teachers' kept examples ({@link TeacherReplay}), and their step. */
 		public int replayBatches = 16;
+		/** Minibatches of the installed teacher's kept examples, while its pull lasts. */
+		public int shadowBatches = 8;
 		public int replayBatch = 256;
 		public float replayLr = 5e-5f;
 	}

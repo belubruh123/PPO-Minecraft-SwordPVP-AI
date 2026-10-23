@@ -56,7 +56,10 @@ public final class SchoolLearner implements AutoCloseable {
 	private volatile String predictorLine = "not learning yet";
 	/** The technique teachers' examples, learned from again after every update; see {@link TeacherReplay}. */
 	private TeacherReplay replay;
+	/** And the installed teacher's examples, so the network comes to play as the installed fighter does, quickly. */
+	private TeacherReplay shadowReplay;
 	private SchoolNet.Workspace replayWs;
+	private volatile String shadowLine = "no examples yet";
 	private volatile String replayLine = "no examples yet";
 
 	public SchoolLearner(long seed, int capacity, float gamma, float lambda, int threads) {
@@ -219,13 +222,23 @@ public final class SchoolLearner implements AutoCloseable {
 		SchoolPpo.Stats s = ppo.update(rollout, rng, set);
 		if (replay == null) {
 			// Made on the first update only: a network that only plays (the user's fights) has no use for it.
-			replay = new TeacherReplay(24_000);
+			replay = new TeacherReplay(20_000);
+			shadowReplay = new TeacherReplay(16_000, true);
 			replayWs = actor.newWorkspace();
 		}
 		replay.addFrom(rollout);
+		if (set.oldPull > 0f) {
+			shadowReplay.addFrom(rollout);
+		}
 		if (!set.criticOnly && set.replayBatches > 0) {
 			replayLine = replay.learn(actor, replayWs, set.techPulls, set.replayBatches, set.replayBatch, set.replayLr, set.maxGradNorm, rng)
 					+ " of " + replay.size() + " kept";
+			if (set.oldPull > 0f && set.shadowBatches > 0) {
+				float[] pulls = new float[dev.swordai.core.pvp.Technique.COUNT];
+				pulls[dev.swordai.core.pvp.Technique.BASE.ordinal()] = set.oldPull;
+				shadowLine = shadowReplay.learn(actor, replayWs, pulls, set.shadowBatches, set.replayBatch, set.replayLr, set.maxGradNorm, rng)
+						+ " of " + shadowReplay.size() + " kept";
+			}
 		}
 		if (predictorLr > 0f) {
 			Predictor.Stats p = predictor.learn(rollout, predictorLr, Math.max(1, rollout.size / 64), 64, set.maxGradNorm, rng);
@@ -243,7 +256,7 @@ public final class SchoolLearner implements AutoCloseable {
 	}
 
 	public String replayLine() {
-		return replayLine;
+		return replayLine + "; installed's examples: " + shadowLine;
 	}
 
 	public float actorLr() {
