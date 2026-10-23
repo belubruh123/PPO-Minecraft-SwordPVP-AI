@@ -370,6 +370,13 @@ public final class RewardWeights {
 	 */
 	public float jumpInReady = 0f;
 	/**
+	 * Taken for a plain hit (not a critical one) made first on an opponent jumping in at it with its sword ready
+	 * ({@code StepFacts.hitIntoJumpIn}): the hit does not stop its crit, which comes back at once. The user, 23 October:
+	 * "TEACH IT ... hit first is BAD in cases when enemy is in air / jump in"; the answer is to let it land and punish crit.
+	 * Zero (off) unless set.
+	 */
+	public float hitIntoJumpIn = 0f;
+	/**
 	 * Per tick with the weapon nearly recharged, the opponent within {@link #primedWithin} and the
 	 * sprint in place as the server knows it, so that the hit about to be made will knock back. This is
 	 * what makes it press W and sprint again before a hit even when the opponent is already in its

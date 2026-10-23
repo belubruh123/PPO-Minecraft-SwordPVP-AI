@@ -40,6 +40,8 @@ public final class CritTrade {
 	static final float CLEAR_OF_REACH = 3.3f;
 	/** Going up faster than this, blocks a tick, the opponent is on its way up; see {@link #holdOnRising}. */
 	static final float RISING_MOST = 0.1f;
+	/** On its way up it is jumping IN only coming at the fighter at this much a tick or more (not a hop in place, not one off to the side). */
+	static final float IN_TOWARD = 0.05f;
 	/** What gravity takes off a speed upwards each tick, blocks a tick. */
 	static final float GRAVITY = 0.08f;
 
@@ -67,6 +69,7 @@ public final class CritTrade {
 	private boolean onRising = true;
 	private int oppAirTicks = AIR_MEMORY_TICKS + 1;
 	private boolean incoming;
+	private boolean jumpingIn;
 	private boolean knockAway;
 	private int sinceHeld = 1000;
 	/** The hit it has not answered yet came from an opponent in the air: a jumper's crit. */
@@ -86,6 +89,7 @@ public final class CritTrade {
 	public void reset() {
 		oppAirTicks = AIR_MEMORY_TICKS + 1;
 		incoming = false;
+		jumpingIn = false;
 		knockAway = false;
 		sinceHeld = 1000;
 		jumperHit = false;
@@ -103,6 +107,7 @@ public final class CritTrade {
 
 	private boolean judge(float[] vec) {
 		incoming = false;
+		jumpingIn = false;
 		knockAway = false;
 		boolean seen = vec[ObsSpec.VEC_STATS + ObsSpec.ST_ANY_VISIBLE] >= 0.5f;
 		float oppUp = (scalar(vec, ObsSpec.SC_REL_VEL_UP) + scalar(vec, ObsSpec.SC_VEL_UP)) / BodyState.VELOCITY_SCALE;
@@ -126,7 +131,14 @@ public final class CritTrade {
 			return false;
 		}
 		incoming = true;
-		if (d > HOLD_REACH || !onRising && oppUp > RISING_MOST) {
+		boolean rising = oppUp > RISING_MOST;
+		if (d > HOLD_REACH || rising && -away < IN_TOWARD) {
+			return false;
+		}
+		// In reach and jumping in: a hit first now is the one the user means ("hit first is BAD" when it is in the air jumping
+		// in, 23 October); see jumpingIn.
+		jumpingIn = true;
+		if (rising && !onRising) {
 			return false;
 		}
 		// Unless its own swing now is a critical hit too: then it is a crit for a crit, and its own comes first.
@@ -140,6 +152,15 @@ public final class CritTrade {
 	/** Whether, at the last {@link #holds}, an opponent was coming in through the air with its sword ready, near or not. */
 	public boolean incoming() {
 		return incoming;
+	}
+
+	/**
+	 * Whether, at the last {@link #holds}, the opponent was jumping in at it within reach with its sword ready: in the air
+	 * (on its way up only if coming at the fighter), whatever the hold made of it. A plain hit first on it is what the
+	 * training takes points for ({@code RewardWeights.hitIntoJumpIn}).
+	 */
+	public boolean jumpingIn() {
+		return jumpingIn;
 	}
 
 	/** Whether, at the last {@link #holds}, a hit would certainly have knocked it out of reach in time: the one case for the hit. */

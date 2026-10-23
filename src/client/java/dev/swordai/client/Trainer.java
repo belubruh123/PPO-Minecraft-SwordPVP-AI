@@ -199,6 +199,9 @@ abstract class Trainer implements AgentSession {
 	private CritTrade critTrade;
 	/** Since the last update: ticks the swing was held for that, and the punish crits made at once after such a crit; see {@code Config.instantPunish}. */
 	private long holdCritTicks;
+	/** Decisions since the crit trade last saw the opponent jumping in at it within reach; and plain hits made first on one since the last update. */
+	private int jumpingInAge = 1000;
+	private long hitsIntoJumpIn;
 	private long holdCritKnockAways;
 	private long instantPunishTicks;
 	/** The clash jumps taken since the last update ({@code JumpIn.CLASH}). */
@@ -1604,6 +1607,11 @@ abstract class Trainer implements AgentSession {
 			// A punish crit: a critical hit made while still in the air from the opponent's hit, with no
 			// jump of its own in between.
 			facts.punishCrit = facts.critDealt && !jumpedSinceHitTaken && clock.ticksSinceHitTaken <= PUNISH_WINDOW_TICKS;
+			// A plain hit on an opponent that was jumping in at it when the swing was chosen: its crit comes back anyway.
+			facts.hitIntoJumpIn = facts.hitsDealt > 0 && !facts.critDealt && jumpingInAge <= 2;
+			if (facts.hitIntoJumpIn) {
+				hitsIntoJumpIn++;
+			}
 			int shownDealt = hitsDealtAsShown(facts);
 			if (shownDealt > 0) {
 				clock.ticksSinceHitDealt = 0;
@@ -1835,6 +1843,7 @@ abstract class Trainer implements AgentSession {
 			}
 			critTrade.holdOnRising(cfg.holdOnRising);
 			boolean holds = critTrade.holds(obs.vec);
+			jumpingInAge = critTrade.jumpingIn() ? 0 : Math.min(jumpingInAge + 1, 1000);
 			holdCrit = cfg.holdOnFallingJumper && holds && ActionSpace.unlocked(keys, ActionSpace.ATTACK);
 			incoming = cfg.holdOnFallingJumper && critTrade.incoming() && !critTrade.knockAway();
 			if (critTrade.knockAway()) {
@@ -2492,13 +2501,14 @@ abstract class Trainer implements AgentSession {
 		}
 		long n = jumpInDrill[JI_FIGHTS];
 		b.append(String.format(Locale.ROOT, " | a drill fight: dealt %.1f, taken %.1f", n == 0 ? 0.0 : jumpInDealtSum / n, n == 0 ? 0.0 : jumpInTakenSum / n));
-		b.append(String.format(Locale.ROOT, " | swing held for one coming in %d ticks, knock-away certain %d ticks, instant punish %d ticks",
-				holdCritTicks, holdCritKnockAways, instantPunishTicks));
+		b.append(String.format(Locale.ROOT, " | swing held for one coming in %d ticks, knock-away certain %d ticks, instant punish %d ticks, plain hits first into a jump-in %d",
+				holdCritTicks, holdCritKnockAways, instantPunishTicks, hitsIntoJumpIn));
 		java.util.Arrays.fill(jumpInDrill, 0);
 		jumpInDealtSum = 0;
 		jumpInTakenSum = 0;
 		clashJumps = 0;
 		holdCritTicks = 0;
+		hitsIntoJumpIn = 0;
 		holdCritKnockAways = 0;
 		instantPunishTicks = 0;
 		return b.toString();
@@ -2565,6 +2575,7 @@ abstract class Trainer implements AgentSession {
 			}
 		}
 		spaceLastReach = 99f;
+		jumpingInAge = 1000;
 		jumpInTakenTick = -1;
 		jumpInDealtTick = -1;
 		jumpInTakenCrit = false;

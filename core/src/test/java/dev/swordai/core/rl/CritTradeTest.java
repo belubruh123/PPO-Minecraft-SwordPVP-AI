@@ -44,6 +44,20 @@ class CritTradeTest {
 	}
 
 	@Test
+	void onItsWayUpItIsHeldForOnlyWhenItIsComingIn() {
+		CritTrade in = new CritTrade(4);
+		assertTrue(in.holds(vec(true, 3.0f, 1f, 0.3f, 0.3f, 1f)), "jumping in");
+		assertTrue(in.jumpingIn());
+		CritTrade hop = new CritTrade(4);
+		assertFalse(hop.holds(vec(true, 3.0f, 1f, 0.3f, 0f, 1f)), "a hop in place");
+		assertFalse(hop.jumpingIn());
+		CritTrade topOnly = new CritTrade(4);
+		topOnly.holdOnRising(false);
+		assertFalse(topOnly.holds(vec(true, 3.0f, 1f, 0.3f, 0.3f, 1f)), "held from the top of the jump only");
+		assertTrue(topOnly.jumpingIn(), "but it is jumping in: a hit first is still taken points for");
+	}
+
+	@Test
 	void notHeldForAnOpponentOnTheGroundOrWithItsSwordSpentOrFarOrGoingAway() {
 		assertFalse(new CritTrade(4).holds(vec(true, 2.6f, 1f, 0f, 0.3f, 1f)), "on the ground");
 		assertFalse(new CritTrade(4).holds(vec(true, 2.6f, 1f, -0.2f, 0.3f, 0.3f)), "its sword spent");

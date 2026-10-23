@@ -630,6 +630,9 @@ public final class RewardModel {
 		} else if (f.oppJumpIn == 1) {
 			r -= w.jumpInReady;
 		}
+		if (f.hitIntoJumpIn) {
+			r -= w.hitIntoJumpIn;
+		}
 
 		if (f.jumpKey && f.reachAtAction > w.jumpWithin && comboBefore < w.uppercutCombo) {
 			r -= w.farJump;

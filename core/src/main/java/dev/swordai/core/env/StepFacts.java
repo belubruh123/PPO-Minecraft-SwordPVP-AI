@@ -112,6 +112,11 @@ public final class StepFacts {
 	 * ready to meet the jump. See {@code RewardWeights.jumpInReady}.
 	 */
 	public int oppJumpIn;
+	/**
+	 * A plain hit landed on this step on an opponent that was jumping in at it with its sword ready when the swing was
+	 * chosen (the crit trade's judgement); see {@code RewardWeights.hitIntoJumpIn}.
+	 */
+	public boolean hitIntoJumpIn;
 
 	// ---- combat events confirmed by the server since the previous step --------------------------
 	public int hitsDealt;
@@ -189,6 +194,7 @@ public final class StepFacts {
 		walkedInOnCooldown = false;
 		walkedInOnReady = false;
 		oppJumpIn = 0;
+		hitIntoJumpIn = false;
 		hitsDealt = 0;
 		hitCharge = 0f;
 		sprintHit = false;
