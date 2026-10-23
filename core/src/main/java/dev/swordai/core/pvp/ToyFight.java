@@ -136,9 +136,10 @@ public final class ToyFight {
 		Body me = body[i];
 		double[] v = vel[i];
 		double prevY = me.y;
-		if (k.forward <= 0 || !k.sprint) {
+		// As the game's client has it: the sprint key starts a sprint, only letting go of W (or a sprint hit) ends it.
+		if (k.forward <= 0) {
 			me.sprinting = false;
-		} else {
+		} else if (k.sprint) {
 			me.sprinting = true;
 		}
 		me.sinceJump = Math.min(me.sinceJump + 1, 1000);

@@ -172,10 +172,13 @@ public final class TechniqueBot {
 		// Its keys, in its own frame: Carpet's strafing is positive to the left.
 		pack.setForward(keys.forward);
 		pack.setStrafing(-keys.strafe);
-		boolean sprint = keys.sprint && keys.forward > 0;
+		// As a player's client has it: the sprint key starts a sprint, and only letting go of W ends it (a sprint hit ends
+		// it too). Letting go of the sprint key alone does not: a bot that could crit holding W would have what no player
+		// has (24 Oct: the agent's own crits failed so).
+		boolean sprint = keys.forward > 0 && (keys.sprint || bot.isSprinting());
 		pack.setSprinting(sprint);
 		if (!sprint && bot.isSprinting()) {
-			// Letting go of W or of the sprint ends it on the spot; a swing on this tick is then no sprint hit.
+			// Letting go of W ends it on the spot; a swing on this tick is then no sprint hit.
 			bot.setSprinting(false);
 		}
 		if (keys.jump && bot.onGround()) {
