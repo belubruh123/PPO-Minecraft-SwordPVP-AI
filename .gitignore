@@ -21,3 +21,6 @@ external/
 .idea/
 *.iml
 .vscode/
+
+# Third-party video transcript (kept local; docs/PVP-TECHNIQUES.md is our write-up of it)
+tactiq-*.txt
