@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# trainGT.sh [DIR]: 21 Oct 19:10, the user's idea (18:45): a DECISION MODEL made only to choose how to fight, its choice
+# handed to the main network as an input. Config.tacticModel: rl.TacticNet chooses every half second one of four tactics
+# (press / crit back / space at the edge and crit back / back off after a hit; rl.Tactic), which turns counterCritRule,
+# edgeHoldRule and stepBackRule on and off in their place and goes into the actor trunk (tactic.in, zero-init). It learns
+# by PPO on its own half-second choices (own Adam, tacticLr), starting from a hand-set plan (crit back ~half the time,
+# space more against an opponent that stands at the edge). Otherwise exactly GC (G + anchor 0.5, LR fix, replays 0.5).
+# counterCritRule=false so the 0.14.0 opponent (which plays without tactics) is the same as in the control runs.
+# Frozen checks: FROZEN has opponentReader=false tacticPriorWeight=0 tacticModel=false; the candidate runs need CANDX="tacticModel=true".
+cd "/c/Users/jerem/AppData/Local/Temp/claude/D--swordai/a22e256c-5a71-40c7-b784-e1011c2e02b3/scratchpad"
+printf 'swordai stop\r\n' > /d/swordai/run/swordai/inbox.txt
+sleep 7
+python - <<'EOF'
+import json
+P = 'D:/swordai/run/swordai/config.json'
+c = json.load(open(P, encoding='utf-8'))
+c['entropyCoef'] = [0.01] * 7
+json.dump(c, open(P, 'w', encoding='utf-8', newline=''), indent=2)
+EOF
+python setcfg.py actorLr=0.00005 criticLr=0.001 adaptiveLr=true minActorLr=0.00001 klStop=0.02 klTarget=0.01 rehearsalProbability=0.6 \
+  swingMinCharge=1.0 ruleSwingCharge=1.0 stepBackRule=false punishInCombo=false lostRule=true hopRule=true straightInRule=true \
+  whiffGuard=true hardOpponents=true oldModelShare=0.5 outsideShare=0 answerRule=true answerSpareBacking=false \
+  counterCritRule=false tacticModel=true anchorGainWeight=-1 tacticOnEvents=false tacticLr=0.0003 tacticEntropy=0.01 anchorWeight=0.5 evalSeed=0 replayLostShare=0.5 replayByPotential=false answerNudge=0 taskAdvantageNorm=false mutateShare=0 silWeight=0 meetWhenComing=true dodgeJumpRule=false edgeHoldRule=false selfCritShare=0.85 \
+  Crits.drillShare=0.35 Crits.critDrillShare=0.3 \
+  Crits.spacerShare=0.2 Crits.whifferShare=0.08 Crits.timerShare=0.18 Crits.punisherShare=0.1 Crits.jumperShare=0.1 \
+  Crits.traderShare=0.04 Crits.runnerShare=0.05 Crits.circlerShare=0.05 Crits.cornerShare=0.03 Crits.noKnockShare=0.03 \
+  Crits.oddShare=0.02 Crits.backerShare=0.04 Crits.peopleShare=0 \
+  Crits.reward.comboBack=0 Duel.reward.comboBack=0 Self-play.reward.comboBack=0 \
+  Crits.reward.spaceIn=0.3 Duel.reward.spaceIn=0.3 Self-play.reward.spaceIn=0.1 \
+  Crits.reward.spaceOut=0 Duel.reward.spaceOut=0 Self-play.reward.spaceOut=0 \
+  Crits.reward.jumpInReady=0 Duel.reward.jumpInReady=0 Self-play.reward.jumpInReady=0 "Combo escape.reward.jumpInReady=0" \
+  Crits.reward.damage=0.15 "Combo escape.reward.damage=0.15" Duel.reward.damage=0.15 Self-play.reward.damage=0.15 \
+  Crits.reward.hitTaken=2.0 "Combo escape.reward.hitTaken=2.0" Duel.reward.hitTaken=0.8 Self-play.reward.hitTaken=0.8 \
+  Crits.reward.combo=0.4 "Combo escape.reward.combo=0.4" Duel.reward.combo=0.25 Self-play.reward.combo=0.25 \
+  Duel.reward.crit=0.9 Self-play.reward.crit=0.9 Duel.reward.punishCrit=0.5 Self-play.reward.punishCrit=0.5 | tail -1
+python filterlost.py
+cp /d/swordai/run/kept-v21-final-1950/checkpoint.bin /d/swordai/run/swordai/anchor.bin
+if [ -n "$1" ]; then
+  cp "$1/checkpoint.bin" /d/swordai/run/swordai/checkpoint.bin
+  cp "$1/curriculum.properties" /d/swordai/run/swordai/curriculum.properties
+fi
+if [ -n "$HEADLESS" ]; then printf 'swordai train headless\r\n' > /d/swordai/run/swordai/inbox.txt; else printf 'swordai train\r\n' > /d/swordai/run/swordai/inbox.txt; fi
+sleep 15
+grep -a "inbox: /swordai train\|upgrad" client.log | tail -2
