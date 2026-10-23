@@ -29,6 +29,10 @@ import java.util.Random;
  * got worse; or, so that it can never hang, once it has run {@link Stage#maxSteps}. A share
  * {@link #REHEARSAL} of the fights is on the stages before (or, in the first one, against the real player),
  * and their techniques are taught there as their own mastery says: so they are reviewed all along.
+ *
+ * <p>The teacher is one and the same in every fight: it knows every technique of the families reached so far
+ * ({@link #taught()}), whichever bot it meets. A teacher that punish-crits against this family's bots and sprints on
+ * against the last family's teaches both in the same spot, and neither is learned (24 Oct: B1 1% as taught).
  */
 public final class SchoolStages {
 	public static final class Stage {
@@ -128,6 +132,8 @@ public final class SchoolStages {
 	// ---- progress ---------------------------------------------------------------------------------
 
 	public int stage;
+	/** The last family the spiral has come to so far: the teacher knows them all, up to it. */
+	public int reached;
 	public long stageSteps;
 	public long schoolSteps;
 	/** Per bot of the current stage: (dealt - taken) a minute of its fights, first ones and the last ones. */
@@ -282,6 +288,18 @@ public final class SchoolStages {
 		return STAGES[stage];
 	}
 
+	/** What the teacher knows: the techniques of every family reached so far; all of them in the last stage. */
+	public Technique[] taught() {
+		if (ALL_AT_ONCE || stage >= FAMILIES) {
+			return STAGES[STAGES.length - 1].techniques;
+		}
+		java.util.List<Technique> t = new java.util.ArrayList<>();
+		for (int f = 0; f <= Math.max(reached, stage); f++) {
+			java.util.Collections.addAll(t, STAGES[f].techniques);
+		}
+		return t.toArray(new Technique[0]);
+	}
+
 	/** The stage a bot's techniques belong to: the first that has it, the last stage aside. */
 	public static int familyOf(int bot) {
 		for (int i = 0; i < STAGES.length - 1; i++) {
@@ -315,11 +333,12 @@ public final class SchoolStages {
 			if (rng.nextFloat() >= REHEARSAL) {
 				return rng.nextFloat() < MIXER_IN_FOCUS ? Specialists.MIXER : s.bots[rng.nextInt(s.bots.length)];
 			}
-			// Review: another family, most often the one done least.
+			// Review: another family, most often the one done least; the bots of families not reached yet now and then,
+			// for the techniques already known against other ways of fighting.
 			float[] w = new float[FAMILIES];
 			float total = 0f;
 			for (int f = 0; f < FAMILIES; f++) {
-				w[f] = f == stage ? 0f : 0.25f + 1f - familyMastery(f);
+				w[f] = f == stage ? 0f : f > reached ? 0.25f : 0.25f + 1f - familyMastery(f);
 				total += w[f];
 			}
 			float u = rng.nextFloat() * total;
@@ -451,6 +470,7 @@ public final class SchoolStages {
 		} else {
 			stage = Math.min(STAGES.length - 1, stage + 1);
 		}
+		reached = Math.max(reached, Math.min(stage, FAMILIES - 1));
 		stageSteps = 0;
 		java.util.Arrays.fill(firstCount, 0);
 		java.util.Arrays.fill(lastCount, 0);
@@ -474,6 +494,7 @@ public final class SchoolStages {
 	public void save(Path file) throws IOException {
 		Properties p = new Properties();
 		p.setProperty("stage", Integer.toString(stage));
+		p.setProperty("reached", Integer.toString(reached));
 		p.setProperty("stageSteps", Long.toString(stageSteps));
 		p.setProperty("schoolSteps", Long.toString(schoolSteps));
 		for (int b = 0; b < Specialists.KINDS; b++) {
@@ -503,6 +524,7 @@ public final class SchoolStages {
 		if (ALL_AT_ONCE) {
 			stage = STAGES.length - 1;
 		}
+		reached = Math.max(Math.min(stage, FAMILIES - 1), Integer.parseInt(p.getProperty("reached", "0")));
 		stageSteps = Long.parseLong(p.getProperty("stageSteps", "0"));
 		schoolSteps = Long.parseLong(p.getProperty("schoolSteps", "0"));
 		for (int b = 0; b < Specialists.KINDS; b++) {
