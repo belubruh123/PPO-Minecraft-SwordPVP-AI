@@ -1,0 +1,23 @@
+# Gradle and build output
+.gradle/
+build/
+core/build/
+out/
+*.class
+
+# The dev client's game folder: world, checkpoints, recorded fights, traces, logs (large and machine-specific)
+run/
+
+# Copies of the Minecraft profile (personal game data)
+profile-backups/
+
+# Built releases and third-party jars (the Gradle wrapper's own jar is kept)
+release/
+external/
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Editors
+.idea/
+*.iml
+.vscode/

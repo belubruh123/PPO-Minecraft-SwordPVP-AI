@@ -1,0 +1,41 @@
+plugins {
+	id 'java-library'
+}
+
+group = rootProject.group
+version = rootProject.property('mod_version')
+
+base {
+	archivesName = 'swordai-core'
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	testImplementation platform('org.junit:junit-bom:5.11.4')
+	testImplementation 'org.junit.jupiter:junit-jupiter'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 21
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+test {
+	useJUnitPlatform()
+	// One small JVM: the build host is shared with a live website.
+	maxParallelForks = 1
+	maxHeapSize = '384m'
+	testLogging {
+		events 'failed', 'skipped'
+		showStandardStreams = true
+		exceptionFormat = 'full'
+	}
+}

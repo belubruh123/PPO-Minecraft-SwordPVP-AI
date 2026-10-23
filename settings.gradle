@@ -1,0 +1,15 @@
+pluginManagement {
+	repositories {
+		maven {
+			name = 'Fabric'
+			url = 'https://maven.fabricmc.net/'
+		}
+		mavenCentral()
+		gradlePluginPortal()
+	}
+}
+
+rootProject.name = 'swordai'
+
+// Plain-Java learner (neural net, PPO, vision, curriculum). No Minecraft on its classpath.
+include 'core'

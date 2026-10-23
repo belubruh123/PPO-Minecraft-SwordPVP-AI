@@ -1,0 +1,23 @@
+{
+	"required": true,
+	"package": "dev.swordai.client.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"AvatarRendererMixin",
+		"EntityMixin",
+		"FramerateLimitTrackerMixin",
+		"GameRendererMixin",
+		"KeyMappingAccessor",
+		"KeyMappingMixin",
+		"LocalPlayerMixin",
+		"MinecraftMixin",
+		"MouseHandlerMixin",
+		"WeatherEffectRendererMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}

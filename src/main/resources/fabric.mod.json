@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"id": "swordai",
+	"version": "${version}",
+	"name": "SwordAI",
+	"description": "Trains a pixel-based reinforcement-learning agent to play sword PvP, in-game. Type /swordai train in a singleplayer world.",
+	"authors": [
+		"BeluBruh123"
+	],
+	"license": "MIT",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"dev.swordai.SwordAi"
+		],
+		"client": [
+			"dev.swordai.client.SwordAiClient"
+		]
+	},
+	"mixins": [
+		"swordai.mixins.json",
+		{
+			"config": "swordai.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*",
+		"carpet": "*"
+	}
+}
