@@ -51,6 +51,8 @@ public final class Fighter {
 	private final boolean meetRule;
 	/** No swing at an opponent coming in through the air with its sword ready; see {@link CritTrade}. Null where that is not a rule. */
 	private final CritTrade critTrade;
+	/** Whether the swing is held at all ({@code Config.holdOnFallingJumper}); the trade is followed for the punish too. */
+	private final boolean holdRule;
 	/** The punish crit made at once after the crit that swing was held for; see {@code Config.instantPunish}. */
 	private final boolean instantPunish;
 	/** A hit taken within this many decisions of the swing having been held for an opponent coming in is the crit it was held for. */
@@ -206,7 +208,11 @@ public final class Fighter {
 		this.dodgeJump = cfg.dodgeJumpRule && cfg.answerRule && ActionSpace.unlocked(headMask, ActionSpace.FORWARD);
 		this.meetRule = cfg.meetJumpRule && cfg.answerRule && ActionSpace.unlocked(headMask, ActionSpace.FORWARD)
 				&& ActionSpace.unlocked(headMask, ActionSpace.SPRINT) && ActionSpace.unlocked(headMask, ActionSpace.ATTACK);
-		this.critTrade = cfg.holdOnFallingJumper && ActionSpace.unlocked(headMask, ActionSpace.ATTACK) ? new CritTrade(cfg.holdKnockbackDelay) : null;
+		this.critTrade = (cfg.holdOnFallingJumper || cfg.instantPunish) && ActionSpace.unlocked(headMask, ActionSpace.ATTACK) ? new CritTrade(cfg.holdKnockbackDelay) : null;
+		if (critTrade != null) {
+			critTrade.holdOnRising(cfg.holdOnRising);
+		}
+		this.holdRule = cfg.holdOnFallingJumper;
 		this.instantPunish = cfg.instantPunish && critTrade != null && ActionSpace.unlocked(headMask, ActionSpace.FORWARD)
 				&& ActionSpace.unlocked(headMask, ActionSpace.SPRINT);
 		this.stepBack = (cfg.stepBackRule || tactics) && ActionSpace.unlocked(headMask, ActionSpace.FORWARD) && ActionSpace.unlocked(headMask, ActionSpace.SPRINT)
@@ -367,8 +373,9 @@ public final class Fighter {
 		fallWatch.tick(obs.vec);
 		// An opponent coming in through the air with its sword ready: no swing at it (its crit is let land, and punished),
 		// and no running at it to knock it away, unless that is certain; see CritTrade. Followed on every decision.
-		boolean holdCrit = critTrade != null && swingMinCharge > 0f && critTrade.holds(obs.vec) && ActionSpace.unlocked(keys, ActionSpace.ATTACK);
-		boolean incoming = critTrade != null && critTrade.incoming() && !critTrade.knockAway();
+		boolean holds = critTrade != null && swingMinCharge > 0f && critTrade.holds(obs.vec);
+		boolean holdCrit = holdRule && holds && ActionSpace.unlocked(keys, ActionSpace.ATTACK);
+		boolean incoming = holdRule && critTrade.incoming() && !critTrade.knockAway();
 		// An opponent coming at it through the air, still on its way up, is run at and hit at once; see MeetJump.
 		boolean meet = meetRule && swingMinCharge > 0f && MeetJump.applies(obs.vec, meetWhenComing) && (jumpIn == null || jumpIn.kind() == JumpIn.NONE);
 		// On the ground the swing is made at once; in the air it stays the swing it would have been.

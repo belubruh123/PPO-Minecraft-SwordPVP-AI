@@ -270,6 +270,7 @@ final class SwordFiles {
 		c.jumpInShare = 0f;
 		c.holdOnFallingJumper = false;
 		c.instantPunish = false;
+		c.holdOnRising = true;
 		c.hopRule = false;
 		c.recordRounds = false;
 		return c;

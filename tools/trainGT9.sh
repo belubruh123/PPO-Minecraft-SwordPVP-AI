@@ -2,9 +2,12 @@
 # trainGT9.sh [DIR]: 23 Oct 17:20, T8 plus THE CRIT TRADE (the user's biggest loss: a jumper's crit): Config.holdOnFallingJumper
 # (no knock-away swing at a jumper whose crit comes down anyway; the meet rule's walk in kept) and instantPunish (after a
 # jumper's crit: the swing kept on the ground until the late knockback lifts it, sprint let go of, W, the punish crit on the
-# first tick of the way down), and the JUMP-IN DRILL (Config.jumpInShare 0.9 of the episodes, ~10 ticks each: about a third
+# first tick of the way down), and the JUMP-IN DRILL (Config.jumpInShare 0.97 of the episodes, ~10 ticks each: about 30%
 # of the steps; the user: 25-50% of training). Drill measured 23 Oct 17:03 on the installed net: +3.16 a fight (se 0.34).
-# Frozen candidate runs need CANDX with holdOnFallingJumper=true instantPunish=true (FROZEN pins them false).
+# 17:55 split tests on the installed net: the hold (no knock-away swing) cost the mix -111/min (se 17) and gained nothing in the
+# drill; the instant punish alone: mix +20 (se 19), and the drill gain is its; the hold from the top of the jump only
+# (Config.holdOnRising=false): mix -4 (se 19). So T9: instantPunish + the hold from the top of the jump.
+# Frozen candidate runs need CANDX with holdOnFallingJumper=true holdOnRising=false instantPunish=true (FROZEN pins them false).
 # trainGT8.sh [DIR]: 23 Oct, T7 plus the MEMORY (Config.rhythmNet, rl.RhythmNet: a causal TCN, 4 layers of 16, dilations 1/2/4/8,
 # over the opponent reader's 3.2 s window, into the trunk and the crit/escape models, zero-init; the user's recorded fights get
 # their window made again). Frozen candidate runs need CANDX with critBridge=true rhythmNet=true (FROZEN pins both false).
@@ -56,7 +59,7 @@ python setcfg.py actorLr=0.00005 criticLr=0.001 adaptiveLr=true minActorLr=0.000
   Crits.reward.hitTaken=1.5 "Combo escape.reward.hitTaken=1.5" "Sprint-hit + W-tap.reward.hitTaken=1.5" Duel.reward.hitTaken=0.5 Self-play.reward.hitTaken=0.5 \
   Crits.reward.combo=0.4 "Combo escape.reward.combo=0.4" Duel.reward.combo=0.25 Self-play.reward.combo=0.25 \
   Duel.reward.crit=0.9 Self-play.reward.crit=0.9 Duel.reward.punishCrit=0.5 Self-play.reward.punishCrit=0.5 | tail -1
-python setcfg.py demoWeight=0.5 demoBatches=4 demoValueWeight=0 demoWindowTicks=0 demoWindowMin=0 comboStrafeRule=false critBridge=true rhythmNet=true holdOnFallingJumper=true instantPunish=true clashJumpRule=false comboJumpRule=false jumpInShare=0.9 jumpInTicks=80 > /dev/null
+python setcfg.py demoWeight=0.5 demoBatches=4 demoValueWeight=0 demoWindowTicks=0 demoWindowMin=0 comboStrafeRule=false critBridge=true rhythmNet=true holdOnFallingJumper=true holdOnRising=false instantPunish=true clashJumpRule=false comboJumpRule=false jumpInShare=0.97 jumpInTicks=80 > /dev/null
 python filterlost.py
 cp /d/swordai/run/kept-v21-final-1950/checkpoint.bin /d/swordai/run/swordai/anchor.bin
 if [ -n "$1" ]; then

@@ -1829,12 +1829,14 @@ abstract class Trainer implements AgentSession {
 		// and no running at it to knock it away, unless that is certain; see CritTrade. Followed on every decision.
 		boolean holdCrit = false;
 		boolean incoming = false;
-		if (cfg.holdOnFallingJumper && !episodeLockedDrill && swingMinCharge() > 0f) {
+		if ((cfg.holdOnFallingJumper || cfg.instantPunish) && !episodeLockedDrill && swingMinCharge() > 0f) {
 			if (critTrade == null) {
 				critTrade = new CritTrade(cfg.holdKnockbackDelay);
 			}
-			holdCrit = critTrade.holds(obs.vec) && ActionSpace.unlocked(keys, ActionSpace.ATTACK);
-			incoming = critTrade.incoming() && !critTrade.knockAway();
+			critTrade.holdOnRising(cfg.holdOnRising);
+			boolean holds = critTrade.holds(obs.vec);
+			holdCrit = cfg.holdOnFallingJumper && holds && ActionSpace.unlocked(keys, ActionSpace.ATTACK);
+			incoming = cfg.holdOnFallingJumper && critTrade.incoming() && !critTrade.knockAway();
 			if (critTrade.knockAway()) {
 				holdCritKnockAways++;
 			}

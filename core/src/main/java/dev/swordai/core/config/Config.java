@@ -573,6 +573,11 @@ public final class Config {
 	 */
 	public boolean holdOnFallingJumper = false;
 	/**
+	 * Whether the hold above is also for an opponent still on its way up. The fight traces of 23 October: a hit on a jumper
+	 * on its way up had a crit back in 16% of cases, at the top of its jump 86%. False: held only from the top of the jump.
+	 */
+	public boolean holdOnRising = true;
+	/**
 	 * The clash jump ({@code JumpIn.CLASH}): an opponent jumping in at it with its sword ready, near, is jumped with, and
 	 * the crit made on the way down, crit for crit; the hold rule above is for where it is not in that jump. The user,
 	 * 23 October: both players jump in, and close in their crit's knockback is late, so the fighter's own crit still lands.

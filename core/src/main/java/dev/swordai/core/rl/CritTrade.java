@@ -38,6 +38,8 @@ public final class CritTrade {
 	static final int AIR_MEMORY_TICKS = 2;
 	/** Knocked away for certain only if, by the time it could come down on the fighter, it is this far off at least. */
 	static final float CLEAR_OF_REACH = 3.3f;
+	/** Going up faster than this, blocks a tick, the opponent is on its way up; see {@link #holdOnRising}. */
+	static final float RISING_MOST = 0.1f;
 	/** What gravity takes off a speed upwards each tick, blocks a tick. */
 	static final float GRAVITY = 0.08f;
 
@@ -59,6 +61,8 @@ public final class CritTrade {
 	static final int GROUND_WAIT_TICKS = 3;
 
 	private final int knockbackDelay;
+	/** See {@link #holdOnRising}. */
+	private boolean onRising = true;
 	private int oppAirTicks = AIR_MEMORY_TICKS + 1;
 	private boolean incoming;
 	private boolean knockAway;
@@ -69,6 +73,11 @@ public final class CritTrade {
 	/** @param knockbackDelay how many ticks late a hit's knockback is taken to reach the opponent; see {@link #knockAwayCertain} */
 	public CritTrade(int knockbackDelay) {
 		this.knockbackDelay = Math.max(0, knockbackDelay);
+	}
+
+	/** Whether the swing is held for an opponent still on its way up too ({@code Config.holdOnRising}); false: from the top of its jump. */
+	public void holdOnRising(boolean on) {
+		onRising = on;
 	}
 
 	/** A new fight. */
@@ -115,7 +124,7 @@ public final class CritTrade {
 			return false;
 		}
 		incoming = true;
-		if (d > HOLD_REACH) {
+		if (d > HOLD_REACH || !onRising && oppUp > RISING_MOST) {
 			return false;
 		}
 		// Unless its own swing now is a critical hit too: then it is a crit for a crit, and its own comes first.
