@@ -128,9 +128,9 @@ public final class Teacher {
 		if ((keys.taught & Keys.KEY_SPRINT) != 0 && keys.forward > 0) {
 			heads |= put(target, ActionSpace.SPRINT, keys.sprint ? 1 : 0);
 		}
-		if ((keys.taught & Keys.KEY_JUMP) != 0) {
-			heads |= put(target, ActionSpace.JUMP, keys.jump ? 1 : 0);
-		}
+		// A technique the file gives no jump has none: taught as no jump, or nothing teaches the jump key in its moments
+		// (24 Oct, the overlay: 164 jumps a minute inside technique moments, the installed model 44).
+		heads |= put(target, ActionSpace.JUMP, (keys.taught & Keys.KEY_JUMP) != 0 && keys.jump ? 1 : 0);
 		if ((keys.taught & Keys.KEY_ATTACK) != 0) {
 			// A swing at an opponent not under the crosshair is a miss: the camera first.
 			heads |= put(target, ActionSpace.ATTACK, keys.attack && aimed ? 1 : 0);
