@@ -19,7 +19,7 @@ import dev.swordai.core.rl.ActionSpace;
  */
 public final class Teacher {
 	/** Of a target, the share on the teacher's key; the rest is spread over the other keys of the head. */
-	static final float SURE = 0.95f;
+	static final float SURE = 0.99f;
 
 	private final PvpPlayer player = new PvpPlayer();
 	private final Keys keys = new Keys();
@@ -92,7 +92,8 @@ public final class Teacher {
 		if ((keys.taught & Keys.KEY_STRAFE) != 0) {
 			heads |= put(target, ActionSpace.STRAFE, keys.strafe < 0 ? 1 : keys.strafe > 0 ? 2 : 0);
 		}
-		if ((keys.taught & Keys.KEY_SPRINT) != 0) {
+		// The sprint key does nothing without W: taught only while the teacher holds W.
+		if ((keys.taught & Keys.KEY_SPRINT) != 0 && keys.forward > 0) {
 			heads |= put(target, ActionSpace.SPRINT, keys.sprint ? 1 : 0);
 		}
 		if ((keys.taught & Keys.KEY_JUMP) != 0) {

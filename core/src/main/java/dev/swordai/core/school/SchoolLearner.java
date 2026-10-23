@@ -54,6 +54,10 @@ public final class SchoolLearner implements AutoCloseable {
 	public long totalSteps;
 	public long updates;
 	private volatile String predictorLine = "not learning yet";
+	/** The technique teachers' examples, learned from again after every update; see {@link TeacherReplay}. */
+	private TeacherReplay replay;
+	private SchoolNet.Workspace replayWs;
+	private volatile String replayLine = "no examples yet";
 
 	public SchoolLearner(long seed, int capacity, float gamma, float lambda, int threads) {
 		this.actor = new SchoolNet(seed);
@@ -213,6 +217,16 @@ public final class SchoolLearner implements AutoCloseable {
 		rollout.computeAdvantages(lastValue, gamma, lambda);
 		rollout.labelPredictions();
 		SchoolPpo.Stats s = ppo.update(rollout, rng, set);
+		if (replay == null) {
+			// Made on the first update only: a network that only plays (the user's fights) has no use for it.
+			replay = new TeacherReplay(24_000);
+			replayWs = actor.newWorkspace();
+		}
+		replay.addFrom(rollout);
+		if (!set.criticOnly && set.replayBatches > 0) {
+			replayLine = replay.learn(actor, replayWs, set.techPulls, set.replayBatches, set.replayBatch, set.replayLr, set.maxGradNorm, rng)
+					+ " of " + replay.size() + " kept";
+		}
 		if (predictorLr > 0f) {
 			Predictor.Stats p = predictor.learn(rollout, predictorLr, Math.max(1, rollout.size / 64), 64, set.maxGradNorm, rng);
 			predictorLine = p.toString();
@@ -226,6 +240,10 @@ public final class SchoolLearner implements AutoCloseable {
 
 	public String predictorLine() {
 		return predictorLine;
+	}
+
+	public String replayLine() {
+		return replayLine;
 	}
 
 	public float actorLr() {

@@ -45,12 +45,18 @@ public final class SchoolPpo implements AutoCloseable {
 		public float minActorLr = 1e-5f;
 		public float maxActorLr = 3e-4f;
 		public boolean adaptiveLr = true;
-		public float[] entropy = {0.005f, 0.005f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f};
+		// Less on the keys that are pressed or not (sprint, jump, swing): a technique needs them pressed on one tick and not
+		// on the others, and a bonus for being unsure of them keeps a jump on every twentieth tick.
+		public float[] entropy = {0.005f, 0.005f, 0.01f, 0.01f, 0.003f, 0.003f, 0.003f};
 		/** The pulls of the teachers for this update: each technique's teacher's ({@code Technique} ordinal), and the installed network's. */
 		public float[] techPulls = new float[dev.swordai.core.pvp.Technique.COUNT];
 		public float oldPull;
 		/** Learn the critic only. */
 		public boolean criticOnly;
+		/** After the update, minibatches of the technique teachers' kept examples ({@link TeacherReplay}), and their step. */
+		public int replayBatches = 16;
+		public int replayBatch = 256;
+		public float replayLr = 5e-5f;
 	}
 
 	/** What one update did. */

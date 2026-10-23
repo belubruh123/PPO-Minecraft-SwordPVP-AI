@@ -77,9 +77,18 @@ public final class SchoolStages {
 			new Stage("T-E", "jumping (T10, T11)",
 					new int[] {Specialists.STUN_ESCAPER, Specialists.UPPERCUTTER, Specialists.LUNGER, Specialists.HOPPER},
 					new Technique[] {Technique.T10, Technique.T11A, Technique.T11B, Technique.T11C}, MIN, MAX, 0f),
-			new Stage("T-F", "everything mixed",
-					allSpecialists(), allTechniques(), MIN, Long.MAX_VALUE, 0.5f),
+			new Stage("T-F", "every technique at once",
+					allSpecialists(), allTechniques(), MIN, Long.MAX_VALUE, 0.25f),
 	};
+
+	/**
+	 * Every technique learned at once (24 Oct, the user asleep, "pick your best approach as long as it learns"): the
+	 * school goes straight to the last stage, where every bot fights and every teacher teaches, each with the pull its
+	 * own mastery sets, and the fights go most to the bots whose techniques are done least (practice where there is
+	 * the most to learn: Matiisen et al. 2017, teacher-student curriculum learning). One technique that will not come
+	 * cannot hold the others up, as it would stage by stage.
+	 */
+	public static final boolean ALL_AT_ONCE = true;
 
 	/** The share of fights on the stages before. */
 	public static final float REHEARSAL = 0.3f;
@@ -224,26 +233,91 @@ public final class SchoolStages {
 		return b.toString();
 	}
 
-	/** For the chat: "T7 48%, K2 44%". */
+	/** For the chat: "85%+: 3, 65%+: 7 of 20 | weakest: T6a 0%, T6 3%, T7 12%". */
 	public String masteryBrief() {
-		StringBuilder b = new StringBuilder();
+		int judged = 0;
+		int mastered = 0;
+		int floor = 0;
+		java.util.List<Technique> seen = new java.util.ArrayList<>();
 		for (Technique t : current().techniques) {
 			int i = t.ordinal();
-			if (momentCount[i] == 0) {
+			if (momentCount[i] < 5) {
 				continue;
 			}
-			b.append(b.length() == 0 ? "" : ", ").append(t.id).append(' ').append(Math.round(100f * doneRate(i))).append('%');
+			judged++;
+			float r = doneRate(i);
+			mastered += r >= MASTERED ? 1 : 0;
+			floor += r >= FLOOR ? 1 : 0;
+			seen.add(t);
 		}
-		return b.length() == 0 ? "no moments yet" : b.toString();
+		if (judged == 0) {
+			return "no moments yet";
+		}
+		seen.sort((a, c) -> Float.compare(doneRate(a.ordinal()), doneRate(c.ordinal())));
+		StringBuilder b = new StringBuilder(String.format(Locale.ROOT, "85%%+: %d, 65%%+: %d of %d | weakest:", mastered, floor, judged));
+		for (int k = 0; k < Math.min(5, seen.size()); k++) {
+			Technique t = seen.get(k);
+			b.append(k == 0 ? " " : ", ").append(t.id).append(' ').append(Math.round(100f * doneRate(t.ordinal()))).append('%');
+		}
+		return b.toString();
+	}
+
+	public SchoolStages() {
+		if (ALL_AT_ONCE) {
+			stage = STAGES.length - 1;
+		}
 	}
 
 	public Stage current() {
 		return STAGES[stage];
 	}
 
+	/** The stage a bot's techniques belong to: the first that has it, the last stage aside. */
+	public static int familyOf(int bot) {
+		for (int i = 0; i < STAGES.length - 1; i++) {
+			for (int b : STAGES[i].bots) {
+				if (b == bot) {
+					return i;
+				}
+			}
+		}
+		return STAGES.length - 1;
+	}
+
+	/** How well the techniques of a family are done: the mean of those that have had their moments; 0 before any. */
+	public float familyMastery(int family) {
+		float sum = 0f;
+		int n = 0;
+		for (Technique t : STAGES[family].techniques) {
+			int i = t.ordinal();
+			if (momentCount[i] >= 5) {
+				sum += doneRate(i);
+				n++;
+			}
+		}
+		return n == 0 ? 0f : sum / n;
+	}
+
 	/** A fight's opponent: a bot of this stage, of a stage before (rehearsal), or the real player. */
 	public int drawBot(Random rng) {
 		Stage s = current();
+		if (stage == STAGES.length - 1 && rng.nextFloat() >= s.mixerShare) {
+			// Most to the bots whose techniques are done least.
+			float[] w = new float[s.bots.length];
+			float total = 0f;
+			for (int i = 0; i < w.length; i++) {
+				w[i] = 0.25f + 1f - familyMastery(familyOf(s.bots[i]));
+				total += w[i];
+			}
+			float u = rng.nextFloat() * total;
+			for (int i = 0; i < w.length; i++) {
+				u -= w[i];
+				if (u <= 0f) {
+					return s.bots[i];
+				}
+			}
+			return s.bots[w.length - 1];
+		}
 		if (stage == STAGES.length - 1 || rng.nextFloat() >= REHEARSAL) {
 			if (s.mixerShare > 0f && rng.nextFloat() < s.mixerShare) {
 				return Specialists.MIXER;
@@ -381,6 +455,9 @@ public final class SchoolStages {
 			p.load(r);
 		}
 		stage = Math.max(0, Math.min(STAGES.length - 1, Integer.parseInt(p.getProperty("stage", "0"))));
+		if (ALL_AT_ONCE) {
+			stage = STAGES.length - 1;
+		}
 		stageSteps = Long.parseLong(p.getProperty("stageSteps", "0"));
 		schoolSteps = Long.parseLong(p.getProperty("schoolSteps", "0"));
 		for (int b = 0; b < Specialists.KINDS; b++) {

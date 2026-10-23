@@ -90,8 +90,11 @@ public final class SchoolSession implements AgentSession {
 	static final float FARTHEST = 8f;
 	/** Steps whose policy loss counts for nothing: the opponent farther than this and out of sight. */
 	static final float SKIP_FARTHER = 8f;
-	/** Of the installed model's choice as a target, the share on its key. Its choices are drawn, so over many steps the target is its whole policy. */
-	static final float SHADOW_SURE = 0.9f;
+	/**
+	 * Of the installed model's choice as a target, the share on its key: all of it. Its choices are drawn, so over many steps the target
+	 * is its whole policy; a share spread over the other keys would teach a jump on every tenth tick (24 Oct: 176 jumps a minute).
+	 */
+	static final float SHADOW_SURE = 1f;
 	private static final int KEEP_EVERY_MINUTES = 60;
 	private static final DateTimeFormatter HHMM = DateTimeFormatter.ofPattern("HHmm");
 
@@ -519,7 +522,7 @@ public final class SchoolSession implements AgentSession {
 		server.execute(() -> ArenaServer.reset(plan));
 		AgentController.release(mc);
 		mc.player.getInventory().setSelectedSlot(0);
-		int teach = fightBot == Specialists.MIXER ? stages.stage : stages.stageOf(fightBot);
+		int teach = fightBot == Specialists.MIXER || SchoolStages.ALL_AT_ONCE ? stages.stage : stages.stageOf(fightBot);
 		teacher.start(SchoolStages.STAGES[teach].techniques, fightStyle, cfg.swingMinCharge, seed ^ 0x7EAC4L);
 		reader.reset();
 		perf.reset();
@@ -934,9 +937,9 @@ public final class SchoolSession implements AgentSession {
 		}
 		stages.adapt();
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
-		SwordAi.LOGGER.info("school {} | {} | predictor {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
-				+ "| jumps, swings, S a minute off/on moments: {} | by the game:{} | bots went into:{}",
-				lastUpdateLine, stages.describe(), learner.predictorLine(), bots, taught, perfLine(perf), perf.keysLine(), ownLine(0), used);
+		SwordAi.LOGGER.info("school {} | {} | predictor {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
+				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | bots went into:{}",
+				lastUpdateLine, stages.describe(), learner.predictorLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(), perf.keysLine(), ownLine(0), used);
 		float dealtAll = 0f;
 		float takenAll = 0f;
 		int ticksAll = 0;

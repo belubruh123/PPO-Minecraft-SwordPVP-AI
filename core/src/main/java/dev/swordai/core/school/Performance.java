@@ -31,6 +31,10 @@ public final class Performance {
 	public long insideTicks;
 	public final long[] outsideKeys = new long[3];
 	public final long[] insideKeys = new long[3];
+	/** Why moments fail: per technique and head, ticks it taught that head and ticks the network pressed something else; and its jumps, swings, S not made in time. */
+	public final int[][] taughtTicks = new int[Technique.COUNT][ActionSpace.HEADS];
+	public final int[][] offTicks = new int[Technique.COUNT][ActionSpace.HEADS];
+	public final int[][] missedKeys = new int[Technique.COUNT][3];
 
 	/** What the stages are told of each moment as it closes; may be null. */
 	public interface Listener {
@@ -50,6 +54,8 @@ public final class Performance {
 	private int closing = -1;
 	private boolean closingDone;
 	private int closingLeft;
+	/** Keys the closed moment asked for on its last tick: it still has this tick to press them. */
+	private int closingOwed;
 
 	public Performance(Listener listener) {
 		this.listener = listener;
@@ -63,6 +69,36 @@ public final class Performance {
 		insideTicks = 0;
 		java.util.Arrays.fill(outsideKeys, 0);
 		java.util.Arrays.fill(insideKeys, 0);
+		for (int[] row : taughtTicks) {
+			java.util.Arrays.fill(row, 0);
+		}
+		for (int[] row : offTicks) {
+			java.util.Arrays.fill(row, 0);
+		}
+		for (int[] row : missedKeys) {
+			java.util.Arrays.fill(row, 0);
+		}
+	}
+
+	private static final String[] HEAD_NAMES = {"yaw", "pitch", "W/S", "A/D", "sprint", "jump", "swing"};
+
+	/** Per technique with moments: on which keys the network went its own way, and which keys it missed: " T7 off W/S 12% A/D 30%, missed swing 4;". */
+	public String whyLine() {
+		StringBuilder b = new StringBuilder();
+		for (Technique t : Technique.ALL) {
+			int i = t.ordinal();
+			if (moments[i] == 0) {
+				continue;
+			}
+			b.append(' ').append(t.id).append(" off");
+			for (int h = 0; h < ActionSpace.HEADS; h++) {
+				if (taughtTicks[i][h] > 0) {
+					b.append(' ').append(HEAD_NAMES[h]).append(' ').append(Math.round(100f * offTicks[i][h] / taughtTicks[i][h])).append('%');
+				}
+			}
+			b.append(", missed jump ").append(missedKeys[i][0]).append(" swing ").append(missedKeys[i][1]).append(" S ").append(missedKeys[i][2]).append(';');
+		}
+		return b.toString();
 	}
 
 	/** Jumps, swings and ticks of S a minute, off the moments and on them: "jump 12/40 swing 50/70 S 30/90". */
@@ -101,6 +137,14 @@ public final class Performance {
 		if (closing >= 0) {
 			dealt += dealtNow;
 			taken += takenNow;
+			if (closingOwed != 0) {
+				int pressedNow = (action[ActionSpace.JUMP] == 1 ? K_JUMP : 0) | (action[ActionSpace.ATTACK] == 1 ? K_ATTACK : 0)
+						| (action[ActionSpace.FORWARD] == 2 ? K_BACK : 0);
+				if ((closingOwed & ~pressedNow) != 0) {
+					closingDone = false;
+				}
+				closingOwed = 0;
+			}
 			if (--closingLeft <= 0) {
 				finish();
 			}
@@ -151,6 +195,8 @@ public final class Performance {
 			int got = action[h];
 			boolean same = h == ActionSpace.STRAFE ? (want == 0) == (got == 0) : want == got;
 			all &= same;
+			taughtTicks[current][h]++;
+			offTicks[current][h] += same ? 0 : 1;
 			if (h == ActionSpace.JUMP) {
 				wanted |= want == 1 ? K_JUMP : 0;
 				pressed |= got == 1 ? K_JUMP : 0;
@@ -165,19 +211,22 @@ public final class Performance {
 		ticks++;
 		matched += all ? 1 : 0;
 		// A key owed from last tick and still not pressed is missed; a key wanted now may still come next tick.
-		if ((owedKeys & ~pressed) != 0) {
+		int missed = owedKeys & ~pressed;
+		if (missed != 0) {
 			keyMissed = true;
+			missedKeys[current][0] += (missed & K_JUMP) != 0 ? 1 : 0;
+			missedKeys[current][1] += (missed & K_ATTACK) != 0 ? 1 : 0;
+			missedKeys[current][2] += (missed & K_BACK) != 0 ? 1 : 0;
 		}
 		owedKeys = wanted & ~pressed;
 	}
 
 	private void close() {
-		if (owedKeys != 0) {
-			keyMissed = true;
-		}
 		boolean ok = ticks > 0 && matched >= MATCH * ticks && !keyMissed;
 		closing = current;
 		closingDone = ok;
+		// A key asked for on the moment's last tick may still come on the next.
+		closingOwed = owedKeys;
 		closingLeft = AFTER;
 		current = -1;
 	}
