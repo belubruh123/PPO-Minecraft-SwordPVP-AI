@@ -65,9 +65,13 @@ public final class Teacher {
 		return s;
 	}
 
-	public void tick(Duel d, Events e) {
+	/** @param aimed the opponent is under the crosshair and in reach: a swing the teacher asks for is only taught then */
+	public void tick(Duel d, Events e, boolean aimed) {
 		player.tick(d, e, keys);
+		this.aimed = aimed;
 	}
+
+	private boolean aimed;
 
 	/** The technique it is in now ({@link Technique#BASE} for the ordinary fight). */
 	public Technique technique() {
@@ -85,9 +89,16 @@ public final class Teacher {
 	 */
 	public int target(float[] target) {
 		if (keys.technique == Technique.BASE) {
-			// The ordinary fight of part 0 (sprint hits, W-tap, S-tap) has no jump in it: every jump of the file is a
-			// technique's. Taught as such, so that it does not hop about between them (24 Oct: 192 jumps a minute).
-			return put(target, ActionSpace.JUMP, 0);
+			// The ordinary fight of part 0: sprint at them, the sprint hit with the sword back, W-tap after a hit, S-tap
+			// to keep the spacing while it comes back; and no jump in it, every jump of the file being a technique's
+			// (24 Oct: 192 jumps a minute without this). Its strafe is a coin toss, left to the network.
+			int heads = put(target, ActionSpace.JUMP, 0);
+			heads |= put(target, ActionSpace.FORWARD, keys.forward > 0 ? 1 : keys.forward < 0 ? 2 : 0);
+			if (keys.forward > 0) {
+				heads |= put(target, ActionSpace.SPRINT, keys.sprint ? 1 : 0);
+			}
+			heads |= put(target, ActionSpace.ATTACK, keys.attack && aimed ? 1 : 0);
+			return heads;
 		}
 		if (!teaches[keys.technique.ordinal()] || keys.taught == 0) {
 			return 0;
@@ -107,7 +118,8 @@ public final class Teacher {
 			heads |= put(target, ActionSpace.JUMP, keys.jump ? 1 : 0);
 		}
 		if ((keys.taught & Keys.KEY_ATTACK) != 0) {
-			heads |= put(target, ActionSpace.ATTACK, keys.attack ? 1 : 0);
+			// A swing at an opponent not under the crosshair is a miss: the camera first.
+			heads |= put(target, ActionSpace.ATTACK, keys.attack && aimed ? 1 : 0);
 		}
 		return heads;
 	}

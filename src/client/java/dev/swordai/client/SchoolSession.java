@@ -676,7 +676,7 @@ public final class SchoolSession implements AgentSession {
 		sprintAtClick = truth.agentSprinting();
 		critAtClick = facts.falling && !me.onGround() && !sprintAtClick && charge > 0.9f;
 		int keys = SwingGate.keys(ActionSpace.ALL_HEADS, charge, cfg.swingMinCharge);
-		teacher.tick(reader.duel, reader.events);
+		teacher.tick(reader.duel, reader.events, onOpponent());
 		step.teacherHeads = teacher.target(step.teacher);
 		step.teacherTechnique = step.teacherHeads != 0 ? teacher.technique().ordinal() : -1;
 		if (installedPlays) {
@@ -707,7 +707,9 @@ public final class SchoolSession implements AgentSession {
 			} else {
 				learner.oldChoices(step.obs, oldProbs);
 			}
-			for (int h = 0; h < ActionSpace.HEADS; h++) {
+			// The installed model teaches the camera; the body is the file's ordinary fight and techniques (one teacher
+			// for it: two that disagree in the same spot teach neither, 24 Oct 01:50).
+			for (int h = 0; h <= ActionSpace.PITCH; h++) {
 				if ((step.teacherHeads & (1 << h)) == 0) {
 					System.arraycopy(oldProbs, ActionSpace.OFFSETS[h], step.teacher, ActionSpace.OFFSETS[h], ActionSpace.SIZES[h]);
 				}

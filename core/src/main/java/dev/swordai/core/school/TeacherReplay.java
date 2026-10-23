@@ -73,7 +73,8 @@ public final class TeacherReplay {
 				if (r.teacherWeight[i] <= 0f || (shadowSeen++ % SHADOW_EVERY) != 0) {
 					continue;
 				}
-				h = ActionSpace.ALL_HEADS & ~h;
+				// The installed model teaches the camera only: the rest is the file's (its ordinary fight and techniques).
+				h = (1 << ActionSpace.YAW | 1 << ActionSpace.PITCH) & ~h;
 				t = Technique.BASE.ordinal();
 				if (h == 0) {
 					continue;

@@ -171,27 +171,26 @@ public final class Performance {
 		boolean jumped = action[ActionSpace.JUMP] == 1;
 		boolean swung = action[ActionSpace.ATTACK] == 1;
 		boolean back = action[ActionSpace.FORWARD] == 2;
-		if (current <= Technique.BASE.ordinal()) {
+		if (current < 0) {
 			outsideTicks++;
 			outsideKeys[0] += jumped ? 1 : 0;
 			outsideKeys[1] += swung ? 1 : 0;
 			outsideKeys[2] += back ? 1 : 0;
-			if (current == Technique.BASE.ordinal()) {
-				// The ordinary fight is done only without a single jump; its keys count as off the moments.
-				ticks++;
-				matched += jumped ? 0 : 1;
-				keyMissed |= jumped;
-				if (closing < 0) {
-					dealt += dealtNow;
-					taken += takenNow;
-				}
-			}
 			return;
 		}
-		insideTicks++;
-		insideKeys[0] += jumped ? 1 : 0;
-		insideKeys[1] += swung ? 1 : 0;
-		insideKeys[2] += back ? 1 : 0;
+		if (current == Technique.BASE.ordinal()) {
+			// The ordinary fight: its keys count as off the technique moments, and it is done only without a single jump.
+			outsideTicks++;
+			outsideKeys[0] += jumped ? 1 : 0;
+			outsideKeys[1] += swung ? 1 : 0;
+			outsideKeys[2] += back ? 1 : 0;
+			keyMissed |= jumped;
+		} else {
+			insideTicks++;
+			insideKeys[0] += jumped ? 1 : 0;
+			insideKeys[1] += swung ? 1 : 0;
+			insideKeys[2] += back ? 1 : 0;
+		}
 		if (closing < 0) {
 			dealt += dealtNow;
 			taken += takenNow;

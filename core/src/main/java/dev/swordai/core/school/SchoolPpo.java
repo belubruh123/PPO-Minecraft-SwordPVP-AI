@@ -203,7 +203,12 @@ public final class SchoolPpo implements AutoCloseable {
 				}
 				boolean byTech = (tech & (1 << h)) != 0;
 				int which = r.teacherTechnique[i];
-				float pull = byTech ? (which >= 0 ? set.techPulls[which] : 0f) : old ? set.oldPull : 0f;
+				// The installed model teaches the camera only (yaw and pitch); every other key is the file's teachers'.
+				boolean camera = h == ActionSpace.YAW || h == ActionSpace.PITCH;
+				float pull = byTech ? (which >= 0 ? set.techPulls[which] : 0f) : old && camera ? set.oldPull : 0f;
+				if (!byTech && !camera) {
+					continue;
+				}
 				int off = ActionSpace.OFFSETS[h];
 				int size = ActionSpace.SIZES[h];
 				double ce = 0;
