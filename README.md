@@ -151,6 +151,15 @@ If the game does not start at all, send `.minecraft\logs\latest.log`.
 Replace the jar and start the game. A checkpoint from an older version is upgraded when it is loaded,
 so training carries on from where it was.
 
+**0.16.0** (23 October): **the crit trade against a player jumping in**. An opponent seen taking off
+at the fighter with its sword ready is no longer hit first from the top of its jump (its knockback comes
+late on a server, so it would crit back): its crit is let land, and the fighter crits back on its way
+down from that hit at once (`holdOnFallingJumper`, `instantPunish`, `holdOnRising` false). Only a real
+jump in counts: one seen going up while coming at the fighter, not a hop in place, a jump made with a
+hit it took, or a step down. In paired tests on the same network with and without these rules: in the
+jump-in drill +1.44 damage a fight (a crit for a crit instead of 7 for 10.5), against the spacers +4 a
+minute and the mix -4 (both level). The network is the same as in 0.15.4.
+
 **0.15.3** (19 October, night): **safe learning in `/swordai fight`**. With `/swordai learn on`, the
 proven network and a learning copy take turns, a fight each (knockout to knockout, or, where the
 game never shows the knockout, until the opponent is gone or for a minute at most). Only the copy
