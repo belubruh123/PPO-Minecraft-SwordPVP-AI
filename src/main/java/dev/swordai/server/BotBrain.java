@@ -641,6 +641,11 @@ public final class BotBrain {
 		// A running jump is taken from where its way down will bring the agent into reach.
 		boolean runJump = profile.jumpIn
 				&& reachDist <= Math.min(RUN_JUMP_FARTHEST, RUN_JUMP_ENDS_WITHIN + RUN_JUMP_COVERS - RUN_JUMP_TICKS * Math.max(0, agentAway));
+		// The one that only jumps in, from the distance drawn for the fight: a running jump from far, a hop from a walk near.
+		boolean fixedJump = profile.jumpInAlways && profile.jumpInFrom > 0f;
+		if (fixedJump) {
+			runJump = reachDist <= profile.jumpInFrom && profile.jumpInFrom >= BotProfile.JUMP_IN_RUN_FROM;
+		}
 		if (profile.timer && critPlan && critJump < 0 && punishTicks <= 0 && !fleeing && profile.attacks && bot.onGround()
 				&& bot.getAttackStrengthScale(0.5f + TIMER_LEAD_TICKS) >= profile.attackChargeMin) {
 			// Where the jump would leave the agent by the time it is coming down into its reach.
@@ -664,7 +669,7 @@ public final class BotBrain {
 			}
 		}
 		if (!profile.timer && critPlan && critJump < 0 && !fleeing && profile.attacks && bot.onGround()
-				&& (runJump || reachDist <= (profile.holdGround || profile.spacer ? HOLD_JUMP_REACH : CRIT_JUMP_REACH))
+				&& (runJump || reachDist <= (fixedJump ? profile.jumpInFrom : profile.holdGround || profile.spacer ? HOLD_JUMP_REACH : CRIT_JUMP_REACH))
 				&& bot.getAttackStrengthScale(0.5f) >= CRIT_JUMP_CHARGE
 				&& (!profile.spacer || spacerOut <= 0 && bot.getAttackStrengthScale(0.5f + SPACER_LEAD_TICKS) >= profile.attackChargeMin)) {
 			if (!runJump) {

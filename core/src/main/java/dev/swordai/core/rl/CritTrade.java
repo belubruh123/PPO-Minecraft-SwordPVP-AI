@@ -57,8 +57,10 @@ public final class CritTrade {
 	 * On the ground after a jumper's crit the swing is kept this many ticks at most for the knockback to lift the fighter.
 	 * 23 Oct drill with its own knockback one or two ticks late: the answer rule swung from the ground at once, a plain hit,
 	 * 7 for the crit's 10.5, in 58% of the fights; with the knockback at once (lifted, then the punish crit) 71% went 10.5 for 10.5.
+	 * 3 ticks was one too few: in T9's first minutes all 110 punishes that were plain hits were made on the ground 3 ticks
+	 * after the crit, and the lift shows 3 ticks after it (one or two late, one for the motion, one for the picture).
 	 */
-	static final int GROUND_WAIT_TICKS = 3;
+	static final int GROUND_WAIT_TICKS = 5;
 
 	private final int knockbackDelay;
 	/** See {@link #holdOnRising}. */

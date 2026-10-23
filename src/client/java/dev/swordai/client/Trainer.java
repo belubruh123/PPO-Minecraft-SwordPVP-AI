@@ -2191,7 +2191,7 @@ abstract class Trainer implements AgentSession {
 	private String traceSetup(EpisodePlan plan) {
 		return String.format(Locale.ROOT, "its knockback %.0f%%, its connection %d ticks (seen %d, it sees %d), crit chance %.2f, reaction %d ticks%s",
 				100f * plan.botKnockback, plan.botPing, plan.agentLag, plan.botLag, plan.bot.critChance, plan.bot.reactionTicks,
-				episodeStander ? ", stands and hits" : "");
+				episodeStander ? ", stands and hits" : plan.bot.jumpInFrom > 0f ? String.format(Locale.ROOT, ", jumps in from %.1f", plan.bot.jumpInFrom) : "");
 	}
 
 	/** One tick of the trace: the state the step was chosen in, what was chosen and by what, and what the last tick brought. */
@@ -2938,7 +2938,10 @@ abstract class Trainer implements AgentSession {
 			plan.bot.followUpWhiff = 0f;
 			plan.bot.swingSlip = 0f;
 			plan.bot.farChance = 0f;
-			plan.bot.minDistance = 4.5f;
+			// From where it takes off, drawn per fight: from right in front (1.8) to a running jump's farthest (5.6); and it
+			// starts anywhere from 2.5 to 6.5 off (the user, 23 October: "let the opponent jump in from a close distance as well").
+			plan.bot.jumpInFrom = 1.8f + 3.8f * rng.nextFloat();
+			plan.bot.minDistance = 2.5f;
 			plan.bot.maxDistance = 6.5f;
 			plan.bot.maxBearingDeg = BotProfile.DRILL_BEARING_DEG;
 			plan.bot.minBearingDeg = 0f;

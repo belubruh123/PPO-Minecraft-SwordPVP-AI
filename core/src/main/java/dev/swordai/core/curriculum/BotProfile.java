@@ -168,6 +168,14 @@ public final class BotProfile {
 	 */
 	public boolean jumpInAlways = false;
 	/**
+	 * With {@link #jumpInAlways}: the distance (eye to the agent's box) it takes off from, drawn per fight; 0: wherever the
+	 * running jump's way down brings the agent into reach (about 5.6). Below {@link #JUMP_IN_RUN_FROM} it jumps from a walk,
+	 * the sprint off, as a player's short hop in. The user, 23 October: they jump in from close as well, not only from far.
+	 */
+	public float jumpInFrom = 0f;
+	/** From this far or more the take-off of {@link #jumpInFrom} is a running jump. */
+	public static final float JUMP_IN_RUN_FROM = 3.5f;
+	/**
 	 * Hit by the agent, it keeps its swing for its own way down and makes it a critical hit: the
 	 * punish crit. Where it takes the full knockback the agent is out of its reach by then; where it
 	 * takes part of it (as on a server that hands out less), the agent is right there with its sword
@@ -278,6 +286,7 @@ public final class BotProfile {
 		b.holdGround = holdGround;
 		b.jumpIn = jumpIn;
 		b.jumpInAlways = jumpInAlways;
+		b.jumpInFrom = jumpInFrom;
 		b.punish = punish;
 		b.timer = timer;
 		b.spacer = spacer;

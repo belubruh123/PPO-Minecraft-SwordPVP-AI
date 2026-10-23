@@ -114,7 +114,7 @@ class CritTradeTest {
 		assertTrue(trade.jumperHit());
 		assertEquals(CritTrade.WAIT, trade.punish(hit), "still on the ground: wait for the lift");
 		float[] later = hit.clone();
-		later[ObsSpec.VEC_SCALARS + ObsSpec.SC_SINCE_HIT_TAKEN] = 1f - 3f / BodyState.EVENT_FADE_TICKS;
+		later[ObsSpec.VEC_SCALARS + ObsSpec.SC_SINCE_HIT_TAKEN] = 1f - CritTrade.GROUND_WAIT_TICKS / BodyState.EVENT_FADE_TICKS;
 		trade.holds(later);
 		assertEquals(CritTrade.NONE, trade.punish(later), "never lifted: the answer rule has it");
 		// A hit from an opponent on the ground is no jumper's crit.
