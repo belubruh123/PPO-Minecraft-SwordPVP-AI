@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html","k":"18"},{"l":"dev.swordai"},{"l":"dev.swordai.client"},{"l":"dev.swordai.client.mixin"},{"l":"dev.swordai.mixin"},{"l":"dev.swordai.server"}];updateSearchResults();
