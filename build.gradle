@@ -75,3 +75,15 @@ java {
 	sourceCompatibility = JavaVersion.VERSION_21
 	targetCompatibility = JavaVersion.VERSION_21
 }
+
+javadoc {
+	// The mod's own classes, client side included, with every member: the comments are written on all of them.
+	source += sourceSets.client.allJava
+	classpath += sourceSets.client.compileClasspath
+	options.memberLevel = JavadocMemberLevel.PRIVATE
+	options.encoding = 'UTF-8'
+	options.charSet = 'UTF-8'
+	options.windowTitle = 'SwordAI mod'
+	options.docTitle = 'SwordAI mod: the client, the trainer, the arena and its bots'
+	options.addStringOption('Xdoclint:none', '-quiet')
+}

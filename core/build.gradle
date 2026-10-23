@@ -28,6 +28,16 @@ java {
 	targetCompatibility = JavaVersion.VERSION_21
 }
 
+javadoc {
+	// The comments are written on everything, private members included, so the docs show all of it.
+	options.memberLevel = JavadocMemberLevel.PRIVATE
+	options.encoding = 'UTF-8'
+	options.charSet = 'UTF-8'
+	options.windowTitle = 'SwordAI core'
+	options.docTitle = 'SwordAI core: the learning, the networks, the rules'
+	options.addStringOption('Xdoclint:none', '-quiet')
+}
+
 test {
 	useJUnitPlatform()
 	// One small JVM: the build host is shared with a live website.
