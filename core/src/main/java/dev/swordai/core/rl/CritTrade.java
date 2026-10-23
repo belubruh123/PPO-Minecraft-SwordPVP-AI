@@ -32,15 +32,18 @@ public final class CritTrade {
 	static final float INCOMING_WITHIN = 6f;
 	/** Its sword ready, as the fighter sees it. */
 	static final float OPP_READY = 0.9f;
-	/** And not already flying away: its own speed away from the fighter no more than this, blocks a tick. */
-	static final float AWAY_MOST = 0.1f;
 	/** Off the ground: going up or down faster than this, or within this many ticks of having been (the top of a jump). */
 	static final int AIR_MEMORY_TICKS = 2;
 	/** Knocked away for certain only if, by the time it could come down on the fighter, it is this far off at least. */
 	static final float CLEAR_OF_REACH = 3.3f;
 	/** Going up faster than this, blocks a tick, the opponent is on its way up; see {@link #holdOnRising}. */
 	static final float RISING_MOST = 0.1f;
-	/** On its way up it is jumping IN only coming at the fighter at this much a tick or more (not a hop in place, not one off to the side). */
+	/**
+	 * It is jumping IN only coming at the fighter at this much a tick or more, blocks, at any point of its jump: a jump in
+	 * keeps the run's speed in the air. Not a hop in place, and not the jump made with a hit it has just taken from the
+	 * fighter (it is knocked back): 20:45, the hold and the punish wait on any opponent in the air with its sword ready cost
+	 * -51 a minute against the one that stands and hits and jumps with the fighter's hits (T8 with and without them).
+	 */
 	static final float IN_TOWARD = 0.05f;
 	/** What gravity takes off a speed upwards each tick, blocks a tick. */
 	static final float GRAVITY = 0.08f;
@@ -74,6 +77,8 @@ public final class CritTrade {
 	private int sinceHeld = 1000;
 	/** The hit it has not answered yet came from an opponent in the air: a jumper's crit. */
 	private boolean jumperHit;
+	/** Its speed towards the fighter the last time it was seen in the air, blocks a tick. */
+	private float airToward;
 
 	/** @param knockbackDelay how many ticks late a hit's knockback is taken to reach the opponent; see {@link #knockAwayCertain} */
 	public CritTrade(int knockbackDelay) {
@@ -93,6 +98,7 @@ public final class CritTrade {
 		knockAway = false;
 		sinceHeld = 1000;
 		jumperHit = false;
+		airToward = 0f;
 	}
 
 	/**
@@ -111,11 +117,15 @@ public final class CritTrade {
 		knockAway = false;
 		boolean seen = vec[ObsSpec.VEC_STATS + ObsSpec.ST_ANY_VISIBLE] >= 0.5f;
 		float oppUp = (scalar(vec, ObsSpec.SC_REL_VEL_UP) + scalar(vec, ObsSpec.SC_VEL_UP)) / BodyState.VELOCITY_SCALE;
+		float away = (scalar(vec, ObsSpec.SC_REL_VEL_FORWARD) + scalar(vec, ObsSpec.SC_VEL_FORWARD)) / BodyState.VELOCITY_SCALE;
 		int airWas = oppAirTicks;
 		oppAirTicks = seen && Math.abs(oppUp) >= Tactic.AIR_SPEED ? 0 : Math.min(oppAirTicks + 1, 1000);
+		if (oppAirTicks == 0) {
+			airToward = -away;
+		}
 		if (sinceHitTaken(vec) == 0) {
-			// The tick it learns of a hit: was the one that made it in the air (as it was last seen)?
-			jumperHit = Math.min(airWas, oppAirTicks) <= AIR_MEMORY_TICKS + 1;
+			// The tick it learns of a hit: was the one that made it jumping in at it (as it was last seen)?
+			jumperHit = Math.min(airWas, oppAirTicks) <= AIR_MEMORY_TICKS + 1 && airToward >= IN_TOWARD;
 		} else if (!AnswerRule.owesAnAnswer(vec)) {
 			jumperHit = false;
 		}
@@ -126,13 +136,12 @@ public final class CritTrade {
 		if (scalar(vec, ObsSpec.SC_OPP_CHARGE) < OPP_READY || d > INCOMING_WITHIN) {
 			return false;
 		}
-		float away = (scalar(vec, ObsSpec.SC_REL_VEL_FORWARD) + scalar(vec, ObsSpec.SC_VEL_FORWARD)) / BodyState.VELOCITY_SCALE;
-		if (away > AWAY_MOST) {
+		if (-away < IN_TOWARD) {
 			return false;
 		}
 		incoming = true;
 		boolean rising = oppUp > RISING_MOST;
-		if (d > HOLD_REACH || rising && -away < IN_TOWARD) {
+		if (d > HOLD_REACH) {
 			return false;
 		}
 		// In reach and jumping in where the swing is held for it: a hit first now is the one the user means ("hit first is BAD"

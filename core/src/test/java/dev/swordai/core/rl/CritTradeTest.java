@@ -58,6 +58,21 @@ class CritTradeTest {
 	}
 
 	@Test
+	void aJumpInPlaceOrWithAHitItTookIsNoJumpIn() {
+		CritTrade trade = new CritTrade(4);
+		// At the top of a jump in place, and on its way down knocked back by the fighter's hit.
+		assertFalse(trade.holds(vec(true, 2.8f, 1f, 0f, 0f, 1f)));
+		assertFalse(trade.holds(vec(true, 2.8f, 1f, -0.2f, -0.2f, 1f)));
+		assertFalse(trade.incoming());
+		// Its hit from there is no jumper's crit: answered as any hit.
+		float[] hit = vec(true, 2.6f, 1f, -0.2f, -0.1f, 0.1f);
+		hit[ObsSpec.VEC_SCALARS + ObsSpec.SC_SINCE_HIT_TAKEN] = 1f;
+		hit[ObsSpec.VEC_SCALARS + ObsSpec.SC_HITS_TAKEN_ROW] = 1f;
+		trade.holds(hit);
+		assertFalse(trade.jumperHit());
+	}
+
+	@Test
 	void notHeldForAnOpponentOnTheGroundOrWithItsSwordSpentOrFarOrGoingAway() {
 		assertFalse(new CritTrade(4).holds(vec(true, 2.6f, 1f, 0f, 0.3f, 1f)), "on the ground");
 		assertFalse(new CritTrade(4).holds(vec(true, 2.6f, 1f, -0.2f, 0.3f, 0.3f)), "its sword spent");
