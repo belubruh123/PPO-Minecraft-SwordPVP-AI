@@ -734,6 +734,9 @@ public final class SchoolSession implements AgentSession {
 			perf.tick(step.teacherTechnique, step.teacherHeads, step.teacher, action, ActionSpace.ALL_HEADS, facts.damageDealt, facts.damageTaken);
 			applyAction(installed.fighter.yawRate(), installed.fighter.pitchRate());
 			clicked = action[ActionSpace.ATTACK] == 1;
+			// The fight's clock runs from its first action on (the school's network sets this on its side).
+			System.arraycopy(action, 0, lastAction, 0, ActionSpace.HEADS);
+			hasLastAction = true;
 			showBar(truth);
 			return;
 		}
