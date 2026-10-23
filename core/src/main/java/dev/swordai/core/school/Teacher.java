@@ -63,7 +63,10 @@ public final class Teacher {
 		s.stap = 0;
 		s.strafe = 0.3f;
 		s.adapts = true;
-		s.hitSelect = s.p(Technique.T4) > 0f ? 0.5f : 0f;
+		s.onlyWhenItWorks = true;
+		// It swings first whenever it can: hit selecting as half the times, for a drawn while, would teach the swing as a coin
+		// toss. The deflection (T4) is still shown, whenever they swing first.
+		s.hitSelect = 0f;
 		return s;
 	}
 

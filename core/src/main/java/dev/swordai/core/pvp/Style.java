@@ -57,6 +57,13 @@ public final class Style {
 	 */
 	public boolean adapts = false;
 	/**
+	 * Its techniques only where the file says they work: the bait crit (T1a) against one who punish-crits ("only works
+	 * if the opponent tries to punish-crit you", T1), the hit as they enter reach (T9c) against one who comes straight in
+	 * (part 7). The school's teacher: otherwise the first technique checked at a moment takes it every time, and the
+	 * others there are never shown (24 Oct: T1a took every approach from T7).
+	 */
+	public boolean onlyWhenItWorks = false;
+	/**
 	 * Hit selecting (part 0, and the deflection T4): the share of the times it has the other in reach with
 	 * the other's sword back that it waits for the other's swing, instead of swinging first.
 	 */
@@ -105,6 +112,7 @@ public final class Style {
 		s.rhythm = rhythm;
 		s.noJumps = noJumps;
 		s.adapts = adapts;
+		s.onlyWhenItWorks = onlyWhenItWorks;
 		s.hitSelect = hitSelect;
 		System.arraycopy(believe, 0, s.believe, 0, believe.length);
 		s.heldOut = heldOut;

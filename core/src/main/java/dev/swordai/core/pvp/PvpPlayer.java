@@ -298,7 +298,8 @@ public final class PvpPlayer {
 		}
 		for (Technique t : counters) {
 			int i = t.ordinal();
-			pNow[i] = Math.min(0.95f, Math.max(pNow[i], 0.1f) * m);
+			// A boost, never a cut: a technique it does every time stays every time.
+			pNow[i] = Math.max(pNow[i], Math.min(0.95f, Math.max(pNow[i], 0.1f) * m));
 		}
 	}
 
@@ -480,7 +481,7 @@ public final class PvpPlayer {
 				&& d.reach > Duel.REACH + 0.3 && d.reach < Duel.REACH + 2.5;
 		if (straight && !straightRolled && me.swordReady()) {
 			straightRolled = true;
-			if (roll(Technique.T9C)) {
+			if ((!style.onlyWhenItWorks || expect(Habits.STRAIGHT_IN, -1f) > 0.3f) && roll(Technique.T9C)) {
 				begin(Plan.T9C);
 				return;
 			}
@@ -488,7 +489,7 @@ public final class PvpPlayer {
 		// Out of reach with the sword back: the bait crit (T1a), the three-block hit (T7), or an opening crit.
 		if (d.reach > Duel.REACH + 0.4 && d.reach < 8.0 && me.swordReady() && !outRolled) {
 			outRolled = true;
-			if (roll(Technique.T1A)) {
+			if ((!style.onlyWhenItWorks || expect(Habits.PUNISH_CRIT, -1f) > 0.3f) && roll(Technique.T1A)) {
 				begin(Plan.T1A);
 				return;
 			}
