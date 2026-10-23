@@ -16,6 +16,7 @@ public final class CombatLog {
 	private static boolean pendingRising;
 	private static boolean pendingSweep;
 	private static boolean pendingBotCrit;
+	private static boolean pendingBotSprint;
 
 	private static int hitsDealt;
 	private static float hitCharge;
@@ -26,6 +27,7 @@ public final class CombatLog {
 	private static float damageDealt;
 	private static int hitsTaken;
 	private static int critsTaken;
+	private static int sprintsTaken;
 	private static float damageTaken;
 	private static boolean koDealt;
 	private static boolean koTaken;
@@ -48,7 +50,13 @@ public final class CombatLog {
 
 	/** The bot has started an attack. */
 	public static synchronized void botSwung(boolean crit) {
+		botSwung(crit, false);
+	}
+
+	/** @param sprintHit a charged swing made sprinting: a knockback hit */
+	public static synchronized void botSwung(boolean crit, boolean sprintHit) {
 		pendingBotCrit = crit;
+		pendingBotSprint = sprintHit;
 	}
 
 	public static synchronized void agentDamagedBot(float amount) {
@@ -70,7 +78,10 @@ public final class CombatLog {
 		if (pendingBotCrit) {
 			critsTaken++;
 			pendingBotCrit = false;
+		} else if (pendingBotSprint) {
+			sprintsTaken++;
 		}
+		pendingBotSprint = false;
 	}
 
 	public static synchronized void knockout(boolean botDown) {
@@ -105,6 +116,7 @@ public final class CombatLog {
 		facts.damageDealt = damageDealt;
 		facts.hitsTaken = hitsTaken;
 		facts.critsTaken = critsTaken;
+		facts.sprintsTaken = sprintsTaken;
 		facts.damageTaken = damageTaken;
 		facts.koDealt = koDealt;
 		facts.koTaken = koTaken;
@@ -121,6 +133,7 @@ public final class CombatLog {
 		damageDealt = 0f;
 		hitsTaken = 0;
 		critsTaken = 0;
+		sprintsTaken = 0;
 		damageTaken = 0f;
 		koDealt = false;
 		koTaken = false;

@@ -1,0 +1,107 @@
+package dev.swordai.core.school;
+
+import dev.swordai.core.pvp.Specialists;
+import dev.swordai.core.pvp.Technique;
+import dev.swordai.core.rl.ActionSpace;
+import dev.swordai.core.rl.ObsSpec;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.file.Path;
+import java.util.Random;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class SchoolLearnerTest {
+	private static void fill(Random rng, SchoolRollout.Step s) {
+		for (int i = 0; i < ObsSpec.VEC; i++) {
+			s.obs.base.vec[i] = rng.nextFloat();
+		}
+		for (int i = 0; i < ObsSpec.PRIV; i++) {
+			s.obs.base.priv[i] = rng.nextFloat();
+		}
+		for (int i = 0; i < SchoolObs.MEM; i++) {
+			s.obs.mem[i] = rng.nextFloat();
+		}
+		s.obs.setOpponent(rng.nextInt(Technique.COUNT), null, rng.nextInt(Specialists.KINDS));
+		s.botTechnique = rng.nextInt(Technique.COUNT);
+		s.botKeys = rng.nextInt(128);
+		s.policyWeight = rng.nextInt(5) == 0 ? 0f : 1f;
+		s.teacherHeads = 0;
+		s.teacherWeight = 0f;
+		if (rng.nextBoolean()) {
+			// The jump taught: always jump here.
+			s.teacherHeads = 1 << ActionSpace.JUMP;
+			int off = ActionSpace.OFFSETS[ActionSpace.JUMP];
+			s.teacher[off] = 0.05f;
+			s.teacher[off + 1] = 0.95f;
+		}
+	}
+
+	/** A few updates where a teacher says "jump": the network's chance of the jump there goes up; and it saves and loads. */
+	@Test
+	void teacherPullTeachesAndCheckpointRoundTrips(@TempDir Path dir) throws Exception {
+		SchoolLearner l = new SchoolLearner(4L, 600, 0.99f, 0.95f, 2);
+		Random rng = new Random(8);
+		SchoolRollout.Step s = new SchoolRollout.Step();
+		int[] act = new int[ActionSpace.HEADS];
+		float before = jumpChance(l, rng);
+		SchoolPpo.Stats last = null;
+		for (int u = 0; u < 4; u++) {
+			for (int t = 0; t < 512; t++) {
+				fill(rng, s);
+				l.act(s, ActionSpace.ALL_HEADS, true, 1f, act);
+				fill(rng, s);
+				l.complete(rng.nextFloat() - 0.5f, t % 100 == 99, false, s.obs);
+			}
+			SchoolPpo.Settings set = new SchoolPpo.Settings();
+			set.techPull = 1f;
+			last = l.update(set, 1e-3f);
+			assertTrue(Float.isFinite(last.policyLoss) && Float.isFinite(last.valueLoss), last.toString());
+		}
+		assertTrue(last.techSteps > 0, last.toString());
+		float after = jumpChance(l, rng);
+		assertTrue(after > before + 0.2f, "jump chance " + before + " -> " + after);
+
+		Path file = dir.resolve("school.bin");
+		l.save(file);
+		assertTrue(SchoolLearner.isSchool(file));
+		SchoolLearner back = new SchoolLearner(99L, 16, 0.99f, 0.95f, 1);
+		back.load(file);
+		assertEquals(l.totalSteps, back.totalSteps);
+		Random same = new Random(1);
+		assertEquals(jumpChance(l, same), jumpChance(back, new Random(1)), 1e-6f);
+		l.close();
+		back.close();
+	}
+
+	private static float jumpChance(SchoolLearner l, Random rng) {
+		SchoolRollout.Step s = new SchoolRollout.Step();
+		float sum = 0f;
+		int[] act = new int[ActionSpace.HEADS];
+		for (int i = 0; i < 50; i++) {
+			fill(rng, s);
+			l.act(s, ActionSpace.ALL_HEADS, false, 1f, act);
+			float[] logits = l.lastLogits();
+			int off = ActionSpace.OFFSETS[ActionSpace.JUMP];
+			sum += (float) (1.0 / (1.0 + Math.exp(logits[off] - logits[off + 1])));
+		}
+		return sum / 50;
+	}
+
+	@Test
+	void stagesSaveAndLoad(@TempDir Path dir) throws Exception {
+		SchoolStages st = new SchoolStages();
+		st.addSteps(1234);
+		for (int i = 0; i < 20; i++) {
+			st.fight(Specialists.SWINGER, 10f + i, 5f, 600);
+		}
+		Path f = dir.resolve("stages.properties");
+		st.save(f);
+		SchoolStages back = new SchoolStages();
+		back.load(f);
+		assertEquals(st.describe(), back.describe());
+		assertTrue(st.techPull() < SchoolStages.TECH_PULL && st.techPull() > 0f);
+	}
+}

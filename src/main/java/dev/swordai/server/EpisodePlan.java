@@ -8,6 +8,11 @@ import dev.swordai.core.curriculum.StageSpec;
 public final class EpisodePlan {
 	/** Already adjusted for the current bot skill. */
 	public final BotProfile bot;
+	/**
+	 * The technique school: the style the opponent fights with ({@link TechniqueBot}); null for the scripted
+	 * brain of the stages before. With a style, only the profile's placement and health rules are used.
+	 */
+	public dev.swordai.core.pvp.Style style;
 	public final int agentMaxPillar;
 	public final float startPitchRangeDeg;
 	/** When the bot is played by a copy of the agent: which of the copies handed over, 0 being the newest. */
@@ -70,6 +75,23 @@ public final class EpisodePlan {
 		this.agentMaxPillar = stage.agentMaxPillar;
 		this.startPitchRangeDeg = stage.startPitchRangeDeg;
 		this.rivalIndex = rivalIndex;
+	}
+
+	/** A fight of the technique school against {@code style}: placed between {@code minDistance} and {@code maxDistance}, in view. */
+	public static EpisodePlan school(dev.swordai.core.pvp.Style style, float minDistance, float maxDistance) {
+		BotProfile b = new BotProfile();
+		b.movement = BotProfile.FIGHT;
+		b.attacks = true;
+		b.minDistance = minDistance;
+		b.maxDistance = maxDistance;
+		b.maxBearingDeg = 40f;
+		b.hopIntervalTicks = 0;
+		// A real fight: to the knockout.
+		b.agentImmortal = false;
+		b.botImmortal = false;
+		EpisodePlan plan = new EpisodePlan(b, 0f);
+		plan.style = style;
+		return plan;
 	}
 
 	private EpisodePlan(BotProfile bot, float startPitchRangeDeg) {

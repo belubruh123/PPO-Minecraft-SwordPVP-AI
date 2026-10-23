@@ -9,6 +9,9 @@ import java.util.UUID;
  * @param episodeId counts up every time an episode reset has been applied
  * @param hopId     counts up every time the bot was repositioned (including resets)
  * @param agentSprinting whether the server has the agent sprinting: what its next hit is judged with
+ * @param botTechnique the technique the technique-school bot was in on its last tick ({@code Technique} ordinal), or -1 when no
+ *                     such bot plays
+ * @param botKeys      that bot's keys on its last tick, as {@code TechniqueBot} packs them
  * @param error     non-null when the arena could not be set up; the session shows it and stops
  */
 public record Truth(
@@ -27,11 +30,13 @@ public record Truth(
 		boolean botOnGround,
 		boolean agentSprinting,
 		long tick,
+		int botTechnique,
+		int botKeys,
 		String error) {
 
-	public static final Truth INACTIVE = new Truth(false, false, null, 0, 0, 0, 0, 0, 0, 0f, 0f, false, false, false, 0L, null);
+	public static final Truth INACTIVE = new Truth(false, false, null, 0, 0, 0, 0, 0, 0, 0f, 0f, false, false, false, 0L, -1, 0, null);
 
 	public static Truth failed(String error) {
-		return new Truth(false, false, null, 0, 0, 0, 0, 0, 0, 0f, 0f, false, false, false, 0L, error);
+		return new Truth(false, false, null, 0, 0, 0, 0, 0, 0, 0f, 0f, false, false, false, 0L, -1, 0, error);
 	}
 }

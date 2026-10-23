@@ -37,6 +37,9 @@ final class Commands {
 						.executes(c -> start(c.getSource(), TrainingSession.Mode.TRAIN, false))
 						.then(literal("fresh").executes(c -> start(c.getSource(), TrainingSession.Mode.TRAIN, true)))
 						.then(literal("headless").executes(c -> headless(c.getSource()))))
+				.then(literal("school")
+						.executes(c -> school(c.getSource(), SchoolSession.Mode.TRAIN))
+						.then(literal("check").executes(c -> school(c.getSource(), SchoolSession.Mode.CHECK))))
 				.then(literal("speed")
 						.executes(c -> speed(c.getSource(), 0f))
 						.then(argument("times", FloatArgumentType.floatArg(1f, MAX_SPEED))
@@ -223,6 +226,30 @@ final class Commands {
 			return 1;
 		} catch (IOException | RuntimeException e) {
 			source.sendError(Component.literal("Could not change it: " + e));
+			return 0;
+		}
+	}
+
+	/** The technique school: training against the technique bots, or the paired check against the installed model. */
+	private static int school(FabricClientCommandSource source, SchoolSession.Mode mode) {
+		Minecraft mc = source.getClient();
+		if (mc.getSingleplayerServer() == null || mc.player == null) {
+			source.sendError(Component.literal("Open a singleplayer world first: SwordAI trains inside it."));
+			return 0;
+		}
+		if (SwordAiClient.running()) {
+			source.sendError(Component.literal("SwordAI is already running. Use /swordai stop first."));
+			return 0;
+		}
+		try {
+			SchoolSession session = SwordAiClient.startSchool(mc, mode);
+			say(source, session.startLine());
+			say(source, "Esc pauses, /swordai stop saves and restores everything.");
+			return 1;
+		} catch (IOException | RuntimeException e) {
+			SwordAi.LOGGER.error("SwordAI could not start the school", e);
+			SwordFiles.writeError("could not start the school: " + e, e);
+			source.sendError(Component.literal("SwordAI could not start: " + e));
 			return 0;
 		}
 	}

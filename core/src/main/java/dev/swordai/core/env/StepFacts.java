@@ -148,6 +148,8 @@ public final class StepFacts {
 	public int hitsTaken;
 	/** How many of the hits taken were critical hits. */
 	public int critsTaken;
+	/** And how many were sprint (knockback) hits. */
+	public int sprintsTaken;
 	public float damageTaken;
 	public boolean koDealt;
 	public boolean koTaken;
@@ -207,6 +209,7 @@ public final class StepFacts {
 		damageDealt = 0f;
 		hitsTaken = 0;
 		critsTaken = 0;
+		sprintsTaken = 0;
 		damageTaken = 0f;
 		koDealt = false;
 		koTaken = false;

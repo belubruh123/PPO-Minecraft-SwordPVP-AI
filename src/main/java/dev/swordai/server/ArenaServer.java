@@ -80,6 +80,12 @@ public final class ArenaServer {
 	private final Config cfg;
 	private final Arena arena;
 	private final BotBrain brain = new BotBrain();
+	/** The technique school's bot, in the fights whose plan has a style; see {@link EpisodePlan#style}. */
+	private final TechniqueBot tech = new TechniqueBot();
+	private boolean techPlays;
+	/** The kind of the agent's and the bot's attack under way ({@code Events} kinds), for the hit that follows. */
+	private int agentKind;
+	private int botKind;
 	private final Random rng = new Random();
 	private final List<BlockPos> agentPillar = new ArrayList<>();
 	private final List<BlockPos> botPillar = new ArrayList<>();
@@ -464,7 +470,15 @@ public final class ArenaServer {
 		}
 		s.brain.setProfile(plan.bot);
 		s.brain.setLag(plan.botLag);
-		KnockbackLag.set(s.bot, plan.botPing, plan.botKnockback);
+		s.techPlays = plan.style != null;
+		if (s.techPlays) {
+			s.tech.start(plan.style, plan.seed != 0L ? plan.seed : s.rng.nextLong());
+			// The bot feels a hit when its knockback reaches it, at least a tick late; see TechniqueBot.
+			KnockbackLag.set(s.bot, s.tech.ping(), 1f);
+		} else {
+			s.tech.stop();
+			KnockbackLag.set(s.bot, plan.botPing, plan.botKnockback);
+		}
 		KnockbackLag.setAgent(agent, plan.agentKnockLag);
 		s.setIdleNow(false);
 		s.rival = s.rivals.length == 0 ? null : s.rivals[Math.max(0, Math.min(s.rivals.length - 1, plan.rivalIndex))];
@@ -562,6 +576,8 @@ public final class ArenaServer {
 		}
 		s.profile = EpisodePlan.dummy().bot;
 		s.brain.setProfile(s.profile);
+		s.techPlays = false;
+		s.tech.stop();
 		s.rivalPlays = false;
 		s.setOutside(null);
 		s.setIdleNow(true);
@@ -822,6 +838,8 @@ public final class ArenaServer {
 			// Carpet PvP's own fighter has it; see setOutside.
 		} else if (rivalPlays && !idle) {
 			rival.tick(bot, agent, arena.floorY);
+		} else if (techPlays && !idle) {
+			tech.tick(bot, agent);
 		} else {
 			// Also while a self-play episode is on hold: the brain then only stands and looks.
 			brain.tick(bot, agent, arena);
@@ -994,6 +1012,8 @@ public final class ArenaServer {
 				b != null && b.onGround(),
 				agent != null && agent.isSprinting(),
 				server.getTickCount(),
+				techPlays ? TechniqueBot.lastTechnique() : -1,
+				techPlays ? TechniqueBot.lastKeys() : 0,
 				null);
 	}
 
@@ -1024,8 +1044,10 @@ public final class ArenaServer {
 		}
 		if (s.isAgent(attacker)) {
 			CombatLog.agentSwung(charge, sprinting, crit, rising, sweep);
+			s.agentKind = dev.swordai.core.pvp.Events.kindOf(charge, sprinting, crit);
 		} else if (attacker == s.bot) {
-			CombatLog.botSwung(crit);
+			s.botKind = dev.swordai.core.pvp.Events.kindOf(charge, sprinting, crit);
+			CombatLog.botSwung(crit, s.botKind == dev.swordai.core.pvp.Events.SPRINT);
 		}
 	}
 
@@ -1115,12 +1137,16 @@ public final class ArenaServer {
 		}
 		if (botWasHit) {
 			CombatLog.agentDamagedBot(dealt);
-			if (!s.rivalPlays) {
+			if (s.techPlays) {
+				s.tech.tookHit(s.agentKind);
+			} else if (!s.rivalPlays) {
 				s.brain.tookHit();
 			}
 		} else if (botDidHit) {
 			CombatLog.botDamagedAgent(dealt);
-			if (!s.rivalPlays) {
+			if (s.techPlays) {
+				s.tech.landedHit(s.botKind);
+			} else if (!s.rivalPlays) {
 				s.brain.landedHit();
 			}
 		}

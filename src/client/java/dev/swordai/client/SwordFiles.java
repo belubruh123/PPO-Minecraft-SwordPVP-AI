@@ -39,6 +39,34 @@ final class SwordFiles {
 		return dir().resolve("checkpoint.bin");
 	}
 
+	/** The technique school's own folder: its network, its stages, and the copy of the installed model it is checked against. */
+	static Path schoolDir() {
+		return dir().resolve("school");
+	}
+
+	static Path schoolCheckpoint() {
+		return schoolDir().resolve("checkpoint.bin");
+	}
+
+	static Path schoolStages() {
+		return schoolDir().resolve("stages.properties");
+	}
+
+	/** A copy of the model installed in the user's game (checkpoint.bin, config.json, curriculum.properties). */
+	static Path installedCopy() {
+		return schoolDir().resolve("installed");
+	}
+
+	/** A config file read as it is, with nothing upgraded; null if it cannot be read. */
+	static Config readConfig(Path file) {
+		try {
+			return GSON.fromJson(Files.readString(file, StandardCharsets.UTF_8), Config.class);
+		} catch (IOException | JsonParseException e) {
+			SwordAi.LOGGER.warn("could not read " + file, e);
+			return null;
+		}
+	}
+
 	static Path curriculum() {
 		return dir().resolve("curriculum.properties");
 	}

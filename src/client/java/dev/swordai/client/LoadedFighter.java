@@ -46,9 +46,17 @@ final class LoadedFighter implements AutoCloseable {
 		// The picture it gets, whether from the screen or drawn for a fake player, has the field of
 		// view it learned with.
 		ViewGeometry.setFov(Math.min(cfg.visionFov, cfg.fov));
+		return loadFrom(checkpoint, cfg, SwordFiles.curriculum());
+	}
+
+	/**
+	 * A network saved with its settings and curriculum somewhere else: the model installed in the user's game, as a
+	 * copy kept for the technique school's paired checks. It plays exactly as it does in the user's fights.
+	 */
+	static LoadedFighter loadFrom(Path checkpoint, Config cfg, Path curriculumFile) throws IOException {
 		Curriculum curriculum = new Curriculum(cfg.stages);
-		if (Files.exists(SwordFiles.curriculum())) {
-			curriculum.load(SwordFiles.curriculum());
+		if (Files.exists(curriculumFile)) {
+			curriculum.load(curriculumFile);
 		}
 		Learner learner = new Learner(cfg, System.nanoTime(), 1);
 		try {
