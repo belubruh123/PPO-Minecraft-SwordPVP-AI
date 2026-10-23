@@ -32,15 +32,18 @@ public final class SchoolPpo implements AutoCloseable {
 	/** Settings of one update. */
 	public static final class Settings {
 		public float clip = 0.2f;
-		public int epochs = 6;
-		public int minibatch = 64;
-		public float actorLr = 3e-4f;
-		public float criticLr = 1e-3f;
+		public int epochs = 4;
+		// Large minibatches and a small step: a teacher's pull points the same way on every step, and Adam moves every
+		// weight by the full step each time it does (the first school run, 23 Oct: 64 and 3e-4 changed the policy by a
+		// KL of 1.4 in one epoch).
+		public int minibatch = 256;
+		public float actorLr = 1e-4f;
+		public float criticLr = 5e-4f;
 		public float maxGradNorm = 0.5f;
-		public float klTarget = 0.015f;
-		public float klStop = 0.04f;
-		public float minActorLr = 3e-5f;
-		public float maxActorLr = 5e-4f;
+		public float klTarget = 0.01f;
+		public float klStop = 0.03f;
+		public float minActorLr = 1e-5f;
+		public float maxActorLr = 3e-4f;
 		public boolean adaptiveLr = true;
 		public float[] entropy = {0.005f, 0.005f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f};
 		/** The pulls of the two teachers for this update. */

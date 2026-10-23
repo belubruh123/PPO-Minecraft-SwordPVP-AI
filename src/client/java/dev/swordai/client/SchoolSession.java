@@ -77,7 +77,7 @@ public final class SchoolSession implements AgentSession {
 	private static final int MISSING_BOT_TICKS = 60;
 	/** A fight lasts until a knockout or this long (30 seconds), then it is cut and valued by the critic. */
 	static final int FIGHT_TICKS = 600;
-	static final int ROLLOUT = 2048;
+	static final int ROLLOUT = 4096;
 	/** The reward: damage traded, a tenth a point of health, and a knockout. */
 	static final float PER_HEALTH = 0.1f;
 	static final float KNOCKOUT = 1f;

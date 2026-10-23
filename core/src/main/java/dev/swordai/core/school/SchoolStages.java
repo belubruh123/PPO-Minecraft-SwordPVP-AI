@@ -49,8 +49,9 @@ public final class SchoolStages {
 		}
 	}
 
-	private static final long MIN = 100_000L;
-	private static final long MAX = 260_000L;
+	/** On the screen at x4 the school makes about 260,000 steps an hour. */
+	private static final long MIN = 250_000L;
+	private static final long MAX = 600_000L;
 
 	public static final Stage[] STAGES = {
 			new Stage("T-A", "knockback and spacing (K1-K3, T6, T7, T8)",

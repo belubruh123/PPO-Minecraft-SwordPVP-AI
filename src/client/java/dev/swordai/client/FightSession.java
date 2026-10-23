@@ -7,6 +7,8 @@ import dev.swordai.core.env.StepFacts;
 import dev.swordai.core.report.ReportWriter;
 import dev.swordai.core.rl.ActionSpace;
 import dev.swordai.core.rl.Fighter;
+import dev.swordai.core.school.SchoolFighter;
+import dev.swordai.core.school.SchoolLearner;
 import dev.swordai.core.vision.ViewGeometry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ChatScreen;
@@ -17,6 +19,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.EntityHitResult;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -40,6 +43,17 @@ final class FightSession implements AgentSession {
 	private final Minecraft mc;
 	private final LoadedFighter loaded;
 	private final Fighter fighter;
+	/**
+	 * The technique school's network, where one is installed ({@code swordai/school/checkpoint.bin}): it plays
+	 * instead of {@link #fighter}, with no rule pressing anything for it. Null otherwise.
+	 */
+	private final SchoolLearner schoolLearner;
+	private final SchoolFighter school;
+	/** What the school's network remembers of this opponent; see {@link DuelReader}. */
+	private final DuelReader reader = new DuelReader();
+	private float chargeAtClick;
+	private boolean sprintAtClick;
+	private boolean critAtClick;
 	/** Null: fight whoever is there. */
 	private final String wantedName;
 	private final FrameGrabber grabber = new FrameGrabber();
@@ -115,8 +129,24 @@ final class FightSession implements AgentSession {
 			fighter.swingNoEarlierThan(loaded.cfg.swingMinChargeOnline, loaded.cfg.swingExtraTicksOnline);
 			fighter.rulesNoEarlierThan(loaded.cfg.ruleSwingChargeOnline);
 		}
+		if (Files.exists(SwordFiles.schoolCheckpoint())) {
+			SchoolLearner l = new SchoolLearner(System.nanoTime(), 1, 0.99f, 0.95f, 1);
+			try {
+				l.load(SwordFiles.schoolCheckpoint());
+			} catch (IOException | RuntimeException e) {
+				l.close();
+				loaded.close();
+				throw e;
+			}
+			schoolLearner = l;
+			school = new SchoolFighter(l, loaded.cfg.aimResponse,
+					mc.hasSingleplayerServer() ? loaded.cfg.swingMinCharge : loaded.cfg.swingMinChargeOnline, loaded.cfg.playTemperature);
+		} else {
+			schoolLearner = null;
+			school = null;
+		}
 		this.groundY = mc.player.getY();
-		this.body.patchedUp = loaded.patchedUp;
+		this.body.patchedUp = school == null && loaded.patchedUp;
 		SwordFiles.clearLastError();
 		grabber.setCrop(ViewGeometry.cropFor(ViewGeometry.fov(), loaded.cfg.fov));
 		OptionsGuard.apply(mc, loaded.cfg.fov);
@@ -126,7 +156,8 @@ final class FightSession implements AgentSession {
 	}
 
 	String skillLine() {
-		return loaded.skillLine();
+		return school != null ? "Playing with the technique school's network (" + schoolLearner.totalSteps + " steps of training); no rule presses anything for it."
+				: loaded.skillLine();
 	}
 
 	// ---- AgentSession ---------------------------------------------------------------------------
@@ -216,7 +247,7 @@ final class FightSession implements AgentSession {
 			KeyedSkin.setTwoPass(loaded.cfg.showOpponentSkin);
 			KeyedSkin.setActive(true);
 			lastOpponentHurt = opp.hurtTime;
-			fighter.reset();
+			resetBrain(true);
 			observer.resetEpisode();
 			body.resetOpponentSwing();
 		}
@@ -246,7 +277,7 @@ final class FightSession implements AgentSession {
 		if (handedBack) {
 			// Taking over (again): start from rest, on the ground the character stands on.
 			handedBack = false;
-			fighter.reset();
+			resetBrain(false);
 			observer.resetEpisode();
 			body.resetOpponentSwing();
 			groundY = me.getY();
@@ -269,7 +300,11 @@ final class FightSession implements AgentSession {
 		}
 		boolean takenNow = me.hurtTime > lastOwnHurt;
 		if (takenNow) {
-			fighter.hitTaken();
+			if (school != null) {
+				school.hitTaken();
+			} else {
+				fighter.hitTaken();
+			}
 			hitsTaken++;
 		}
 		lastOwnHurt = me.hurtTime;
@@ -310,12 +345,22 @@ final class FightSession implements AgentSession {
 			groundY = me.getY();
 		}
 		observer.fillBody(body, me, opp, groundY);
-		// What the crosshair is on, for the rule about answering a hit; see AnswerRule.
-		fighter.crosshairOnOpponent(onOpponent());
-		int[] action = fighter.decide(observer.frame, body);
+		int[] action;
 		float yawBefore = me.getYRot();
 		float pitchBefore = me.getXRot();
-		AgentController.apply(mc, action, fighter.yawRate(), fighter.pitchRate());
+		if (school != null) {
+			reader.tick(me, opp, clicked, chargeAtClick, sprintAtClick, critAtClick);
+			action = school.decide(observer.frame, body, reader.memory());
+			AgentController.apply(mc, action, school.yawRate(), school.pitchRate());
+			chargeAtClick = me.getAttackStrengthScale(0f);
+			sprintAtClick = me.isSprinting();
+			critAtClick = !me.onGround() && me.getY() < me.yo && !sprintAtClick && chargeAtClick > 0.9f;
+		} else {
+			// What the crosshair is on, for the rule about answering a hit; see AnswerRule.
+			fighter.crosshairOnOpponent(onOpponent());
+			action = fighter.decide(observer.frame, body);
+			AgentController.apply(mc, action, fighter.yawRate(), fighter.pitchRate());
+		}
 		turnYawThisTick = me.getYRot() - yawBefore;
 		turnPitchThisTick = me.getXRot() - pitchBefore;
 		actedThisTick = true;
@@ -323,7 +368,7 @@ final class FightSession implements AgentSession {
 			if (!rounds.open()) {
 				rounds.start(opponentName);
 			}
-			rounds.tick(me, opp, body, action, fighter.rules(), dealtNow, takenNow);
+			rounds.tick(me, opp, body, action, school != null ? 0 : fighter.rules(), dealtNow, takenNow);
 		}
 		clicked = action[ActionSpace.ATTACK] == 1;
 		clickResolved = false;
@@ -367,7 +412,11 @@ final class FightSession implements AgentSession {
 			// The network is told of its hit now, as in training, and not when the opponent is seen to
 			// flinch a round trip to the server later: for those ticks it would take the swing for a miss
 			// and swing again at once. See FightLearnSession.hitsDealtAsShown.
-			fighter.hitDealt();
+			if (school != null) {
+				school.hitDealt();
+			} else {
+				fighter.hitDealt();
+			}
 		}
 	}
 
@@ -377,6 +426,10 @@ final class FightSession implements AgentSession {
 			return false;
 		}
 		actedThisTick = false;
+		if (school != null) {
+			AgentController.hold(mc, school.action());
+			return clicked;
+		}
 		AgentController.hold(mc, fighter.action());
 		if (clicked && fighter.answerForced() && !onOpponent()) {
 			// The rule's swing is only made at an opponent that is under the crosshair now that the camera has turned.
@@ -457,6 +510,20 @@ final class FightSession implements AgentSession {
 			handedBack = true;
 			AgentController.release(mc);
 			fighter.restHand();
+			if (school != null) {
+				school.restHand();
+			}
+		}
+	}
+
+	/** A new opponent ({@code forget}: its memory goes too), or taking over again after a pause. */
+	private void resetBrain(boolean forget) {
+		fighter.reset();
+		if (school != null) {
+			school.reset();
+			if (forget) {
+				reader.reset();
+			}
 		}
 	}
 
@@ -478,6 +545,9 @@ final class FightSession implements AgentSession {
 			KeyedSkin.setTarget(null);
 			OptionsGuard.restore(mc);
 			loaded.close();
+			if (schoolLearner != null) {
+				schoolLearner.close();
+			}
 		}
 		String summary = summary();
 		SwordFiles.writeLastFight(summary);
