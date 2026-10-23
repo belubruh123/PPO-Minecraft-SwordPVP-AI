@@ -545,10 +545,11 @@ public final class PvpPlayer {
 				return jumpedCrit(d, k, RUNNING_JUMP_FROM + 0.1f, false);
 			}
 			case B1 -> {
-				// Hit standing, thrown up: no swing back now, the sprint let go, the swing kept for the way down.
+				// Hit standing, thrown up: no swing back now, the sprint let go, the swing kept for the way down. A crit needs
+				// not sprinting, and letting go of W is what ends a sprint (part 8): no W while it still sprints.
 				k.taught = Keys.KEY_SPRINT | Keys.KEY_ATTACK | Keys.KEY_MOVE;
-				k.forward = d.reach > 1.8 ? 1 : 0;
-				if (me.falling() && canSwing(d)) {
+				k.forward = d.reach > 1.8 && !me.sprinting ? 1 : 0;
+				if (me.falling() && canSwing(d) && !me.sprinting) {
 					k.attack = true;
 					return RUN;
 				}
@@ -816,12 +817,14 @@ public final class PvpPlayer {
 			phase = 1;
 			return RUN;
 		}
-		k.forward = d.reach > 1.0 ? 1 : 0;
+		// The running jump keeps its sprint going up; coming down, W is let go while it still sprints, as a crit needs not
+		// sprinting (part 8), and the swing waits for that.
+		k.forward = d.reach > 1.0 && (me.rising() || !me.sprinting) ? 1 : 0;
 		k.sprint = running && me.rising();
 		if (around) {
 			k.strafe = planDir;
 		}
-		if (me.falling() && canSwing(d)) {
+		if (me.falling() && canSwing(d) && !me.sprinting) {
 			k.attack = true;
 			k.sprint = false;
 			return RUN;

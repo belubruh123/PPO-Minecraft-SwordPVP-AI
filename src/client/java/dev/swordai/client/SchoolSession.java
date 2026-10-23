@@ -136,6 +136,24 @@ public final class SchoolSession implements AgentSession {
 
 	// ---- the fight --------------------------------------------------------------------------------
 	private final StepFacts facts = new StepFacts();
+	/**
+	 * Its swings where the teacher wants a crit, how many of them it made still sprinting (no crit then) and falling; and
+	 * the hits and crits it landed meanwhile, by the game: whether the crits are real, not only the keys (24 Oct).
+	 */
+	private int critSwings;
+	private int critSwingsSprinting;
+	private int critSwingsFalling;
+	private int critTicksHits;
+	private int critTicksCrits;
+	private int critWantedFor;
+	private static final boolean[] CRIT_WANTED = new boolean[Technique.COUNT];
+
+	static {
+		for (Technique t : new Technique[] {Technique.B1, Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2,
+				Technique.C6, Technique.K3}) {
+			CRIT_WANTED[t.ordinal()] = true;
+		}
+	}
 	private final SessionClock clock = new SessionClock();
 	private final AimMotor motor;
 	private final MixIdea idea = new MixIdea();
@@ -721,6 +739,18 @@ public final class SchoolSession implements AgentSession {
 		step.kind = fightBot;
 		learner.act(step, keys, mode == Mode.TRAIN, cfg.playTemperature, action);
 		perf.tick(step.teacherTechnique, step.teacherHeads, step.teacher, action, keys, facts.damageDealt, facts.damageTaken);
+		boolean critWanted = step.teacherTechnique >= 0 && CRIT_WANTED[step.teacherTechnique];
+		// A hit lands a tick or two after the swing: the moment's few ticks after it still count.
+		critWantedFor = critWanted ? 3 : Math.max(0, critWantedFor - 1);
+		if (critWantedFor > 0) {
+			critTicksHits += facts.hitsDealt;
+			critTicksCrits += facts.critDealt ? 1 : 0;
+		}
+		if (critWanted && action[ActionSpace.ATTACK] == 1) {
+			critSwings++;
+			critSwingsSprinting += reader.duel.me.sprinting ? 1 : 0;
+			critSwingsFalling += reader.duel.me.falling() ? 1 : 0;
+		}
 		if (step.teacherHeads != 0) {
 			fightTeacherTicks++;
 			int t = step.teacherTechnique;
@@ -937,8 +967,11 @@ public final class SchoolSession implements AgentSession {
 		stages.adapt();
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
-				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | bots went into:{}",
-				lastUpdateLine, stages.describe(), learner.predictorLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(), perf.keysLine(), ownLine(0), used);
+				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit wanted: {} swings, {} still sprinting, {} falling; {} hits, {} crits "
+				+ "| bots went into:{}",
+				lastUpdateLine, stages.describe(), learner.predictorLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(), perf.keysLine(), ownLine(0),
+				critSwings, critSwingsSprinting, critSwingsFalling, critTicksHits, critTicksCrits, used);
+		critSwings = critSwingsSprinting = critSwingsFalling = critTicksHits = critTicksCrits = 0;
 		float dealtAll = 0f;
 		float takenAll = 0f;
 		int ticksAll = 0;
