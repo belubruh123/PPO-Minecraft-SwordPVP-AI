@@ -96,7 +96,9 @@ public final class TeacherReplay {
 			System.arraycopy(r.pred[i], 0, pred[j], 0, Predictor.OUT);
 			System.arraycopy(r.teacher[i], 0, target[j], 0, ActionSpace.TOTAL_LOGITS);
 			for (int k = 0; k < ActionSpace.HEADS; k++) {
-				cond[j][k] = (h & (1 << k)) != 0 ? (byte) argmax(r.teacher[i], k) : r.action[i][k];
+				// Its own key where it is one the teacher asks for (one of several alike), else the teacher's.
+				boolean own = (h & (1 << k)) == 0 || r.teacher[i][ActionSpace.OFFSETS[k] + r.action[i][k]] >= Teacher.ANY;
+				cond[j][k] = own ? r.action[i][k] : (byte) argmax(r.teacher[i], k);
 			}
 			heads[j] = h;
 			technique[j] = t;
@@ -127,6 +129,7 @@ public final class TeacherReplay {
 			return st;
 		}
 		float[] probs = new float[ActionSpace.TOTAL_LOGITS];
+		float[] aimed = new float[ActionSpace.TOTAL_LOGITS];
 		double ce = 0;
 		int headsSeen = 0;
 		int agreed = 0;
@@ -150,10 +153,11 @@ public final class TeacherReplay {
 					int off = ActionSpace.OFFSETS[h];
 					int size = ActionSpace.SIZES[h];
 					Policy.softmax(ws.logits, off, size, probs);
+					Teacher.aim(target[i], probs, off, size, aimed);
 					int best = 0;
 					for (int k = 0; k < size; k++) {
 						float p = probs[off + k];
-						float q = target[i][off + k];
+						float q = aimed[off + k];
 						ws.dLogits[off + k] = w * (p - q);
 						if (q > 0f) {
 							ce -= q * Math.log(Math.max(p, 1e-9f));
@@ -163,7 +167,7 @@ public final class TeacherReplay {
 						}
 					}
 					headsSeen++;
-					agreed += best == argmax(target[i], h) ? 1 : 0;
+					agreed += target[i][off + best] >= Teacher.ANY ? 1 : 0;
 				}
 				actor.backward(ws, peri[i], fovea[i], vec[i], mem[i]);
 				used++;

@@ -20,6 +20,8 @@ import dev.swordai.core.rl.ActionSpace;
 public final class Teacher {
 	/** Of a target, the share on the teacher's key; the rest is spread over the other keys of the head. */
 	static final float SURE = 0.99f;
+	/** A key the target holds at least this much of is one the teacher asks for (alone, or with others alike). */
+	public static final float ANY = 0.3f;
 
 	private final PvpPlayer player = new PvpPlayer();
 	private final Keys keys = new Keys();
@@ -93,7 +95,7 @@ public final class Teacher {
 			// to keep the spacing while it comes back; and no jump in it, every jump of the file being a technique's
 			// (24 Oct: 192 jumps a minute without this). Its strafe is a coin toss, left to the network.
 			int heads = put(target, ActionSpace.JUMP, 0);
-			heads |= put(target, ActionSpace.FORWARD, keys.forward > 0 ? 1 : keys.forward < 0 ? 2 : 0);
+			heads |= putMove(target, keys.technique);
 			if (keys.forward > 0) {
 				heads |= put(target, ActionSpace.SPRINT, keys.sprint ? 1 : 0);
 			}
@@ -105,10 +107,11 @@ public final class Teacher {
 		}
 		int heads = 0;
 		if ((keys.taught & Keys.KEY_MOVE) != 0) {
-			heads |= put(target, ActionSpace.FORWARD, keys.forward > 0 ? 1 : keys.forward < 0 ? 2 : 0);
+			heads |= putMove(target, keys.technique);
 		}
 		if ((keys.taught & Keys.KEY_STRAFE) != 0) {
-			heads |= put(target, ActionSpace.STRAFE, keys.strafe < 0 ? 1 : keys.strafe > 0 ? 2 : 0);
+			// Which way is the teacher's coin toss: either way is the strafe.
+			heads |= keys.strafe != 0 ? putEither(target, ActionSpace.STRAFE, 1, 2) : put(target, ActionSpace.STRAFE, 0);
 		}
 		// The sprint key does nothing without W: taught only while the teacher holds W.
 		if ((keys.taught & Keys.KEY_SPRINT) != 0 && keys.forward > 0) {
@@ -122,6 +125,56 @@ public final class Teacher {
 			heads |= put(target, ActionSpace.ATTACK, keys.attack && aimed ? 1 : 0);
 		}
 		return heads;
+	}
+
+	/** W, or not W: stop and S alike, but where S is the technique itself (C2, C3, C4). */
+	private int putMove(float[] target, Technique t) {
+		if (keys.forward > 0) {
+			return put(target, ActionSpace.FORWARD, 1);
+		}
+		if (Performance.sNeeded(t.ordinal())) {
+			return put(target, ActionSpace.FORWARD, keys.forward < 0 ? 2 : 0);
+		}
+		return putEither(target, ActionSpace.FORWARD, 0, 2);
+	}
+
+	/** Two keys alike: the teacher asks for either (see {@link #aim}). */
+	private static int putEither(float[] target, int head, int a, int b) {
+		int off = ActionSpace.OFFSETS[head];
+		int n = ActionSpace.SIZES[head];
+		float rest = (1f - SURE) / (n - 2);
+		for (int k = 0; k < n; k++) {
+			target[off + k] = k == a || k == b ? SURE / 2f : rest;
+		}
+		return 1 << head;
+	}
+
+	/**
+	 * The target one head is pulled to, into {@code out}. Where the teacher asks for any of several keys alike (either
+	 * strafe; stop or S), the pull is to the network's own split of them: the loss is minus the log of their summed
+	 * chance (learning from a set of labels, Jin and Ghahramani 2002; Cour et al. 2011), whose gradient is p minus p
+	 * kept to the set. A fixed half and half would split the vote between them and let a key taught nowhere there win
+	 * it (24 Oct: T6a held W on 89% of its ticks).
+	 */
+	public static void aim(float[] target, float[] probs, int off, int n, float[] out) {
+		int alike = 0;
+		float mass = 0f;
+		float share = 0f;
+		for (int k = 0; k < n; k++) {
+			if (target[off + k] >= ANY) {
+				alike++;
+				mass += probs[off + k];
+				share += target[off + k];
+			}
+		}
+		if (alike < 2) {
+			System.arraycopy(target, off, out, off, n);
+			return;
+		}
+		for (int k = 0; k < n; k++) {
+			float t = target[off + k];
+			out[off + k] = t >= ANY ? share * (mass > 1e-9f ? probs[off + k] / mass : 1f / alike) : t;
+		}
 	}
 
 	private static int put(float[] target, int head, int choice) {

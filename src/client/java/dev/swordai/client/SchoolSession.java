@@ -791,16 +791,13 @@ public final class SchoolSession implements AgentSession {
 			}
 			int off = ActionSpace.OFFSETS[h];
 			int best = 0;
-			int want = 0;
 			for (int k = 1; k < ActionSpace.SIZES[h]; k++) {
 				if (logits[off + k] > logits[off + best]) {
 					best = k;
 				}
-				if (target[off + k] > target[off + want]) {
-					want = k;
-				}
 			}
-			if (best != want) {
+			// One of the keys it asks for (either strafe; stop or S, where those are alike).
+			if (target[off + best] < Teacher.ANY) {
 				return false;
 			}
 		}

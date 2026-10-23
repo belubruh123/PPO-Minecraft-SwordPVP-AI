@@ -190,8 +190,11 @@ public final class SchoolPpo implements AutoCloseable {
 		}
 
 		/** The teachers' pull: weight * (p - q) on each head they hold for. */
+		private final float[] aimed = new float[ActionSpace.TOTAL_LOGITS];
+
 		private void teach(SchoolRollout r, int i, int mask, Settings set) {
-			float[] q = r.teacher[i];
+			float[] stored = r.teacher[i];
+			float[] q = aimed;
 			int tech = r.teacherHeads[i];
 			boolean old = r.teacherWeight[i] > 0f;
 			if (tech == 0 && !old) {
@@ -211,9 +214,9 @@ public final class SchoolPpo implements AutoCloseable {
 				}
 				int off = ActionSpace.OFFSETS[h];
 				int size = ActionSpace.SIZES[h];
+				Teacher.aim(stored, probs, off, size, q);
 				double ce = 0;
 				int best = 0;
-				int teacherBest = 0;
 				for (int k = 0; k < size; k++) {
 					float p = probs[off + k];
 					float t = q[off + k];
@@ -223,9 +226,6 @@ public final class SchoolPpo implements AutoCloseable {
 					if (p > probs[off + best]) {
 						best = k;
 					}
-					if (t > q[off + teacherBest]) {
-						teacherBest = k;
-					}
 					if (pull > 0f) {
 						aw.dLogits[off + k] += pull * (p - t);
 					}
@@ -233,7 +233,7 @@ public final class SchoolPpo implements AutoCloseable {
 				if (byTech) {
 					techCe += ce;
 					techSteps++;
-					techAgree += best == teacherBest ? 1 : 0;
+					techAgree += stored[off + best] >= Teacher.ANY ? 1 : 0;
 				} else if (old) {
 					oldCe += ce;
 					oldSteps++;

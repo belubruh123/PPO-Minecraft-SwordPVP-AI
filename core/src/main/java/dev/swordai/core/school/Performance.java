@@ -256,7 +256,7 @@ public final class Performance {
 	}
 
 	/** The techniques where holding S is the technique itself, not one way among others of not going in. */
-	private static boolean sNeeded(int technique) {
+	static boolean sNeeded(int technique) {
 		return technique == Technique.C2.ordinal() || technique == Technique.C3.ordinal() || technique == Technique.C4.ordinal();
 	}
 
