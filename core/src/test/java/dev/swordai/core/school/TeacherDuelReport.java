@@ -21,13 +21,13 @@ import java.util.Random;
  */
 class TeacherDuelReport {
 	private static final int FIGHTS = 60;
+	private static final int TICKS = 600;
 
 	/** A few minutes of fights: only when asked for, with SWORDAI_REPORT set. */
 	@BeforeEach
 	void onlyWhenAsked() {
 		Assumptions.assumeTrue(System.getenv("SWORDAI_REPORT") != null);
 	}
-	private static final int TICKS = 600;
 
 	private static Technique[] upTo(int family) {
 		List<Technique> t = new ArrayList<>();
@@ -56,16 +56,56 @@ class TeacherDuelReport {
 	@Test
 	void report() {
 		StringBuilder out = new StringBuilder("\nteacher vs bots, damage a minute dealt/taken (ToyFight)\n");
-		out.append(String.format(Locale.ROOT, "%-20s %14s %14s %14s%n", "bot", "ordinary only", "T-A", "T-A+T-B"));
+		out.append(String.format(Locale.ROOT, "%-18s %12s", "bot", "ordinary"));
+		for (int f = 0; f < SchoolStages.FAMILIES; f++) {
+			out.append(String.format(Locale.ROOT, " %12s", "..." + SchoolStages.STAGES[f].name));
+		}
+		out.append('\n');
+		float[] sum = new float[SchoolStages.FAMILIES + 1];
 		for (int bot = 0; bot <= Specialists.COUNT; bot++) {
-			float[] plain = trade(new Technique[0], bot);
-			float[] a = trade(upTo(0), bot);
-			float[] ab = trade(upTo(1), bot);
 			String name = bot == Specialists.MIXER ? "mixer" : Specialists.NAMES[bot];
-			out.append(String.format(Locale.ROOT, "%-20s %6.0f/%-7.0f %6.0f/%-7.0f %6.0f/%-7.0f%n", name, plain[0], plain[1], a[0], a[1],
-					ab[0], ab[1]));
+			out.append(String.format(Locale.ROOT, "%-18s", name));
+			for (int f = -1; f < SchoolStages.FAMILIES; f++) {
+				float[] d = trade(f < 0 ? new Technique[0] : upTo(f), bot);
+				sum[f + 1] += (d[0] - d[1]) / (Specialists.COUNT + 1);
+				out.append(String.format(Locale.ROOT, " %5.0f/%-6.0f", d[0], d[1]));
+			}
+			out.append('\n');
+		}
+		out.append(String.format(Locale.ROOT, "%-18s", "mean net"));
+		for (float v : sum) {
+			out.append(String.format(Locale.ROOT, " %+12.0f", v));
+		}
+		out.append('\n');
+		System.out.println(out);
+	}
+
+	/** Every family reached up to T-E, less one technique at a time: what each costs or brings in the whole. */
+	@Test
+	void leaveOneOut() {
+		StringBuilder out = new StringBuilder(System.lineSeparator() + "all families, less one technique: mean net damage a minute over the bots (mixer)" + System.lineSeparator());
+		Technique[] all = upTo(SchoolStages.FAMILIES - 1);
+		out.append(String.format(Locale.ROOT, "all  %+5.0f (mixer %+.0f)%n", meanNet(all)[0], meanNet(all)[1]));
+		for (Technique t : all) {
+			List<Technique> less = new ArrayList<>(List.of(all));
+			less.remove(t);
+			float[] m = meanNet(less.toArray(new Technique[0]));
+			out.append(String.format(Locale.ROOT, "-%-4s %+5.0f (mixer %+.0f)%n", t.id, m[0], m[1]));
 		}
 		System.out.println(out);
+	}
+
+	private static float[] meanNet(Technique[] taught) {
+		float net = 0f;
+		float mixer = 0f;
+		for (int bot = 0; bot <= Specialists.COUNT; bot++) {
+			float[] d = trade(taught, bot);
+			net += (d[0] - d[1]) / (Specialists.COUNT + 1);
+			if (bot == Specialists.MIXER) {
+				mixer = d[0] - d[1];
+			}
+		}
+		return new float[] {net, mixer};
 	}
 
 	/** Each technique alone on top of the ordinary fight: its damage a minute, net, summed over every bot. */

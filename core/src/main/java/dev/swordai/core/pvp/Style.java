@@ -57,9 +57,9 @@ public final class Style {
 	 */
 	public boolean adapts = false;
 	/**
-	 * Its techniques only where the file says they work: the bait crit (T1a) against one who punish-crits ("only works
-	 * if the opponent tries to punish-crit you", T1), the hit as they enter reach (T9c) against one who comes straight in
-	 * (part 7). The school's teacher: otherwise the first technique checked at a moment takes it every time, and the
+	 * Its techniques only where the file says they work: the double crit and its bait (T1, T1a) against one who
+	 * punish-crits ("only works if the opponent tries to punish-crit you", T1), the hit as they enter reach (T9c) against
+	 * one who comes straight in (part 7). The school's teacher: otherwise the first technique checked at a moment takes it every time, and the
 	 * others there are never shown (24 Oct: T1a took every approach from T7).
 	 */
 	public boolean onlyWhenItWorks = false;

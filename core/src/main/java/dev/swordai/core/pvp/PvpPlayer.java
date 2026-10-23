@@ -174,6 +174,11 @@ public final class PvpPlayer {
 		return told >= 0f ? told : Math.max(style.believe[habit], habits.rate(habit) * habits.evidence(habit));
 	}
 
+	/** The double crit "only works if the opponent tries to punish-crit you" (T1): for one that goes by the file, only then. */
+	private boolean punishes() {
+		return !style.onlyWhenItWorks || expect(Habits.PUNISH_CRIT, -1f) > 0.3f;
+	}
+
 	private boolean roll(Technique t) {
 		float p = pNow[t.ordinal()];
 		return p > 0f && rng.nextFloat() < p;
@@ -395,7 +400,7 @@ public final class PvpPlayer {
 				begin(Plan.T1);
 			} else if (was == Plan.B1 && roll(Technique.T1C)) {
 				begin(Plan.T1C);
-			} else if ((was == Plan.OPEN_CRIT || was == Plan.K3 || was == Plan.T9C) && roll(Technique.T1)) {
+			} else if ((was == Plan.OPEN_CRIT || was == Plan.K3 || was == Plan.T9C) && punishes() && roll(Technique.T1)) {
 				begin(roll(Technique.T1B) ? Plan.T1B : Plan.T1);
 			}
 			return;
@@ -489,7 +494,7 @@ public final class PvpPlayer {
 		// Out of reach with the sword back: the bait crit (T1a), the three-block hit (T7), or an opening crit.
 		if (d.reach > Duel.REACH + 0.4 && d.reach < 8.0 && me.swordReady() && !outRolled) {
 			outRolled = true;
-			if ((!style.onlyWhenItWorks || expect(Habits.PUNISH_CRIT, -1f) > 0.3f) && roll(Technique.T1A)) {
+			if (punishes() && roll(Technique.T1A)) {
 				begin(Plan.T1A);
 				return;
 			}
