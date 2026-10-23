@@ -174,6 +174,15 @@ public final class PvpPlayer {
 		return told >= 0f ? told : Math.max(style.believe[habit], habits.rate(habit) * habits.evidence(habit));
 	}
 
+	/**
+	 * A punish crit is the crit "on the way down" after their hit (B1): for one that goes by the file, only when it can come,
+	 * the sword back by then (half charged now) and not thrown out of reach by a sprint hit. 24 Oct, in the game: of the
+	 * teacher's falls after a hit, 7% had them in reach with the sword back, and 12% of its punish crits paid.
+	 */
+	private boolean punishable(Duel d, Events e) {
+		return !style.onlyWhenItWorks || d.me.charge >= 0.5f && e.theyHit != Events.SPRINT;
+	}
+
 	/** The double crit "only works if the opponent tries to punish-crit you" (T1): for one that goes by the file, only then. */
 	private boolean punishes() {
 		return !style.onlyWhenItWorks || expect(Habits.PUNISH_CRIT, -1f) > 0.3f;
@@ -368,7 +377,7 @@ public final class PvpPlayer {
 			timedJump(Technique.T9);
 			return;
 		}
-		if (lifted && roll(Technique.B1)) {
+		if (lifted && punishable(d, e) && roll(Technique.B1)) {
 			begin(Plan.B1);
 			return;
 		}
@@ -553,8 +562,10 @@ public final class PvpPlayer {
 					k.attack = true;
 					return RUN;
 				}
-				// Sent out of reach (a stun): there is nothing to punish; the ordinary fight takes over.
-				return me.onGround && planT > 2 || d.reach > Duel.REACH + 1.5 ? ABORT : RUN;
+				// Sent out of reach (a stun): there is nothing to punish; the ordinary fight takes over. For one that goes by the
+				// file, as soon as it comes down out of reach: the crit "on the way down" is not there.
+				double out = style.onlyWhenItWorks && me.falling() ? Duel.REACH + 0.3 : Duel.REACH + 1.5;
+				return me.onGround && planT > 2 || d.reach > out ? ABORT : RUN;
 			}
 			case T1, T1B, T1C -> {
 				return jumpedCrit(d, k, 2.5f, plan == Plan.T1B);
