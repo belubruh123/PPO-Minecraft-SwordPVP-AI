@@ -1,0 +1,8 @@
+dev.swordai.core.config
+dev.swordai.core.curriculum
+dev.swordai.core.env
+dev.swordai.core.nn
+dev.swordai.core.report
+dev.swordai.core.rl
+dev.swordai.core.sim
+dev.swordai.core.vision
