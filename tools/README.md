@@ -4,7 +4,7 @@ The scripts that run SwordAI's training and checks on the dev client (`gradlew r
 
 The ones in use on 23 Oct 2026:
 
-- `trainGT7.sh`, `trainGT8.sh`: one branch's training settings (T7: T5 + crit/escape bridge; T8: T7 + RhythmNet memory); `startT7.sh`, `startT8.sh` start a branch with its hourly loop.
+- `trainGT7.sh`, `trainGT8.sh`: one branch's training settings (T7: T5 + crit/escape bridge; T8: T7 + RhythmNet memory); `startT7.sh`, `startT8.sh`, `startT8p.sh` (paired checks) start a branch with its hourly loop.
 - `hourlycheck3.sh`: every 40 minutes of training, a snapshot `run/kept-v24-HHMM` is measured frozen, first person, against the installed network (`hourlysum2.py` writes the line to `hourly-check.log`); two WORSE hours roll training back.
 - `hourlycheck4.sh`, `hourlysum3.py`, `pairrun.sh`, `pairsum.py`: the same with paired runs (both networks fight every fight from the same seed in one run, `Config.pairedBase`).
 - `finalpair2.sh`, `fp2sum.py`, `fpairs.py`: the long check before an install; `install3.ps1` installs a network and jar into the player's profile, with a backup.

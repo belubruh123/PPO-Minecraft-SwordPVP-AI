@@ -1484,7 +1484,9 @@ abstract class Trainer implements AgentSession {
 	void step(Truth truth) {
 		// Only a fight that does not wait gets here while the network is learning: then a copy of it
 		// chose the step, and nothing about that step is scored or stored. Nor is the first one after.
-		boolean unscored = pendingUpdate != null || resuming || byBase;
+		// In a paired evaluation the other network's fights are scored like any (their damage, their end), only
+		// not learned from; see PairedEval. In safe learning its fights are the session's to count.
+		boolean unscored = pendingUpdate != null || resuming || byBase && paired == null;
 		resuming = false;
 		if (demo != null) {
 			demoTurned();
@@ -1606,13 +1608,19 @@ abstract class Trainer implements AgentSession {
 				}
 				if (demo != null) {
 					demoRec.complete(reward, terminal);
-				} else if (mode == Mode.TRAIN) {
+				} else if (mode == Mode.TRAIN && !byBase) {
 					learner.complete(reward, terminal, cut && !terminal, nextObs);
 				}
 				if (demo != null && (terminal || cut) && !goesOn) {
 					demoFightOver();
 				}
 				if (terminal || cut) {
+					if (paired != null && !episodeDrill && !episodeCritDrill) {
+						// Every fight of a paired evaluation, the old model's too, with its pair and side; see PairedEval.
+						String kind = episodeVsOldModel ? "the 0.14.0 model" : episodeVsOlder ? "an older copy" : episodeStander ? "stander" : kindName(episodeKind);
+						SwordAi.LOGGER.info(String.format(Locale.ROOT, "paired result %d %s: %s, dealt %.1f, taken %.1f, ticks %d%s", PairedEval.pair(evalFights - 1),
+								baseActs ? "B" : "A", kind, episodeDealt, episodeTaken, episodeTicksCounted, terminal && !facts.timedOut ? ", knockout" : ""));
+					}
 					if (episodeDrill || episodeCritDrill) {
 						// It started from behind, or its opponent stood still: who wins a drill says nothing about who wins a fight.
 						rewards.endEpisode(target, false, false);
@@ -2278,10 +2286,7 @@ abstract class Trainer implements AgentSession {
 		}
 		if (cfg.evalSeed != 0) {
 			// Paired evaluation, fight by fight: the same N is the same fight for every network measured.
-			if (paired != null) {
-				SwordAi.LOGGER.info(String.format(Locale.ROOT, "paired result %d %s: %s, dealt %.1f, taken %.1f, ticks %d%s", PairedEval.pair(evalFights - 1),
-						baseActs ? "B" : "A", kindName(episodeKind), episodeDealt, episodeTaken, episodeTicksCounted, knockedOut ? ", knockout" : ""));
-			} else {
+			if (paired == null) {
 				SwordAi.LOGGER.info(String.format(Locale.ROOT, "eval result %d: %s, dealt %.1f, taken %.1f, ticks %d%s", evalFights,
 						kindName(episodeKind), episodeDealt, episodeTaken, episodeTicksCounted, knockedOut ? ", knockout" : ""));
 			}

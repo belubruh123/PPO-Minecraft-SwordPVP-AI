@@ -11,7 +11,8 @@ import sys
 
 label = sys.argv[1]
 LINE = re.compile(r'^\[(\d\d:\d\d:\d\d)\].*paired result (\d+) ([AB]): (.+?), dealt ([\d.]+), taken ([\d.]+), ticks (\d+)')
-HARD = ['timer (friend)', 'spacer (crit, S)', 'stander (3 blocks)', 'whiffer', 'jump-crit chaser', 'punisher', 'circler', 'no-knockback']
+# The trainer's names for the kinds (Trainer.KIND_NAMES; the spacer that stands is 'stander'): the hard ones of the old checks.
+HARD = ['timer', 'spacer', 'stander', 'whiffer', 'jumper', 'punisher', 'circler', 'no-knockback']
 OLD = 'the 0.14.0 model'
 
 
