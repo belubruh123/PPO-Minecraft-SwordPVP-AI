@@ -38,9 +38,10 @@ final class Commands {
 						.then(literal("fresh").executes(c -> start(c.getSource(), TrainingSession.Mode.TRAIN, true)))
 						.then(literal("headless").executes(c -> headless(c.getSource()))))
 				.then(literal("school")
-						.executes(c -> school(c.getSource(), SchoolSession.Mode.TRAIN, false))
-						.then(literal("check").executes(c -> school(c.getSource(), SchoolSession.Mode.CHECK, false))
-								.then(literal("teacher").executes(c -> school(c.getSource(), SchoolSession.Mode.CHECK, true)))))
+						.executes(c -> school(c.getSource(), SchoolSession.Mode.TRAIN, false, false))
+						.then(literal("check").executes(c -> school(c.getSource(), SchoolSession.Mode.CHECK, false, false))
+								.then(literal("teacher").executes(c -> school(c.getSource(), SchoolSession.Mode.CHECK, true, false)))
+								.then(literal("overlay").executes(c -> school(c.getSource(), SchoolSession.Mode.CHECK, true, true)))))
 				.then(literal("speed")
 						.executes(c -> speed(c.getSource(), 0f))
 						.then(argument("times", FloatArgumentType.floatArg(1f, MAX_SPEED))
@@ -232,7 +233,7 @@ final class Commands {
 	}
 
 	/** The technique school: training against the technique bots, or the paired check against the installed model. */
-	private static int school(FabricClientCommandSource source, SchoolSession.Mode mode, boolean teacherPlays) {
+	private static int school(FabricClientCommandSource source, SchoolSession.Mode mode, boolean teacherPlays, boolean overlay) {
 		Minecraft mc = source.getClient();
 		if (mc.getSingleplayerServer() == null || mc.player == null) {
 			source.sendError(Component.literal("Open a singleplayer world first: SwordAI trains inside it."));
@@ -243,7 +244,7 @@ final class Commands {
 			return 0;
 		}
 		try {
-			SchoolSession session = SwordAiClient.startSchool(mc, mode, teacherPlays);
+			SchoolSession session = SwordAiClient.startSchool(mc, mode, teacherPlays, overlay);
 			say(source, session.startLine());
 			say(source, "Esc pauses, /swordai stop saves and restores everything.");
 			return 1;
