@@ -219,6 +219,8 @@ public final class SchoolSession implements AgentSession {
 	private final boolean teacherPlaysA;
 	/** And outside the technique moments the installed model plays, its keys as well: the file's techniques laid over it. */
 	private final boolean overlay;
+	/** The teacher's techniques in its checks, when not every family reached so far. */
+	private Technique[] checkTaught;
 
 	SchoolSession(Minecraft mc, Mode mode) throws IOException {
 		this(mc, mode, false, false);
@@ -229,6 +231,15 @@ public final class SchoolSession implements AgentSession {
 		this.mode = mode;
 		this.teacherPlaysA = teacherPlaysA && mode == Mode.CHECK;
 		this.overlay = overlay && this.teacherPlaysA;
+		// For the teacher's checks: SWORDAI_CHECK_FAMILIES (say "0" or "0,1") picks the families it uses, to see what each costs.
+		String families = this.teacherPlaysA ? System.getenv("SWORDAI_CHECK_FAMILIES") : null;
+		if (families != null && !families.isBlank()) {
+			java.util.List<Technique> t = new java.util.ArrayList<>();
+			for (String f : families.split(",")) {
+				java.util.Collections.addAll(t, SchoolStages.STAGES[Integer.parseInt(f.trim())].techniques);
+			}
+			checkTaught = t.toArray(new Technique[0]);
+		}
 		this.cfg = SwordFiles.loadConfig();
 		this.motor = new AimMotor(cfg.aimResponse);
 		this.perf = new Performance(mode == Mode.TRAIN ? stages::moment : null);
@@ -256,6 +267,10 @@ public final class SchoolSession implements AgentSession {
 		if (icfg != null && Files.exists(teacherFile)) {
 			installed = LoadedFighter.loadFrom(teacherFile, icfg, SwordFiles.installedCopy().resolve("curriculum.properties"));
 			installedBody.patchedUp = installed.patchedUp;
+			// The swing waits for the sword as the installed model's does here (a full hit, a tick before the very end of the
+			// wait; online has its own longer wait): both sides of the check alike, and the school as it would play once
+			// installed. The dev config's 1.0 had the school swing a tick later than the model it is checked against (24 Oct).
+			cfg.swingMinCharge = icfg.swingMinCharge;
 		} else if (mode == Mode.CHECK) {
 			learner.close();
 			throw new IOException("no installed model with its settings in " + SwordFiles.installedCopy());
@@ -555,7 +570,7 @@ public final class SchoolSession implements AgentSession {
 		AgentController.release(mc);
 		mc.player.getInventory().setSelectedSlot(0);
 		// One teacher against every bot: every technique of the families reached so far.
-		teacher.start(stages.taught(), cfg.swingMinCharge, seed ^ 0x7EAC4L);
+		teacher.start(checkTaught != null ? checkTaught : stages.taught(), cfg.swingMinCharge, seed ^ 0x7EAC4L);
 		reader.reset();
 		perf.reset();
 		perfB.reset();
