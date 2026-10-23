@@ -54,7 +54,7 @@ class CritTradeTest {
 		CritTrade topOnly = new CritTrade(4);
 		topOnly.holdOnRising(false);
 		assertFalse(topOnly.holds(vec(true, 3.0f, 1f, 0.3f, 0.3f, 1f)), "held from the top of the jump only");
-		assertTrue(topOnly.jumpingIn(), "but it is jumping in: a hit first is still taken points for");
+		assertFalse(topOnly.jumpingIn(), "and a hit on its way up is not taken points for either");
 	}
 
 	@Test

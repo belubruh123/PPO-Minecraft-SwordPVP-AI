@@ -8,4 +8,4 @@ grep -aq "joined the game" client.log || { echo "=== $(date +%H:%M:%S) world nev
 echo 0 > hourly-state.txt
 bash trainGT9.sh "$from"
 echo "=== $(date +%H:%M:%S) T9 training (T8 + crit trade + jump-in drill) from $from"
-CANDX="tacticModel=true tacticOnEvents=true opponentReader=true keepWithin=2.3 jumpAtReadyOnlyFleeing=true critBridge=true rhythmNet=true holdOnFallingJumper=true instantPunish=true" bash hourlycheck5.sh trainGT9.sh 40
+CANDX="tacticModel=true tacticOnEvents=true opponentReader=true keepWithin=2.3 jumpAtReadyOnlyFleeing=true critBridge=true rhythmNet=true holdOnFallingJumper=true holdOnRising=false instantPunish=true" bash hourlycheck5.sh trainGT9.sh 40

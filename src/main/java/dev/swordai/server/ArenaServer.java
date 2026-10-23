@@ -522,6 +522,11 @@ public final class ArenaServer {
 		}
 		heal(agent);
 		heal(s.bot);
+		if (plan.bot.jumpInAlways) {
+			// The jump-in drill begins with its sword all the way back: one exchange is a fight, and the last one's swing
+			// was still coming back (23 Oct: 55% of the drill's fights began with it under 0.9).
+			((dev.swordai.mixin.LivingEntityAccessor) s.bot).swordai$setAttackStrengthTicker(1000);
+		}
 		// Put back anything that went missing since the last episode.
 		s.equip(agent);
 		s.equip(s.bot);

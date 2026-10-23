@@ -9,6 +9,10 @@
 # (Config.holdOnRising=false): mix -4 (se 19). 18:30, the USER: "TEACH IT, make it a harder rule that hit first is BAD when
 # the enemy is in the air / jumping in": holdOnRising=true again (on its way up only an opponent coming in, CritTrade.IN_TOWARD)
 # and the reward takes 1.0 for a plain hit made first into a jump-in (RewardWeights.hitIntoJumpIn).
+# 19:20: the first check (18:47) was drill +1.77 a fight but spacers -63, mix -95 a minute: it hit less everywhere (-62 even
+# against the stander). Back to the hold from the top of the jump (holdOnRising=false), the penalty only for what it saw
+# (no server-truth part), the drill going on after a crit back until the punish, jumpInShare 0.96 (~25% of the steps);
+# restarted from kept-v24-T8-1534.
 # Frozen candidate runs need CANDX with holdOnFallingJumper=true holdOnRising=true instantPunish=true (FROZEN pins them false).
 # trainGT8.sh [DIR]: 23 Oct, T7 plus the MEMORY (Config.rhythmNet, rl.RhythmNet: a causal TCN, 4 layers of 16, dilations 1/2/4/8,
 # over the opponent reader's 3.2 s window, into the trunk and the crit/escape models, zero-init; the user's recorded fights get
@@ -61,7 +65,7 @@ python setcfg.py actorLr=0.00005 criticLr=0.001 adaptiveLr=true minActorLr=0.000
   Crits.reward.hitTaken=1.5 "Combo escape.reward.hitTaken=1.5" "Sprint-hit + W-tap.reward.hitTaken=1.5" Duel.reward.hitTaken=0.5 Self-play.reward.hitTaken=0.5 \
   Crits.reward.combo=0.4 "Combo escape.reward.combo=0.4" Duel.reward.combo=0.25 Self-play.reward.combo=0.25 \
   Duel.reward.crit=0.9 Self-play.reward.crit=0.9 Duel.reward.punishCrit=0.5 Self-play.reward.punishCrit=0.5   Crits.reward.hitIntoJumpIn=1.0 Duel.reward.hitIntoJumpIn=1.0 Self-play.reward.hitIntoJumpIn=1.0 | tail -1
-python setcfg.py demoWeight=0.5 demoBatches=4 demoValueWeight=0 demoWindowTicks=0 demoWindowMin=0 comboStrafeRule=false critBridge=true rhythmNet=true holdOnFallingJumper=true holdOnRising=true instantPunish=true clashJumpRule=false comboJumpRule=false jumpInShare=0.97 jumpInTicks=80 > /dev/null
+python setcfg.py demoWeight=0.5 demoBatches=4 demoValueWeight=0 demoWindowTicks=0 demoWindowMin=0 comboStrafeRule=false critBridge=true rhythmNet=true holdOnFallingJumper=true holdOnRising=false instantPunish=true clashJumpRule=false comboJumpRule=false jumpInShare=0.96 jumpInTicks=80 > /dev/null
 python filterlost.py
 cp /d/swordai/run/kept-v21-final-1950/checkpoint.bin /d/swordai/run/swordai/anchor.bin
 if [ -n "$1" ]; then

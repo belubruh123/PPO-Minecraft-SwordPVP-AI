@@ -202,13 +202,15 @@ abstract class Trainer implements AgentSession {
 	/** Decisions since the crit trade last saw the opponent jumping in at it within reach; and plain hits made first on one since the last update. */
 	private int jumpingInAge = 1000;
 	private long hitsIntoJumpIn;
+	/** Outside the jump-in drill since the last update: ticks in reach with the sword back, no swing on them, kept for a crit. */
+	private final long[] pickOut = new long[3];
 	private long holdCritKnockAways;
 	private long instantPunishTicks;
 	/** The clash jumps taken since the last update ({@code JumpIn.CLASH}). */
 	private long clashJumps;
 	private static final String[] JI_NAMES = {"fights", "crit for crit (same tick)", "trade (same tick, not both crits)",
 			"hit first, hit back", "of those crit back", "hit first, no answer", "let land, punished", "of those punish crits",
-			"let land, no answer", "taken twice", "nothing", "clash jumps"};
+			"let land, no answer", "taken twice", "nothing", "clash jumps", "hit first, hit back, then punished", "of those punish crits"};
 	private static final int JI_FIGHTS = 0;
 	private static final int JI_CRIT_FOR_CRIT = 1;
 	private static final int JI_TRADE = 2;
@@ -221,6 +223,8 @@ abstract class Trainer implements AgentSession {
 	private static final int JI_TWICE = 9;
 	private static final int JI_NOTHING = 10;
 	private static final int JI_CLASH = 11;
+	private static final int JI_BACK_PUNISHED = 12;
+	private static final int JI_BACK_PUNISH_CRIT = 13;
 	/** The jump-in drill since the last update ({@link #KIND_JUMPIN}), by how the exchange went; see {@link #JI_NAMES}. */
 	private final long[] jumpInDrill = new long[JI_NAMES.length];
 	private double jumpInDealtSum;
@@ -231,6 +235,14 @@ abstract class Trainer implements AgentSession {
 	private boolean jumpInTakenCrit;
 	private boolean jumpInDealtCrit;
 	private boolean jumpInTakenTwice;
+	/**
+	 * The fighter's hit after the last one it took (its answer, the punish), -1 if none yet; whether critical; hits taken since
+	 * its last hit; and the tick of the last hit either way.
+	 */
+	private int jumpInAnswerTick = -1;
+	private boolean jumpInAnswerCrit;
+	private int jumpInTakenRow;
+	private int jumpInLastEvent = -1;
 	/** One side's hit unanswered for this many ticks: the exchange is over. */
 	private static final int JUMPIN_SETTLE_TICKS = 15;
 	/** The step back after a hit of its own that has not sent the opponent away; see {@link StepBack}. */
@@ -1608,6 +1620,8 @@ abstract class Trainer implements AgentSession {
 			// jump of its own in between.
 			facts.punishCrit = facts.critDealt && !jumpedSinceHitTaken && clock.ticksSinceHitTaken <= PUNISH_WINDOW_TICKS;
 			// A plain hit on an opponent that was jumping in at it when the swing was chosen: its crit comes back anyway.
+			// By what it saw. (18:35-19:20 also by the server's truth while its picture was a few ticks old: it learned not to
+			// swing at a ready opponent near it at all, -62 a minute against the one that stands and hits, -95 in the mix.)
 			facts.hitIntoJumpIn = facts.hitsDealt > 0 && !facts.critDealt && jumpingInAge <= 2;
 			if (facts.hitIntoJumpIn) {
 				hitsIntoJumpIn++;
@@ -2093,6 +2107,17 @@ abstract class Trainer implements AgentSession {
 					pickKept++;
 				}
 			}
+			if (episodeKind != KIND_JUMPIN) {
+				// The same outside the jump-in drill, whose waits for the punish crit are meant: that it does not learn to stand in
+				// reach with its sword back and not swing (the user, 23 October: "not forget to hit and keep holding for no reason").
+				pickOut[0]++;
+				if (action[ActionSpace.ATTACK] == 0) {
+					pickOut[1]++;
+					if (keep) {
+						pickOut[2]++;
+					}
+				}
+			}
 		}
 		if (facts.hitsTaken > 0) {
 			keptThisHit = false;
@@ -2433,29 +2458,45 @@ abstract class Trainer implements AgentSession {
 	}
 
 	/**
-	 * One step of the jump-in drill: whether its exchange is over. That is once both have hit (the fighter's crit for its
-	 * crit, a hit and the crit back, or the crit let land and the punish), once one side's hit has gone unanswered for
-	 * {@link #JUMPIN_SETTLE_TICKS}, or at a second hit taken without one dealt.
+	 * One step of the jump-in drill: whether its exchange is over. That is once the fighter has answered a hit it took (the
+	 * punish: after the opponent's crit, or after its own hit first and the crit back; the user, 23 October: a sprint hit
+	 * into a jump-in that is critted back is still to be punished), at the same tick's trade, at a second hit taken in a row,
+	 * or once {@link #JUMPIN_SETTLE_TICKS} have gone by since the last hit either way.
 	 */
 	private boolean jumpInStep(StepFacts f) {
-		if (f.hitsTaken > 0) {
+		boolean taken = f.hitsTaken > 0;
+		boolean dealt = f.hitsDealt > 0;
+		if (taken || dealt) {
+			jumpInLastEvent = episodeTick;
+		}
+		if (taken) {
 			if (jumpInTakenTick < 0) {
 				jumpInTakenTick = episodeTick;
 				jumpInTakenCrit = f.critsTaken > 0;
-			} else if (jumpInDealtTick < 0) {
+			}
+			if (!dealt && ++jumpInTakenRow >= 2) {
 				jumpInTakenTwice = true;
 				return true;
 			}
 		}
-		if (f.hitsDealt > 0 && jumpInDealtTick < 0) {
-			jumpInDealtTick = episodeTick;
-			jumpInDealtCrit = f.critDealt;
+		if (dealt) {
+			if (jumpInDealtTick < 0) {
+				jumpInDealtTick = episodeTick;
+				jumpInDealtCrit = f.critDealt;
+			}
+			boolean answers = jumpInTakenRow > 0 && !taken;
+			jumpInTakenRow = 0;
+			if (answers) {
+				jumpInAnswerTick = episodeTick;
+				jumpInAnswerCrit = f.critDealt;
+				return true;
+			}
+			if (taken) {
+				// Hit for hit on the same tick: that is the exchange.
+				return true;
+			}
 		}
-		if (jumpInTakenTick >= 0 && jumpInDealtTick >= 0) {
-			return true;
-		}
-		int first = Math.max(jumpInTakenTick, jumpInDealtTick);
-		return first >= 0 && episodeTick - first >= JUMPIN_SETTLE_TICKS;
+		return jumpInLastEvent >= 0 && episodeTick - jumpInLastEvent >= JUMPIN_SETTLE_TICKS;
 	}
 
 	/** The jump-in drill's fight is over: how its exchange went is counted. */
@@ -2471,6 +2512,12 @@ abstract class Trainer implements AgentSession {
 			jumpInDrill[JI_HIT_BACK]++;
 			if (jumpInTakenCrit) {
 				jumpInDrill[JI_CRIT_BACK]++;
+			}
+			if (jumpInAnswerTick > jumpInTakenTick) {
+				jumpInDrill[JI_BACK_PUNISHED]++;
+				if (jumpInAnswerCrit) {
+					jumpInDrill[JI_BACK_PUNISH_CRIT]++;
+				}
 			}
 		} else if (dealt && taken) {
 			jumpInDrill[JI_PUNISHED]++;
@@ -2491,6 +2538,10 @@ abstract class Trainer implements AgentSession {
 		jumpInTakenCrit = false;
 		jumpInDealtCrit = false;
 		jumpInTakenTwice = false;
+		jumpInAnswerTick = -1;
+		jumpInAnswerCrit = false;
+		jumpInTakenRow = 0;
+		jumpInLastEvent = -1;
 	}
 
 	/** For the log at each update: the jump-in drill and the rules about an opponent coming in; the counts are cleared. */
@@ -2503,6 +2554,9 @@ abstract class Trainer implements AgentSession {
 		b.append(String.format(Locale.ROOT, " | a drill fight: dealt %.1f, taken %.1f", n == 0 ? 0.0 : jumpInDealtSum / n, n == 0 ? 0.0 : jumpInTakenSum / n));
 		b.append(String.format(Locale.ROOT, " | swing held for one coming in %d ticks, knock-away certain %d ticks, instant punish %d ticks, plain hits first into a jump-in %d",
 				holdCritTicks, holdCritKnockAways, instantPunishTicks, hitsIntoJumpIn));
+		b.append(String.format(Locale.ROOT, " | outside the drill: in reach with the sword back %d ticks, no swing on %d (%.0f%%), %d of them kept for a crit",
+				pickOut[0], pickOut[1], pickOut[0] == 0 ? 0.0 : 100.0 * pickOut[1] / pickOut[0], pickOut[2]));
+		java.util.Arrays.fill(pickOut, 0);
 		java.util.Arrays.fill(jumpInDrill, 0);
 		jumpInDealtSum = 0;
 		jumpInTakenSum = 0;
@@ -2581,6 +2635,10 @@ abstract class Trainer implements AgentSession {
 		jumpInTakenCrit = false;
 		jumpInDealtCrit = false;
 		jumpInTakenTwice = false;
+		jumpInAnswerTick = -1;
+		jumpInAnswerCrit = false;
+		jumpInTakenRow = 0;
+		jumpInLastEvent = -1;
 		oppChargeAtAction = 1f;
 		spaceLastOppCharge = 1f;
 		spacePaid = false;

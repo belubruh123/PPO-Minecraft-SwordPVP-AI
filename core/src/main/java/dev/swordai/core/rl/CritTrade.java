@@ -135,9 +135,9 @@ public final class CritTrade {
 		if (d > HOLD_REACH || rising && -away < IN_TOWARD) {
 			return false;
 		}
-		// In reach and jumping in: a hit first now is the one the user means ("hit first is BAD" when it is in the air jumping
-		// in, 23 October); see jumpingIn.
-		jumpingIn = true;
+		// In reach and jumping in where the swing is held for it: a hit first now is the one the user means ("hit first is BAD"
+		// when it is in the air jumping in, 23 October); see jumpingIn. On its way up only where the hold is for that too.
+		jumpingIn = !rising || onRising;
 		if (rising && !onRising) {
 			return false;
 		}
