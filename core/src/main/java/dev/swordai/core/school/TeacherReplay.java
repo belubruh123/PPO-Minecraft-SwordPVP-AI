@@ -32,6 +32,7 @@ public final class TeacherReplay {
 	private final byte[][] cond;
 	private final int[] heads;
 	private final int[] technique;
+	private long baseSeen;
 
 	public TeacherReplay(int capacity) {
 		this.capacity = capacity;
@@ -55,7 +56,8 @@ public final class TeacherReplay {
 		for (int i = 0; i < r.size; i++) {
 			int h = r.teacherHeads[i];
 			int t = r.teacherTechnique[i];
-			if (h == 0 || t < 0) {
+			// The ordinary fight's no-jump is on most steps: one in six of them is kept, so it does not crowd the techniques out.
+			if (h == 0 || t < 0 || t == Technique.BASE.ordinal() && (baseSeen++ % 6) != 0) {
 				continue;
 			}
 			int j = next;

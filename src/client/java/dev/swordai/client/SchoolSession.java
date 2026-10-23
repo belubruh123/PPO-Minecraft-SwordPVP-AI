@@ -522,8 +522,9 @@ public final class SchoolSession implements AgentSession {
 		server.execute(() -> ArenaServer.reset(plan));
 		AgentController.release(mc);
 		mc.player.getInventory().setSelectedSlot(0);
-		int teach = fightBot == Specialists.MIXER || SchoolStages.ALL_AT_ONCE ? stages.stage : stages.stageOf(fightBot);
-		teacher.start(SchoolStages.STAGES[teach].techniques, fightStyle, cfg.swingMinCharge, seed ^ 0x7EAC4L);
+		// A family's own bots are taught its techniques; the real player is taught the family in focus.
+		int teach = fightBot == Specialists.MIXER || SchoolStages.ALL_AT_ONCE ? stages.stage : SchoolStages.familyOf(fightBot);
+		teacher.start(SchoolStages.STAGES[teach].techniques, cfg.swingMinCharge, seed ^ 0x7EAC4L);
 		reader.reset();
 		perf.reset();
 		perfB.reset();

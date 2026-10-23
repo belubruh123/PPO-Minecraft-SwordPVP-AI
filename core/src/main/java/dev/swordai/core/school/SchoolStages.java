@@ -55,8 +55,8 @@ public final class SchoolStages {
 	}
 
 	/** On the screen at x4 the school makes about 260,000 steps an hour. */
-	private static final long MIN = 250_000L;
-	private static final long MAX = 1_600_000L;
+	private static final long MIN = 150_000L;
+	private static final long MAX = 300_000L;
 
 	public static final Stage[] STAGES = {
 			new Stage("T-A", "knockback and spacing (K1-K3, T6, T7, T8)",
@@ -82,13 +82,16 @@ public final class SchoolStages {
 	};
 
 	/**
-	 * Every technique learned at once (24 Oct, the user asleep, "pick your best approach as long as it learns"): the
-	 * school goes straight to the last stage, where every bot fights and every teacher teaches, each with the pull its
-	 * own mastery sets, and the fights go most to the bots whose techniques are done least (practice where there is
-	 * the most to learn: Matiisen et al. 2017, teacher-student curriculum learning). One technique that will not come
-	 * cannot hold the others up, as it would stage by stage.
+	 * Every technique at once was tried on 24 Oct (00:30-01:00): with every teacher pulling at once the network fought
+	 * worse by the minute (141 dealt, 414 taken a minute) and learned none of them. So the families come one at a time,
+	 * round and round (a spiral): each in focus until mastered or for {@link #MAX} steps at most, then the next, and
+	 * after the last the one done least; a share {@link #REHEARSAL} of the fights reviews the others all along.
 	 */
-	public static final boolean ALL_AT_ONCE = true;
+	public static final boolean ALL_AT_ONCE = false;
+	/** The families gone round: T-A to T-E. */
+	public static final int FAMILIES = 5;
+	/** In a family's focus, this share of its own fights is against the real player. */
+	public static final float MIXER_IN_FOCUS = 0.15f;
 
 	/** The share of fights on the stages before. */
 	public static final float REHEARSAL = 0.3f;
@@ -222,9 +225,11 @@ public final class SchoolStages {
 		return judged > 0 && done >= MASTERED * all;
 	}
 
-	/** Per technique of this stage: " T7 did 48% paid 30% (40) pull 1.00;". */
+	/** Per technique of this stage: " T7 did 48% paid 30% (40) pull 1.00;", the ordinary fight first. */
 	public String masteryLine() {
 		StringBuilder b = new StringBuilder();
+		int base = Technique.BASE.ordinal();
+		b.append(String.format(Locale.ROOT, " ordinary fight without a hop %.0f%% (%d) pull %.2f;", 100f * doneRate(base), momentCount[base], pullShare[base]));
 		for (Technique t : current().techniques) {
 			int i = t.ordinal();
 			b.append(String.format(Locale.ROOT, " %s did %.0f%% paid %.0f%% (%d) pull %.2f;", t.id, 100f * doneRate(i), 100f * paidRate(i),
@@ -233,7 +238,7 @@ public final class SchoolStages {
 		return b.toString();
 	}
 
-	/** For the chat: "85%+: 3, 65%+: 7 of 20 | weakest: T6a 0%, T6 3%, T7 12%". */
+	/** For the chat: "85%+: 3, 65%+: 7 of 20 | weakest: T6a 0%, T6 3%, T7 12% | no hop 40%". */
 	public String masteryBrief() {
 		int judged = 0;
 		int mastered = 0;
@@ -258,6 +263,10 @@ public final class SchoolStages {
 		for (int k = 0; k < Math.min(5, seen.size()); k++) {
 			Technique t = seen.get(k);
 			b.append(k == 0 ? " " : ", ").append(t.id).append(' ').append(Math.round(100f * doneRate(t.ordinal()))).append('%');
+		}
+		int base = Technique.BASE.ordinal();
+		if (momentCount[base] > 0) {
+			b.append(String.format(Locale.ROOT, " | ordinary fight without a hop %.0f%%", 100f * doneRate(base)));
 		}
 		return b.toString();
 	}
@@ -301,6 +310,28 @@ public final class SchoolStages {
 	/** A fight's opponent: a bot of this stage, of a stage before (rehearsal), or the real player. */
 	public int drawBot(Random rng) {
 		Stage s = current();
+		if (!ALL_AT_ONCE && stage < FAMILIES) {
+			if (rng.nextFloat() >= REHEARSAL) {
+				return rng.nextFloat() < MIXER_IN_FOCUS ? Specialists.MIXER : s.bots[rng.nextInt(s.bots.length)];
+			}
+			// Review: another family, most often the one done least.
+			float[] w = new float[FAMILIES];
+			float total = 0f;
+			for (int f = 0; f < FAMILIES; f++) {
+				w[f] = f == stage ? 0f : 0.25f + 1f - familyMastery(f);
+				total += w[f];
+			}
+			float u = rng.nextFloat() * total;
+			int f = 0;
+			while (f < FAMILIES - 1 && (u -= w[f]) > 0f) {
+				f++;
+			}
+			if (f == stage) {
+				f = (f + 1) % FAMILIES;
+			}
+			int[] bots = STAGES[f].bots;
+			return bots[rng.nextInt(bots.length)];
+		}
 		if (stage == STAGES.length - 1 && rng.nextFloat() >= s.mixerShare) {
 			// Most to the bots whose techniques are done least.
 			float[] w = new float[s.bots.length];
@@ -382,11 +413,14 @@ public final class SchoolStages {
 	/** Whether the stage is passed (see the class comment); the last stage never is. */
 	public boolean passed() {
 		Stage s = current();
-		if (stage == STAGES.length - 1 || stageSteps < s.minSteps) {
+		if (stage == STAGES.length - 1) {
 			return false;
 		}
 		if (stageSteps >= s.maxSteps) {
 			return true;
+		}
+		if (stageSteps < s.minSteps) {
+			return false;
 		}
 		if (!mastered()) {
 			return false;
@@ -403,9 +437,19 @@ public final class SchoolStages {
 		return true;
 	}
 
-	/** On to the next stage; returns its name. */
+	/** On to the next stage (round the spiral: after the last family, the one done least); returns its name. */
 	public String advance() {
-		stage = Math.min(STAGES.length - 1, stage + 1);
+		if (!ALL_AT_ONCE && stage >= FAMILIES - 1) {
+			int least = 0;
+			for (int f = 1; f < FAMILIES; f++) {
+				if (familyMastery(f) < familyMastery(least)) {
+					least = f;
+				}
+			}
+			stage = least;
+		} else {
+			stage = Math.min(STAGES.length - 1, stage + 1);
+		}
 		stageSteps = 0;
 		java.util.Arrays.fill(firstCount, 0);
 		java.util.Arrays.fill(lastCount, 0);

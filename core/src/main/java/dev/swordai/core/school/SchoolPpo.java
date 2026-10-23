@@ -40,9 +40,10 @@ public final class SchoolPpo implements AutoCloseable {
 		public float actorLr = 1e-4f;
 		public float criticLr = 5e-4f;
 		public float maxGradNorm = 0.5f;
-		public float klTarget = 0.01f;
-		public float klStop = 0.03f;
-		public float minActorLr = 1e-5f;
+		// The teachers' pulls move the policy more than PPO alone does; a trust region of 0.01 kept the step at its least.
+		public float klTarget = 0.02f;
+		public float klStop = 0.05f;
+		public float minActorLr = 2e-5f;
 		public float maxActorLr = 3e-4f;
 		public boolean adaptiveLr = true;
 		// Less on the keys that are pressed or not (sprint, jump, swing): a technique needs them pressed on one tick and not

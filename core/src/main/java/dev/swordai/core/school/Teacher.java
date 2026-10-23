@@ -25,8 +25,12 @@ public final class Teacher {
 	private final Keys keys = new Keys();
 	private final boolean[] teaches = new boolean[Technique.COUNT];
 
-	/** A fight: the family it teaches, and what it knows of the opponent's style (null: nothing). */
-	public void start(Technique[] family, Style opponent, float swingCharge, long seed) {
+	/**
+	 * A fight: the family it teaches. It knows of the opponent only what the network can know, what it has seen this
+	 * fight: a teacher that knew the bot's style chose counters the network could not tell apart from its view, and
+	 * the network learned a muddle of them (24 Oct).
+	 */
+	public void start(Technique[] family, float swingCharge, long seed) {
 		java.util.Arrays.fill(teaches, false);
 		for (Technique t : family) {
 			teaches[t.ordinal()] = true;
@@ -35,9 +39,6 @@ public final class Teacher {
 		// It swings when the network can: no sooner than the game's limit on the network's swing.
 		s.swingCharge = Math.max(s.swingCharge, swingCharge);
 		player.start(s, seed);
-		if (opponent != null) {
-			player.tell(opponent.p(Technique.T1), opponent.p(Technique.T9), opponent.p(Technique.T4));
-		}
 	}
 
 	/** The teacher's style: its family's techniques every time, no lag, no reaction time beyond a tick. */
@@ -47,7 +48,8 @@ public final class Teacher {
 		for (Technique t : family) {
 			s.set(t, 1f);
 		}
-		s.reaction = 1;
+		// No reaction time: a plan starts on the tick its moment comes, never a tick later by chance.
+		s.reaction = 0;
 		s.timing = 1f;
 		s.lag = 0;
 		s.ping = 0;
@@ -82,7 +84,12 @@ public final class Teacher {
 	 * {@link ActionSpace} head bits; else 0.
 	 */
 	public int target(float[] target) {
-		if (keys.technique == Technique.BASE || !teaches[keys.technique.ordinal()] || keys.taught == 0) {
+		if (keys.technique == Technique.BASE) {
+			// The ordinary fight of part 0 (sprint hits, W-tap, S-tap) has no jump in it: every jump of the file is a
+			// technique's. Taught as such, so that it does not hop about between them (24 Oct: 192 jumps a minute).
+			return put(target, ActionSpace.JUMP, 0);
+		}
+		if (!teaches[keys.technique.ordinal()] || keys.taught == 0) {
 			return 0;
 		}
 		int heads = 0;
