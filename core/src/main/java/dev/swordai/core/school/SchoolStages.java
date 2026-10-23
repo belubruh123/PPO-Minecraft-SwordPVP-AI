@@ -112,8 +112,11 @@ public final class SchoolStages {
 	public static final float MASTERED = 0.85f;
 	/** The installed network's pull at the school's start; it fades to nothing over the first three stages' least steps. */
 	public static final float OLD_PULL = 1.0f;
-	/** About six hours on the screen: it is the network's anchor until it plays as well as the installed one. */
-	private static final long OLD_FADE = 1_500_000L;
+	/**
+	 * About a day on the screen. Since the overlay (24 Oct) the installed model teaches the fighting between the techniques,
+	 * not only the camera: it stays the network's teacher there until the network plays as well as it does.
+	 */
+	private static final long OLD_FADE = 6_000_000L;
 
 	private static int[] allSpecialists() {
 		int[] b = new int[Specialists.COUNT];
