@@ -54,6 +54,9 @@ public final class Habits {
 
 	private final float[] chances = new float[COUNT];
 	private final float[] successes = new float[COUNT];
+	/** The same, not faded: every chance seen this fight and how often it was taken. For the logs. */
+	private final int[] seen = new int[COUNT];
+	private final int[] did = new int[COUNT];
 
 	private int tick;
 	// What is being watched now.
@@ -96,6 +99,8 @@ public final class Habits {
 	public void reset() {
 		Arrays.fill(chances, 0f);
 		Arrays.fill(successes, 0f);
+		Arrays.fill(seen, 0);
+		Arrays.fill(did, 0);
 		tick = 0;
 		myHitAt = -1000;
 		resetJudged = true;
@@ -157,9 +162,21 @@ public final class Habits {
 
 	private void chance(int habit, boolean success) {
 		chances[habit] += 1f;
+		seen[habit]++;
 		if (success) {
 			successes[habit] += 1f;
+			did[habit]++;
 		}
+	}
+
+	/** Chances of {@code habit} seen this fight, not faded. */
+	public int seen(int habit) {
+		return seen[habit];
+	}
+
+	/** And how many of them were taken. */
+	public int did(int habit) {
+		return did[habit];
 	}
 
 	/**

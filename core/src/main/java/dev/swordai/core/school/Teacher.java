@@ -26,12 +26,15 @@ public final class Teacher {
 	private final boolean[] teaches = new boolean[Technique.COUNT];
 
 	/** A fight: the family it teaches, and what it knows of the opponent's style (null: nothing). */
-	public void start(Technique[] family, Style opponent, long seed) {
+	public void start(Technique[] family, Style opponent, float swingCharge, long seed) {
 		java.util.Arrays.fill(teaches, false);
 		for (Technique t : family) {
 			teaches[t.ordinal()] = true;
 		}
-		player.start(style(family), seed);
+		Style s = style(family);
+		// It swings when the network can: no sooner than the game's limit on the network's swing.
+		s.swingCharge = Math.max(s.swingCharge, swingCharge);
+		player.start(s, seed);
 		if (opponent != null) {
 			player.tell(opponent.p(Technique.T1), opponent.p(Technique.T9), opponent.p(Technique.T4));
 		}

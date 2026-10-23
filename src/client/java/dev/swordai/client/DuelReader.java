@@ -21,6 +21,14 @@ final class DuelReader {
 	final Duel duel = new Duel();
 	final Events events = new Events();
 	final Habits habits = new Habits();
+	/**
+	 * The same detector watching the player's own character, as an opponent would: what it did by what the game
+	 * shows (a jump on the tick it was hit, a crit after being hit, a second crit after its own...). It goes by the
+	 * game alone, never by a teacher, so it says whether a technique was really done.
+	 */
+	final Habits own = new Habits();
+	private final Duel mirror = new Duel();
+	private final Events mirrorEvents = new Events();
 	private final float[] mem = new float[Habits.SIZE];
 
 	private boolean meWasOnGround = true;
@@ -37,6 +45,7 @@ final class DuelReader {
 
 	void reset() {
 		habits.reset();
+		own.reset();
 		events.clear();
 		meWasOnGround = true;
 		themWasOnGround = true;
@@ -90,6 +99,9 @@ final class DuelReader {
 		lastTheirHurt = theirHurt;
 		started = true;
 		habits.observe(duel, events);
+		mirror.mirrorOf(duel);
+		mirrorEvents.mirrorOf(events);
+		own.observe(mirror, mirrorEvents);
 		meWasOnGround = me.onGround();
 		themWasOnGround = them.onGround();
 	}

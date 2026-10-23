@@ -20,10 +20,15 @@ import java.util.Random;
  * starts from the installed network, widened, which is also a teacher whose pull fades over the first
  * three stages (plan part 6).
  *
- * <p>A stage is passed once it has run {@link Stage#minSteps} and, against every one of its bots, the
- * damage traded over the last {@link #RECENT} fights is better than over its first ones and not far
- * behind; or once it has run {@link Stage#maxSteps}. A share {@link #REHEARSAL} of the fights is on
- * the stages before (or, in the first one, against the real player), so nothing is forgotten.
+ * <p><b>Mastery</b> (the user, 24 Oct: each technique done on at least 65% of its moments, aiming for 85 to
+ * 90%): every technique keeps a window of its last {@link #WINDOW} moments, done or not ({@link Performance}).
+ * Its teacher's pull stays full while it does it on less than {@link #FLOOR} of them, and fades only once
+ * it does on {@link #MASTERED} or more; it comes back if the technique slips. A stage is passed once it has
+ * run {@link Stage#minSteps}, every one of its techniques that has had its moments is done on {@link #FLOOR}
+ * of them and all of them together on {@link #MASTERED}, and against none of its bots the damage traded has
+ * got worse; or, so that it can never hang, once it has run {@link Stage#maxSteps}. A share
+ * {@link #REHEARSAL} of the fights is on the stages before (or, in the first one, against the real player),
+ * and their techniques are taught there as their own mastery says: so they are reviewed all along.
  */
 public final class SchoolStages {
 	public static final class Stage {
@@ -51,7 +56,7 @@ public final class SchoolStages {
 
 	/** On the screen at x4 the school makes about 260,000 steps an hour. */
 	private static final long MIN = 250_000L;
-	private static final long MAX = 600_000L;
+	private static final long MAX = 1_600_000L;
 
 	public static final Stage[] STAGES = {
 			new Stage("T-A", "knockback and spacing (K1-K3, T6, T7, T8)",
@@ -82,8 +87,13 @@ public final class SchoolStages {
 	public static final int RECENT = 16;
 	/** How far behind on damage a minute a bot may still be at the end of a stage. */
 	public static final float BEHIND = 10f;
-	/** The technique teacher's pull at a stage's start; it fades to nothing over the stage's least steps. */
+	/** The technique teacher's full pull; each technique's share of it follows its mastery. */
 	public static final float TECH_PULL = 1.0f;
+	/** The moments a technique is judged by, the least of them that counts, and the bars. */
+	public static final int WINDOW = 40;
+	public static final int ENOUGH = 20;
+	public static final float FLOOR = 0.65f;
+	public static final float MASTERED = 0.85f;
 	/** The installed network's pull at the school's start; it fades to nothing over the first three stages' least steps. */
 	public static final float OLD_PULL = 0.5f;
 	private static final long OLD_FADE = 3 * MIN;
@@ -113,6 +123,119 @@ public final class SchoolStages {
 	private final float[][] last = new float[Specialists.KINDS][RECENT];
 	private final int[] lastCount = new int[Specialists.KINDS];
 	private final int[] lastAt = new int[Specialists.KINDS];
+	/** Per technique: its last moments (1 done, 0 not), how many, where the next goes; and its pull's share. */
+	private final byte[][] moments = new byte[Technique.COUNT][WINDOW];
+	private final byte[][] paidMoments = new byte[Technique.COUNT][WINDOW];
+	private final int[] momentCount = new int[Technique.COUNT];
+	private final int[] momentAt = new int[Technique.COUNT];
+	private final float[] pullShare = initialShares();
+
+	private static float[] initialShares() {
+		float[] f = new float[Technique.COUNT];
+		java.util.Arrays.fill(f, 1f);
+		return f;
+	}
+
+	/** A moment of technique {@code t} is over (see {@link Performance}). */
+	public void moment(int t, boolean done, boolean paid) {
+		moments[t][momentAt[t]] = (byte) (done ? 1 : 0);
+		paidMoments[t][momentAt[t]] = (byte) (paid ? 1 : 0);
+		momentAt[t] = (momentAt[t] + 1) % WINDOW;
+		momentCount[t] = Math.min(WINDOW, momentCount[t] + 1);
+	}
+
+	/** The share of its last moments technique {@code t} was done on; NaN before any. */
+	public float doneRate(int t) {
+		return rate(moments[t], momentCount[t]);
+	}
+
+	public float paidRate(int t) {
+		return rate(paidMoments[t], momentCount[t]);
+	}
+
+	public int momentsSeen(int t) {
+		return momentCount[t];
+	}
+
+	private static float rate(byte[] a, int n) {
+		if (n == 0) {
+			return Float.NaN;
+		}
+		int s = 0;
+		for (int i = 0; i < n; i++) {
+			s += a[i];
+		}
+		return s / (float) n;
+	}
+
+	/** After each update: each technique's pull follows how well it is done. */
+	public void adapt() {
+		for (int t = 0; t < Technique.COUNT; t++) {
+			if (momentCount[t] < ENOUGH / 2) {
+				continue;
+			}
+			float r = doneRate(t);
+			if (r >= MASTERED) {
+				pullShare[t] = Math.max(0f, pullShare[t] * (r >= 0.9f ? 0.7f : 0.85f) - 0.01f);
+			} else if (r < FLOOR) {
+				pullShare[t] = Math.min(1f, pullShare[t] + 0.25f);
+			}
+		}
+	}
+
+	/** The pull of each technique's teacher now. */
+	public float[] techPulls() {
+		float[] p = new float[Technique.COUNT];
+		for (int t = 0; t < p.length; t++) {
+			p[t] = TECH_PULL * pullShare[t];
+		}
+		return p;
+	}
+
+	/** Whether this stage's techniques are mastered: each that has had its moments on {@link #FLOOR}, all of them on {@link #MASTERED}. */
+	public boolean mastered() {
+		int all = 0;
+		int done = 0;
+		int judged = 0;
+		for (Technique t : current().techniques) {
+			int i = t.ordinal();
+			if (momentCount[i] < ENOUGH) {
+				continue;
+			}
+			judged++;
+			float r = doneRate(i);
+			if (r < FLOOR) {
+				return false;
+			}
+			all += momentCount[i];
+			done += Math.round(r * momentCount[i]);
+		}
+		return judged > 0 && done >= MASTERED * all;
+	}
+
+	/** Per technique of this stage: " T7 did 48% paid 30% (40) pull 1.00;". */
+	public String masteryLine() {
+		StringBuilder b = new StringBuilder();
+		for (Technique t : current().techniques) {
+			int i = t.ordinal();
+			b.append(String.format(Locale.ROOT, " %s did %.0f%% paid %.0f%% (%d) pull %.2f;", t.id, 100f * doneRate(i), 100f * paidRate(i),
+					momentCount[i], pullShare[i]));
+		}
+		return b.toString();
+	}
+
+	/** For the chat: "T7 48%, K2 44%". */
+	public String masteryBrief() {
+		StringBuilder b = new StringBuilder();
+		for (Technique t : current().techniques) {
+			int i = t.ordinal();
+			if (momentCount[i] == 0) {
+				continue;
+			}
+			b.append(b.length() == 0 ? "" : ", ").append(t.id).append(' ').append(Math.round(100f * doneRate(i))).append('%');
+		}
+		return b.length() == 0 ? "no moments yet" : b.toString();
+	}
 
 	public Stage current() {
 		return STAGES[stage];
@@ -149,11 +272,6 @@ public final class SchoolStages {
 			}
 		}
 		return stage;
-	}
-
-	public float techPull() {
-		Stage s = current();
-		return TECH_PULL * Math.max(0f, 1f - stageSteps / (float) s.minSteps);
 	}
 
 	public float oldPull() {
@@ -196,12 +314,15 @@ public final class SchoolStages {
 		if (stageSteps >= s.maxSteps) {
 			return true;
 		}
+		if (!mastered()) {
+			return false;
+		}
 		for (int b : s.bots) {
 			if (lastCount[b] < RECENT || firstCount[b] < RECENT) {
 				return false;
 			}
-			float now = mean(last[b], lastCount[b]);
-			if (now <= mean(first[b], firstCount[b]) || now < -BEHIND) {
+			// Mastered, and not at the price of the fight: no bot's damage traded worse than at the stage's start.
+			if (mean(last[b], lastCount[b]) < mean(first[b], firstCount[b]) - BEHIND) {
 				return false;
 			}
 		}
@@ -221,8 +342,9 @@ public final class SchoolStages {
 	/** Where the stage stands, per bot: first and last damage a minute. */
 	public String describe() {
 		Stage s = current();
-		StringBuilder b = new StringBuilder(String.format(Locale.ROOT, "%s %s, %d of %d steps, teacher pulls %.2f technique, %.2f installed;",
-				s.name, s.family, stageSteps, s.minSteps, techPull(), oldPull()));
+		StringBuilder b = new StringBuilder(String.format(Locale.ROOT,
+				"%s %s, %d of at least %d steps, installed network's pull %.2f; mastery:%s damage a minute first->last:",
+				s.name, s.family, stageSteps, s.minSteps, oldPull(), masteryLine()));
 		for (int bot : s.bots) {
 			b.append(String.format(Locale.ROOT, " %s %+.0f->%+.0f (%d)", Specialists.NAMES[bot], mean(first[bot], firstCount[bot]),
 					mean(last[bot], lastCount[bot]), lastCount[bot]));
@@ -238,6 +360,13 @@ public final class SchoolStages {
 		for (int b = 0; b < Specialists.KINDS; b++) {
 			p.setProperty("first." + b, join(first[b], firstCount[b]));
 			p.setProperty("last." + b, join(last[b], lastCount[b]) + "@" + lastAt[b]);
+		}
+		for (int t = 0; t < Technique.COUNT; t++) {
+			StringBuilder m = new StringBuilder();
+			for (int i = 0; i < momentCount[t]; i++) {
+				m.append(moments[t][i]).append(paidMoments[t][i]);
+			}
+			p.setProperty("moments." + t, m + "@" + momentAt[t] + "@" + pullShare[t]);
 		}
 		Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
 		try (Writer w = Files.newBufferedWriter(tmp, StandardCharsets.UTF_8)) {
@@ -260,6 +389,16 @@ public final class SchoolStages {
 			int at = l.lastIndexOf('@');
 			lastCount[b] = split(l.substring(0, at), last[b]);
 			lastAt[b] = Integer.parseInt(l.substring(at + 1)) % RECENT;
+		}
+		for (int t = 0; t < Technique.COUNT; t++) {
+			String[] m = p.getProperty("moments." + t, "@0@1").split("@", -1);
+			momentCount[t] = Math.min(WINDOW, m[0].length() / 2);
+			for (int i = 0; i < momentCount[t]; i++) {
+				moments[t][i] = (byte) (m[0].charAt(2 * i) - '0');
+				paidMoments[t][i] = (byte) (m[0].charAt(2 * i + 1) - '0');
+			}
+			momentAt[t] = Integer.parseInt(m[1]) % WINDOW;
+			pullShare[t] = Float.parseFloat(m[2]);
 		}
 	}
 

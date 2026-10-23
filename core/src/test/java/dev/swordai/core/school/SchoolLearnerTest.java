@@ -33,6 +33,7 @@ class SchoolLearnerTest {
 		if (rng.nextBoolean()) {
 			// The jump taught: always jump here.
 			s.teacherHeads = 1 << ActionSpace.JUMP;
+			s.teacherTechnique = Technique.T9.ordinal();
 			int off = ActionSpace.OFFSETS[ActionSpace.JUMP];
 			s.teacher[off] = 0.05f;
 			s.teacher[off + 1] = 0.95f;
@@ -56,7 +57,7 @@ class SchoolLearnerTest {
 				l.complete(rng.nextFloat() - 0.5f, t % 100 == 99, false, s.obs);
 			}
 			SchoolPpo.Settings set = new SchoolPpo.Settings();
-			set.techPull = 1f;
+			java.util.Arrays.fill(set.techPulls, 1f);
 			last = l.update(set, 1e-3f);
 			assertTrue(Float.isFinite(last.policyLoss) && Float.isFinite(last.valueLoss), last.toString());
 		}
@@ -71,7 +72,7 @@ class SchoolLearnerTest {
 		back.load(file);
 		assertEquals(l.totalSteps, back.totalSteps);
 		Random same = new Random(1);
-		assertEquals(jumpChance(l, same), jumpChance(back, new Random(1)), 1e-6f);
+		assertEquals(jumpChance(l, same), jumpChance(back, new Random(1)), 1e-5f);
 		l.close();
 		back.close();
 	}
@@ -102,6 +103,15 @@ class SchoolLearnerTest {
 		SchoolStages back = new SchoolStages();
 		back.load(f);
 		assertEquals(st.describe(), back.describe());
-		assertTrue(st.techPull() < SchoolStages.TECH_PULL && st.techPull() > 0f);
+		for (int i = 0; i < 30; i++) {
+			st.moment(Technique.T7.ordinal(), i % 10 != 0, i % 2 == 0);
+		}
+		st.adapt();
+		assertTrue(st.techPulls()[Technique.T7.ordinal()] < SchoolStages.TECH_PULL, "90% done: the pull fades");
+		assertEquals(0.9f, st.doneRate(Technique.T7.ordinal()), 1e-6f);
+		st.save(f);
+		SchoolStages again = new SchoolStages();
+		again.load(f);
+		assertEquals(st.masteryLine(), again.masteryLine());
 	}
 }

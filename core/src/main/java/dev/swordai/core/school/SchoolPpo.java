@@ -46,8 +46,8 @@ public final class SchoolPpo implements AutoCloseable {
 		public float maxActorLr = 3e-4f;
 		public boolean adaptiveLr = true;
 		public float[] entropy = {0.005f, 0.005f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f};
-		/** The pulls of the two teachers for this update. */
-		public float techPull;
+		/** The pulls of the teachers for this update: each technique's teacher's ({@code Technique} ordinal), and the installed network's. */
+		public float[] techPulls = new float[dev.swordai.core.pvp.Technique.COUNT];
 		public float oldPull;
 		/** Learn the critic only. */
 		public boolean criticOnly;
@@ -193,7 +193,8 @@ public final class SchoolPpo implements AutoCloseable {
 					continue;
 				}
 				boolean byTech = (tech & (1 << h)) != 0;
-				float pull = byTech ? set.techPull : old ? set.oldPull : 0f;
+				int which = r.teacherTechnique[i];
+				float pull = byTech ? (which >= 0 ? set.techPulls[which] : 0f) : old ? set.oldPull : 0f;
 				int off = ActionSpace.OFFSETS[h];
 				int size = ActionSpace.SIZES[h];
 				double ce = 0;

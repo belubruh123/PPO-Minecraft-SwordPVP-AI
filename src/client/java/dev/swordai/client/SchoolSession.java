@@ -5,6 +5,7 @@ import dev.swordai.core.config.Config;
 import dev.swordai.core.env.BodyState;
 import dev.swordai.core.env.SessionClock;
 import dev.swordai.core.env.StepFacts;
+import dev.swordai.core.pvp.Habits;
 import dev.swordai.core.pvp.Specialists;
 import dev.swordai.core.pvp.Style;
 import dev.swordai.core.pvp.Technique;
@@ -12,6 +13,7 @@ import dev.swordai.core.rl.ActionSpace;
 import dev.swordai.core.rl.AimMotor;
 import dev.swordai.core.rl.MixIdea;
 import dev.swordai.core.rl.SwingGate;
+import dev.swordai.core.school.Performance;
 import dev.swordai.core.school.SchoolLearner;
 import dev.swordai.core.school.SchoolPpo;
 import dev.swordai.core.school.SchoolRollout;
@@ -88,6 +90,8 @@ public final class SchoolSession implements AgentSession {
 	static final float FARTHEST = 8f;
 	/** Steps whose policy loss counts for nothing: the opponent farther than this and out of sight. */
 	static final float SKIP_FARTHER = 8f;
+	/** Of the installed model's choice as a target, the share on its key. Its choices are drawn, so over many steps the target is its whole policy. */
+	static final float SHADOW_SURE = 0.9f;
 	private static final int KEEP_EVERY_MINUTES = 60;
 	private static final DateTimeFormatter HHMM = DateTimeFormatter.ofPattern("HHmm");
 
@@ -106,10 +110,24 @@ public final class SchoolSession implements AgentSession {
 	private final SchoolStages stages = new SchoolStages();
 	private final Teacher teacher = new Teacher();
 	private final DuelReader reader = new DuelReader();
+	/**
+	 * Whether it does each technique when its moment comes; in training the stages are told of every moment. In a
+	 * paired check one for each side (A the school's network, B the installed model), told to nobody.
+	 */
+	private final Performance perf;
+	private final Performance perfB = new Performance(null);
+	/** What the game shows it did, by the same detector the bots read it with, per side (0 A or training, 1 B): chances seen and taken. */
+	private final int[][] ownSeen = new int[2][Habits.COUNT];
+	private final int[][] ownDid = new int[2][Habits.COUNT];
+	private int barTicks;
 	private final ExecutorService updater;
 	private Future<SchoolPpo.Stats> pending;
 	private int warmupLeft;
-	/** The installed model, for the other side of a paired check; null in training. */
+	/**
+	 * The installed model as it plays the user's fights, its rules and all. In a paired check it plays side B; in
+	 * training it runs alongside the network on every tick without pressing anything, and what it would press is
+	 * the installed teacher's target (plan part 6: each old rule becomes a teacher, its pull fading).
+	 */
 	private LoadedFighter installed;
 	private final BodyState installedBody = new BodyState();
 
@@ -180,6 +198,7 @@ public final class SchoolSession implements AgentSession {
 		this.mode = mode;
 		this.cfg = SwordFiles.loadConfig();
 		this.motor = new AimMotor(cfg.aimResponse);
+		this.perf = new Performance(mode == Mode.TRAIN ? stages::moment : null);
 		Files.createDirectories(SwordFiles.schoolDir());
 		learner = new SchoolLearner(System.nanoTime(), ROLLOUT + FIGHT_TICKS, 0.99f, 0.95f, cfg.resolvedTrainerThreads());
 		Path teacherFile = installedCheckpoint();
@@ -200,14 +219,13 @@ public final class SchoolSession implements AgentSession {
 		if (Files.exists(SwordFiles.schoolStages())) {
 			stages.load(SwordFiles.schoolStages());
 		}
-		if (mode == Mode.CHECK) {
-			Config icfg = SwordFiles.readConfig(SwordFiles.installedCopy().resolve("config.json"));
-			if (icfg == null) {
-				learner.close();
-				throw new IOException("no settings of the installed model in " + SwordFiles.installedCopy());
-			}
+		Config icfg = SwordFiles.readConfig(SwordFiles.installedCopy().resolve("config.json"));
+		if (icfg != null && Files.exists(teacherFile)) {
 			installed = LoadedFighter.loadFrom(teacherFile, icfg, SwordFiles.installedCopy().resolve("curriculum.properties"));
 			installedBody.patchedUp = installed.patchedUp;
+		} else if (mode == Mode.CHECK) {
+			learner.close();
+			throw new IOException("no installed model with its settings in " + SwordFiles.installedCopy());
 		}
 		updater = Executors.newSingleThreadExecutor(r -> {
 			Thread t = new Thread(r, "swordai-school-update");
@@ -425,7 +443,7 @@ public final class SchoolSession implements AgentSession {
 		}
 		clickResolved = true;
 		clickOnTarget = onOpponent();
-		if (clickOnTarget && installedPlays) {
+		if (clickOnTarget && installed != null) {
 			installed.fighter.hitDealt();
 		}
 	}
@@ -502,8 +520,10 @@ public final class SchoolSession implements AgentSession {
 		AgentController.release(mc);
 		mc.player.getInventory().setSelectedSlot(0);
 		int teach = fightBot == Specialists.MIXER ? stages.stage : stages.stageOf(fightBot);
-		teacher.start(SchoolStages.STAGES[teach].techniques, fightStyle, seed ^ 0x7EAC4L);
+		teacher.start(SchoolStages.STAGES[teach].techniques, fightStyle, cfg.swingMinCharge, seed ^ 0x7EAC4L);
 		reader.reset();
+		perf.reset();
+		perfB.reset();
 		observer.resetEpisode();
 		clock.resetEpisode();
 		clock.botAttacks = true;
@@ -607,7 +627,7 @@ public final class SchoolSession implements AgentSession {
 			clock.ticksSinceHitTaken = 0;
 		}
 		clock.takenStreak.tick(shownDealt ? 1 : 0, facts.hitsTaken);
-		if (installedPlays && hurtNow) {
+		if (installed != null && hurtNow) {
 			installed.fighter.hitTaken();
 		}
 		reader.tick(me, bot, hasLastAction && clicked, chargeAtClick, sprintAtClick, critAtClick);
@@ -651,22 +671,38 @@ public final class SchoolSession implements AgentSession {
 		chargeAtClick = charge;
 		sprintAtClick = truth.agentSprinting();
 		critAtClick = facts.falling && !me.onGround() && !sprintAtClick && charge > 0.9f;
+		int keys = SwingGate.keys(ActionSpace.ALL_HEADS, charge, cfg.swingMinCharge);
+		teacher.tick(reader.duel, reader.events);
+		step.teacherHeads = teacher.target(step.teacher);
+		step.teacherTechnique = step.teacherHeads != 0 ? teacher.technique().ordinal() : -1;
 		if (installedPlays) {
 			observer.fillBody(installedBody, me, bot, truth.floorY());
 			installed.fighter.crosshairOnOpponent(onOpponent());
 			int[] chosen = installed.fighter.decide(observer.frame, installedBody);
 			System.arraycopy(chosen, 0, action, 0, ActionSpace.HEADS);
+			perfB.tick(step.teacherTechnique, step.teacherHeads, step.teacher, action, ActionSpace.ALL_HEADS, facts.damageDealt, facts.damageTaken);
 			applyAction(installed.fighter.yawRate(), installed.fighter.pitchRate());
 			clicked = action[ActionSpace.ATTACK] == 1;
+			showBar(truth);
 			return;
 		}
-		int keys = SwingGate.keys(ActionSpace.ALL_HEADS, charge, cfg.swingMinCharge);
-		teacher.tick(reader.duel, reader.events);
-		step.teacherHeads = teacher.target(step.teacher);
-		step.teacherTechnique = step.teacherHeads != 0 ? teacher.technique().ordinal() : -1;
 		step.teacherWeight = 0f;
-		if (mode == Mode.TRAIN && learner.hasOldTeacher() && stages.oldPull() > 0f) {
-			learner.oldChoices(step.obs, oldProbs);
+		if (mode == Mode.TRAIN && stages.oldPull() > 0f && (installed != null || learner.hasOldTeacher())) {
+			if (installed != null) {
+				// What the installed model would press here, rules and all: its choice, as a target.
+				observer.fillBody(installedBody, me, bot, truth.floorY());
+				installed.fighter.crosshairOnOpponent(onOpponent());
+				int[] would = installed.fighter.decide(observer.frame, installedBody);
+				for (int h = 0; h < ActionSpace.HEADS; h++) {
+					int off = ActionSpace.OFFSETS[h];
+					int n = ActionSpace.SIZES[h];
+					for (int k = 0; k < n; k++) {
+						oldProbs[off + k] = k == would[h] ? SHADOW_SURE : (1f - SHADOW_SURE) / (n - 1);
+					}
+				}
+			} else {
+				learner.oldChoices(step.obs, oldProbs);
+			}
 			for (int h = 0; h < ActionSpace.HEADS; h++) {
 				if ((step.teacherHeads & (1 << h)) == 0) {
 					System.arraycopy(oldProbs, ActionSpace.OFFSETS[h], step.teacher, ActionSpace.OFFSETS[h], ActionSpace.SIZES[h]);
@@ -679,6 +715,7 @@ public final class SchoolSession implements AgentSession {
 		step.botKeys = truth.botKeys();
 		step.kind = fightBot;
 		learner.act(step, keys, mode == Mode.TRAIN, cfg.playTemperature, action);
+		perf.tick(step.teacherTechnique, step.teacherHeads, step.teacher, action, keys, facts.damageDealt, facts.damageTaken);
 		if (step.teacherHeads != 0) {
 			fightTeacherTicks++;
 			int t = step.teacherTechnique;
@@ -692,6 +729,53 @@ public final class SchoolSession implements AgentSession {
 		clicked = action[ActionSpace.ATTACK] == 1;
 		System.arraycopy(action, 0, lastAction, 0, ActionSpace.HEADS);
 		hasLastAction = true;
+		showBar(truth);
+	}
+
+	/** What it is doing, on the screen above the hotbar: the stage, the technique whose moment it is, its keys, the bot's. */
+	private void showBar(Truth truth) {
+		if (++barTicks < 4 || mc.gui == null) {
+			return;
+		}
+		barTicks = 0;
+		int t = step.teacherTechnique;
+		String now = t >= 0 ? Technique.ALL[t].id + " " + Technique.ALL[t].title : "ordinary fight";
+		int bt = truth.botTechnique();
+		String bot = bt >= 0 && bt != Technique.BASE.ordinal() ? Technique.ALL[bt].id + " " + Technique.ALL[bt].title : "ordinary fight";
+		String who = mode == Mode.CHECK ? (installedPlays ? "CHECK B (installed)" : "CHECK A (school)") : "School " + stages.current().name;
+		mc.gui.setOverlayMessage(Component.literal(String.format(Locale.ROOT, "%s | moment: %s | AI keys: %s | %s: %s | %.0f-%.0f",
+				who, now, keysOf(installedPlays ? installed.fighter.action() : action), Specialists.NAMES[fightBot], bot, fightDealt, fightTaken)), false);
+	}
+
+	private static String keysOf(int[] a) {
+		int fwd = a[ActionSpace.FORWARD];
+		int side = a[ActionSpace.STRAFE];
+		return (fwd == 1 ? "W" : fwd == 2 ? "S" : "-") + (side == 1 ? "A" : side == 2 ? "D" : "-") + (a[ActionSpace.SPRINT] == 1 ? " sprint" : "")
+				+ (a[ActionSpace.JUMP] == 1 ? " jump" : "") + (a[ActionSpace.ATTACK] == 1 ? " swing" : "");
+	}
+
+	/** What the game showed it did: " jump reset (T9) 3/12 (25%);" for each habit it had chances at. */
+	private String ownLine(int side) {
+		StringBuilder b = new StringBuilder();
+		for (int h = 0; h < Habits.COUNT; h++) {
+			if (ownSeen[side][h] > 0) {
+				b.append(String.format(Locale.ROOT, " %s %d/%d (%.0f%%);", Habits.NAMES[h], ownDid[side][h], ownSeen[side][h],
+						100f * ownDid[side][h] / ownSeen[side][h]));
+			}
+		}
+		return b.toString();
+	}
+
+	/** Per technique: " T7 12/30 done, 8 paid;". */
+	private static String perfLine(Performance p) {
+		StringBuilder b = new StringBuilder();
+		for (Technique t : Technique.ALL) {
+			int i = t.ordinal();
+			if (p.moments[i] > 0) {
+				b.append(String.format(Locale.ROOT, " %s %d/%d done (%.0f%%), %d paid;", t.id, p.done[i], p.moments[i], 100f * p.done[i] / p.moments[i], p.paid[i]));
+			}
+		}
+		return b.toString();
 	}
 
 	/** Whether the network's likeliest key is the teacher's on every head it taught. */
@@ -742,10 +826,18 @@ public final class SchoolSession implements AgentSession {
 			botWins[fightBot] += won ? 1 : 0;
 			botLosses[fightBot] += lost ? 1 : 0;
 		}
+		int side = installedPlays ? 1 : 0;
+		for (int h = 0; h < Habits.COUNT; h++) {
+			ownSeen[side][h] += reader.own.seen(h);
+			ownDid[side][h] += reader.own.did(h);
+		}
 		String result = won ? ", knockout" : lost ? ", knocked out" : "";
 		if (mode == Mode.CHECK) {
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school pair %d %s %s%s: dealt %.1f, taken %.1f, ticks %d%s", (checkFights - 1) / 2,
 					installedPlays ? "B" : "A", Specialists.NAMES[fightBot], fightStyle.heldOut ? " (held out)" : "", fightDealt, fightTaken, fightTicks, result));
+			if (installedPlays && ((checkFights / 2) % 10 == 0)) {
+				checkSummary();
+			}
 		} else {
 			stages.fight(fightBot, fightDealt, fightTaken, fightTicks);
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school fight %s: dealt %.1f, taken %.1f, ticks %d%s, teacher spoke on %d ticks; %s",
@@ -772,13 +864,19 @@ public final class SchoolSession implements AgentSession {
 
 	// ---- learning -------------------------------------------------------------------------------
 
+	/** Paired check: what each side did when the moments came, and what the game showed it did. */
+	private void checkSummary() {
+		SwordAi.LOGGER.info("school check after {} pairs | A (school) techniques:{} | B (installed) techniques:{} | A keys a minute off/on moments: {} | B: {} "
+				+ "| A by the game:{} | B by the game:{}", checkFights / 2, perfLine(perf), perfLine(perfB), perf.keysLine(), perfB.keysLine(), ownLine(0), ownLine(1));
+	}
+
 	private void startUpdate() {
 		phase = Phase.UPDATING;
 		mc.getSingleplayerServer().execute(() -> ArenaServer.setIdle(true));
 		long steps = learner.rolloutSize();
 		stages.addSteps(steps);
 		SchoolPpo.Settings set = new SchoolPpo.Settings();
-		set.techPull = stages.techPull();
+		set.techPulls = stages.techPulls();
 		set.oldPull = stages.oldPull();
 		set.criticOnly = warmupLeft > 0;
 		if (warmupLeft > 0) {
@@ -834,9 +932,29 @@ public final class SchoolSession implements AgentSession {
 				used.append(' ').append(t.id).append(' ').append(botUsed[i]);
 			}
 		}
+		stages.adapt();
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
-		SwordAi.LOGGER.info("school {} | {} | predictor {} | per bot:{} | its moments by technique:{} | bots went into:{}",
-				lastUpdateLine, stages.describe(), learner.predictorLine(), bots, taught, used);
+		SwordAi.LOGGER.info("school {} | {} | predictor {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
+				+ "| jumps, swings, S a minute off/on moments: {} | by the game:{} | bots went into:{}",
+				lastUpdateLine, stages.describe(), learner.predictorLine(), bots, taught, perfLine(perf), perf.keysLine(), ownLine(0), used);
+		float dealtAll = 0f;
+		float takenAll = 0f;
+		int ticksAll = 0;
+		for (int b = 0; b < Specialists.KINDS; b++) {
+			dealtAll += botDealt[b];
+			takenAll += botTaken[b];
+			ticksAll += botTicks[b];
+		}
+		float minutesAll = Math.max(1, ticksAll) / 1200f;
+		say(String.format(Locale.ROOT, "%s %dk steps: done %s | damage a minute %.0f dealt, %.0f taken", stages.current().name, stages.stageSteps / 1000,
+				stages.masteryBrief(), dealtAll / minutesAll, takenAll / minutesAll));
+		perf.clear();
+		for (int[] row : ownSeen) {
+			java.util.Arrays.fill(row, 0);
+		}
+		for (int[] row : ownDid) {
+			java.util.Arrays.fill(row, 0);
+		}
 		java.util.Arrays.fill(botDealt, 0f);
 		java.util.Arrays.fill(botTaken, 0f);
 		java.util.Arrays.fill(botTicks, 0);
@@ -888,6 +1006,9 @@ public final class SchoolSession implements AgentSession {
 		}
 		Phase was = phase;
 		phase = Phase.STOPPED;
+		if (mode == Mode.CHECK) {
+			checkSummary();
+		}
 		try {
 			AgentController.release(mc);
 			if (pending != null) {
