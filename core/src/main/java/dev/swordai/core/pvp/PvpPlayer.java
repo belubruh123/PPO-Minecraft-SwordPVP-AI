@@ -458,12 +458,19 @@ public final class PvpPlayer {
 				begin(Plan.C3);
 				return;
 			}
+			// A sprint hit coming (the extra knockback): jump so that it lands on me falling, less knockback for me (K3);
+			// a plain one, make it miss (T6). Each first where it fits, the other if it is not rolled.
+			boolean k3 = me.onGround && me.charge > 0.5f;
+			if (them.sprinting && k3 && roll(Technique.K3)) {
+				begin(Plan.K3);
+				return;
+			}
 			if (roll(Technique.T6)) {
 				begin(Plan.T6);
 				planAlt = rng.nextFloat() < Math.max(style.p(Technique.T6A), pNow[Technique.T6A.ordinal()]);
 				return;
 			}
-			if (me.onGround && me.charge > 0.5f && roll(Technique.K3)) {
+			if (!them.sprinting && k3 && roll(Technique.K3)) {
 				begin(Plan.K3);
 				return;
 			}
