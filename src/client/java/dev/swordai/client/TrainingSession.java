@@ -38,6 +38,12 @@ public final class TrainingSession extends Trainer {
 	 * makes the game catch up with at most ten ticks at once, so a second is beyond any single stall.
 	 */
 	private static final int FROZEN_FRAME_TICKS = 20;
+	/**
+	 * More server ticks than this between two decisions in a fight means the game stood still while the server
+	 * went on with the fight: see {@link Trainer#cutStalledFight}. The client's ticks keep pace with the server's,
+	 * one a decision; a second of game time is beyond any hitch of its own.
+	 */
+	private static final long STALL_TICKS = 20;
 	/** New frames to see before trusting that drawing is back. */
 	private static final int FRAMES_TO_RESUME = 3;
 	/** The drawn picture is compared with the real one on every this many decisions. */
@@ -69,6 +75,12 @@ public final class TrainingSession extends Trainer {
 	private double lineAgeSum;
 	private long lineAgeCount;
 	private long lineHeldBack;
+	/** The server's tick at the running fight's last decision, or -1 between fights. */
+	private long lastRunServerTick = -1;
+	/** For {@link #timingLine}: decisions more than two ticks after the last one, the longest such gap, fights cut for a stall. */
+	private int lineGaps;
+	private long lineLongestGap;
+	private int lineStallCuts;
 	private long lastTickEndNanos;
 	private int sinceEyeCheck;
 
@@ -246,6 +258,9 @@ public final class TrainingSession extends Trainer {
 		// Switching to another window must never open the pause menu, also not after F3+P.
 		mc.options.pauseOnLostFocus = false;
 		OptionsGuard.hold(mc);
+		if (phase != Phase.RUN) {
+			lastRunServerTick = -1;
+		}
 
 		switch (phase) {
 			case WAIT_ARENA -> {
@@ -399,6 +414,20 @@ public final class TrainingSession extends Trainer {
 	}
 
 	private void runTick(Truth truth) {
+		long now = truth.tick();
+		long gap = lastRunServerTick < 0 ? 1 : now - lastRunServerTick;
+		lastRunServerTick = now;
+		if (gap > 2) {
+			lineGaps++;
+			lineLongestGap = Math.max(lineLongestGap, gap);
+		}
+		if (gap > STALL_TICKS) {
+			lineStallCuts++;
+			lastRunServerTick = -1;
+			AgentController.release(mc);
+			cutStalledFight(gap, truth);
+			return;
+		}
 		Player bot = truth.botUuid() == null ? null : mc.level.getPlayerByUUID(truth.botUuid());
 		if (bot == null) {
 			// The bot is not being tracked by this client (yet); nothing can be scored.
@@ -744,11 +773,15 @@ public final class TrainingSession extends Trainer {
 	@Override
 	String timingLine() {
 		long held = SeenLag.heldBack();
-		String line = String.format(java.util.Locale.ROOT, "frame age %.1f ms of game time over %d decisions, opponent's moves held back %d",
-				lineAgeCount == 0 ? Double.NaN : lineAgeSum / lineAgeCount, lineAgeCount, held - lineHeldBack);
+		String line = String.format(java.util.Locale.ROOT, "frame age %.1f ms of game time over %d decisions, opponent's moves held back %d, "
+				+ "decisions over 2 ticks apart %d (longest %d), fights cut for a stall %d",
+				lineAgeCount == 0 ? Double.NaN : lineAgeSum / lineAgeCount, lineAgeCount, held - lineHeldBack, lineGaps, lineLongestGap, lineStallCuts);
 		lineAgeSum = 0;
 		lineAgeCount = 0;
 		lineHeldBack = held;
+		lineGaps = 0;
+		lineLongestGap = 0;
+		lineStallCuts = 0;
 		return line;
 	}
 }

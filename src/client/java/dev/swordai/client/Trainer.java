@@ -2993,6 +2993,24 @@ abstract class Trainer implements AgentSession {
 	}
 
 	/**
+	 * The game stood still in the middle of a fight while the server went on with it (23 Oct: Windows changed its
+	 * sound device, the client stopped for that, and the opponent knocked the agent out in what were five decisions
+	 * to it). What happened then says nothing about how it fights: the fight is cut unscored and is not kept as a
+	 * lost one, and in an evaluation the same fight, on the same side of its pair, is fought again.
+	 */
+	void cutStalledFight(long ticks, Truth truth) {
+		boolean again = mode == Mode.TRAIN && cfg.evalSeed != 0;
+		SwordAi.LOGGER.info("fight cut: the game stood still for {} ticks while the server went on with the fight; not scored{}",
+				ticks, again ? ", fought again" : "");
+		if (again) {
+			evalFights--;
+		}
+		episodeCase = null;
+		suspendEpisode();
+		beginEpisode(truth);
+	}
+
+	/**
 	 * The kind of fight running, as the critic is told it ({@code Config.criticTask}): the place of the
 	 * episode's tally in this list. The order is part of what a trained critic has learned: new kinds go
 	 * at the end, and there is room for {@code CriticNet.TASKS}.

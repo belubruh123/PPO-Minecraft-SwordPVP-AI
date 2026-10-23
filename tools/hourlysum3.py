@@ -14,6 +14,8 @@ LINE = re.compile(r'^\[(\d\d:\d\d:\d\d)\].*paired result (\d+) ([AB]): (.+?), de
 # The trainer's names for the kinds (Trainer.KIND_NAMES; the spacer that stands is 'stander'): the hard ones of the old checks.
 HARD = ['timer', 'spacer', 'stander', 'whiffer', 'jumper', 'punisher', 'circler', 'no-knockback']
 OLD = 'the 0.14.0 model'
+MIN_TICKS = 20
+dropped = []
 
 
 def window(part):
@@ -36,6 +38,11 @@ def pairs(part):
             fights[int(m.group(2))][m.group(3)] = (m.group(4), float(m.group(5)), float(m.group(6)), max(1, int(m.group(7))))
     for n, f in fights.items():
         if 'A' in f and 'B' in f and f['A'][0] == f['B'][0]:
+            # A fight shorter than a second (23 Oct: knocked out in 5 ticks, damage carried over) is not a fight, and per
+            # minute it weighs thousands: the pair is left out.
+            if min(f['A'][3], f['B'][3]) < MIN_TICKS:
+                dropped.append('%s %s' % (part, n))
+                continue
             out[f['A'][0]].append((f['A'], f['B']))
     return out
 
@@ -79,6 +86,8 @@ parts = ['%s PAIRED | spacer-only %d pairs: %s vs installed %s, A-B %+.0f (se %.
 parts.append('mix hard kinds A-B %+.0f (se %.0f, %d kinds)' % (h_m, h_se, len(hard)))
 if mix.get(OLD):
     parts.append('0.14.0 %s vs %s, A-B %+.0f (se %.0f)' % (side(mix[OLD], 0), side(mix[OLD], 1), o_m, o_se))
+if dropped:
+    parts.append('%d pairs under a second left out (%s)' % (len(dropped), ', '.join(dropped)))
 parts.append('score %+.0f (se %.0f): %s' % (score, se, verdict))
 line = ' | '.join(parts)
 print(line)
