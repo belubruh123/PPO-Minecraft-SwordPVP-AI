@@ -73,6 +73,29 @@ class CritTradeTest {
 	}
 
 	@Test
+	void onlyAJumpSeenTakingOffAtItIsAJumpIn() {
+		// Knocked up and away by the fighter's hit, then coming back in on the way down: its hit from there is no jumper's crit.
+		CritTrade knocked = new CritTrade(4);
+		knocked.holds(vec(true, 3.0f, 1f, 0.3f, -0.4f, 1f));
+		assertFalse(knocked.holds(vec(true, 2.8f, 1f, -0.2f, 0.15f, 1f)));
+		assertFalse(knocked.incoming());
+		float[] hit = vec(true, 2.6f, 1f, -0.1f, 0.15f, 0.1f);
+		hit[ObsSpec.VEC_SCALARS + ObsSpec.SC_SINCE_HIT_TAKEN] = 1f;
+		hit[ObsSpec.VEC_SCALARS + ObsSpec.SC_HITS_TAKEN_ROW] = 1f;
+		knocked.holds(hit);
+		assertFalse(knocked.jumperHit());
+		// Stepping down a block while walking in: falling, but never seen going up.
+		assertFalse(new CritTrade(4).holds(vec(true, 2.6f, 1f, -0.2f, 0.2f, 1f)));
+		// A take-off at it long enough ago is a jump that is over.
+		CritTrade old = new CritTrade(4);
+		old.holds(vec(true, 4f, 1f, 0.3f, 0.3f, 1f));
+		for (int i = 0; i < CritTrade.JUMP_TICKS; i++) {
+			old.holds(vec(true, 4f, 1f, 0f, 0.1f, 1f));
+		}
+		assertFalse(old.holds(vec(true, 2.6f, 1f, -0.2f, 0.2f, 1f)));
+	}
+
+	@Test
 	void notHeldForAnOpponentOnTheGroundOrWithItsSwordSpentOrFarOrGoingAway() {
 		assertFalse(new CritTrade(4).holds(vec(true, 2.6f, 1f, 0f, 0.3f, 1f)), "on the ground");
 		assertFalse(new CritTrade(4).holds(vec(true, 2.6f, 1f, -0.2f, 0.3f, 0.3f)), "its sword spent");
@@ -81,6 +104,7 @@ class CritTradeTest {
 		assertTrue(far.incoming(), "but coming in: no running at it");
 		assertFalse(new CritTrade(4).holds(vec(true, 2.6f, 1f, -0.2f, -0.3f, 1f)), "going away");
 		CritTrade after = new CritTrade(4);
+		after.holds(vec(true, 2.8f, 1f, 0.3f, 0.3f, 1f));
 		after.holds(vec(true, 2.6f, 1f, -0.2f, 0.3f, 1f));
 		for (int i = 0; i < 3; i++) {
 			after.holds(vec(true, 2.6f, 1f, 0f, 0f, 0.2f));
@@ -134,7 +158,8 @@ class CritTradeTest {
 	@Test
 	void afterAJumpersCritTheSwingIsKeptOnTheGroundUntilTheKnockbackLiftsIt() {
 		CritTrade trade = new CritTrade(4);
-		// The jumper coming down on it, then the tick it learns of the hit.
+		// The jumper taking off at it, coming down on it, then the tick it learns of the hit.
+		trade.holds(vec(true, 3.0f, 1f, 0.3f, 0.3f, 1f));
 		trade.holds(vec(true, 2.6f, 1f, -0.2f, 0.3f, 1f));
 		float[] hit = vec(true, 2.6f, 1f, 0f, 0.1f, 0.1f);
 		hit[ObsSpec.VEC_SCALARS + ObsSpec.SC_SINCE_HIT_TAKEN] = 1f;

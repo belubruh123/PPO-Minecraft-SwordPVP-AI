@@ -45,6 +45,14 @@ public final class CritTrade {
 	 * -51 a minute against the one that stands and hits and jumps with the fighter's hits (T8 with and without them).
 	 */
 	static final float IN_TOWARD = 0.05f;
+	/**
+	 * And it is a JUMP in only seen taking off at the fighter (going up faster than {@link #RISING_MOST} while coming at it at
+	 * {@link #IN_TOWARD} or more) within this many ticks: a jump is up and down in twelve, and the picture is a few late. Not
+	 * the flight its own hit knocked it into (going away while it went up) with a run back in on landing, and not a step
+	 * down: 21:24, on the installed network the punish began after a plain hit, no crit, in 25 of 28 punishes against the
+	 * plain opponent (one that does not jump in to crit at all), and cost 153 a minute against it.
+	 */
+	static final int JUMP_TICKS = 14;
 	/** What gravity takes off a speed upwards each tick, blocks a tick. */
 	static final float GRAVITY = 0.08f;
 
@@ -77,8 +85,8 @@ public final class CritTrade {
 	private int sinceHeld = 1000;
 	/** The hit it has not answered yet came from an opponent in the air: a jumper's crit. */
 	private boolean jumperHit;
-	/** Its speed towards the fighter the last time it was seen in the air, blocks a tick. */
-	private float airToward;
+	/** Ticks since it was last seen taking off at the fighter; see {@link #JUMP_TICKS}. */
+	private int sinceTookOff = 1000;
 
 	/** @param knockbackDelay how many ticks late a hit's knockback is taken to reach the opponent; see {@link #knockAwayCertain} */
 	public CritTrade(int knockbackDelay) {
@@ -98,7 +106,7 @@ public final class CritTrade {
 		knockAway = false;
 		sinceHeld = 1000;
 		jumperHit = false;
-		airToward = 0f;
+		sinceTookOff = 1000;
 	}
 
 	/**
@@ -120,12 +128,11 @@ public final class CritTrade {
 		float away = (scalar(vec, ObsSpec.SC_REL_VEL_FORWARD) + scalar(vec, ObsSpec.SC_VEL_FORWARD)) / BodyState.VELOCITY_SCALE;
 		int airWas = oppAirTicks;
 		oppAirTicks = seen && Math.abs(oppUp) >= Tactic.AIR_SPEED ? 0 : Math.min(oppAirTicks + 1, 1000);
-		if (oppAirTicks == 0) {
-			airToward = -away;
-		}
+		sinceTookOff = seen && oppUp > RISING_MOST && -away >= IN_TOWARD ? 0 : Math.min(sinceTookOff + 1, 1000);
+		boolean jumpIn = sinceTookOff <= JUMP_TICKS;
 		if (sinceHitTaken(vec) == 0) {
 			// The tick it learns of a hit: was the one that made it jumping in at it (as it was last seen)?
-			jumperHit = Math.min(airWas, oppAirTicks) <= AIR_MEMORY_TICKS + 1 && airToward >= IN_TOWARD;
+			jumperHit = Math.min(airWas, oppAirTicks) <= AIR_MEMORY_TICKS + 1 && jumpIn;
 		} else if (!AnswerRule.owesAnAnswer(vec)) {
 			jumperHit = false;
 		}
@@ -136,7 +143,7 @@ public final class CritTrade {
 		if (scalar(vec, ObsSpec.SC_OPP_CHARGE) < OPP_READY || d > INCOMING_WITHIN) {
 			return false;
 		}
-		if (-away < IN_TOWARD) {
+		if (-away < IN_TOWARD || !jumpIn) {
 			return false;
 		}
 		incoming = true;
