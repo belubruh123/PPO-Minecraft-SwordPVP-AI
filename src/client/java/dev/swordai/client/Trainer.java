@@ -15,6 +15,7 @@ import dev.swordai.core.rl.AimMotor;
 import dev.swordai.core.rl.AimRule;
 import dev.swordai.core.rl.AnswerRule;
 import dev.swordai.core.rl.ComboStrafe;
+import dev.swordai.core.rl.CritTrade;
 import dev.swordai.core.rl.FallWatch;
 import dev.swordai.core.rl.FarRest;
 import dev.swordai.core.rl.JumpIn;
@@ -80,6 +81,8 @@ abstract class Trainer implements AgentSession {
 	private static final int UPPERCUT_JUMP_TICKS = 9;
 	/** Being knocked into the air by a hit lasts about this long; a crit after that came from somewhere else. */
 	private static final int PUNISH_WINDOW_TICKS = 16;
+	/** A hit taken within this many decisions of the swing having been held for an opponent coming in is the crit it was held for. */
+	private static final int PUNISH_AFTER_HELD_TICKS = 10;
 	/** Self-play: this share of the fights is against one of the copies from before the current one. */
 	private static final float OLDER_COPY_SHARE = 0.3f;
 	/**
@@ -167,6 +170,8 @@ abstract class Trainer implements AgentSession {
 	final Tally standerTally = new Tally();
 	final Tally whifferTally = new Tally();
 	final Tally outsideTally = new Tally();
+	/** The jump-in drill ({@link #KIND_JUMPIN}): kept apart, and no part of passing a stage. */
+	final Tally jumpInTally = new Tally();
 	/** Fights it lost before, fought again; see LostCases. Counted apart, so the kinds' own numbers stay a fair draw. */
 	final Tally replayTally = new Tally();
 	/** The fights it lost, kept to be fought again; see Config.replayLostShare. */
@@ -190,6 +195,41 @@ abstract class Trainer implements AgentSession {
 	/** Ticks since the last update with A or D held for it by {@link #comboStrafe}, and the combo hits that began such a run. */
 	private long comboStrafeTicks;
 	private long comboStrafeHits;
+	/** No swing at an opponent coming in through the air with its sword ready; see {@link CritTrade} and {@code Config.holdOnFallingJumper}. */
+	private CritTrade critTrade;
+	/** Since the last update: ticks the swing was held for that, and the punish crits made at once after such a crit; see {@code Config.instantPunish}. */
+	private long holdCritTicks;
+	private long holdCritKnockAways;
+	private long instantPunishTicks;
+	/** The clash jumps taken since the last update ({@code JumpIn.CLASH}). */
+	private long clashJumps;
+	private static final String[] JI_NAMES = {"fights", "crit for crit (same tick)", "trade (same tick, not both crits)",
+			"hit first, hit back", "of those crit back", "hit first, no answer", "let land, punished", "of those punish crits",
+			"let land, no answer", "taken twice", "nothing", "clash jumps"};
+	private static final int JI_FIGHTS = 0;
+	private static final int JI_CRIT_FOR_CRIT = 1;
+	private static final int JI_TRADE = 2;
+	private static final int JI_HIT_BACK = 3;
+	private static final int JI_CRIT_BACK = 4;
+	private static final int JI_CLEAN = 5;
+	private static final int JI_PUNISHED = 6;
+	private static final int JI_PUNISH_CRIT = 7;
+	private static final int JI_UNANSWERED = 8;
+	private static final int JI_TWICE = 9;
+	private static final int JI_NOTHING = 10;
+	private static final int JI_CLASH = 11;
+	/** The jump-in drill since the last update ({@link #KIND_JUMPIN}), by how the exchange went; see {@link #JI_NAMES}. */
+	private final long[] jumpInDrill = new long[JI_NAMES.length];
+	private double jumpInDealtSum;
+	private double jumpInTakenSum;
+	/** In a jump-in drill: the episode ticks of the first hit taken and dealt (-1: none yet), whether each was a crit, and a second hit taken. */
+	private int jumpInTakenTick = -1;
+	private int jumpInDealtTick = -1;
+	private boolean jumpInTakenCrit;
+	private boolean jumpInDealtCrit;
+	private boolean jumpInTakenTwice;
+	/** One side's hit unanswered for this many ticks: the exchange is over. */
+	private static final int JUMPIN_SETTLE_TICKS = 15;
 	/** The step back after a hit of its own that has not sent the opponent away; see {@link StepBack}. */
 	private final StepBack stepBack = new StepBack();
 	private final dev.swordai.core.rl.EdgeHold edgeHold = new dev.swordai.core.rl.EdgeHold();
@@ -204,7 +244,7 @@ abstract class Trainer implements AgentSession {
 	/** The names of the kinds of fight, in the order of {@link #episodeTask}. */
 	private static final String[] TASK_NAMES = {"own copy", "rehearsal", "runner", "circler", "corner", "no-knockback", "odd",
 			"jumper", "punisher", "backer", "timer", "person", "spacer", "stander", "whiffer", "outside", "replay", "drill",
-			"jump drill", "punish drill", "free drill", "0.14.0", "trader"};
+			"jump drill", "punish drill", "free drill", "0.14.0", "trader", "jump-in drill"};
 	/** Ticks it stood at the edge of the reach of an opponent whose sword was ready; see EdgeHold. */
 	private int edgeTicks;
 	private boolean stepBackAtAction;
@@ -231,6 +271,11 @@ abstract class Trainer implements AgentSession {
 	static final int KIND_WHIFFER = 13;
 	/** Carpet PvP's own fighter, an opponent not written here; see {@code Config.outsideShare}. */
 	static final int KIND_OUTSIDE = 14;
+	/**
+	 * The jump-in drill: an opponent that does one thing, runs and jumps in at it with its sword ready and makes its crit
+	 * on the way down, and the fight ends with that exchange; see {@code Config.jumpInShare} and {@link CritTrade}.
+	 */
+	static final int KIND_JUMPIN = 15;
 	/** Which kind of scripted opponent the running fight is against. */
 	int episodeKind;
 	/** The jumps that are made for it; see {@code JumpIn}. */
@@ -808,6 +853,9 @@ abstract class Trainer implements AgentSession {
 		made.counterCrit(cfg.counterCritRule);
 		made.onlyAtSpentOrFleeing(cfg.jumpAtReadyOnlyFleeing);
 		made.edgeCrit(cfg.edgeCritRule);
+		made.comboJump(cfg.comboJumpRule);
+		made.comboJumpChargeMin(cfg.comboJumpChargeMin);
+		made.clashJump(cfg.clashJumpRule);
 		return made;
 	}
 
@@ -1041,7 +1089,7 @@ abstract class Trainer implements AgentSession {
 	static final float HARD_FLOOR = 0.35f;
 	static final float HARD_CAP = 2f;
 	private static final String[] KIND_NAMES = {"plain", "trader", "runner", "circler", "corner", "no-knockback", "odd", "jumper",
-			"punisher", "backer", "timer", "people", "spacer", "whiffer", "outside"};
+			"punisher", "backer", "timer", "people", "spacer", "whiffer", "outside", "jump-in"};
 	private float spaceLastReach = 99f;
 	/** The opponent's sword when the step being scored was chosen, and on the tick before; see StepFacts.walkedInOnCooldown. */
 	private float oppChargeAtAction = 1f;
@@ -1314,7 +1362,7 @@ abstract class Trainer implements AgentSession {
 
 	/** The most ticks the running episode may last. */
 	int episodeLimit() {
-		return episodeDrill ? stage.drillTicks : episodeCritDrill ? CRIT_DRILL_TICKS : stage.episodeTicks;
+		return episodeDrill ? stage.drillTicks : episodeCritDrill ? CRIT_DRILL_TICKS : episodeKind == KIND_JUMPIN ? cfg.jumpInTicks : stage.episodeTicks;
 	}
 
 	/**
@@ -1577,7 +1625,7 @@ abstract class Trainer implements AgentSession {
 				int episodeTicks = episodeLimit();
 				// A fight to the knockout that reaches its time limit is a draw, and ends there. A drill is
 				// not such a fight: it is simply over.
-				facts.timedOut = !episodeDrill && !episodeCritDrill && stage.koEndsEpisode && !facts.koDealt && !facts.koTaken && episodeTick + 1 >= episodeTicks;
+				facts.timedOut = !episodeDrill && !episodeCritDrill && episodeKind != KIND_JUMPIN && stage.koEndsEpisode && !facts.koDealt && !facts.koTaken && episodeTick + 1 >= episodeTicks;
 				float reward = rewards.step(stage, facts, target);
 				episodeDealt += facts.damageDealt;
 				episodeTaken += facts.damageTaken;
@@ -1594,7 +1642,8 @@ abstract class Trainer implements AgentSession {
 
 				boolean goesOn = fightGoesOn();
 				boolean terminal = stage.koEndsEpisode && (facts.koDealt || facts.koTaken || facts.timedOut);
-				boolean cut = episodeTick >= episodeTicks
+				boolean exchanged = episodeKind == KIND_JUMPIN && jumpInStep(facts);
+				boolean cut = episodeTick >= episodeTicks || exchanged
 						|| rewards.lostTooLong(stage)
 						|| (mode == Mode.TRAIN && learner.rolloutRoom() <= 1)
 						|| cutNow
@@ -1615,6 +1664,9 @@ abstract class Trainer implements AgentSession {
 					demoFightOver();
 				}
 				if (terminal || cut) {
+					if (episodeKind == KIND_JUMPIN) {
+						jumpInEnd();
+					}
 					if (paired != null && !episodeDrill && !episodeCritDrill) {
 						// Every fight of a paired evaluation, the old model's too, with its pair and side; see PairedEval.
 						String kind = episodeVsOldModel ? "the 0.14.0 model" : episodeVsOlder ? "an older copy" : episodeStander ? "stander" : kindName(episodeKind);
@@ -1773,6 +1825,20 @@ abstract class Trainer implements AgentSession {
 				spaceCoolSum += facts.reachDist;
 			}
 		}
+		// An opponent coming in through the air with its sword ready: no swing at it (its crit is let land, and punished),
+		// and no running at it to knock it away, unless that is certain; see CritTrade. Followed on every decision.
+		boolean holdCrit = false;
+		boolean incoming = false;
+		if (cfg.holdOnFallingJumper && !episodeLockedDrill && swingMinCharge() > 0f) {
+			if (critTrade == null) {
+				critTrade = new CritTrade(cfg.holdKnockbackDelay);
+			}
+			holdCrit = critTrade.holds(obs.vec) && ActionSpace.unlocked(keys, ActionSpace.ATTACK);
+			incoming = critTrade.incoming() && !critTrade.knockAway();
+			if (critTrade.knockAway()) {
+				holdCritKnockAways++;
+			}
+		}
 		boolean meet = cfg.meetJumpRule && cfg.answerRule && !episodeLockedDrill && swingMinCharge() > 0f && stage.unlocked(ActionSpace.JUMP)
 				&& ActionSpace.unlocked(keys, ActionSpace.FORWARD) && ActionSpace.unlocked(keys, ActionSpace.SPRINT)
 				&& MeetJump.applies(obs.vec, cfg.meetWhenComing) && (jumpIn == null || jumpIn.kind() == JumpIn.NONE);
@@ -1782,13 +1848,30 @@ abstract class Trainer implements AgentSession {
 		boolean answer = owes && when == AnswerRule.NOW;
 		boolean keep = owes && when != AnswerRule.NOW;
 		boolean letGo = owes && when == AnswerRule.LET_GO;
+		// Hit by a jumper's crit (or the one it held its swing for): the punish crit at once; see CritTrade.punish.
+		int punish = CritTrade.NONE;
+		if (cfg.instantPunish && critTrade != null && !episodeLockedDrill && (critTrade.heldWithin(PUNISH_AFTER_HELD_TICKS) || critTrade.jumperHit())
+				&& AnswerRule.owesAnAnswer(obs.vec) && (!BackNudge.inCombo(obs.vec) || punishMemory.proven())) {
+			punish = critTrade.punish(obs.vec);
+		}
+		if (punish != CritTrade.NONE) {
+			answer = owes && punish == CritTrade.SWING;
+			keep = owes && !answer;
+			letGo = false;
+			instantPunishTicks++;
+		}
+		if (holdCrit && punish == CritTrade.NONE) {
+			answer = false;
+			keep = owes;
+			letGo = false;
+		}
 		answerAtAction = answer;
 		// With Config.answerNudge the rule pushes the network's swing instead of pressing it.
 		boolean nudged = owes && cfg.answerNudge > 0f;
-		if (owes && !nudged) {
+		if (owes && !nudged || holdCrit || punish != CritTrade.NONE) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 		}
-		if (letGo) {
+		if (letGo || punish != CritTrade.NONE && punish != CritTrade.WAIT) {
 			keys &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
 		}
 		// A hit of a combo it is taking: it jumps with it, W and the sprint key down; see JumpReset.
@@ -1817,7 +1900,7 @@ abstract class Trainer implements AgentSession {
 			}
 			reset = jumpReset.plan(obs.vec, keys, hitNow);
 		}
-		if (reset != 0 || letGo) {
+		if (reset != 0 || letGo || punish != CritTrade.NONE) {
 			// The jump made with a hit, and the critical hit it is about to make, come first.
 			meet = false;
 		}
@@ -1848,7 +1931,7 @@ abstract class Trainer implements AgentSession {
 		}
 		// Just out of reach of an opponent whose sword is ready, it does not walk in; see EdgeHold.
 		boolean held = dev.swordai.core.rl.Tactic.holdsEdge(tactic, cfg.edgeHoldRule) && !episodeLockedDrill && edgeHold.plan(obs.vec);
-		boolean hold = held && !owes && !backOut && reset == 0 && !dodge && !meet && !letGo
+		boolean hold = held && !owes && !backOut && reset == 0 && !dodge && !meet && !letGo && !(cfg.clashJumpRule && incoming)
 				&& ActionSpace.unlocked(keys, ActionSpace.FORWARD) && ActionSpace.unlocked(keys, ActionSpace.SPRINT)
 				&& (jumpIn == null || jumpIn.kind() == JumpIn.NONE);
 		if (hold) {
@@ -1872,17 +1955,22 @@ abstract class Trainer implements AgentSession {
 				jumpIn = newJumpIn();
 			}
 			jumpIn.counterCrit(dev.swordai.core.rl.Tactic.counters(tactic, cfg.counterCritRule));
-			jump = jumpIn.plan(obs.vec, keys, crosshairOnOpponent(), owes || backOut || reset != 0 || meet || dodge || hold, dealtRow);
+			jump = jumpIn.plan(obs.vec, keys, crosshairOnOpponent(), owes || backOut || reset != 0 || meet || dodge || hold || punish != CritTrade.NONE, dealtRow);
 			if (jumpIn.hopWhy() >= 0) {
 				hopWhy[jumpIn.hopWhy()]++;
 			}
 			keys = JumpIn.keys(keys, jump);
 			ruleJumpAtAction = jumpIn.tookOff();
+			if (ruleJumpAtAction == JumpIn.CLASH) {
+				clashJumps++;
+			}
 		}
 		if (jumpReset != null && jumpReset.tookOff()) {
 			ruleJumpAtAction = JumpReset.KIND;
 		}
-		boolean meetSwing = meet && meetGround && !owes && chargeAtClick >= ruleSwingCharge() && crosshairOnOpponent() && ActionSpace.unlocked(keys, ActionSpace.ATTACK);
+		// Run at, but not hit to knock away where its crit comes down anyway: the walk in keeps it in reach for the punish
+		// crit (23 Oct drill: with the walk in held back too, 0 dealt and 21 taken in 40% of the fights).
+		boolean meetSwing = meet && meetGround && !owes && !holdCrit && chargeAtClick >= ruleSwingCharge() && crosshairOnOpponent() && ActionSpace.unlocked(keys, ActionSpace.ATTACK);
 		if (meet) {
 			keys &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
 			meetTicks++;
@@ -2047,6 +2135,17 @@ abstract class Trainer implements AgentSession {
 			answerAtAction = true;
 			forcedAnswers++;
 		}
+		if (holdCrit && (jump & JumpIn.SWING) == 0) {
+			action[ActionSpace.ATTACK] = 0;
+			holdCritTicks++;
+		}
+		if (punish == CritTrade.WAIT) {
+			action[ActionSpace.ATTACK] = 0;
+		} else if (punish != CritTrade.NONE) {
+			action[ActionSpace.FORWARD] = punish == CritTrade.LET_GO ? 0 : 1;
+			action[ActionSpace.SPRINT] = 0;
+			action[ActionSpace.ATTACK] = answer ? 1 : 0;
+		}
 		if (aim) {
 			action[ActionSpace.YAW] = aimRule.yawBin();
 			action[ActionSpace.PITCH] = aimRule.pitchBin();
@@ -2078,7 +2177,9 @@ abstract class Trainer implements AgentSession {
 			applyAction(action, motor.yawRate(), motor.pitchRate());
 		}
 		if (trace.on()) {
-			trace.tick(traceLine(truth, tactic, answer, keep, meet, meetSwing, reset, aside, backOut, step, dodge, hold, jump, owes));
+			String extra = (holdCrit ? "holdcrit " : "") + (punish == CritTrade.LET_GO ? "p-letgo " : punish == CritTrade.WALK ? "p-walk "
+					: punish == CritTrade.SWING ? "p-swing " : punish == CritTrade.WAIT ? "p-wait " : "");
+			trace.tick(traceLine(truth, tactic, answer, keep, meet, meetSwing, reset, aside, backOut, step, dodge, hold, jump, owes, extra));
 		}
 		System.arraycopy(action, 0, lastAction, 0, ActionSpace.HEADS);
 		hasLastAction = true;
@@ -2093,7 +2194,7 @@ abstract class Trainer implements AgentSession {
 
 	/** One tick of the trace: the state the step was chosen in, what was chosen and by what, and what the last tick brought. */
 	private String traceLine(Truth truth, int tactic, boolean answer, boolean keep, boolean meet, boolean meetSwing, int reset, int aside, boolean backOut,
-			int step, boolean dodge, boolean hold, int jump, boolean owes) {
+			int step, boolean dodge, boolean hold, int jump, boolean owes, String extra) {
 		float[] v = obs.vec;
 		int sc = dev.swordai.core.rl.ObsSpec.VEC_SCALARS;
 		float scale = dev.swordai.core.env.BodyState.VELOCITY_SCALE;
@@ -2119,6 +2220,7 @@ abstract class Trainer implements AgentSession {
 		if (dodge) rules.append("dodge ");
 		if (hold) rules.append("edgehold ");
 		if (jump != 0 || jumpIn != null && jumpIn.kind() != JumpIn.NONE) rules.append("jumpin:").append(jumpIn == null ? 0 : jumpIn.kind()).append(' ');
+		rules.append(extra);
 		StringBuilder ev = new StringBuilder();
 		if (facts.hitsDealt > 0) {
 			ev.append(String.format(Locale.ROOT, "HIT %s%.1f ", facts.critDealt ? "CRIT " : facts.sprintHit ? "sprint " : "", facts.damageDealt));
@@ -2136,7 +2238,7 @@ abstract class Trainer implements AgentSession {
 	}
 
 	private static float[] initialKindLoss() {
-		float[] f = new float[KIND_OUTSIDE + 1];
+		float[] f = new float[KIND_JUMPIN + 1];
 		java.util.Arrays.fill(f, 0.5f);
 		return f;
 	}
@@ -2178,6 +2280,7 @@ abstract class Trainer implements AgentSession {
 			case KIND_SPACER -> spacerTally;
 			case KIND_WHIFFER -> whifferTally;
 			case KIND_OUTSIDE -> outsideTally;
+			case KIND_JUMPIN -> jumpInTally;
 			default -> null;
 		};
 	}
@@ -2199,7 +2302,7 @@ abstract class Trainer implements AgentSession {
 		if (lostCases == null) {
 			lostCases = SwordFiles.loadLostCases();
 		}
-		if (cfg.replayLostShare > 0f && rng.nextFloat() < cfg.replayLostShare) {
+		if (episodeKind != KIND_JUMPIN && cfg.replayLostShare > 0f && rng.nextFloat() < cfg.replayLostShare) {
 			lostCases.byPotential = cfg.replayByPotential;
 			dev.swordai.core.curriculum.LostCases.Case c = lostCases.pick(rng, episodeStageIndex);
 			if (c != null) {
@@ -2217,7 +2320,7 @@ abstract class Trainer implements AgentSession {
 				return;
 			}
 		}
-		if (cfg.mutateShare > 0f && rng.nextFloat() < cfg.mutateShare) {
+		if (episodeKind != KIND_JUMPIN && cfg.mutateShare > 0f && rng.nextFloat() < cfg.mutateShare) {
 			// A fight close to one it lost or only just beat: see LostCases.mutate.
 			dev.swordai.core.curriculum.LostCases.Case from = lostCases.pickToMutate(rng, episodeStageIndex);
 			if (from != null) {
@@ -2294,7 +2397,9 @@ abstract class Trainer implements AgentSession {
 		if (trace.on()) {
 			trace.end(SwordFiles.dir().resolve("traces"), kindName(episodeKind), episodeCase.seed, episodeDealt, episodeTaken, episodeTicksCounted);
 		}
-		if (episodeReplay) {
+		if (episodeKind == KIND_JUMPIN) {
+			// A drill of one exchange: nothing to keep.
+		} else if (episodeReplay) {
 			lostCases.replayed(episodeCase, episodeDealt, episodeTaken, episodeTicksCounted, knockedOut);
 		} else {
 			if (episodePlan != null && !Float.isNaN(episodePlan.usedYaw)) {
@@ -2304,6 +2409,97 @@ abstract class Trainer implements AgentSession {
 			lostCases.freshFight(episodeCase, episodeDealt, episodeTaken, episodeTicksCounted, knockedOut);
 		}
 		episodeCase = null;
+	}
+
+	/** The crit stage, where the jump-in drill is played; -1 if there is none before the current one. */
+	private int jumpInStage() {
+		for (int i = 0; i < curriculum.stageCount() && i <= curriculum.stageIndex(); i++) {
+			if ("Crits".equals(curriculum.stage(i).name)) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	/**
+	 * One step of the jump-in drill: whether its exchange is over. That is once both have hit (the fighter's crit for its
+	 * crit, a hit and the crit back, or the crit let land and the punish), once one side's hit has gone unanswered for
+	 * {@link #JUMPIN_SETTLE_TICKS}, or at a second hit taken without one dealt.
+	 */
+	private boolean jumpInStep(StepFacts f) {
+		if (f.hitsTaken > 0) {
+			if (jumpInTakenTick < 0) {
+				jumpInTakenTick = episodeTick;
+				jumpInTakenCrit = f.critsTaken > 0;
+			} else if (jumpInDealtTick < 0) {
+				jumpInTakenTwice = true;
+				return true;
+			}
+		}
+		if (f.hitsDealt > 0 && jumpInDealtTick < 0) {
+			jumpInDealtTick = episodeTick;
+			jumpInDealtCrit = f.critDealt;
+		}
+		if (jumpInTakenTick >= 0 && jumpInDealtTick >= 0) {
+			return true;
+		}
+		int first = Math.max(jumpInTakenTick, jumpInDealtTick);
+		return first >= 0 && episodeTick - first >= JUMPIN_SETTLE_TICKS;
+	}
+
+	/** The jump-in drill's fight is over: how its exchange went is counted. */
+	private void jumpInEnd() {
+		jumpInDrill[JI_FIGHTS]++;
+		jumpInDealtSum += episodeDealt;
+		jumpInTakenSum += episodeTaken;
+		boolean dealt = jumpInDealtTick >= 0;
+		boolean taken = jumpInTakenTick >= 0;
+		if (dealt && taken && jumpInDealtTick == jumpInTakenTick) {
+			jumpInDrill[jumpInDealtCrit && jumpInTakenCrit ? JI_CRIT_FOR_CRIT : JI_TRADE]++;
+		} else if (dealt && taken && jumpInDealtTick < jumpInTakenTick) {
+			jumpInDrill[JI_HIT_BACK]++;
+			if (jumpInTakenCrit) {
+				jumpInDrill[JI_CRIT_BACK]++;
+			}
+		} else if (dealt && taken) {
+			jumpInDrill[JI_PUNISHED]++;
+			if (jumpInDealtCrit) {
+				jumpInDrill[JI_PUNISH_CRIT]++;
+			}
+		} else if (dealt) {
+			jumpInDrill[JI_CLEAN]++;
+		} else if (jumpInTakenTwice) {
+			jumpInDrill[JI_TWICE]++;
+		} else if (taken) {
+			jumpInDrill[JI_UNANSWERED]++;
+		} else {
+			jumpInDrill[JI_NOTHING]++;
+		}
+		jumpInTakenTick = -1;
+		jumpInDealtTick = -1;
+		jumpInTakenCrit = false;
+		jumpInDealtCrit = false;
+		jumpInTakenTwice = false;
+	}
+
+	/** For the log at each update: the jump-in drill and the rules about an opponent coming in; the counts are cleared. */
+	private String jumpInLine() {
+		StringBuilder b = new StringBuilder();
+		for (int i = 0; i < JI_NAMES.length; i++) {
+			b.append(i == 0 ? "" : ", ").append(JI_NAMES[i]).append(' ').append(i == JI_CLASH ? clashJumps : jumpInDrill[i]);
+		}
+		long n = jumpInDrill[JI_FIGHTS];
+		b.append(String.format(Locale.ROOT, " | a drill fight: dealt %.1f, taken %.1f", n == 0 ? 0.0 : jumpInDealtSum / n, n == 0 ? 0.0 : jumpInTakenSum / n));
+		b.append(String.format(Locale.ROOT, " | swing held for one coming in %d ticks, knock-away certain %d ticks, instant punish %d ticks",
+				holdCritTicks, holdCritKnockAways, instantPunishTicks));
+		java.util.Arrays.fill(jumpInDrill, 0);
+		jumpInDealtSum = 0;
+		jumpInTakenSum = 0;
+		clashJumps = 0;
+		holdCritTicks = 0;
+		holdCritKnockAways = 0;
+		instantPunishTicks = 0;
+		return b.toString();
 	}
 
 	/** The name a kind of opponent has in the log. */
@@ -2361,8 +2557,17 @@ abstract class Trainer implements AgentSession {
 			z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
 			z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
 			rng.setSeed(z ^ (z >>> 31));
+			if (paired != null) {
+				// Both sides' action draws from the same seed too; see Learner.seedSampling.
+				learner.seedSampling((z ^ (z >>> 31)) * 0x2545F4914F6CDD1DL);
+			}
 		}
 		spaceLastReach = 99f;
+		jumpInTakenTick = -1;
+		jumpInDealtTick = -1;
+		jumpInTakenCrit = false;
+		jumpInDealtCrit = false;
+		jumpInTakenTwice = false;
 		oppChargeAtAction = 1f;
 		spaceLastOppCharge = 1f;
 		spacePaid = false;
@@ -2380,8 +2585,11 @@ abstract class Trainer implements AgentSession {
 			// A stage set by hand while training runs is taken up here, between fights and updates.
 			reopenHeads();
 		}
-		episodeStageIndex = mode == Mode.TRAIN
-				? curriculum.pickEpisodeStage(rng, cfg.rehearsalProbability, cfg.selfCritShare)
+		// A share of the fights are the jump-in drill, played in the crit stage; see Config.jumpInShare.
+		int critsStage = jumpInStage();
+		boolean jumpInFight = mode == Mode.TRAIN && demo == null && critsStage >= 0 && cfg.jumpInShare > 0f && rng.nextFloat() < cfg.jumpInShare;
+		episodeStageIndex = jumpInFight ? critsStage
+				: mode == Mode.TRAIN ? curriculum.pickEpisodeStage(rng, cfg.rehearsalProbability, cfg.selfCritShare)
 				: curriculum.stageIndex();
 		stage = curriculum.stage(episodeStageIndex);
 		boolean againstItself = BotProfile.SELF.equals(stage.bot.movement);
@@ -2435,6 +2643,10 @@ abstract class Trainer implements AgentSession {
 		if (episodeCritDrill) {
 			episodeDrill = false;
 		}
+		if (jumpInFight) {
+			episodeDrill = false;
+			episodeCritDrill = false;
+		}
 		// Until then the drill is the lesson it is at, with its feet and camera held. Afterwards the
 		// drills go on, so that what they taught is still practised: both of them as they were, and
 		// the punish crit with all its keys as well. (Up to 0.13.2 only that last one went on. The jump
@@ -2478,6 +2690,9 @@ abstract class Trainer implements AgentSession {
 		if (scripted && rng.nextFloat() < outsideChance()) {
 			episodeKind = KIND_OUTSIDE;
 		}
+		if (jumpInFight && scripted) {
+			episodeKind = KIND_JUMPIN;
+		}
 		episodeTrader = episodeKind == KIND_TRADER;
 		episodeStander = false;
 		episodeRunner = episodeKind == KIND_RUNNER;
@@ -2486,7 +2701,7 @@ abstract class Trainer implements AgentSession {
 		// whose whole point is how they are set up.
 		if (scripted && episodeKind != KIND_CIRCLER && episodeKind != KIND_CORNER && episodeKind != KIND_NO_KNOCK
 				&& episodeKind != KIND_JUMPER && episodeKind != KIND_PUNISHER && episodeKind != KIND_TIMER && episodeKind != KIND_PERSON
-				&& episodeKind != KIND_SPACER && episodeKind != KIND_WHIFFER && episodeKind != KIND_OUTSIDE
+				&& episodeKind != KIND_SPACER && episodeKind != KIND_WHIFFER && episodeKind != KIND_OUTSIDE && episodeKind != KIND_JUMPIN
 				&& rng.nextFloat() < stage.randomShare) {
 			randomise(plan.bot, episodeKind == KIND_PLAIN);
 		}
@@ -2693,6 +2908,39 @@ abstract class Trainer implements AgentSession {
 			plan.bot.maxBearingDeg = BotProfile.DRILL_BEARING_DEG;
 			plan.bot.minBearingDeg = 0f;
 			plan.bot.maxPillar = 0;
+		} else if (episodeKind == KIND_JUMPIN) {
+			// It does one thing: from four and a half to six and a half blocks off it runs and jumps in at the fighter with
+			// its sword ready, and makes its crit on the way down, wherever the fighter's hit has put it (the user's friends,
+			// 23 October). The fight is that exchange; see jumpInStep.
+			plan.bot.movement = BotProfile.FIGHT;
+			plan.bot.jumpIn = true;
+			plan.bot.jumpInAlways = true;
+			plan.bot.sprint = true;
+			plan.bot.critChance = 1f;
+			plan.bot.critPress = 1f;
+			plan.bot.punish = false;
+			plan.bot.rushChance = 0f;
+			plan.bot.dodgeChance = 0f;
+			plan.bot.wtap = false;
+			plan.bot.fleeChance = 0f;
+			plan.bot.jumpChance = 0f;
+			plan.bot.jumpResetChance = 0f;
+			plan.bot.antic = "";
+			plan.bot.reactionTicks = 0;
+			plan.bot.aimNoiseDeg = 0.5f + rng.nextFloat();
+			plan.bot.turnRateDeg = 60f;
+			plan.bot.attackChargeMin = 0.95f;
+			plan.bot.preferredRange = 2.9f;
+			plan.bot.followUpTicks = 0;
+			plan.bot.followUpReach = 0f;
+			plan.bot.followUpWhiff = 0f;
+			plan.bot.swingSlip = 0f;
+			plan.bot.farChance = 0f;
+			plan.bot.minDistance = 4.5f;
+			plan.bot.maxDistance = 6.5f;
+			plan.bot.maxBearingDeg = BotProfile.DRILL_BEARING_DEG;
+			plan.bot.minBearingDeg = 0f;
+			plan.bot.maxPillar = 0;
 		} else if (episodeKind == KIND_PUNISHER) {
 			// It fights as the stage's opponent does, and every hit it takes it answers on its way down.
 			plan.bot.punish = true;
@@ -2742,13 +2990,19 @@ abstract class Trainer implements AgentSession {
 			plan.agentLag = Math.min(ReplicaBody.MAX_LAG_TICKS, lag + 1);
 			plan.botLag = lag;
 		}
-		if (episodeKind == KIND_TIMER || episodeKind == KIND_SPACER || episodeKind == KIND_OUTSIDE) {
+		if (episodeKind == KIND_TIMER || episodeKind == KIND_SPACER || episodeKind == KIND_OUTSIDE || episodeKind == KIND_JUMPIN) {
 			// The user's connection and his friend's: 50 to 100 ms each way. What it sees of the opponent
 			// is two or three ticks old, and its hit moves the opponent three to five ticks after it lands.
 			episodeSlow = false;
 			plan.botPing = 3 + rng.nextInt(3);
 			plan.agentLag = 2 + rng.nextInt(2);
 			plan.botLag = 1 + rng.nextInt(2);
+		}
+		plan.agentKnockLag = 0;
+		if (episodeKind == KIND_JUMPIN) {
+			// And a hit moves the fighter itself one or two ticks late, its own way from the server: the time in which the
+			// crit back is there to be made after the opponent's crit (the user, 23 October).
+			plan.agentKnockLag = 1 + rng.nextInt(2);
 		}
 		// In every other fight the opponent also takes less than the full knockback.
 		plan.botKnockback = stage.knockbackMin > 0f && stage.knockbackMin < 1f && rng.nextBoolean()
@@ -2770,6 +3024,9 @@ abstract class Trainer implements AgentSession {
 		} else if (episodeKind == KIND_PERSON) {
 			// As far as that player was seen to go when hit.
 			plan.botKnockback = episodePerson.knockback();
+		} else if (episodeKind == KIND_JUMPIN) {
+			// A server's full knockback, late by the connection drawn above.
+			plan.botKnockback = 1f;
 		} else if (episodeCritDrill) {
 			// The standing opponent stands: a hit does not move it at all, so the next swing can be made
 			// from the same spot, and nothing about it is late. The one that jumps in is not moved either
@@ -2850,12 +3107,18 @@ abstract class Trainer implements AgentSession {
 				jumpReset.newRound();
 			}
 			comboStrafe.reset();
+			if (critTrade != null) {
+				critTrade.reset();
+			}
 		} else {
 			stepBack.reset();
 			if (jumpReset != null) {
 				jumpReset.reset();
 			}
 			comboStrafe.reset();
+			if (critTrade != null) {
+				critTrade.reset();
+			}
 			if (jumpInVsOthers == null) {
 				jumpInVsOthers = newJumpIn();
 			}
@@ -2865,6 +3128,9 @@ abstract class Trainer implements AgentSession {
 		if (paired != null) {
 			// Set when the jump rules were made; the side of this fight may have it otherwise.
 			jumpIn.onlyAtSpentOrFleeing(cfg.jumpAtReadyOnlyFleeing);
+			jumpIn.comboJump(cfg.comboJumpRule);
+			jumpIn.comboJumpChargeMin(cfg.comboJumpChargeMin);
+			jumpIn.clashJump(cfg.clashJumpRule);
 		}
 		edgeHold.reset();
 		tacticClock.reset();
@@ -2919,6 +3185,9 @@ abstract class Trainer implements AgentSession {
 			jumpReset.newRound();
 		}
 		comboStrafe.reset();
+		if (critTrade != null) {
+			critTrade.reset();
+		}
 		episodeSlow = false;
 		critDrillKind = -1;
 		episodeLockedDrill = false;
@@ -3054,7 +3323,7 @@ abstract class Trainer implements AgentSession {
 		if (taskTallies == null) {
 			taskTallies = new Tally[] {tally, rehearsalTally, runnerTally, circlerTally, cornerTally, noKnockTally, oddTally,
 					jumperTally, punisherTally, backerTally, timerTally, personTally, spacerTally, standerTally, whifferTally,
-					outsideTally, replayTally, drillTally, jumpDrillTally, punishDrillTally, freeDrillTally, oldModelTally, traderTally};
+					outsideTally, replayTally, drillTally, jumpDrillTally, punishDrillTally, freeDrillTally, oldModelTally, traderTally, jumpInTally};
 		}
 		Tally t = episodeTally();
 		for (int i = 0; i < taskTallies.length; i++) {
@@ -3124,6 +3393,9 @@ abstract class Trainer implements AgentSession {
 		}
 		if (episodeKind == KIND_OUTSIDE) {
 			return outsideTally;
+		}
+		if (episodeKind == KIND_JUMPIN) {
+			return jumpInTally;
 		}
 		return episodeStageIndex != curriculum.stageIndex() ? rehearsalTally : episodeTrader ? traderTally : tally;
 	}
@@ -3230,6 +3502,7 @@ abstract class Trainer implements AgentSession {
 		standerTally.clear();
 		whifferTally.clear();
 		outsideTally.clear();
+		jumpInTally.clear();
 		replayTally.clear();
 		oldModelTally.clear();
 		if (slowCount.steps > 0) {
@@ -3293,6 +3566,9 @@ abstract class Trainer implements AgentSession {
 				String.format(Locale.ROOT, "%.2f", spaceCoolTicks == 0 ? 0.0 : spaceCoolSum / spaceCoolTicks), spaceCoolTicks, straightTicks, oldModelWins, oldModelLosses,
 				walkedIn[0], walkedIn[1], walkedIn[2], walkedIn[3]);
 		java.util.Arrays.fill(walkedIn, 0);
+		if (cfg.jumpInShare > 0f || cfg.holdOnFallingJumper || cfg.clashJumpRule || cfg.instantPunish) {
+			SwordAi.LOGGER.info("jump-in drill and crit trades: {}", jumpInLine());
+		}
 		if (cfg.comboStrafeRule) {
 			SwordAi.LOGGER.info("out of the line of combos to the side (comboStrafeRule): {} combo hits, A or D held {} ticks", comboStrafeHits, comboStrafeTicks);
 		}

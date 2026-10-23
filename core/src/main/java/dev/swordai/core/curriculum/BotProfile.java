@@ -162,6 +162,12 @@ public final class BotProfile {
 	 */
 	public boolean jumpIn = false;
 	/**
+	 * With {@link #jumpIn}: every attack is that running jump and the critical hit on the way down, whatever the agent is
+	 * doing, from wherever the way down brings the agent into reach; and a hit taken in the air of it does not stop it, the
+	 * swing comes the moment it is coming down in reach. The user's friends, 23 October: what the fighter loses to them.
+	 */
+	public boolean jumpInAlways = false;
+	/**
 	 * Hit by the agent, it keeps its swing for its own way down and makes it a critical hit: the
 	 * punish crit. Where it takes the full knockback the agent is out of its reach by then; where it
 	 * takes part of it (as on a server that hands out less), the agent is right there with its sword
@@ -271,6 +277,7 @@ public final class BotProfile {
 		b.fleeUntilHit = fleeUntilHit;
 		b.holdGround = holdGround;
 		b.jumpIn = jumpIn;
+		b.jumpInAlways = jumpInAlways;
 		b.punish = punish;
 		b.timer = timer;
 		b.spacer = spacer;

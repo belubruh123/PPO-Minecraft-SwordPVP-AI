@@ -551,6 +551,42 @@ public final class Config {
 	 */
 	public boolean edgeCritRule = false;
 	/**
+	 * The combo jump ({@code JumpIn.COMBO}): a few ticks after its own hit, a sprint-jump after the opponent that hit threw
+	 * back and the next hit on the way down, W and the sprint key down all the way. Since 23 October, from the user's own
+	 * recorded fights: they won against the spacer by staying on it (in reach 78% of the time to the fighter's 51%, never
+	 * S, 16.5 jumps of their own a fight to its 2.3) and landed 38 hits a fight to its 30, not by critical hits (1-3%).
+	 */
+	public boolean comboJumpRule = false;
+	/** How far back its sword must be for the combo jump to take off: the user's median 0.32; 0.15 in the first trial was too soon. */
+	public float comboJumpChargeMin = 0.3f;
+	/**
+	 * The share of training episodes against the one that jumps in ({@code BotProfile.jumpInAlways}): a running jump at the
+	 * fighter with its sword ready and the critical hit on the way down, nothing else, and short. The episode ends at the
+	 * fighter's first hit after taking one (its punish), at a second hit taken, or after {@link #jumpInTicks}. The user, 23
+	 * October: this is the one case their friends beat the installed network with, every time; train on it heavily.
+	 */
+	public float jumpInShare = 0f;
+	public int jumpInTicks = 80;
+	/**
+	 * No swing at an opponent in the air with its sword ready, at the top of its jump or coming down, in reach and coming
+	 * in: the hit would not stop its crit (see {@code rl.CritTrade}). The crit is let land, and the punish crit made.
+	 */
+	public boolean holdOnFallingJumper = false;
+	/**
+	 * The clash jump ({@code JumpIn.CLASH}): an opponent jumping in at it with its sword ready, near, is jumped with, and
+	 * the crit made on the way down, crit for crit; the hold rule above is for where it is not in that jump. The user,
+	 * 23 October: both players jump in, and close in their crit's knockback is late, so the fighter's own crit still lands.
+	 */
+	public boolean clashJumpRule = false;
+	/** How many ticks late the hold rule takes a hit's knockback to reach the opponent on a server; see {@code CritTrade.knockAwayCertain}. */
+	public int holdKnockbackDelay = 4;
+	/**
+	 * The punish crit made at once ({@code CritTrade.punish}): the sprint let go of on the tick of the hit, W held without
+	 * it on the way up (drifting back in), the swing on the first tick of the way down. The user, 23 October: "their crit
+	 * will knock you away so the punish crit must be also like them instant".
+	 */
+	public boolean instantPunish = false;
+	/**
 	 * The aim rule ({@code AimRule}) brings the camera level with the fighter's own eye on the opponent (where its body spans
 	 * that height) instead of onto the middle of it: the shortest ray to it, so the most reach. Since 22 October.
 	 */

@@ -31,6 +31,11 @@ public final class Learner implements AutoCloseable {
 	private final Rollout rollout;
 	private final RewardScaler scaler;
 	private final Random rng;
+	/**
+	 * The acting network's own draws, apart from {@link #rng}, which the update uses on its own thread while fights go on:
+	 * see {@link #seedSampling}.
+	 */
+	private final Random sampleRng;
 
 	private final ActorNet.Workspace actWs;
 	private final CriticNet.Workspace valueWs;
@@ -129,6 +134,7 @@ public final class Learner implements AutoCloseable {
 		this.rollout = new Rollout(longestRollout(cfg) + Math.max(0, cfg.rolloutSlack));
 		this.scaler = new RewardScaler(cfg.gamma);
 		this.rng = new Random(seed + 2);
+		this.sampleRng = new Random(seed + 11);
 		this.standInRng = new Random(seed + 3);
 		this.baseRng = new Random(seed + 4);
 		this.actWs = actor.newWorkspace();
@@ -238,7 +244,7 @@ public final class Learner implements AutoCloseable {
 		float bias = swingBias;
 		lastSwingGap = Policy.swingGap(actWs.logits);
 		Policy.pushSwing(actWs.logits, bias);
-		float logp = Policy.sample(actWs.logits, headMask, greedy, record ? recordTemperature : temperature, rng, probs, actionOut);
+		float logp = Policy.sample(actWs.logits, headMask, greedy, record ? recordTemperature : temperature, sampleRng, probs, actionOut);
 		if (!record) {
 			return;
 		}
@@ -379,6 +385,19 @@ public final class Learner implements AutoCloseable {
 		baseWithoutTactics = t == null;
 		baseReader = r;
 		baseReaderWs = r == null ? null : r.newWorkspace();
+	}
+
+	/**
+	 * Paired evaluation (Gemini, 23 October): the acting network's and the compared network's draws for the fight about to
+	 * begin start from the same seed, so that both sides of a pair take the same action wherever their chances are the
+	 * same, and the pair differs only where the networks do (common random numbers). Before, the two drew from streams
+	 * of their own and parted on the first close call: one 30 s spacer pair varied by ~107 net a minute.
+	 */
+	public void seedSampling(long seed) {
+		sampleRng.setSeed(seed);
+		// While an update runs a copy acts in the network's place, with draws of its own.
+		standInRng.setSeed(seed);
+		baseRng.setSeed(seed);
 	}
 
 	/** Chooses an action with the proven network kept by {@link #keepBase}. Nothing is recorded. */

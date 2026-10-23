@@ -14,6 +14,10 @@ import java.util.ArrayDeque;
  *
  * <p>While a fight is on, a hit's knockback on the one opponent is kept here for as many ticks as
  * the fight says and then applied unchanged. Server thread only.
+ *
+ * <p>And the fighter's own, where the fight says so ({@link #setAgent}): on a server its game too hears of a hit a moment
+ * late, and until then it is where it was, in reach of the one that hit it. The user, 23 October: "it kb you away but
+ * because you are charged and it won't suddenly put you out of reach, so you can land a crit on them".
  */
 public final class KnockbackLag {
 	private record Pending(LivingEntity entity, double strength, double x, double z, long due) {
@@ -27,6 +31,9 @@ public final class KnockbackLag {
 	private static long now;
 	private static boolean applying;
 	private static long held;
+	/** The fighter whose own knockback is late, or null; and by how many ticks. */
+	private static volatile LivingEntity agent;
+	private static int agentTicks;
 
 	private KnockbackLag() {
 	}
@@ -43,6 +50,12 @@ public final class KnockbackLag {
 		who = ticks > 0 || scale < 1f ? fighter : null;
 	}
 
+	/** Whether the fighter's own knockback is late from now on, and by how many ticks (0: not). */
+	static void setAgent(LivingEntity fighter, int lagTicks) {
+		agentTicks = Math.max(0, lagTicks);
+		agent = agentTicks > 0 ? fighter : null;
+	}
+
 	/** Once per server tick while the arena runs. */
 	static void tick() {
 		now++;
@@ -56,6 +69,8 @@ public final class KnockbackLag {
 		flush();
 		who = null;
 		scale = 1f;
+		agent = null;
+		agentTicks = 0;
 	}
 
 	/** How many knockbacks have been held back since the game started. */
@@ -65,7 +80,15 @@ public final class KnockbackLag {
 
 	/** Asked just before a knockback is applied. True: it has been kept and comes later; nothing is to be done now. */
 	public static boolean hold(LivingEntity entity, double strength, double x, double z) {
-		if (entity != who || applying) {
+		if (applying) {
+			return false;
+		}
+		if (entity == agent && entity != who) {
+			PENDING.addLast(new Pending(entity, strength, x, z, now + agentTicks));
+			held++;
+			return true;
+		}
+		if (entity != who) {
 			return false;
 		}
 		if (ticks == 0) {
@@ -91,6 +114,11 @@ public final class KnockbackLag {
 		applying = true;
 		try {
 			p.entity.knockback(p.strength, p.x, p.z);
+			if (p.entity == agent) {
+				// A player moves itself: the knockback reaches its game only with the motion the server sends it, and the
+				// one sent on the tick of the hit went out without it.
+				p.entity.hurtMarked = true;
+			}
 		} finally {
 			applying = false;
 		}

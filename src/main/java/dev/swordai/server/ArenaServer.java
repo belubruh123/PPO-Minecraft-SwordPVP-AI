@@ -465,6 +465,7 @@ public final class ArenaServer {
 		s.brain.setProfile(plan.bot);
 		s.brain.setLag(plan.botLag);
 		KnockbackLag.set(s.bot, plan.botPing, plan.botKnockback);
+		KnockbackLag.setAgent(agent, plan.agentKnockLag);
 		s.setIdleNow(false);
 		s.rival = s.rivals.length == 0 ? null : s.rivals[Math.max(0, Math.min(s.rivals.length - 1, plan.rivalIndex))];
 		s.rivalPlays = s.rival != null && BotProfile.SELF.equals(plan.bot.movement);

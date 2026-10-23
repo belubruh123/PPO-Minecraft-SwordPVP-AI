@@ -25,6 +25,8 @@ public final class EpisodePlan {
 	public float agentStall;
 	/** The opponent's own lag: a hit knocks it back this many ticks late. */
 	public int botPing;
+	/** And the fighter's own: a hit knocks it back this many ticks late (its game hears of it late); see KnockbackLag.setAgent. */
+	public int agentKnockLag;
 	/** The share of a hit's knockback the opponent takes in this fight; 1 is all of it. */
 	public float botKnockback = 1f;
 	public int agentStallTicks;

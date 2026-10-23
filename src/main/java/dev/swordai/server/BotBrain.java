@@ -369,8 +369,9 @@ public final class BotBrain {
 		}
 		agentTicksSeen = agentTicks;
 		if (profile.jumpIn && critJump < 0 && punishTicks <= 0 && !fleeing) {
-			// Which hit its next one is, is decided by what the agent is doing right now.
-			critPlan = agentAway >= RUN_JUMP_AT && reachDist > RUN_JUMP_BEYOND;
+			// Which hit its next one is, is decided by what the agent is doing right now; for the one that only jumps in, it
+			// is always the jump.
+			critPlan = profile.jumpInAlways ? reachDist > CRIT_CLOSE : agentAway >= RUN_JUMP_AT && reachDist > RUN_JUMP_BEYOND;
 		}
 
 		// Desired walking direction in world space.

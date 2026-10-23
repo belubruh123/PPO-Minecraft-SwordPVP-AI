@@ -64,6 +64,17 @@ public final class JumpIn {
 	 * comes into reach; see {@link #edgeCrit}.
 	 */
 	public static final int EDGE = 7;
+	/**
+	 * The combo jump: a few ticks after a hit of its own has landed, with the sword a third of the way back, a sprint-jump
+	 * after the opponent that hit has thrown back, W and the sprint key down all the way, and the next hit on the way
+	 * down; see {@link #comboJump}.
+	 */
+	public static final int COMBO = 8;
+	/**
+	 * The clash: an opponent coming in at it through the air with its sword ready, near, and the fighter on the ground with
+	 * its own nearly back. It jumps too, the sprint let go of, and makes its crit on the way down; see {@link #clashJump}.
+	 */
+	public static final int CLASH = 9;
 
 	// What a tick is to do, as bit flags.
 	/** The jump key is pressed. */
@@ -284,6 +295,41 @@ public final class JumpIn {
 	static final float EDGE_APPROACH = 4.6f;
 	static final float EDGE_STOP_AT = 3.12f;
 	static final float EDGE_STOP_FACTOR = 1.2f;
+	/**
+	 * The combo jump ({@link #COMBO}), as the user makes it in their 29 won fights against the spacer (recorded fights,
+	 * 23 October): 16.5 jumps of their own a fight, taken a median 3 ticks after their own hit, the sword at 0.32, the
+	 * opponent 2.5 blocks off (10-90%: 1.3 to 3.9) and going away at 0.14 a tick; W and the sprint key down all the way;
+	 * 72% of them land the next hit, on the way down. The fighter made 2.3 jumps of its own a fight against the same
+	 * opponent and landed 29.6 hits to their 38.2.
+	 */
+	static final int COMBO_AFTER_MIN = 1;
+	static final int COMBO_AFTER_MAX = 8;
+	static final float COMBO_FROM = 1.6f;
+	static final float COMBO_TO = 3.8f;
+	/**
+	 * The sword at least this far back at the take-off ({@link #comboJumpChargeMin}), so that it is back in the middle of the
+	 * way down, and no further than {@link #COMBO_CHARGE_MAX}: a sword that is back already is for a hit from the ground.
+	 * The user takes off at a median 0.32. The first trial (23 October) took off from 0.15, one or two ticks after the hit:
+	 * the sword came back only as the fighter landed, in front of an opponent whose sword was ready, which hit it first on
+	 * 49% of the jumps (13% landed a hit in the air); against the spacer -60 net a minute.
+	 */
+	static final float COMBO_CHARGE_MIN = 0.3f;
+	static final float COMBO_CHARGE_MAX = 0.75f;
+	/** Not hit for this many ticks. */
+	static final int COMBO_UNHIT_TICKS = 3;
+	/** Hit in the air of one, left alone for five seconds, and for half a minute after three of those. */
+	static final int COMBO_OFF_TICKS = 100;
+	static final int COMBO_OFF_LONG_TICKS = 600;
+	static final int COMBO_BURNS_LONG = 3;
+	/**
+	 * The clash ({@link #CLASH}): the opponent within this, eye to front, its sword at least {@link #CLASH_OPP_READY} back,
+	 * off the ground and coming at the fighter at {@link #CLASH_TOWARD} a tick or more; the fighter's own sword at least
+	 * {@link #CLASH_CHARGE} back, which is all the way back by the top of its jump.
+	 */
+	static final float CLASH_TO = 4.5f;
+	static final float CLASH_OPP_READY = 0.9f;
+	static final float CLASH_TOWARD = 0.05f;
+	static final float CLASH_CHARGE = 0.55f;
 
 	private final boolean chase;
 	/** See {@link #chaseInCombo}. */
@@ -302,6 +348,13 @@ public final class JumpIn {
 	private int edgeBurns;
 	/** The crit in it is in was taken from a stand ({@link #EDGE_STAND_FROM}). */
 	private boolean edgeStand;
+	/** See {@link #comboJump}. */
+	private boolean comboJumps;
+	private float comboChargeMin = COMBO_CHARGE_MIN;
+	private int comboOff;
+	private int comboBurns;
+	/** See {@link #clashJump}. */
+	private boolean clash;
 	private int counterOff;
 	private int counterBurns;
 	private final boolean face;
@@ -402,6 +455,36 @@ public final class JumpIn {
 		edge = on;
 	}
 
+	/**
+	 * Whether it makes the combo jump ({@link #COMBO}): a few ticks after its own hit, a sprint-jump after the opponent and
+	 * the next hit on the way down, as the user does; see {@code Config.comboJumpRule}. Where the fighter let an opponent
+	 * its hit had thrown back go and waited, the user goes after it in the air and keeps the combo going.
+	 */
+	public void comboJump(boolean on) {
+		comboJumps = on;
+	}
+
+	/**
+	 * Whether it jumps with an opponent that jumps in at it ({@link #CLASH}); see {@code Config.clashJumpRule}. The user,
+	 * 23 October: a player's first move is the jump in for the crit, and the other's is the same, so the two jump in
+	 * together, and close in the crit for crit is the better of it: the opponent's crit throws the fighter back, but late,
+	 * and its own sword is back, so it is still in reach for its own. Before this the fighter met that jump from the ground
+	 * with a hit to knock it away (the meet rule), and that hit did not stop the crit coming down on it.
+	 */
+	public void clashJump(boolean on) {
+		clash = on;
+	}
+
+	/** Whether it makes the clash jump; see {@link #clashJump}. */
+	public boolean clashes() {
+		return clash;
+	}
+
+	/** How far back the sword must be for the combo jump to take off; see {@link #COMBO_CHARGE_MIN} and {@code Config.comboJumpChargeMin}. */
+	public void comboJumpChargeMin(float charge) {
+		comboChargeMin = charge;
+	}
+
 	public void reset() {
 		kind = NONE;
 		airborne = false;
@@ -424,6 +507,8 @@ public final class JumpIn {
 		counterBurns = 0;
 		edgeOff = 0;
 		edgeBurns = 0;
+		comboOff = 0;
+		comboBurns = 0;
 		oppGroundTicks = 0;
 		unhitTicks = FACE_UNHIT_TICKS;
 		stayJudged = false;
@@ -453,7 +538,11 @@ public final class JumpIn {
 		int counterBurnsWere = counterBurns;
 		int edgeWas = edgeOff;
 		int edgeBurnsWere = edgeBurns;
+		int comboWas = comboOff;
+		int comboBurnsWere = comboBurns;
 		reset();
+		comboOff = comboWas;
+		comboBurns = comboBurnsWere;
 		counterOff = counterWas;
 		counterBurns = counterBurnsWere;
 		edgeOff = edgeWas;
@@ -562,6 +651,9 @@ public final class JumpIn {
 		if (edgeOff > 0) {
 			edgeOff--;
 		}
+		if (comboOff > 0 && --comboOff == 0 && comboBurns >= COMBO_BURNS_LONG) {
+			comboBurns = 0;
+		}
 		if (kind == EDGE && (busy || unhitTicks == 0)) {
 			// Hit in the air of it: a trade if its own hit has landed in the last three ticks (the crit in is a crit for a
 			// hit), and too late if not.
@@ -584,6 +676,10 @@ public final class JumpIn {
 					hopOff = ++hopBurns >= HOP_BURNS_LONG ? HOP_OFF_LONG_TICKS : HOP_OFF_TICKS;
 				} else if (kind == COUNTER) {
 					counterOff = ++counterBurns >= 2 ? OFF_FOR_GOOD_TICKS : CHASE_OFF_TICKS;
+				} else if (kind == COMBO) {
+					comboOff = ++comboBurns >= COMBO_BURNS_LONG ? COMBO_OFF_LONG_TICKS : COMBO_OFF_TICKS;
+				} else if (kind == CLASH) {
+					// Hit in the air of a clash is what a clash is: the crit back is the punish crit, the swing it owes.
 				} else if (kind == UPPER) {
 					// The uppercut is counted by itself: it is made in the middle of a combo, at an opponent
 					// that has just been hit, and what that opponent does about it says nothing about a
@@ -607,7 +703,7 @@ public final class JumpIn {
 				}
 				kind = NONE;
 			} else {
-				return kind == FACE || kind == EDGE && edgeStand ? LET_GO | NO_SWING : RUN | NO_SWING;
+				return kind == FACE || kind == CLASH || kind == EDGE && edgeStand ? LET_GO | NO_SWING : RUN | NO_SWING;
 			}
 		}
 		if (!ground || busy || !seen || !ActionSpace.unlocked(keys, ActionSpace.JUMP)) {
@@ -616,6 +712,13 @@ public final class JumpIn {
 		float d = distance(vec);
 		float side = Math.abs(vec[ObsSpec.VEC_STATS + ObsSpec.ST_ANY_X]);
 		boolean comboed = BackNudge.inCombo(vec);
+		// The clash: an opponent jumping in at it with its sword ready is jumped with, before anything else.
+		float oppToward = -(scalar(vec, ObsSpec.SC_REL_VEL_FORWARD) + scalar(vec, ObsSpec.SC_VEL_FORWARD)) / BodyState.VELOCITY_SCALE;
+		if (clash && !comboed && oppGroundTicks == 0 && scalar(vec, ObsSpec.SC_OPP_CHARGE) >= CLASH_OPP_READY && charge >= CLASH_CHARGE
+				&& oppToward >= CLASH_TOWARD && d <= CLASH_TO && side <= SIDE_MOST) {
+			start(CLASH);
+			return JUMP | LET_GO | NO_SWING;
+		}
 		if (face && faceOff <= 0 && unhitTicks >= FACE_UNHIT_TICKS && stayed() && !comboed && d <= FACE_WITHIN && side <= FACE_SIDE_MOST
 				&& charge >= JumpNudge.MIN_CHARGE && charge <= JumpNudge.MAX_CHARGE
 				&& sinceDealt >= fade(FACE_AFTER_HIT_TICKS)) {
@@ -632,8 +735,15 @@ public final class JumpIn {
 			start(UPPER);
 			return JUMP | RUN | NO_SWING;
 		}
+		// The combo jump: a few ticks after its own hit, the sword on its way back, after the opponent that hit threw back.
+		if (comboJumps && comboOff <= 0 && !comboed && unhitTicks >= COMBO_UNHIT_TICKS && side <= SIDE_MOST
+				&& sinceDealt <= fade(COMBO_AFTER_MIN) && sinceDealt >= fade(COMBO_AFTER_MAX)
+				&& charge >= comboChargeMin && charge <= COMBO_CHARGE_MAX && d >= COMBO_FROM && d <= COMBO_TO) {
+			start(COMBO);
+			return JUMP | RUN | NO_SWING;
+		}
 		// How fast the opponent itself is going away from the fighter, blocks a tick.
-		float away = (scalar(vec, ObsSpec.SC_REL_VEL_FORWARD) + scalar(vec, ObsSpec.SC_VEL_FORWARD)) / BodyState.VELOCITY_SCALE;
+		float away =(scalar(vec, ObsSpec.SC_REL_VEL_FORWARD) + scalar(vec, ObsSpec.SC_VEL_FORWARD)) / BodyState.VELOCITY_SCALE;
 		boolean longAfterHit = sinceDealt <= fade(CHASE_AFTER_HIT_TICKS);
 		// Not at an opponent that stands its ground with its sword ready, if so set.
 		boolean jumpable = !spentOrFleeing || scalar(vec, ObsSpec.SC_OPP_CHARGE) <= OPP_SPENT
@@ -727,6 +837,14 @@ public final class JumpIn {
 		if (kind == FACE) {
 			// W and the sprint key stay up from the take-off; the swing is for the way down.
 			return NO_JUMP | LET_GO | (falling && onOpponent && !sprinting && canSwing ? SWING : NO_SWING);
+		}
+		if (kind == CLASH) {
+			// The sprint is off from the take-off; W alone holds it in against the hit that is coming, and the swing on the way down.
+			return NO_JUMP | WALK | (falling && onOpponent && !sprinting && canSwing ? SWING : NO_SWING);
+		}
+		if (kind == COMBO) {
+			// At a run all the way, as the user goes; the hit on the way down, a sprint hit that throws the opponent back again.
+			return NO_JUMP | RUN | (falling && onOpponent && canSwing ? SWING : NO_SWING);
 		}
 		if (!falling) {
 			if (kind == UPPER && onOpponent && sprinting && canSwing) {

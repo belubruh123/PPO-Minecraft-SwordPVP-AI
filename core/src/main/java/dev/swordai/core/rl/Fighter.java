@@ -49,6 +49,12 @@ public final class Fighter {
 	/** The step back after a hit of its own that has not sent the opponent away; see {@link StepBack}. */
 	private final StepBack stepBack;
 	private final boolean meetRule;
+	/** No swing at an opponent coming in through the air with its sword ready; see {@link CritTrade}. Null where that is not a rule. */
+	private final CritTrade critTrade;
+	/** The punish crit made at once after the crit that swing was held for; see {@code Config.instantPunish}. */
+	private final boolean instantPunish;
+	/** A hit taken within this many decisions of the swing having been held for an opponent coming in is the crit it was held for. */
+	static final int PUNISH_AFTER_HELD_TICKS = 10;
 	private final boolean punishWait;
 	private final float keepWithin;
 	private final boolean punishInCombo;
@@ -173,7 +179,7 @@ public final class Fighter {
 		this.tacticOnEvents = cfg.tacticOnEvents;
 		this.oppWindow = learner.playsReader() ? new OpponentReader.Window() : null;
 		boolean jumps = ActionSpace.unlocked(headMask, ActionSpace.JUMP) && ActionSpace.unlocked(headMask, ActionSpace.SPRINT);
-		this.jumpIn = jumps && (cfg.chaseRule || cfg.faceRule || cfg.uppercutChance > 0f || cfg.counterCritRule || cfg.edgeCritRule || tactics)
+		this.jumpIn = jumps && (cfg.chaseRule || cfg.faceRule || cfg.uppercutChance > 0f || cfg.counterCritRule || cfg.edgeCritRule || cfg.clashJumpRule || tactics)
 				? new JumpIn(cfg.chaseRule, cfg.faceRule, cfg.uppercutChance, cfg.chaseClosingMost, seed ^ 0x5eedL) : null;
 		if (jumpIn != null) {
 			jumpIn.chaseInCombo(cfg.chaseInCombo);
@@ -181,6 +187,9 @@ public final class Fighter {
 			jumpIn.counterCrit(cfg.counterCritRule);
 			jumpIn.onlyAtSpentOrFleeing(cfg.jumpAtReadyOnlyFleeing);
 			jumpIn.edgeCrit(cfg.edgeCritRule);
+			jumpIn.comboJump(cfg.comboJumpRule);
+			jumpIn.comboJumpChargeMin(cfg.comboJumpChargeMin);
+			jumpIn.clashJump(cfg.clashJumpRule);
 		}
 		this.jumpReset = jumps && cfg.jumpResetChance > 0f && ActionSpace.unlocked(headMask, ActionSpace.FORWARD)
 				? new JumpReset(cfg.jumpResetChance, seed ^ 0x7e5e7L) : null;
@@ -197,6 +206,9 @@ public final class Fighter {
 		this.dodgeJump = cfg.dodgeJumpRule && cfg.answerRule && ActionSpace.unlocked(headMask, ActionSpace.FORWARD);
 		this.meetRule = cfg.meetJumpRule && cfg.answerRule && ActionSpace.unlocked(headMask, ActionSpace.FORWARD)
 				&& ActionSpace.unlocked(headMask, ActionSpace.SPRINT) && ActionSpace.unlocked(headMask, ActionSpace.ATTACK);
+		this.critTrade = cfg.holdOnFallingJumper && ActionSpace.unlocked(headMask, ActionSpace.ATTACK) ? new CritTrade(cfg.holdKnockbackDelay) : null;
+		this.instantPunish = cfg.instantPunish && critTrade != null && ActionSpace.unlocked(headMask, ActionSpace.FORWARD)
+				&& ActionSpace.unlocked(headMask, ActionSpace.SPRINT);
 		this.stepBack = (cfg.stepBackRule || tactics) && ActionSpace.unlocked(headMask, ActionSpace.FORWARD) && ActionSpace.unlocked(headMask, ActionSpace.SPRINT)
 				? new StepBack() : null;
 		this.farRest = cfg.farRestRule && ActionSpace.unlocked(headMask, ActionSpace.FORWARD);
@@ -245,6 +257,9 @@ public final class Fighter {
 		}
 		if (comboStrafe != null) {
 			comboStrafe.reset();
+		}
+		if (critTrade != null) {
+			critTrade.reset();
 		}
 		if (stepBack != null) {
 			// The opponent of the next round is the one of the last.
@@ -350,6 +365,10 @@ public final class Fighter {
 				&& AnswerRule.applies(obs.vec, crosshairOnOpponent, answerSpareBacking);
 		// In the air it is kept for the way down and made as a critical hit; see AnswerRule.inTheAir.
 		fallWatch.tick(obs.vec);
+		// An opponent coming in through the air with its sword ready: no swing at it (its crit is let land, and punished),
+		// and no running at it to knock it away, unless that is certain; see CritTrade. Followed on every decision.
+		boolean holdCrit = critTrade != null && swingMinCharge > 0f && critTrade.holds(obs.vec) && ActionSpace.unlocked(keys, ActionSpace.ATTACK);
+		boolean incoming = critTrade != null && critTrade.incoming() && !critTrade.knockAway();
 		// An opponent coming at it through the air, still on its way up, is run at and hit at once; see MeetJump.
 		boolean meet = meetRule && swingMinCharge > 0f && MeetJump.applies(obs.vec, meetWhenComing) && (jumpIn == null || jumpIn.kind() == JumpIn.NONE);
 		// On the ground the swing is made at once; in the air it stays the swing it would have been.
@@ -358,15 +377,34 @@ public final class Fighter {
 		boolean answer = owes && when == AnswerRule.NOW;
 		boolean keep = owes && when != AnswerRule.NOW;
 		boolean letGo = owes && when == AnswerRule.LET_GO;
+		// Hit by a jumper's crit (or the one it held its swing for): the punish crit at once; see CritTrade.punish.
+		int punish = CritTrade.NONE;
+		if (instantPunish && (critTrade.heldWithin(PUNISH_AFTER_HELD_TICKS) || critTrade.jumperHit()) && AnswerRule.owesAnAnswer(obs.vec)
+				&& (!BackNudge.inCombo(obs.vec) || fallWatch.proven())) {
+			punish = critTrade.punish(obs.vec);
+		}
+		if (punish != CritTrade.NONE) {
+			answer = owes && punish == CritTrade.SWING;
+			keep = owes && !answer;
+			letGo = false;
+		}
+		if (holdCrit && punish == CritTrade.NONE) {
+			answer = false;
+			keep = owes;
+			letGo = false;
+		}
 		answerForced = answer;
 		// With Config.answerNudge the rule pushes the network's swing instead of pressing it.
-		boolean nudged = owes && answerNudge > 0f;
-		if (owes && !nudged) {
+		boolean nudged = owes && answerNudge > 0f && punish == CritTrade.NONE && !holdCrit;
+		if (owes && !nudged || holdCrit || punish != CritTrade.NONE) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
+		}
+		if (punish != CritTrade.NONE && punish != CritTrade.WAIT) {
+			keys &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
 		}
 		// A hit of a combo it is taking: it jumps with it, W and the sprint key down; see JumpReset.
 		int reset = jumpReset == null ? 0 : jumpReset.plan(obs.vec, keys, JumpReset.hitOnThisTick(obs.vec));
-		if (reset != 0 || letGo) {
+		if (reset != 0 || letGo || punish != CritTrade.NONE) {
 			// The jump made with a hit, and the critical hit it is about to make, come first.
 			meet = false;
 		}
@@ -395,17 +433,18 @@ public final class Fighter {
 		}
 		// Just out of reach of an opponent whose sword is ready, it does not walk in; see EdgeHold.
 		boolean held = edgeHold != null && Tactic.holdsEdge(tactic, edgeHoldRule) && edgeHold.plan(obs.vec);
-		boolean hold = held && !owes && !backOut && reset == 0 && !dodge && !meet && !letGo
+		boolean hold = held && !owes && !backOut && reset == 0 && !dodge && !meet && !letGo && !(jumpIn != null && jumpIn.clashes() && incoming)
 				&& ActionSpace.unlocked(keys, ActionSpace.FORWARD) && ActionSpace.unlocked(keys, ActionSpace.SPRINT)
 				&& (jumpIn == null || jumpIn.kind() == JumpIn.NONE);
 		if (hold) {
 			keys &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
 		}
-		boolean busy = owes || backOut || reset != 0 || dodge || hold;
+		boolean busy = owes || backOut || reset != 0 || dodge || hold || punish != CritTrade.NONE;
 		// The jumps that are made for it, and its keys in the air of them; see JumpIn.
 		int jump = jumpIn == null ? 0 : jumpIn.plan(obs.vec, keys, crosshairOnOpponent, busy || meet, dealtRow);
 		keys = JumpIn.keys(keys, jump);
-		boolean meetSwing = meet && meetSwings && !owes && ruleReady && crosshairOnOpponent && ActionSpace.unlocked(keys, ActionSpace.ATTACK);
+		// Run at, but not hit to knock away where its crit comes down anyway; see CritTrade.
+		boolean meetSwing = meet && meetSwings && !owes && !holdCrit && ruleReady && crosshairOnOpponent && ActionSpace.unlocked(keys, ActionSpace.ATTACK);
 		if (meet) {
 			keys &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
 		}
@@ -498,11 +537,22 @@ public final class Fighter {
 			// Like the swing it owes: only carried out with the opponent still under the crosshair.
 			answerForced = true;
 		}
+		if (holdCrit && (jump & JumpIn.SWING) == 0) {
+			action[ActionSpace.ATTACK] = 0;
+		}
+		if (punish == CritTrade.WAIT) {
+			action[ActionSpace.ATTACK] = 0;
+		} else if (punish != CritTrade.NONE) {
+			action[ActionSpace.FORWARD] = punish == CritTrade.LET_GO ? 0 : 1;
+			action[ActionSpace.SPRINT] = 0;
+			action[ActionSpace.ATTACK] = answer ? 1 : 0;
+		}
 		if (action[ActionSpace.ATTACK] == 1) {
 			idea.swung(rng);
 		}
 		rules = (answer ? 1 : 0) | (keep ? 1 << 1 : 0) | (meet ? 1 << 2 : 0) | (reset != 0 ? 1 << 3 : 0) | (backOut ? 1 << 4 : 0)
-				| (step != 0 ? 1 << 5 : 0) | (jump != 0 ? 1 << 6 : 0) | (hitAim ? 1 << 7 : 0) | (lost ? 1 << 8 : 0) | (straight ? 1 << 9 : 0) | (dodge ? 1 << 10 : 0) | (hold ? 1 << 11 : 0);
+				| (step != 0 ? 1 << 5 : 0) | (jump != 0 ? 1 << 6 : 0) | (hitAim ? 1 << 7 : 0) | (lost ? 1 << 8 : 0) | (straight ? 1 << 9 : 0) | (dodge ? 1 << 10 : 0) | (hold ? 1 << 11 : 0)
+				| (holdCrit ? 1 << 12 : 0) | (punish != CritTrade.NONE ? 1 << 13 : 0);
 		motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));
 		hasAction = true;
 		return action;

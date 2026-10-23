@@ -888,6 +888,51 @@ class JumpInTest {
 		assertEquals(0, burnt.plan(v, ALL, true, false, 0));
 	}
 
+	/** The combo jump, as the user makes it: three ticks after its own hit, the sword a third back, a sprint-jump after the opponent. */
+	@Test
+	void aFewTicksAfterItsOwnHitItSprintJumpsAfterTheOpponentAndHitsOnTheWayDown() {
+		JumpIn rule = combo();
+		float[] v = after(vec(true, 2.5f, 0.3f), 3, 100);
+		int plan = rule.plan(v, ALL, true, false, 0);
+		assertTrue(has(plan, JumpIn.JUMP) && has(plan, JumpIn.RUN) && has(plan, JumpIn.NO_SWING));
+		assertEquals(JumpIn.COMBO, rule.tookOff());
+		// Going up: at a run, no swing even with the opponent in reach.
+		plan = rule.plan(air(2.4f, 0.3f, true, 0.6f), ALL, true, false, 0);
+		assertTrue(has(plan, JumpIn.RUN) && has(plan, JumpIn.NO_SWING));
+		// Coming down with the opponent in reach: still at a run, and the swing, a sprint hit.
+		plan = rule.plan(air(2.3f, -0.2f, true, 1f), ALL, true, false, 0);
+		assertTrue(has(plan, JumpIn.RUN) && has(plan, JumpIn.SWING));
+		// Not out of reach.
+		JumpIn far = combo();
+		far.plan(v, ALL, true, false, 0);
+		assertTrue(has(far.plan(air(3.4f, -0.2f, true, 1f), ALL, false, false, 0), JumpIn.NO_SWING));
+
+		// Not on the tick of its hit nor long after it, nor with the sword back already or hardly coming back, nor from far,
+		// nor just hit, nor switched off.
+		assertEquals(0, combo().plan(after(vec(true, 2.5f, 0.3f), 0, 100), ALL, true, false, 0));
+		assertEquals(0, combo().plan(after(vec(true, 2.5f, 0.3f), 10, 100), ALL, true, false, 0));
+		assertEquals(0, combo().plan(after(vec(true, 2.5f, 1f), 3, 100), ALL, true, false, 0));
+		assertEquals(0, combo().plan(after(vec(true, 2.5f, 0.05f), 3, 100), ALL, true, false, 0));
+		// Nor a tick or two after the hit, the sword at 0.2: it would come back only as the fighter lands (the first trial).
+		assertEquals(0, combo().plan(after(vec(true, 2.5f, 0.2f), 2, 100), ALL, true, false, 0));
+		assertEquals(0, combo().plan(after(vec(true, 4.5f, 0.3f), 3, 100), ALL, true, false, 0));
+		assertEquals(0, combo().plan(after(vec(true, 2.5f, 0.3f), 3, 1), ALL, true, false, 0));
+		assertEquals(0, new JumpIn(false, false, 0f, 1).plan(v, ALL, true, false, 0));
+
+		// Hit in the air of one: it leaves them alone for a while.
+		JumpIn burnt = combo();
+		burnt.plan(v, ALL, true, false, 0);
+		burnt.plan(after(air(2.4f, 0.2f, true, 0.6f), 4, 0), ALL, false, false, 0);
+		assertEquals(JumpIn.NONE, burnt.kind());
+		assertEquals(0, burnt.plan(v, ALL, true, false, 0));
+	}
+
+	private static JumpIn combo() {
+		JumpIn rule = new JumpIn(false, false, 0f, 1);
+		rule.comboJump(true);
+		return rule;
+	}
+
 	/**
 	 * With {@code Config.jumpAtReadyOnlyFleeing}: no chase and no hop at an opponent that stands its ground with its
 	 * sword ready (it hits a running jump out of the air), but at one whose sword is spent, or that runs away, as before.

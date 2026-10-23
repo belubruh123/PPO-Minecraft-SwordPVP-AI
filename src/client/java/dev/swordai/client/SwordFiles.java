@@ -265,6 +265,11 @@ final class SwordFiles {
 		c.lostRule = false;
 		c.straightInRule = false;
 		c.comboStrafeRule = false;
+		c.comboJumpRule = false;
+		c.clashJumpRule = false;
+		c.jumpInShare = 0f;
+		c.holdOnFallingJumper = false;
+		c.instantPunish = false;
 		c.hopRule = false;
 		c.recordRounds = false;
 		return c;
