@@ -214,9 +214,20 @@ public final class SchoolSession implements AgentSession {
 	private String lastUpdateLine = "no update yet";
 	private int stalledCuts;
 
+	/**
+	 * In the check, side A is the teacher itself instead of the school's network: its keys pressed as they are, the
+	 * installed model's camera. Whether the teacher wins in the game at all, as the toy fight cannot say (24 Oct).
+	 */
+	private final boolean teacherPlaysA;
+
 	SchoolSession(Minecraft mc, Mode mode) throws IOException {
+		this(mc, mode, false);
+	}
+
+	SchoolSession(Minecraft mc, Mode mode, boolean teacherPlaysA) throws IOException {
 		this.mc = mc;
 		this.mode = mode;
+		this.teacherPlaysA = teacherPlaysA && mode == Mode.CHECK;
 		this.cfg = SwordFiles.loadConfig();
 		this.motor = new AimMotor(cfg.aimResponse);
 		this.perf = new Performance(mode == Mode.TRAIN ? stages::moment : null);
@@ -277,7 +288,8 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	String startLine() {
-		return String.format(Locale.ROOT, "%s the technique school at %s (%d steps so far)%s.", mode == Mode.CHECK ? "Checking" : "Training",
+		return String.format(Locale.ROOT, "%s the technique school at %s (%d steps so far)%s.", teacherPlaysA ? "Checking the teacher against"
+				: mode == Mode.CHECK ? "Checking" : "Training",
 				stages.current().name, stages.schoolSteps, warmupLeft > 0 ? ", starting from the installed network" : "");
 	}
 
@@ -707,6 +719,24 @@ public final class SchoolSession implements AgentSession {
 			showBar(truth);
 			return;
 		}
+		if (teacherPlaysA) {
+			// The teacher's own keys, as they are; the installed model's camera.
+			observer.fillBody(installedBody, me, bot, truth.floorY());
+			installed.fighter.crosshairOnOpponent(onOpponent());
+			int[] chosen = installed.fighter.decide(observer.frame, installedBody);
+			System.arraycopy(chosen, 0, action, 0, ActionSpace.HEADS);
+			dev.swordai.core.pvp.Keys k = teacher.keys();
+			action[ActionSpace.FORWARD] = k.forward > 0 ? 1 : k.forward < 0 ? 2 : 0;
+			action[ActionSpace.STRAFE] = k.strafe < 0 ? 1 : k.strafe > 0 ? 2 : 0;
+			action[ActionSpace.SPRINT] = k.sprint && k.forward > 0 ? 1 : 0;
+			action[ActionSpace.JUMP] = k.jump ? 1 : 0;
+			action[ActionSpace.ATTACK] = k.attack && onOpponent() && ActionSpace.unlocked(keys, ActionSpace.ATTACK) ? 1 : 0;
+			perf.tick(step.teacherTechnique, step.teacherHeads, step.teacher, action, ActionSpace.ALL_HEADS, facts.damageDealt, facts.damageTaken);
+			applyAction(installed.fighter.yawRate(), installed.fighter.pitchRate());
+			clicked = action[ActionSpace.ATTACK] == 1;
+			showBar(truth);
+			return;
+		}
 		step.teacherWeight = 0f;
 		if (mode == Mode.TRAIN && stages.oldPull() > 0f && (installed != null || learner.hasOldTeacher())) {
 			if (installed != null) {
@@ -777,9 +807,11 @@ public final class SchoolSession implements AgentSession {
 		String now = t >= 0 ? Technique.ALL[t].id + " " + Technique.ALL[t].title : "ordinary fight";
 		int bt = truth.botTechnique();
 		String bot = bt >= 0 && bt != Technique.BASE.ordinal() ? Technique.ALL[bt].id + " " + Technique.ALL[bt].title : "ordinary fight";
-		String who = mode == Mode.CHECK ? (installedPlays ? "CHECK B (installed)" : "CHECK A (school)") : "School " + stages.current().name;
+		String who = mode == Mode.CHECK ? (installedPlays ? "CHECK B (installed)" : teacherPlaysA ? "CHECK A (teacher)" : "CHECK A (school)")
+				: "School " + stages.current().name;
 		mc.gui.setOverlayMessage(Component.literal(String.format(Locale.ROOT, "%s | moment: %s | AI keys: %s | %s: %s | %.0f-%.0f",
-				who, now, keysOf(installedPlays ? installed.fighter.action() : action), Specialists.NAMES[fightBot], bot, fightDealt, fightTaken)), false);
+				who, now, keysOf(installedPlays && !teacherPlaysA ? installed.fighter.action() : action), Specialists.NAMES[fightBot], bot, fightDealt,
+				fightTaken)), false);
 	}
 
 	private static String keysOf(int[] a) {

@@ -258,7 +258,11 @@ public class SwordAiClient implements ClientModInitializer {
 
 	/** The technique school on the screen; see {@link SchoolSession}. */
 	static SchoolSession startSchool(Minecraft mc, SchoolSession.Mode mode) throws IOException {
-		SchoolSession started = new SchoolSession(mc, mode);
+		return startSchool(mc, mode, false);
+	}
+
+	static SchoolSession startSchool(Minecraft mc, SchoolSession.Mode mode, boolean teacherPlays) throws IOException {
+		SchoolSession started = new SchoolSession(mc, mode, teacherPlays);
 		session = started;
 		return started;
 	}
