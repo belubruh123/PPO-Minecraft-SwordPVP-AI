@@ -54,7 +54,7 @@ class SchoolNetTest {
 		ActorNet.Workspace ows = old.newWorkspace();
 		SchoolNet.Workspace ws = net.newWorkspace();
 		SchoolObs obs = new SchoolObs();
-		float[] pred = new float[Predictor.OUT];
+		float[] pred = new float[SchoolNet.SIDE];
 		int[] act = new int[ActionSpace.HEADS];
 		for (int n = 0; n < 20; n++) {
 			randomObs(rng, obs);
@@ -95,7 +95,7 @@ class SchoolNetTest {
 		SchoolNet.Workspace ws = net.newWorkspace();
 		SchoolObs obs = new SchoolObs();
 		randomObs(rng, obs);
-		float[] pred = new float[Predictor.OUT];
+		float[] pred = new float[SchoolNet.SIDE];
 		for (int i = 0; i < pred.length; i++) {
 			pred[i] = rng.nextFloat();
 		}
@@ -116,6 +116,7 @@ class SchoolNetTest {
 		net.backward(ws, obs.base.peri, obs.base.fovea, obs.base.vec, obs.mem);
 		int checked = 0;
 		int bad = 0;
+		double centre = loss(net, ws, obs, pred, act, c);
 		for (Param p : net.params.params()) {
 			for (int t = 0; t < 4; t++) {
 				int i = rng.nextInt(p.w.length);
@@ -126,6 +127,12 @@ class SchoolNetTest {
 				p.w[i] = keep - eps;
 				double down = loss(net, ws, obs, pred, act, c);
 				p.w[i] = keep;
+				// Across a ReLU's corner the two one-sided slopes differ and the central difference means nothing: not counted.
+				double right = (up - centre) / eps;
+				double left = (centre - down) / eps;
+				if (Math.abs(right - left) > 0.1 * Math.max(1e-2, Math.max(Math.abs(right), Math.abs(left)))) {
+					continue;
+				}
 				double numeric = (up - down) / (2 * eps);
 				double analytic = ws.grads[p.id][i];
 				double err = Math.abs(numeric - analytic) / Math.max(1e-2, Math.abs(numeric) + Math.abs(analytic));

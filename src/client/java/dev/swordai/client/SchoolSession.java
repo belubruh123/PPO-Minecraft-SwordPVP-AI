@@ -594,6 +594,7 @@ public final class SchoolSession implements AgentSession {
 		// One teacher against every bot: every technique of the families reached so far.
 		teacher.ordinaryFight = !OVERLAY;
 		teacher.start(checkTaught != null ? checkTaught : stages.taught(), cfg.swingMinCharge, seed ^ 0x7EAC4L);
+		learner.resetIntent();
 		reader.reset();
 		perf.reset();
 		perfB.reset();
@@ -864,9 +865,12 @@ public final class SchoolSession implements AgentSession {
 		String bot = bt >= 0 && bt != Technique.BASE.ordinal() ? Technique.ALL[bt].id + " " + Technique.ALL[bt].title : "ordinary fight";
 		String who = mode == Mode.CHECK ? (installedPlays ? "CHECK B (installed)" : teacherPlaysA ? "CHECK A (teacher)" : "CHECK A (school)")
 				: "School " + stages.current().name;
-		mc.gui.setOverlayMessage(Component.literal(String.format(Locale.ROOT, "%s | moment: %s | AI keys: %s | %s: %s | %.0f-%.0f",
-				who, now, keysOf(installedPlays && !teacherPlaysA ? installed.fighter.action() : action), Specialists.NAMES[fightBot], bot, fightDealt,
-				fightTaken)), false);
+		// The decider's choice, and what the network was told (the teacher's technique in most training fights).
+		String decider = installedPlays || teacherPlaysA ? "" : " | decider: " + learner.chosen().id
+				+ (learner.told() != learner.chosen() ? ", told " + learner.told().id : "");
+		mc.gui.setOverlayMessage(Component.literal(String.format(Locale.ROOT, "%s | moment: %s%s | AI keys: %s | %s: %s | %.0f-%.0f",
+				who, now, decider, keysOf(installedPlays && !teacherPlaysA ? installed.fighter.action() : action), Specialists.NAMES[fightBot], bot,
+				fightDealt, fightTaken)), false);
 	}
 
 	private static String keysOf(int[] a) {
@@ -1134,9 +1138,9 @@ public final class SchoolSession implements AgentSession {
 		}
 		stages.adapt();
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
-		SwordAi.LOGGER.info("school {} | {} | predictor {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
+		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
 				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {}, other crits {} "
-				+ "| bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
+				+ "| bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(), learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
 				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, otherCrits, used);
 		punishCritsPaid = 0;
 		otherCrits = 0;

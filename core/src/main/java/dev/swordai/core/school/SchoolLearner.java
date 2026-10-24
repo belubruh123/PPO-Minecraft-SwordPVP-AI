@@ -1,5 +1,6 @@
 package dev.swordai.core.school;
 
+import dev.swordai.core.pvp.Technique;
 import dev.swordai.core.rl.ActionSpace;
 import dev.swordai.core.rl.ActorNet;
 import dev.swordai.core.rl.ObsSpec;
@@ -18,18 +19,22 @@ import java.util.Random;
 
 /**
  * Ties the technique school's networks together: the acting network, its critic, the predictor, the
- * buffer and the update; and the installed network as a teacher ({@link #loadOldTeacher}).
+ * {@link Chooser} that decides the technique the acting network is told to do, the buffer and the update; and the
+ * installed network as a teacher ({@link #loadOldTeacher}).
  *
  * <p>Threading: {@link #act}, {@link #complete} and {@link #value} on the game thread; {@link #update}
  * on a trainer thread while the fight waits.
  */
 public final class SchoolLearner implements AutoCloseable {
 	private static final int MAGIC = 0x53575343; // "SWSC"
-	private static final int FORMAT = 1;
+	/** 2 has the chooser after the reward scaler; 1 (before 24 Oct 10:00) has none, and loads with a new one. */
+	private static final int FORMAT = 2;
+	private static final int FORMAT_NO_CHOOSER = 1;
 
 	public final SchoolNet actor;
 	public final SchoolCritic critic;
 	public final Predictor predictor;
+	public final Chooser chooser;
 	private final SchoolPpo ppo;
 	private final SchoolRollout rollout;
 	private final RewardScaler scaler;
@@ -38,6 +43,16 @@ public final class SchoolLearner implements AutoCloseable {
 	private final SchoolNet.Workspace actWs;
 	private final SchoolCritic.Workspace valueWs;
 	private final Predictor.Workspace predWs;
+	private final Chooser.Workspace chooseWs;
+	/**
+	 * In training, the share of fights in which the acting network is told the teacher's own technique; in the rest,
+	 * and in every fight that is not training, the chooser's.
+	 */
+	public float teacherForcing = 0.85f;
+	private final Random intentRng;
+	private final Intent mine = new Intent();
+	private final Intent baseIntent = new Intent();
+	private volatile String chooserLine = "not learning yet";
 	private final float gamma;
 	private final float lambda;
 	/** The installed network, a teacher; null without one. */
@@ -46,6 +61,8 @@ public final class SchoolLearner implements AutoCloseable {
 	/** A network to compare with in a paired evaluation, or to play the opponent; null without one. */
 	private SchoolNet base;
 	private SchoolNet.Workspace baseWs;
+	private Chooser baseChooser;
+	private Chooser.Workspace baseChooseWs;
 	private final Random baseRng;
 
 	private final SchoolRollout.Step pending = new SchoolRollout.Step();
@@ -66,6 +83,13 @@ public final class SchoolLearner implements AutoCloseable {
 		this.actor = new SchoolNet(seed);
 		this.critic = new SchoolCritic(seed + 1);
 		this.predictor = new Predictor(seed + 2);
+		this.chooser = new Chooser(seed + 6);
+		this.chooseWs = chooser.newWorkspace();
+		this.intentRng = new Random(seed + 7);
+		mine.reset();
+		baseIntent.reset();
+		// Told the teacher's techniques until the first fight draws.
+		mine.forced = true;
 		this.ppo = new SchoolPpo(actor, critic, threads);
 		this.rollout = new SchoolRollout(capacity);
 		this.scaler = new RewardScaler(gamma);
@@ -141,6 +165,7 @@ public final class SchoolLearner implements AutoCloseable {
 	 */
 	public void act(SchoolRollout.Step step, int headMask, boolean record, float temperature, int[] actionOut) {
 		predict(step.obs, step.pred);
+		intend(mine, chooser, chooseWs, step, record);
 		actor.forward(actWs, step.obs.base.peri, step.obs.base.fovea, step.obs.base.vec, step.obs.mem, step.pred);
 		float logp = actor.sample(actWs, headMask, false, record ? 1f : temperature, sampleRng, actionOut);
 		if (!record) {
@@ -161,7 +186,9 @@ public final class SchoolLearner implements AutoCloseable {
 
 	private static void copyStep(SchoolRollout.Step from, SchoolRollout.Step to) {
 		to.obs.copyFrom(from.obs);
-		System.arraycopy(from.pred, 0, to.pred, 0, Predictor.OUT);
+		System.arraycopy(from.pred, 0, to.pred, 0, SchoolNet.SIDE);
+		System.arraycopy(from.prevIntent, 0, to.prevIntent, 0, SchoolNet.INTENT);
+		to.intentLabel = from.intentLabel;
 		System.arraycopy(from.action, 0, to.action, 0, ActionSpace.HEADS);
 		to.headMask = from.headMask;
 		to.logp = from.logp;
@@ -244,6 +271,7 @@ public final class SchoolLearner implements AutoCloseable {
 		if (predictorLr > 0f) {
 			Predictor.Stats p = predictor.learn(rollout, predictorLr, Math.max(1, rollout.size / 64), 64, set.maxGradNorm, rng);
 			predictorLine = p.toString();
+			chooserLine = chooser.learn(rollout, predictorLr, Math.max(1, rollout.size / 32), 64, set.maxGradNorm, rng).toString();
 		}
 		rollout.clear();
 		hasPending = false;
@@ -254,6 +282,71 @@ public final class SchoolLearner implements AutoCloseable {
 
 	public String predictorLine() {
 		return predictorLine;
+	}
+
+	public String chooserLine() {
+		return chooserLine;
+	}
+
+	// ---- the technique it is told to do -------------------------------------------------------------------
+
+	/** What one side has been told: the technique, for how many ticks, as the vector it was told it with. */
+	private static final class Intent {
+		int last = Technique.BASE.ordinal();
+		int ticks;
+		int chosen = Technique.BASE.ordinal();
+		boolean forced;
+		final float[] before = new float[SchoolNet.INTENT];
+
+		void reset() {
+			last = Technique.BASE.ordinal();
+			ticks = 0;
+			chosen = last;
+			java.util.Arrays.fill(before, 0f);
+			before[last] = 1f;
+		}
+	}
+
+	/**
+	 * A new fight: nothing being done. In training, whether this fight's network is told the teacher's techniques
+	 * ({@link #teacherForcing}) or the chooser's.
+	 */
+	public void resetIntent() {
+		mine.reset();
+		baseIntent.reset();
+		mine.forced = intentRng.nextFloat() < teacherForcing;
+	}
+
+	/** The technique the chooser chose on the last {@link #act}, and the one the acting network was told. */
+	public Technique chosen() {
+		return Technique.values()[mine.chosen];
+	}
+
+	public Technique told() {
+		return Technique.values()[mine.last];
+	}
+
+	public boolean toldTheTeachers() {
+		return mine.forced;
+	}
+
+	/**
+	 * Writes the technique being done into the side input of {@code step}: the chooser chooses on every tick; in a
+	 * training fight told the teacher's techniques, the network is told the teacher's (and the chooser learns from it).
+	 */
+	private void intend(Intent st, Chooser ch, Chooser.Workspace cw, SchoolRollout.Step step, boolean record) {
+		System.arraycopy(st.before, 0, step.prevIntent, 0, SchoolNet.INTENT);
+		st.chosen = ch.forward(cw, step.obs.base.vec, step.obs.mem, step.pred, st.before);
+		int label = step.teacherTechnique >= 0 ? step.teacherTechnique : Technique.BASE.ordinal();
+		step.intentLabel = record ? label : -1;
+		int intent = record && st.forced ? label : st.chosen;
+		st.ticks = intent == st.last ? st.ticks + 1 : 0;
+		st.last = intent;
+		int off = Predictor.OUT;
+		java.util.Arrays.fill(step.pred, off, off + SchoolNet.INTENT, 0f);
+		step.pred[off + intent] = 1f;
+		step.pred[off + SchoolNet.INTENT_TICKS] = Math.min(1f, st.ticks / SchoolNet.INTENT_LONG);
+		System.arraycopy(step.pred, off, st.before, 0, SchoolNet.INTENT);
 	}
 
 	public String replayLine() {
@@ -273,6 +366,11 @@ public final class SchoolLearner implements AutoCloseable {
 			baseWs = base.newWorkspace();
 		}
 		base.params.copyWeightsFrom(actor.params);
+		if (baseChooser == null) {
+			baseChooser = new Chooser(0L);
+			baseChooseWs = baseChooser.newWorkspace();
+		}
+		baseChooser.params.copyWeightsFrom(chooser.params);
 	}
 
 	/** Loads a saved school network as the one {@link #actBase} plays. */
@@ -282,6 +380,8 @@ public final class SchoolLearner implements AutoCloseable {
 			other.load(file);
 			base = other.actor;
 			baseWs = base.newWorkspace();
+			baseChooser = other.chooser;
+			baseChooseWs = baseChooser.newWorkspace();
 		} finally {
 			other.close();
 		}
@@ -293,6 +393,11 @@ public final class SchoolLearner implements AutoCloseable {
 
 	public void actBase(SchoolRollout.Step step, int headMask, float temperature, int[] actionOut) {
 		predict(step.obs, step.pred);
+		if (baseChooser != null) {
+			intend(baseIntent, baseChooser, baseChooseWs, step, false);
+		} else {
+			intend(baseIntent, chooser, chooseWs, step, false);
+		}
 		base.forward(baseWs, step.obs.base.peri, step.obs.base.fovea, step.obs.base.vec, step.obs.mem, step.pred);
 		base.sample(baseWs, headMask, false, temperature, baseRng, actionOut);
 	}
@@ -322,6 +427,7 @@ public final class SchoolLearner implements AutoCloseable {
 			critic.params.write(out);
 			predictor.params.write(out);
 			scaler.write(out);
+			chooser.params.write(out);
 		}
 		Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
 	}
@@ -332,7 +438,7 @@ public final class SchoolLearner implements AutoCloseable {
 				throw new IOException("not a technique school checkpoint: " + file);
 			}
 			int format = in.readInt();
-			if (format != FORMAT) {
+			if (format != FORMAT && format != FORMAT_NO_CHOOSER) {
 				throw new IOException("technique school checkpoint format " + format + " is not supported");
 			}
 			if (in.readInt() != ObsSpec.VEC || in.readInt() != ObsSpec.PRIV || in.readInt() != SchoolObs.MEM
@@ -345,6 +451,9 @@ public final class SchoolLearner implements AutoCloseable {
 			critic.params.read(in);
 			predictor.params.read(in);
 			scaler.read(in);
+			if (format == FORMAT) {
+				chooser.params.read(in);
+			}
 		}
 		rollout.clear();
 		hasPending = false;

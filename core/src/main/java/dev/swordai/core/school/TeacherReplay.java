@@ -55,7 +55,7 @@ public final class TeacherReplay {
 		fovea = new byte[capacity][ObsSpec.FOVEA_SIZE];
 		vec = new float[capacity][ObsSpec.VEC];
 		mem = new float[capacity][SchoolObs.MEM];
-		pred = new float[capacity][Predictor.OUT];
+		pred = new float[capacity][SchoolNet.SIDE];
 		target = new float[capacity][ActionSpace.TOTAL_LOGITS];
 		cond = new byte[capacity][ActionSpace.HEADS];
 		heads = new int[capacity];
@@ -69,6 +69,10 @@ public final class TeacherReplay {
 	/** Keeps every step of {@code r} on which a technique teacher spoke. */
 	public void addFrom(SchoolRollout r) {
 		for (int i = 0; i < r.size; i++) {
+			// Only where the network was told the technique the teacher was doing: else "told X, do Y" would be taught.
+			if (!r.intentAgrees[i]) {
+				continue;
+			}
 			int h = r.teacherHeads[i];
 			int t = r.teacherTechnique[i];
 			if (shadow) {
@@ -95,7 +99,7 @@ public final class TeacherReplay {
 			System.arraycopy(r.fovea[i], 0, fovea[j], 0, ObsSpec.FOVEA_SIZE);
 			System.arraycopy(r.vec[i], 0, vec[j], 0, ObsSpec.VEC);
 			System.arraycopy(r.mem[i], 0, mem[j], 0, SchoolObs.MEM);
-			System.arraycopy(r.pred[i], 0, pred[j], 0, Predictor.OUT);
+			System.arraycopy(r.pred[i], 0, pred[j], 0, SchoolNet.SIDE);
 			System.arraycopy(r.teacher[i], 0, target[j], 0, ActionSpace.TOTAL_LOGITS);
 			for (int k = 0; k < ActionSpace.HEADS; k++) {
 				// Its own key where it is one the teacher asks for (one of several alike), else the teacher's.

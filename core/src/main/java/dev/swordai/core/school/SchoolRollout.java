@@ -20,8 +20,13 @@ public final class SchoolRollout {
 	public final float[][] priv;
 	public final float[][] mem;
 	public final float[][] oppTruth;
-	/** The predictor's guess the action was chosen with: an input like the others. */
+	/** The side input the action was chosen with ({@link SchoolNet#SIDE}): the predictor's guess and the technique being done. */
 	public final float[][] pred;
+	/** The technique being done the tick before (the {@link Chooser}'s input), and the teacher's technique now (its label; -1 for none). */
+	public final float[][] prevIntent;
+	public final int[] intentLabel;
+	/** Whether the technique the network was told is the teacher's own: where not, the teacher's keys are not taught on it. */
+	public final boolean[] intentAgrees;
 	public final byte[][] action;
 	public final int[] headMask;
 	public final float[] logp;
@@ -59,7 +64,10 @@ public final class SchoolRollout {
 		priv = new float[capacity][ObsSpec.PRIV];
 		mem = new float[capacity][SchoolObs.MEM];
 		oppTruth = new float[capacity][SchoolObs.OPP_TRUTH];
-		pred = new float[capacity][Predictor.OUT];
+		pred = new float[capacity][SchoolNet.SIDE];
+		prevIntent = new float[capacity][SchoolNet.INTENT];
+		intentLabel = new int[capacity];
+		intentAgrees = new boolean[capacity];
 		action = new byte[capacity][ActionSpace.HEADS];
 		headMask = new int[capacity];
 		logp = new float[capacity];
@@ -93,7 +101,10 @@ public final class SchoolRollout {
 		System.arraycopy(s.obs.base.priv, 0, priv[i], 0, ObsSpec.PRIV);
 		System.arraycopy(s.obs.mem, 0, mem[i], 0, SchoolObs.MEM);
 		System.arraycopy(s.obs.oppTruth, 0, oppTruth[i], 0, SchoolObs.OPP_TRUTH);
-		System.arraycopy(s.pred, 0, pred[i], 0, Predictor.OUT);
+		System.arraycopy(s.pred, 0, pred[i], 0, SchoolNet.SIDE);
+		System.arraycopy(s.prevIntent, 0, prevIntent[i], 0, SchoolNet.INTENT);
+		intentLabel[i] = s.intentLabel;
+		intentAgrees[i] = s.intentLabel < 0 || Chooser.techniqueOf(s.pred, Predictor.OUT) == s.intentLabel;
 		for (int h = 0; h < ActionSpace.HEADS; h++) {
 			action[i][h] = (byte) s.action[h];
 		}
@@ -115,7 +126,9 @@ public final class SchoolRollout {
 	/** Everything about one step that is known when it is chosen. */
 	public static final class Step {
 		public final SchoolObs obs = new SchoolObs();
-		public final float[] pred = new float[Predictor.OUT];
+		public final float[] pred = new float[SchoolNet.SIDE];
+		public final float[] prevIntent = new float[SchoolNet.INTENT];
+		public int intentLabel = -1;
 		public final int[] action = new int[ActionSpace.HEADS];
 		public int headMask;
 		public float logp;

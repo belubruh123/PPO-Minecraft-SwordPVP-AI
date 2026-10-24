@@ -1,0 +1,213 @@
+package dev.swordai.core.school;
+
+import dev.swordai.core.nn.Adam;
+import dev.swordai.core.nn.Dense;
+import dev.swordai.core.nn.ParamSet;
+import dev.swordai.core.pvp.Technique;
+import dev.swordai.core.rl.ObsSpec;
+
+import java.util.Random;
+
+/**
+ * Decides which technique to do now (the user's idea, 24 Oct: "a decision model that actually knows what these
+ * techniques are, and its output is an input to the main model to make it do that technique"). Its choice goes into
+ * the acting network as {@link SchoolNet#INTENT}; the acting network does the keys.
+ *
+ * <p>It reads the fighter's own inputs, the memory of the fight, the {@link Predictor}'s guess of what the opponent
+ * is going into, and what it chose on the tick before and for how long, so carrying on with a technique is easy and the
+ * real choice is when to start one. It learns from the technique teacher's own choices (the file's "when"); it is
+ * kept apart from the acting network and learns only from its own loss.
+ */
+public final class Chooser {
+	public static final int IN = ObsSpec.VEC + SchoolObs.MEM + Predictor.OUT + SchoolNet.INTENT;
+	public static final int HIDDEN = 128;
+	/** A start (the teacher going into a technique it was not doing) weighs this much more than carrying on. */
+	static final float START_WEIGHT = 2f;
+
+	public final ParamSet params = new ParamSet();
+	private final Dense hidden1;
+	private final Dense hidden2;
+	private final Dense out;
+
+	public Chooser(long seed) {
+		Random rng = new Random(seed);
+		float relu = (float) Math.sqrt(2.0);
+		hidden1 = new Dense(params, "choose.h1", IN, HIDDEN, rng, relu);
+		hidden2 = new Dense(params, "choose.h2", HIDDEN, HIDDEN, rng, relu);
+		out = new Dense(params, "choose.out", HIDDEN, Technique.COUNT, rng, 0.1f);
+	}
+
+	public final class Workspace {
+		final float[] in = new float[IN];
+		final float[] h1 = new float[HIDDEN];
+		final float[] h2 = new float[HIDDEN];
+		final float[] logits = new float[Technique.COUNT];
+		/** The chance of each technique. */
+		public final float[] chances = new float[Technique.COUNT];
+		final float[] dLogits = new float[Technique.COUNT];
+		final float[] dH2 = new float[HIDDEN];
+		final float[] dH1 = new float[HIDDEN];
+		final float[][] grads = params.newGrads();
+	}
+
+	public Workspace newWorkspace() {
+		return new Workspace();
+	}
+
+	/**
+	 * @param side the side input of the step: the predictor's guess in its first {@link Predictor#OUT} values
+	 * @param before the technique chosen on the tick before ({@link SchoolNet#INTENT} values)
+	 * @return the likeliest technique (ordinal)
+	 */
+	public int forward(Workspace ws, float[] vec, float[] mem, float[] side, float[] before) {
+		int o = 0;
+		System.arraycopy(vec, 0, ws.in, o, ObsSpec.VEC);
+		o += ObsSpec.VEC;
+		System.arraycopy(mem, 0, ws.in, o, SchoolObs.MEM);
+		o += SchoolObs.MEM;
+		System.arraycopy(side, 0, ws.in, o, Predictor.OUT);
+		o += Predictor.OUT;
+		System.arraycopy(before, 0, ws.in, o, SchoolNet.INTENT);
+		hidden1.forward(ws.in, 0, ws.h1, 0);
+		relu(ws.h1);
+		hidden2.forward(ws.h1, 0, ws.h2, 0);
+		relu(ws.h2);
+		out.forward(ws.h2, 0, ws.logits, 0);
+		float max = Float.NEGATIVE_INFINITY;
+		for (int i = 0; i < Technique.COUNT; i++) {
+			max = Math.max(max, ws.logits[i]);
+		}
+		float sum = 0f;
+		for (int i = 0; i < Technique.COUNT; i++) {
+			ws.chances[i] = (float) Math.exp(ws.logits[i] - max);
+			sum += ws.chances[i];
+		}
+		int best = 0;
+		for (int i = 0; i < Technique.COUNT; i++) {
+			ws.chances[i] /= sum;
+			if (ws.chances[i] > ws.chances[best]) {
+				best = i;
+			}
+		}
+		return best;
+	}
+
+	private static void relu(float[] x) {
+		for (int i = 0; i < x.length; i++) {
+			if (x[i] < 0f) {
+				x[i] = 0f;
+			}
+		}
+	}
+
+	/** The technique a {@link SchoolNet#INTENT} vector holds. */
+	static int techniqueOf(float[] intent, int off) {
+		int best = Technique.BASE.ordinal();
+		for (int i = 0; i < Technique.COUNT; i++) {
+			if (intent[off + i] > 0.5f) {
+				best = i;
+			}
+		}
+		return best;
+	}
+
+	/** Statistics of one round of learning. */
+	public static final class Stats {
+		public int samples;
+		public double loss;
+		public int right;
+		/** On the teacher's technique ticks (not the ordinary fight), and on its starts of one. */
+		public int rightTechnique;
+		public int technique;
+		public int rightStart;
+		public int starts;
+		/** Ordinary-fight ticks after ordinary-fight ticks on which it would have started a technique. */
+		public int falseStarts;
+		public int calm;
+
+		@Override
+		public String toString() {
+			return samples == 0 ? "nothing to learn from" : String.format(java.util.Locale.ROOT,
+					"loss %.3f over %d, chose as the teacher %.0f%%, on its techniques %.0f%% of %d, its starts %.0f%% of %d, "
+							+ "a start where it did none %.1f%% of %d", loss / samples, samples, 100.0 * right / samples,
+					100.0 * rightTechnique / Math.max(1, technique), technique, 100.0 * rightStart / Math.max(1, starts), starts,
+					100.0 * falseStarts / Math.max(1, calm), calm);
+		}
+	}
+
+	/**
+	 * Learns from the steps of a rollout that have a teacher's label ({@code intentLabel} at least 0): {@code batches}
+	 * minibatches of {@code batch} steps, each technique weighted by how rare it is (as the {@link Predictor}).
+	 */
+	public Stats learn(SchoolRollout r, float lr, int batches, int batch, float maxNorm, Random rng) {
+		Stats s = new Stats();
+		int[] labelled = new int[r.size];
+		int n = 0;
+		for (int i = 0; i < r.size; i++) {
+			if (r.intentLabel[i] >= 0) {
+				labelled[n++] = i;
+			}
+		}
+		if (n == 0) {
+			return s;
+		}
+		int[] count = new int[Technique.COUNT];
+		int classes = 0;
+		for (int k = 0; k < n; k++) {
+			if (count[r.intentLabel[labelled[k]]]++ == 0) {
+				classes++;
+			}
+		}
+		float[] weight = new float[Technique.COUNT];
+		for (int c = 0; c < Technique.COUNT; c++) {
+			weight[c] = count[c] == 0 ? 0f : (float) Math.min(10.0, Math.sqrt(n / (double) (classes * count[c])));
+		}
+		int base = Technique.BASE.ordinal();
+		Workspace ws = newWorkspace();
+		for (int b = 0; b < batches; b++) {
+			ParamSet.zero(ws.grads);
+			int size = Math.min(batch, n);
+			for (int k = 0; k < size; k++) {
+				int i = labelled[rng.nextInt(n)];
+				int best = forward(ws, r.vec[i], r.mem[i], r.pred[i], r.prevIntent[i]);
+				int label = r.intentLabel[i];
+				int before = techniqueOf(r.prevIntent[i], 0);
+				boolean start = label != base && label != before;
+				float w = weight[label] * (start ? START_WEIGHT : 1f);
+				for (int c = 0; c < Technique.COUNT; c++) {
+					ws.dLogits[c] = w * (ws.chances[c] - (c == label ? 1f : 0f));
+				}
+				s.loss -= Math.log(Math.max(1e-9f, ws.chances[label]));
+				s.samples++;
+				s.right += best == label ? 1 : 0;
+				if (label != base) {
+					s.technique++;
+					s.rightTechnique += best == label ? 1 : 0;
+				}
+				if (start) {
+					s.starts++;
+					s.rightStart += best == label ? 1 : 0;
+				}
+				if (label == base && before == base) {
+					s.calm++;
+					s.falseStarts += best != base ? 1 : 0;
+				}
+				out.backward(ws.h2, 0, ws.dLogits, 0, ws.dH2, 0, ws.grads);
+				gate(ws.dH2, ws.h2);
+				hidden2.backward(ws.h1, 0, ws.dH2, 0, ws.dH1, 0, ws.grads);
+				gate(ws.dH1, ws.h1);
+				hidden1.backward(ws.in, 0, ws.dH1, 0, null, 0, ws.grads);
+			}
+			Adam.step(params, ws.grads, lr, 1f / size, maxNorm);
+		}
+		return s;
+	}
+
+	private static void gate(float[] d, float[] h) {
+		for (int i = 0; i < d.length; i++) {
+			if (h[i] <= 0f) {
+				d[i] = 0f;
+			}
+		}
+	}
+}

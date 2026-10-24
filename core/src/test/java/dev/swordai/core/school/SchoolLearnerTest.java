@@ -72,6 +72,9 @@ class SchoolLearnerTest {
 		back.load(file);
 		assertEquals(l.totalSteps, back.totalSteps);
 		Random same = new Random(1);
+		// Both from a new fight: what the chooser chose the tick before is an input.
+		l.resetIntent();
+		back.resetIntent();
 		assertEquals(jumpChance(l, same), jumpChance(back, new Random(1)), 1e-5f);
 		l.close();
 		back.close();

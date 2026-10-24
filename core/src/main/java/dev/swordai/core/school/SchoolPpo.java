@@ -215,6 +215,10 @@ public final class SchoolPpo implements AutoCloseable {
 				if (!byTech && !installedHere) {
 					continue;
 				}
+				// Told another technique than the teacher's (the chooser's, in training a step in a few): only the camera is taught.
+				if (!camera && !r.intentAgrees[i]) {
+					continue;
+				}
 				int off = ActionSpace.OFFSETS[h];
 				int size = ActionSpace.SIZES[h];
 				Teacher.aim(stored, probs, off, size, q);

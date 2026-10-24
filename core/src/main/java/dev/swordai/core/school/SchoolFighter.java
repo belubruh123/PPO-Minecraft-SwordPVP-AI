@@ -44,6 +44,7 @@ public final class SchoolFighter {
 	}
 
 	public void reset() {
+		learner.resetIntent();
 		sight.reset();
 		motor.reset();
 		idea.clear();

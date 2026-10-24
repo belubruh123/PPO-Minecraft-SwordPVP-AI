@@ -5,6 +5,7 @@ import dev.swordai.core.nn.Dense;
 import dev.swordai.core.nn.Param;
 import dev.swordai.core.nn.ParamSet;
 import dev.swordai.core.nn.ResBlock;
+import dev.swordai.core.pvp.Technique;
 import dev.swordai.core.rl.ActionSpace;
 import dev.swordai.core.rl.ObsSpec;
 import dev.swordai.core.rl.Policy;
@@ -31,6 +32,14 @@ import java.util.Random;
  * the swing knowing those and the jump. A hop (W let go, then the jump), a jump reset (the jump with W
  * and the sprint) and a crit (the swing with the sprint off) are combinations; heads that cannot see each
  * other only find them by luck. These dependencies start at zero too.</li>
+ *
+ * <li><b>The technique it is doing</b> (the user's idea, 24 Oct: "a decision model that knows what these techniques are,
+ * its output an input to the main model"): which technique, one-hot, and how long it has been doing it ({@link #INTENT},
+ * after the prediction in the side input). In training it is mostly the technique teacher's own, so a moment no longer
+ * comes with two answers the network cannot tell apart (an uppercut's S after its hit at the top, a lunge's W after its
+ * hit falling); in a fight it is the {@link Chooser}'s. It goes into the new tower and straight into the heads, both
+ * through weights that start at zero (options, Sutton, Precup and Singh 1999; FeUdal Networks, Vezhnevets et al. 2017;
+ * neural probabilistic motor primitives, Merel et al. 2019).</li>
  * </ul>
  *
  * <p>The crit and escape sub-models of the network before are gone, and with them every key pressed by
@@ -52,6 +61,13 @@ public final class SchoolNet {
 	static final int AR_ATTACK = 7;
 	private static final int JUMP_AT = ActionSpace.OFFSETS[ActionSpace.JUMP];
 	private static final int ATTACK_AT = ActionSpace.OFFSETS[ActionSpace.ATTACK];
+	/** The technique being done: one-hot over {@link Technique} (the ordinary fight its own), and the ticks into it. */
+	public static final int INTENT = Technique.COUNT + 1;
+	/** Where the ticks into it are, and the ticks that count as long. */
+	public static final int INTENT_TICKS = Technique.COUNT;
+	public static final float INTENT_LONG = 20f;
+	/** The side input: the {@link Predictor}'s guess, then the technique being done. */
+	public static final int SIDE = Predictor.OUT + INTENT;
 
 	public final ParamSet params = new ParamSet();
 	private final Conv2d periConv1;
@@ -72,6 +88,8 @@ public final class SchoolNet {
 	private final Dense heads;
 	private final Dense arJump;
 	private final Dense arAttack;
+	private final Dense intentIn;
+	private final Dense intentHeads;
 
 	public SchoolNet(long seed) {
 		Random rng = new Random(seed);
@@ -99,6 +117,9 @@ public final class SchoolNet {
 		heads = new Dense(params, "heads", TOP, ActionSpace.TOTAL_LOGITS, rng, 0.01f);
 		arJump = new Dense(params, "ar.jump", AR_JUMP, ActionSpace.SIZES[ActionSpace.JUMP], rng, 0f);
 		arAttack = new Dense(params, "ar.attack", AR_ATTACK, ActionSpace.SIZES[ActionSpace.ATTACK], rng, 0f);
+		// Last, so a network saved before them loads with them new (and at zero: it plays as it did).
+		intentIn = new Dense(params, "new.intent", INTENT, NEW, rng, 0f);
+		intentHeads = new Dense(params, "intent.heads", INTENT, ActionSpace.TOTAL_LOGITS, rng, 0f);
 		// Rows of the old tower's trunk from the memory, and rows of the heads from the new tower: zero.
 		zeroRows(oldTrunk, 3 * BRANCH, CAT);
 		zeroRows(heads, OLD, TOP);
@@ -154,7 +175,9 @@ public final class SchoolNet {
 		final float[] oldPre = new float[OLD];
 		final float[] newPre = new float[NEW];
 		final float[] predPre = new float[NEW];
-		final float[] pred = new float[Predictor.OUT];
+		final float[] pred = new float[SIDE];
+		final float[] intentPre = new float[NEW];
+		final float[] intentLogits = new float[ActionSpace.TOTAL_LOGITS];
 		/** The towers before their blocks (kept for the gates) and the top after them. */
 		final float[] oldT = new float[OLD];
 		final float[] newT = new float[NEW];
@@ -202,7 +225,7 @@ public final class SchoolNet {
 	 * The trunk and the heads' own logits ({@code ws.logits}, before the keys chosen earlier in the tick
 	 * have their say; {@link #condition} adds that).
 	 *
-	 * @param pred the {@link Predictor}'s guess, or null for none
+	 * @param pred the side input ({@link #SIDE}): the {@link Predictor}'s guess and the technique being done, or null for none
 	 */
 	public void forward(Workspace ws, byte[] peri, byte[] fovea, float[] vec, float[] mem, float[] pred) {
 		periConv1.forwardBytes(peri, ws.p1);
@@ -228,13 +251,14 @@ public final class SchoolNet {
 		}
 		newTrunk.forward(ws.cat, 0, ws.newPre, 0);
 		if (pred != null) {
-			System.arraycopy(pred, 0, ws.pred, 0, Predictor.OUT);
+			System.arraycopy(pred, 0, ws.pred, 0, SIDE);
 		} else {
 			Arrays.fill(ws.pred, 0f);
 		}
 		predIn.forward(ws.pred, 0, ws.predPre, 0);
+		intentIn.forward(ws.pred, Predictor.OUT, ws.intentPre, 0);
 		for (int i = 0; i < NEW; i++) {
-			ws.newT[i] = Math.max(0f, ws.newPre[i] + ws.predPre[i]);
+			ws.newT[i] = Math.max(0f, ws.newPre[i] + ws.predPre[i] + ws.intentPre[i]);
 		}
 		System.arraycopy(ws.oldT, 0, ws.top, 0, OLD);
 		for (int b = 0; b < oldBlocks.length; b++) {
@@ -245,6 +269,10 @@ public final class SchoolNet {
 			newBlocks[b].forward(ws.top, OLD, ws.newCaches[b]);
 		}
 		heads.forward(ws.top, 0, ws.base, 0);
+		intentHeads.forward(ws.pred, Predictor.OUT, ws.intentLogits, 0);
+		for (int i = 0; i < ActionSpace.TOTAL_LOGITS; i++) {
+			ws.base[i] += ws.intentLogits[i];
+		}
 		System.arraycopy(ws.base, 0, ws.logits, 0, ActionSpace.TOTAL_LOGITS);
 	}
 
@@ -346,6 +374,7 @@ public final class SchoolNet {
 		arJump.backward(ws.arJumpIn, 0, ws.dLogits, JUMP_AT, null, 0, ws.grads);
 		arAttack.backward(ws.arAttackIn, 0, ws.dLogits, ATTACK_AT, null, 0, ws.grads);
 		heads.backward(ws.top, 0, ws.dLogits, 0, ws.dTop, 0, ws.grads);
+		intentHeads.backward(ws.pred, Predictor.OUT, ws.dLogits, 0, null, 0, ws.grads);
 		for (int b = newBlocks.length - 1; b >= 0; b--) {
 			newBlocks[b].backward(ws.dTop, OLD, ws.newCaches[b], ws.grads);
 		}
@@ -357,6 +386,7 @@ public final class SchoolNet {
 		gate(ws.dOld, ws.oldT);
 		gate(ws.dNew, ws.newT);
 		predIn.backward(ws.pred, 0, ws.dNew, 0, null, 0, ws.grads);
+		intentIn.backward(ws.pred, Predictor.OUT, ws.dNew, 0, null, 0, ws.grads);
 		newTrunk.backward(ws.cat, 0, ws.dNew, 0, ws.dCat, 0, ws.grads);
 		oldTrunk.backward(ws.cat, 0, ws.dOld, 0, ws.dCatPart, 0, ws.grads);
 		for (int i = 0; i < CAT; i++) {
