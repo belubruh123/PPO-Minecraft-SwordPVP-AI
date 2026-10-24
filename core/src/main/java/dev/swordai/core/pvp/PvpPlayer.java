@@ -486,8 +486,11 @@ public final class PvpPlayer {
 			begin(Plan.B1);
 			return;
 		}
-		if (e.theyHit == Events.SPRINT && roll(Technique.C3)) {
-			// The late C3 (the common mistake of the file): S only once stunned.
+		// The late C3 (the common mistake of the file): S only once stunned. "This can work for getting out of combos, but you
+		// take more damage than you need to": for one that goes by the file, only in their combo (their second hit in a row).
+		// After every sprint hit, once those were read right, it backed out of a third of its trades and held S three times as
+		// much as the installed model, which traded on (24 Oct 17:44 check: 212 dealt a minute to its 314, taken alike).
+		if (e.theyHit == Events.SPRINT && (!style.onlyWhenItWorks || habits.theirCombo() >= 2) && roll(Technique.C3)) {
 			begin(Plan.C3);
 		}
 	}
