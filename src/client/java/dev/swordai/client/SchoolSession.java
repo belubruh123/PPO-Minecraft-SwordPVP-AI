@@ -123,9 +123,10 @@ public final class SchoolSession implements AgentSession {
 	 * The basics teacher (the user, 24 Oct: "make a brand new teacher specializing on teaching this"): outside the technique
 	 * moments the swing is its, as soon as the sword is back and only with the crosshair on them (the game's own pick, so in
 	 * reach): no swing at nothing ("MANY free hit", the user, 18 Oct). In the 13:36 check the school network landed about
-	 * half its swings, the installed model three in four. A swing at nothing also costs this much.
+	 * half its swings, the installed model three in four. A swing at nothing also costs this much (0.1 until the 16:31
+	 * check, where 37% of its swings were at nothing against the installed model's 9%).
 	 */
-	static final float AIR_SWING = 0.1f;
+	static final float AIR_SWING = 0.3f;
 	/**
 	 * The crit teacher (the user, 24 Oct 15:20, the game's count of its own moves: "punish crit 0 of 89 ... ZERO percent
 	 * here, fix it"). A crit is "a hit made while falling (not sprinting, not on the ground)"; of the update before, 339

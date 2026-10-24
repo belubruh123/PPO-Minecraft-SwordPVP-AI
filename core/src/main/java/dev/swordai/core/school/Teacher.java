@@ -50,6 +50,12 @@ public final class Teacher {
 			int off = ActionSpace.OFFSETS[h];
 			return target[off] > target[off + 1] ? PRESS_WEIGHT : 1f;
 		}
+		// The basics teacher's swing (the ordinary fight) weighs as its swing held back: weighed three times, it taught a
+		// swing at nothing more than a swing on them (24 Oct 16:31 check: 63% of its swings landed, the installed model's
+		// 91%, and every swing with the crosshair on them landed; that was the whole gap in damage dealt, 208 to 318).
+		if (h == ActionSpace.ATTACK && technique == Technique.BASE.ordinal()) {
+			return 1f;
+		}
 		return pressWeight(target, h, vec);
 	}
 
