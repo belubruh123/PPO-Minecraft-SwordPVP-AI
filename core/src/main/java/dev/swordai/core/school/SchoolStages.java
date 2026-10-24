@@ -99,8 +99,13 @@ public final class SchoolStages {
 	/** In a family's focus, this share of its own fights is against the real player. */
 	public static final float MIXER_IN_FOCUS = 0.15f;
 
-	/** The share of fights on the stages before. */
-	public static final float REHEARSAL = 0.3f;
+	/**
+	 * Of a stage's own fights, the share that reviews the other families. 0.3 until 24 Oct 19:25: with the crit trades in
+	 * focus each other family had about 4% of the fights, and against the copy in the user's profile (the 17:44 check) the
+	 * 18:48 check had lost T11a (-35), T6a (-28), T2 (-19), T11c (-18), C7 (-14) and T11b (-11). The user: "MUST not let it
+	 * lose its skill of doing those techniques".
+	 */
+	public static final float REHEARSAL = 0.5f;
 	/** Fights per bot a stage is judged by: its first ones against its last ones. */
 	public static final int RECENT = 16;
 	/** How far behind on damage a minute a bot may still be at the end of a stage. */
