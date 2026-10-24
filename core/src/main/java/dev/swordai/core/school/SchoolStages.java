@@ -155,6 +155,9 @@ public final class SchoolStages {
 	private static float[] initialShares() {
 		float[] f = new float[Technique.COUNT];
 		java.util.Arrays.fill(f, 1f);
+		for (int t = 0; t < f.length; t++) {
+			f[t] = PRIORITY[t] ? 2f : 1f;
+		}
 		return f;
 	}
 
@@ -196,13 +199,37 @@ public final class SchoolStages {
 			if (momentCount[t] < ENOUGH / 2) {
 				continue;
 			}
+			// The user, 24 Oct: each at least 85%, guided stronger. The pull grows while it is under 85%, up to twice the
+			// first (three times for the priority ones), holds from 85% to 90%, and fades only above 90%.
 			float r = doneRate(t);
-			if (r >= MASTERED) {
-				pullShare[t] = Math.max(0f, pullShare[t] * (r >= 0.9f ? 0.7f : 0.85f) - 0.01f);
-			} else if (r < FLOOR) {
-				pullShare[t] = Math.min(1f, pullShare[t] + 0.25f);
+			float most = PRIORITY[t] ? PRIORITY_MOST : MOST;
+			if (r >= HELD) {
+				pullShare[t] = Math.max(0f, pullShare[t] * 0.85f - 0.01f);
+			} else if (r < MASTERED) {
+				pullShare[t] = Math.min(most, Math.max(pullShare[t], PRIORITY[t] ? 2f : 1f) + 0.25f);
 			}
 		}
+	}
+
+	/** Above this a technique's pull fades. */
+	public static final float HELD = 0.9f;
+	/** The most a technique's pull share grows to; for the priority ones. */
+	public static final float MOST = 2f;
+	public static final float PRIORITY_MOST = 3f;
+	/**
+	 * The user's first wish (24 Oct): the answer to an opponent who jumps so that the sprint hit lands on them falling
+	 * (K3) and crits back. Hit them while they rise (T8), no knockback hit on a falling one (K2), the punish crit once
+	 * they have landed it (B1). The installed model's biggest flaw.
+	 */
+	public static final boolean[] PRIORITY = new boolean[Technique.COUNT];
+	/** The bots that give those moments, and the share of every stage's fights against them. */
+	public static final int[] PRIORITY_BOTS = {Specialists.JUMP_IN_CRITTER, Specialists.FALL_SPACER};
+	public static final float PRIORITY_SHARE = 0.25f;
+
+	static {
+		PRIORITY[Technique.T8.ordinal()] = true;
+		PRIORITY[Technique.K2.ordinal()] = true;
+		PRIORITY[Technique.B1.ordinal()] = true;
 	}
 
 	/** The pull of each technique's teacher now. */
@@ -332,6 +359,9 @@ public final class SchoolStages {
 	/** A fight's opponent: a bot of this stage, of a stage before (rehearsal), or the real player. */
 	public int drawBot(Random rng) {
 		Stage s = current();
+		if (rng.nextFloat() < PRIORITY_SHARE) {
+			return PRIORITY_BOTS[rng.nextInt(PRIORITY_BOTS.length)];
+		}
 		if (!ALL_AT_ONCE && stage < FAMILIES) {
 			if (rng.nextFloat() >= REHEARSAL) {
 				return rng.nextFloat() < MIXER_IN_FOCUS ? Specialists.MIXER : s.bots[rng.nextInt(s.bots.length)];

@@ -143,6 +143,12 @@ public final class SchoolSession implements AgentSession {
 	 * and if not, which of their needs is missing (24 Oct: the teacher's own punish crits came 4 in 363).
 	 */
 	private final long[][] critTrace = new long[2][9];
+	/**
+	 * Per side, the answer to jumping in (the priority): their take-offs toward it, its hits landed on them rising (T8), its
+	 * knockback hits landed on them falling (what K2 forbids), and the crits it took within ten ticks of one of those.
+	 */
+	private final long[][] jumpIn = new long[2][5];
+	private int sinceFallingHit = 1000;
 	private int critWantedFor;
 	private static final boolean[] CRIT_WANTED = new boolean[Technique.COUNT];
 	/**
@@ -603,13 +609,18 @@ public final class SchoolSession implements AgentSession {
 
 	/** Paired check: the bots it goes through, pair by pair: this stage's, then the real player twice (the second held out). */
 	private int checkCycle() {
-		return stages.current().bots.length + 2;
+		return stages.current().bots.length + SchoolStages.PRIORITY_BOTS.length + 2;
 	}
 
+	/** The stage's bots, the bots that jump in (the priority, in every check), and the real player twice. */
 	private int checkBot(long pair) {
 		int[] bots = stages.current().bots;
 		int i = (int) (pair % checkCycle());
-		return i < bots.length ? bots[i] : Specialists.MIXER;
+		if (i < bots.length) {
+			return bots[i];
+		}
+		i -= bots.length;
+		return i < SchoolStages.PRIORITY_BOTS.length ? SchoolStages.PRIORITY_BOTS[i] : Specialists.MIXER;
 	}
 
 	private static long mix(long n) {
@@ -739,6 +750,7 @@ public final class SchoolSession implements AgentSession {
 			System.arraycopy(chosen, 0, action, 0, ActionSpace.HEADS);
 			perfB.tick(step.teacherTechnique, step.teacherHeads, step.teacher, action, ActionSpace.ALL_HEADS, facts.damageDealt, facts.damageTaken);
 			traceCrit(1, action[ActionSpace.ATTACK] == 1);
+			traceJumpIn(1);
 			applyAction(installed.fighter.yawRate(), installed.fighter.pitchRate());
 			clicked = action[ActionSpace.ATTACK] == 1;
 			showBar(truth);
@@ -762,6 +774,7 @@ public final class SchoolSession implements AgentSession {
 			}
 			perf.tick(step.teacherTechnique, step.teacherHeads, step.teacher, action, ActionSpace.ALL_HEADS, facts.damageDealt, facts.damageTaken);
 			traceCrit(0, action[ActionSpace.ATTACK] == 1);
+			traceJumpIn(0);
 			applyAction(installed.fighter.yawRate(), installed.fighter.pitchRate());
 			clicked = action[ActionSpace.ATTACK] == 1;
 			// The fight's clock runs from its first action on (the school's network sets this on its side).
@@ -804,6 +817,7 @@ public final class SchoolSession implements AgentSession {
 		learner.act(step, keys, mode == Mode.TRAIN, cfg.playTemperature, action);
 		perf.tick(step.teacherTechnique, step.teacherHeads, step.teacher, action, keys, facts.damageDealt, facts.damageTaken);
 		traceCrit(0, action[ActionSpace.ATTACK] == 1);
+		traceJumpIn(0);
 		if (step.teacherHeads != 0) {
 			fightTeacherTicks++;
 			int t = step.teacherTechnique;
@@ -954,8 +968,8 @@ public final class SchoolSession implements AgentSession {
 	/** Paired check: what each side did when the moments came, and what the game showed it did. */
 	private void checkSummary() {
 		SwordAi.LOGGER.info("school check after {} pairs | A (school) techniques:{} | B (installed) techniques:{} | A keys a minute off/on moments: {} | B: {} "
-				+ "| A by the game:{} | B by the game:{} | A crit moments: {} | B crit moments: {}", checkFights / 2, perfLine(perf), perfLine(perfB), perf.keysLine(),
-				perfB.keysLine(), ownLine(0), ownLine(1), critLine(0), critLine(1));
+				+ "| A by the game:{} | B by the game:{} | A crit moments: {} | B crit moments: {} | A jumping in: {} | B jumping in: {}", checkFights / 2, perfLine(perf),
+				perfLine(perfB), perf.keysLine(), perfB.keysLine(), ownLine(0), ownLine(1), critLine(0), critLine(1), jumpInLine(0), jumpInLine(1));
 	}
 
 	/** One tick of a side's crit moments (see {@link #critTrace}). */
@@ -987,6 +1001,32 @@ public final class SchoolSession implements AgentSession {
 			c[5]++;
 			c[6] += critAtClick ? 1 : 0;
 		}
+	}
+
+	private void traceJumpIn(int side) {
+		long[] c = jumpIn[side];
+		dev.swordai.core.pvp.Body them = reader.duel.them;
+		if (them.sinceJump == 0 && reader.duel.theyClose > 0.05 && reader.duel.flat < 6.5) {
+			c[0]++;
+		}
+		sinceFallingHit = Math.min(sinceFallingHit + 1, 1000);
+		if (facts.hitsDealt > 0 && them.rising()) {
+			c[1]++;
+		}
+		if (facts.hitsDealt > 0 && facts.sprintHit && them.falling()) {
+			c[2]++;
+			sinceFallingHit = 0;
+		}
+		if (facts.critsTaken > 0 && sinceFallingHit <= 10) {
+			c[3] += facts.critsTaken;
+		}
+		c[4] += facts.critsTaken;
+	}
+
+	private String jumpInLine(int side) {
+		long[] c = jumpIn[side];
+		return String.format(Locale.ROOT, "their jump-ins %d; its hits on them rising (T8) %d; its knockback hits on them falling (K2 broken) %d, crits taken "
+				+ "right after %d; crits taken in all %d", c[0], c[1], c[2], c[3], c[4]);
 	}
 
 	private String critLine(int side) {
@@ -1061,10 +1101,11 @@ public final class SchoolSession implements AgentSession {
 		stages.adapt();
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
-				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | bots went into:{}",
+				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | bots went into:{}",
 				lastUpdateLine, stages.describe(), learner.predictorLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(), perf.keysLine(), ownLine(0),
-				critLine(0), used);
+				critLine(0), jumpInLine(0), used);
 		java.util.Arrays.fill(critTrace[0], 0L);
+		java.util.Arrays.fill(jumpIn[0], 0L);
 		float dealtAll = 0f;
 		float takenAll = 0f;
 		int ticksAll = 0;

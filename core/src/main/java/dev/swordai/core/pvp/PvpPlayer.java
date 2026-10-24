@@ -248,6 +248,13 @@ public final class PvpPlayer {
 		if (plan == Plan.NONE && !done) {
 			ordinary(d, k);
 		}
+		// The golden rule (K2) for every knockback hit, a technique's too: "don't knockback-hit someone who is falling,
+		// whether during a combo or while they are critting you." A falling one sticks to the floor (K1) and crits back.
+		if (k.attack && k2 && d.them.falling() && (me.sprinting || k.sprint) && k.technique != Technique.K2) {
+			k.attack = false;
+			k.technique = Technique.K2;
+			k.taught = Keys.KEY_ATTACK;
+		}
 		// A timed jump (a jump reset) waits for its tick whatever else is going on.
 		if (jumpAt >= 0 && tick >= jumpAt) {
 			if (me.onGround) {
@@ -271,7 +278,9 @@ public final class PvpPlayer {
 		sinceMySwing = e.iSwung ? 0 : Math.min(sinceMySwing + 1, 1000);
 		sinceTheirSwing = e.theySwung ? 0 : Math.min(sinceTheirSwing + 1, 1000);
 		sinceLanded = !wasOnGround && me.onGround ? 0 : Math.min(sinceLanded + 1, 1000);
-		if (theyWereOnGround && !them.onGround && them.vy > 0.3 && e.iHit == Events.NONE) {
+		// Off the ground going up. Seen from a client another player glides between the positions it is sent, so its take-off
+		// shows about a third of the jump's speed (DuelReader): above 0.3 a tick, T8 never started in the game (24 Oct).
+		if (theyWereOnGround && !them.onGround && them.vy > 0.1 && e.iHit == Events.NONE) {
 			sinceTheyTookOff = 0;
 		} else {
 			sinceTheyTookOff = Math.min(sinceTheyTookOff + 1, 1000);
