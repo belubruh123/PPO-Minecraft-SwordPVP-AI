@@ -1031,7 +1031,12 @@ public final class SchoolSession implements AgentSession {
 		// in reach with the sword back and no sprint, the crosshair was on them on 0 to 2 of 3 to 7 an update (24 Oct 20:15),
 		// and nothing but the installed model, its pull fading, taught the camera there. Taught, not judged: the moment is
 		// judged on its keys as before.
-		if (mode == Mode.TRAIN && OVERLAY && liftedFor >= 0 && facts.falling && !me.onGround() && facts.reachDist <= 3.5f
+		// And every crit's fall of the crit family (24 Oct 20:40, the user: the double crit around them at 14%, off on the swing
+		// a quarter of its ticks: going around them in the air the crosshair comes off them).
+		boolean critFall = step.teacherTechnique == Technique.T1.ordinal() || step.teacherTechnique == Technique.T1A.ordinal()
+				|| step.teacherTechnique == Technique.T1B.ordinal() || step.teacherTechnique == Technique.T1C.ordinal()
+				|| step.teacherTechnique == Technique.T2.ordinal() || step.teacherTechnique == Technique.C6.ordinal();
+		if (mode == Mode.TRAIN && OVERLAY && (liftedFor >= 0 || critFall) && facts.falling && !me.onGround() && facts.reachDist <= 3.5f
 				&& charge > 0.5f && step.teacherTechnique != Technique.K2.ordinal()) {
 			double dx = bot.getX() - me.getX();
 			double dz = bot.getZ() - me.getZ();
