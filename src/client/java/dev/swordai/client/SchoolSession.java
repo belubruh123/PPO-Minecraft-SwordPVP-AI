@@ -91,6 +91,12 @@ public final class SchoolSession implements AgentSession {
 	static final int PUNISH_WINDOW = 18;
 	static final float PUNISH_CRIT = 0.5f;
 	/**
+	 * Since 24 Oct 15:45 the punish crit is paid only as the game counts it (the user's table, "punish crit 0 of 89"):
+	 * thrown up from the ground by their hit, the crit before it lands. Any crit within the window was paid before, 4 or 5
+	 * an update against the game's 0 or 1. A crit that is not a punish crit pays this.
+	 */
+	static final float OTHER_CRIT = 0.2f;
+	/**
 	 * The technique reward (the user, 24 Oct: "it is quite easy for me to code a PPO bot to do these techniques": its
 	 * reward is the technique). In a fight where the network is told the teacher's technique, every tick of a moment
 	 * pays for the share of the taught keys pressed as the teacher would, and a moment done pays once more; both times
@@ -100,8 +106,11 @@ public final class SchoolSession implements AgentSession {
 	static final float IMITATE = 0.02f;
 	static final float DONE_BONUS = 0.2f;
 	static final float SHARE_MOST = 3f;
-	/** The golden rule (K2) broken: a knockback hit landed on a falling player, who crits back (the user's first wish). */
-	static final float K2_BROKEN = 0.5f;
+	/**
+	 * The golden rule (K2) broken: a knockback hit landed on a falling player, who crits back (the user's first wish). A
+	 * whole knockout's worth since 24 Oct 15:40: at 0.5, 4 to 14 an update when jumpers (the uppercutter) came in.
+	 */
+	static final float K2_BROKEN = 1.0f;
 	/**
 	 * The basics teacher (the user, 24 Oct: "make a brand new teacher specializing on teaching this"): outside the technique
 	 * moments the swing is its, as soon as the sword is back and only with the crosshair on them (the game's own pick, so in
@@ -190,6 +199,9 @@ public final class SchoolSession implements AgentSession {
 	private int critChances;
 	private int critSwings;
 	private boolean critChanceAtClick;
+	/** Ticks since their hit threw it up from the ground, -1 once it has landed (see OTHER_CRIT); on the ground the tick before. */
+	private int liftedFor = -1;
+	private boolean onGroundBefore = true;
 	/** The technique reward owed to the next step, and what it paid since the last update; the pull shares it uses. */
 	private float shaping;
 	private float shapingPaid;
@@ -641,6 +653,8 @@ public final class SchoolSession implements AgentSession {
 		shaping = 0f;
 		lastMomentTechnique = -1;
 		fairJump.reset();
+		liftedFor = -1;
+		onGroundBefore = true;
 		reader.reset();
 		perf.reset();
 		perfB.reset();
@@ -757,6 +771,12 @@ public final class SchoolSession implements AgentSession {
 		if (facts.hitsTaken > 0) {
 			clock.ticksSinceHitTaken = 0;
 		}
+		// Thrown up by their hit from the ground, until it lands again (Habits' punish crit chance).
+		liftedFor = facts.hitsTaken > 0 && onGroundBefore ? 0 : liftedFor < 0 ? -1 : liftedFor + 1;
+		if (liftedFor > 3 && me.onGround() || liftedFor > PUNISH_WINDOW) {
+			liftedFor = -1;
+		}
+		onGroundBefore = me.onGround();
 		clock.takenStreak.tick(shownDealt ? 1 : 0, facts.hitsTaken);
 		if (installed != null && hurtNow) {
 			installed.fighter.hitTaken();
@@ -784,10 +804,11 @@ public final class SchoolSession implements AgentSession {
 			if (mode == Mode.TRAIN) {
 				float reward = PER_HEALTH * (facts.damageDealt - facts.damageTaken) + (facts.koDealt ? KNOCKOUT : 0f) - (facts.koTaken ? KNOCKOUT : 0f);
 				if (facts.hitsDealt > 0 && facts.critDealt) {
-					if (clock.ticksSinceHitTaken <= PUNISH_WINDOW) {
+					if (liftedFor >= 0) {
 						reward += PUNISH_CRIT;
 						punishCritsPaid++;
 					} else {
+						reward += OTHER_CRIT;
 						otherCrits++;
 					}
 				}
@@ -906,8 +927,9 @@ public final class SchoolSession implements AgentSession {
 			step.teacherHeads = 1 << ActionSpace.ATTACK;
 			step.teacherTechnique = Technique.BASE.ordinal();
 		}
+		// Not on a K2 moment: its lesson is the swing held back, and a second teacher there would teach both.
 		critChanceAtClick = mode == Mode.TRAIN && OVERLAY && critAtClick && facts.reachDist <= 3.0f && onOpponent()
-				&& ActionSpace.unlocked(keys, ActionSpace.ATTACK);
+				&& ActionSpace.unlocked(keys, ActionSpace.ATTACK) && step.teacherTechnique != Technique.K2.ordinal();
 		if (critChanceAtClick) {
 			// The crit teacher (see CRIT_SWING): over whatever else is taught, a crit that can be made now is made.
 			int off = ActionSpace.OFFSETS[ActionSpace.ATTACK];

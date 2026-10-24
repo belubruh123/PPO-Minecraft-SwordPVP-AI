@@ -43,6 +43,16 @@ public final class Teacher {
 	 *
 	 * @param vec the step's vector input (its own sprint is read from it)
 	 */
+	public static float pressWeight(float[] target, int h, float[] vec, int technique) {
+		// The golden rule (K2): its swing held back weighs as a press. Taught as a plain "no swing" beside every swing the
+		// basics teacher weighs three times, it slipped from 85-100% to about 60% an update (24 Oct 15:35, the user).
+		if (h == ActionSpace.ATTACK && technique == Technique.K2.ordinal()) {
+			int off = ActionSpace.OFFSETS[h];
+			return target[off] > target[off + 1] ? PRESS_WEIGHT : 1f;
+		}
+		return pressWeight(target, h, vec);
+	}
+
 	public static float pressWeight(float[] target, int h, float[] vec) {
 		boolean sprinting = vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_SPRINTING] >= 0.5f;
 		if (h == ActionSpace.FORWARD) {

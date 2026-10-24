@@ -42,6 +42,8 @@ final class DuelReader {
 	private boolean theyWereSwinging;
 	private int theirLastSwingTime;
 	private int theirSinceSwing = 1000;
+	/** How far their sword was back when their last swing began: the charge of the hit that swing makes. */
+	private float theirSwingCharge = 1f;
 	private int mySinceSwing = 1000;
 	/** How its own last swing was made, for the kind of a hit seen to land. */
 	private int mySwingKind = Events.PLAIN;
@@ -56,6 +58,7 @@ final class DuelReader {
 		themWereSprinting = false;
 		theyWereSwinging = false;
 		theirSinceSwing = 1000;
+		theirSwingCharge = 1f;
 		mySinceSwing = 1000;
 		mySwingKind = Events.PLAIN;
 		started = false;
@@ -80,6 +83,9 @@ final class DuelReader {
 		boolean began = them.swinging && (!theyWereSwinging || them.swingTime < theirLastSwingTime);
 		theyWereSwinging = them.swinging;
 		theirLastSwingTime = them.swingTime;
+		if (began) {
+			theirSwingCharge = Math.min(1f, (theirSinceSwing + 1) / Body.SWORD_TICKS);
+		}
 		theirSinceSwing = began ? 0 : Math.min(theirSinceSwing + 1, 1000);
 		duel.them.sinceSwing = theirSinceSwing;
 		duel.them.charge = Math.min(1f, theirSinceSwing / Body.SWORD_TICKS);
@@ -101,7 +107,10 @@ final class DuelReader {
 				// jump + hold S (C3), which answer a sprint hit, had about no moments all day (24 Oct, T5: 17).
 				boolean sprinted = them.isSprinting() || themWereSprinting;
 				boolean crit = !duel.them.onGround && duel.them.vy < 0 && !sprinted;
-				events.theyHit = Events.kindOf(duel.them.charge, sprinted, crit);
+				// The charge of the swing that hit, not the sword now: the swing is seen on the tick of its hit or the one before,
+				// and the sword now is back at nothing, so every hit of theirs was a weak one (24 Oct 15:40: 0 sprint hits of 191).
+				float charge = theirSinceSwing <= 3 ? theirSwingCharge : duel.them.charge;
+				events.theyHit = Events.kindOf(charge, sprinted, crit);
 				theirHits[events.theyHit]++;
 				theirHits[0] += events.theyHit == Events.SPRINT && !them.isSprinting() ? 1 : 0;
 			}
