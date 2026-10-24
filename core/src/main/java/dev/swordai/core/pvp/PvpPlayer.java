@@ -825,9 +825,11 @@ public final class PvpPlayer {
 				return planT < 14 ? RUN : DONE;
 			}
 			case C7 -> {
-				// The delayed sprint hit: in reach, sword back, no hit until they have jumped.
+				// The delayed sprint hit: in reach, sword back, no hit until they have jumped. W stays held: letting go of it ends
+				// the sprint (part 8), and the hit that "sends them flying" is a sprint hit. Up close it used to let go of W
+				// with the sprint key on, so its hit was a plain one (24 Oct: C7 26%, off on W/S a third of its ticks).
 				k.taught = Keys.KEY_ATTACK | Keys.KEY_MOVE | Keys.KEY_SPRINT;
-				k.forward = d.reach > 2.6 ? 1 : 0;
+				k.forward = 1;
 				k.sprint = true;
 				if (them.rising() && canSwing(d)) {
 					k.attack = true;

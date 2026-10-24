@@ -296,10 +296,26 @@ def build(cache, techniques, stages, prio):
     }
 
 
+def local_ip():
+    """This machine's address on the local network (no packet is sent)."""
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(('192.0.2.1', 9))
+        return s.getsockname()[0]
+    except OSError:
+        return '127.0.0.1'
+    finally:
+        s.close()
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--run', default=os.path.join(REPO, 'run'))
     ap.add_argument('--port', type=int, default=8765)
+    # Every address of this machine by default, so it opens from the local network (and, port-forwarded, from outside);
+    # it only ever serves the page and its data, read-only.
+    ap.add_argument('--host', default='0.0.0.0')
     a = ap.parse_args()
     techniques = read_techniques()
     stages, prio = read_stages(techniques)
@@ -330,8 +346,8 @@ def main():
         def log_message(self, *args):
             pass
 
-    server = ThreadingHTTPServer(('127.0.0.1', a.port), Handler)
-    print(f'SwordAI school panel on http://localhost:{a.port} (reading {a.run})', flush=True)
+    server = ThreadingHTTPServer((a.host, a.port), Handler)
+    print(f'SwordAI school panel on http://localhost:{a.port} and http://{local_ip()}:{a.port} (reading {a.run})', flush=True)
     server.serve_forever()
 
 
