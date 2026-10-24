@@ -21,8 +21,6 @@ import java.util.Random;
 public final class Chooser {
 	public static final int IN = ObsSpec.VEC + SchoolObs.MEM + Predictor.OUT + SchoolNet.INTENT;
 	public static final int HIDDEN = 128;
-	/** A start (the teacher going into a technique it was not doing) weighs this much more than carrying on. */
-	static final float START_WEIGHT = 2f;
 
 	public final ParamSet params = new ParamSet();
 	private final Dense hidden1;
@@ -137,7 +135,11 @@ public final class Chooser {
 
 	/**
 	 * Learns from the steps of a rollout that have a teacher's label ({@code intentLabel} at least 0): {@code batches}
-	 * minibatches of {@code batch} steps, each technique weighted by how rare it is (as the {@link Predictor}).
+	 * minibatches of {@code batch} steps, every step alike. Weighted by rarity (and its starts twice) it started a
+	 * technique on a fifth of the ordinary fight's ticks (24 Oct 11:20): a loss weighted by class learns the chances
+	 * times the weights (Menon et al. 2021, logit adjustment), and its likeliest is then a rare technique far too often.
+	 * In a fight a start it should not make (S held, a jump, no hit) costs far more than one it misses (it fights as
+	 * the installed model taught), so it learns the chances as they are.
 	 */
 	public Stats learn(SchoolRollout r, float lr, int batches, int batch, float maxNorm, Random rng) {
 		Stats s = new Stats();
@@ -151,17 +153,6 @@ public final class Chooser {
 		if (n == 0) {
 			return s;
 		}
-		int[] count = new int[Technique.COUNT];
-		int classes = 0;
-		for (int k = 0; k < n; k++) {
-			if (count[r.intentLabel[labelled[k]]]++ == 0) {
-				classes++;
-			}
-		}
-		float[] weight = new float[Technique.COUNT];
-		for (int c = 0; c < Technique.COUNT; c++) {
-			weight[c] = count[c] == 0 ? 0f : (float) Math.min(10.0, Math.sqrt(n / (double) (classes * count[c])));
-		}
 		int base = Technique.BASE.ordinal();
 		Workspace ws = newWorkspace();
 		for (int b = 0; b < batches; b++) {
@@ -173,9 +164,8 @@ public final class Chooser {
 				int label = r.intentLabel[i];
 				int before = techniqueOf(r.prevIntent[i], 0);
 				boolean start = label != base && label != before;
-				float w = weight[label] * (start ? START_WEIGHT : 1f);
 				for (int c = 0; c < Technique.COUNT; c++) {
-					ws.dLogits[c] = w * (ws.chances[c] - (c == label ? 1f : 0f));
+					ws.dLogits[c] = ws.chances[c] - (c == label ? 1f : 0f);
 				}
 				s.loss -= Math.log(Math.max(1e-9f, ws.chances[label]));
 				s.samples++;
