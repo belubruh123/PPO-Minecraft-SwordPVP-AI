@@ -262,7 +262,10 @@ public final class SchoolStages {
 	 * that does not rise within an hour is critical). 0.2 until 24 Oct 17:30, when 19 techniques were under 80% (the user:
 	 * "make sure it maintains the skill and technique").
 	 */
-	public static final float WEAKEST_SHARE = 0.35f;
+	public static final float WEAKEST_SHARE = 0.55f;
+	/** Under this a technique's pull toward its bots is {@link #UNDER_WEIGHT} times its gap (the user, 24 Oct 23:40: "any skill below 80% should be heavily focused"). */
+	public static final float UNDER = 0.8f;
+	public static final float UNDER_WEIGHT = 3f;
 
 	static {
 		PRIORITY[Technique.T8.ordinal()] = true;
@@ -448,7 +451,7 @@ public final class SchoolStages {
 				// Starved (too few moments to judge) weighs twice: its moments only come against its own bots.
 				boolean starved = momentCount[t] < ENOUGH / 2;
 				float r = starved ? 0f : doneRate(t);
-				w[f][i] = Math.max(0f, target(t) - r) * (starved ? 2f : 1f);
+				w[f][i] = Math.max(0f, target(t) - r) * (starved ? 2f : 1f) * (r < UNDER ? UNDER_WEIGHT : 1f);
 				total += w[f][i];
 			}
 		}

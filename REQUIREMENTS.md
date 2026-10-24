@@ -46,6 +46,7 @@ is added: after each change all of them are checked again, in the per-update log
   by the opponent's **second hit**.
 - **No holding the swing for the perfect punish crit in a combo**: it looked like a trigger bot.
 - **Jump reset sparingly**: only inside a combo; "really not fair" if overdone.
+- **24 Oct 22:50: the jump-reset limit is removed** ("remove jump reset barrier cause i didn't even see it manage to pull a jump reset"): the teacher jump-resets wherever the file has it (T9 on a sprint hit, T9b, T9c), and no combo jump is pressed late on purpose (FairJump.MISS 0).
 - **Backing off with S** only against opponents that do not chase with jump-crits; "be careful most".
   If it runs at all, it turns and sprint-jumps away rather than walking backwards.
 

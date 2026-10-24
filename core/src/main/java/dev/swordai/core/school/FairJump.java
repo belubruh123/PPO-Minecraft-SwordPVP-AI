@@ -14,8 +14,11 @@ import java.util.Random;
  * <p>One per fighter; not thread-safe.
  */
 public final class FairJump {
-	/** The share of its combo jumps pressed a tick late. */
-	public static final float MISS = 0.35f;
+	/**
+	 * The share of its combo jumps pressed a tick late: none since 24 Oct 22:50 (the user: "remove jump reset barrier cause I
+	 * didn't even see it manage to pull a jump reset"). 0.35 before.
+	 */
+	public static final float MISS = 0f;
 	/** Ticks since a hit taken in which it counts as being comboed. */
 	public static final int COMBO_WINDOW = 20;
 

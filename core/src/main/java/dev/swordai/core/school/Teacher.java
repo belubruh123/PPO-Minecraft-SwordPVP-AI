@@ -145,11 +145,18 @@ public final class Teacher {
 		s.strafe = 0.3f;
 		s.adapts = true;
 		s.onlyWhenItWorks = true;
-		s.resetsInCombosOnly = true;
+		// Jump resets wherever the file has them (T9 on a sprint hit, T9b, T9c), not only from their second hit in a row: the
+		// user, 24 Oct 22:50, "remove jump reset barrier cause I didn't even see it manage to pull a jump reset".
+		s.resetsInCombosOnly = false;
 		// It swings first whenever it can: hit selecting as half the times, for a drawn while, would teach the swing as a coin
 		// toss. The deflection (T4) is still shown, whenever they swing first.
 		s.hitSelect = 0f;
 		return s;
+	}
+
+	/** Ticks what the network sees of the other is behind the game this fight (see PvpPlayer#seenLag). */
+	public void seenLag(int ticks) {
+		player.seenLag(ticks);
 	}
 
 	/** @param aimed the opponent is under the crosshair and in reach: a swing the teacher asks for is only taught then */

@@ -134,6 +134,30 @@ public final class Specialists {
 	}
 
 	/**
+	 * A specialist that does other things too (the user, 24 Oct 22:50: an opponent for each case "that is suitable to use the
+	 * PVP method but like doing other stuff than the teacher and is random, so it learns all the cases and adapts"): {@code
+	 * bot}'s own technique as {@link #draw} gives it, and every technique it does not have at a real player's chances (as
+	 * {@link #mix} draws them, a little lower), so that its case comes among other play and has to be told from it.
+	 */
+	public static Style varied(int bot, Random rng) {
+		Style s = draw(bot, rng);
+		if (bot == MIXER) {
+			return s;
+		}
+		Style other = new Style();
+		mix(other, rng);
+		for (Technique t : Technique.ALL) {
+			int i = t.ordinal();
+			if (t != Technique.BASE && s.p[i] == 0f) {
+				s.p[i] = 0.6f * other.p[i];
+			}
+		}
+		s.adapts = true;
+		s.name = "random " + NAMES[bot];
+		return s;
+	}
+
+	/**
 	 * The real player: every technique at its own chance, most low and a few high, as a person has a
 	 * game of their own; and it adapts to what it sees ({@link Style#adapts}).
 	 */

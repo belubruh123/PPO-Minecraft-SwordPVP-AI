@@ -2,6 +2,10 @@ package dev.swordai.client;
 
 import dev.swordai.SwordAi;
 import dev.swordai.core.config.Config;
+import dev.swordai.core.curriculum.RewardModel;
+import dev.swordai.core.curriculum.StageSpec;
+import dev.swordai.core.curriculum.Stages;
+import dev.swordai.core.curriculum.Tally;
 import dev.swordai.core.env.BodyState;
 import dev.swordai.core.env.SessionClock;
 import dev.swordai.core.env.StepFacts;
@@ -212,8 +216,72 @@ public final class SchoolSession implements AgentSession {
 	private int sprintLetGo;
 	/** Ticks of a lift's fall the aim onto them was taught on. */
 	private int liftAim;
-	/** Ticks it was taught to turn toward an opponent off the screen or well off the crosshair. */
+	/** Ticks it was taught to turn toward an opponent off the screen or well off the crosshair; of them, off the screen. */
 	private int findAim;
+	private int findBlind;
+	/** The side the opponent was last seen on (the sign of the yaw toward them), and the way it sweeps while they are not seen. */
+	private int seenSide;
+	private int sweep;
+	/**
+	 * Review of the old curriculum's stages (the user, 24 Oct 22:40: "during between each training it will still practice aim
+	 * every few episodes to not forget, so do hit timing, and replay some part of older stages so let it review"). The installed
+	 * model learned its aim, its tracking and its swing in those stages (Stages.defaults()); the school fought technique bots
+	 * only, which hardly ever leave its view, and in the user's real fights (22:05) it lost a player who jumped out of view
+	 * and swung at the air. This share of the training fights is one of those stages' episodes instead: that stage's bot, its
+	 * keys and its rewards.
+	 */
+	static final float REVIEW_SHARE = 0.25f;
+	/** The share of the specialists' training fights in which the specialist does other things too (Specialists.varied). */
+	static final float VARIED_SHARE = 0.5f;
+	/**
+	 * The basics first (the user, 24 Oct 22:50: "let it learn entire basic first, fight against a non moving and random moving
+	 * and jumping opponent, because it FUCK UP on the basic already"): until every basic has passed its stage's bars once,
+	 * this share of the training fights are basics; the rest stay technique fights so that those are not lost. After that,
+	 * {@link #REVIEW_SHARE} ("after it is done with the basics make it constantly review it").
+	 */
+	static final float BASICS_SHARE = 0.8f;
+	/** With all but the last basic passed, the basics' share comes down toward this. */
+	static final float BASICS_SHARE_LEAST = 0.4f;
+	/** Steps of a basic judged at a time against its stage's bars. */
+	static final int PASS_STEPS = 4000;
+	/** A basic that failed this many judgements in a row stops holding the rest back (and is still drawn three times as often). */
+	static final int PASS_TRIES = 6;
+	/** Swings with the crosshair on them below which a basic is not passed, whatever its stage asked (the user's whiffs). */
+	static final float MIN_SWINGS_ON = 0.8f;
+	/** The old stage each basic is: its number in the observation, as the installed model learned it. */
+	static final int[] BASIC_OLD = {0, 1, 2, 3, 4, 4, 5, 6, 2, 8, 8, 8};
+	/** After the basics, how often each is reviewed: tracking, vertical aim, the moving jumper and combo escape twice. */
+	static final float[] REVIEW_WEIGHT = {1f, 2f, 2f, 1f, 1f, 2f, 1f, 2f, 2f, 3f, 3f, 2f};
+	/** The fight basics (see fightBasic): the one that times its crit on its rhythm, the one that always jumps in, the spacer. */
+	static final int TIMER = 9;
+	static final int JUMP_IN = 10;
+	static final int SPACER = 11;
+	/** Of the fight basics, the share started with the opponent close beside or behind it, out of the picture. */
+	static final float BESIDE_SHARE = 0.3f;
+	/** A basic's episode is at most this long. */
+	static final int REVIEW_TICKS = 400;
+	/** The stages' rewards are paid by the tick (aim) and would outweigh the fights' damage in the advantages: scaled down. */
+	static final float REVIEW_SCALE = 0.5f;
+	private final StageSpec[] basics = basicStages();
+	/** The basic this fight is, or -1 in a fight of the school. */
+	private int review = -1;
+	private final RewardModel reviewRewards = new RewardModel();
+	/** Per basic: what its episodes showed since it was last judged, and how many there were. */
+	private final Tally[] reviewTally = new Tally[BASIC_OLD.length];
+	private final int[] reviewFights = new int[BASIC_OLD.length];
+	/** Per basic: passed at its last judgement; passed at some judgement; judgements failed in a row. */
+	private final boolean[] basicPassed = new boolean[BASIC_OLD.length];
+	private final boolean[] basicPassedOnce = new boolean[BASIC_OLD.length];
+	private final int[] basicFailed = new int[BASIC_OLD.length];
+	/** Per basic: the crosshair on them at its last judgement (0 before one). */
+	private final float[] basicOnTarget = new float[BASIC_OLD.length];
+	/** The fight basics in the paired check, at the end of each round of its bots: both sides on the same draw. */
+	static final int CHECK_FIGHTS = 3;
+	static final String[] CHECK_NAMES = {"fight-timer", "fight-jumpin", "fight-spacer"};
+	private int checkReview = -1;
+	/** Every basic passed once (or tried PASS_TRIES times): from then on they are reviewed. Kept in basics.properties. */
+	private boolean basicsDone;
+	private int reviewHop;
 	/** Per technique: swings its teacher asked for that a rule kept back, by the sword gate (0) and the whiff guard (1). */
 	private final int[][] blockedSwings = new int[Technique.COUNT][2];
 	/** Technique moments that won damage since the last update (see WON_BONUS). */
@@ -240,8 +308,16 @@ public final class SchoolSession implements AgentSession {
 	private int momentsPaid;
 	private int k2Broken;
 	private float[] pullsNow;
-	/** Per side (0 the network, 1 the installed model in a check): swings, swings with the crosshair on them, hits landed. */
-	private final long[][] swingCount = new long[2][3];
+	/**
+	 * Per side (0 the network, 1 the installed model in a check): swings, swings with the crosshair on them, hits landed; and their
+	 * second and third hits in a row with none of its own between (the user's real fights, 24 Oct 22:05: comboed, "like 3 sprint
+	 * hits before it even press S or do any react").
+	 */
+	private final long[][] swingCount = new long[2][5];
+	/** Their hits in a row in this fight, none of its own between. */
+	private int theirRow;
+	/** Ticks what it sees of them is behind the game this fight. */
+	private int fightLag;
 	/** The technique of the moment on the last tick, so a moment's start is told to the stages with the bot it came against. */
 	private int lastMomentTechnique = -1;
 	/** In a check, the school network's combo jump resets mistimed now and then, as they will be in a real fight. */
@@ -369,6 +445,7 @@ public final class SchoolSession implements AgentSession {
 			learner.loadOldTeacher(teacherFile, true);
 			warmupLeft = CRITIC_WARMUP;
 		}
+		loadBasics();
 		if (Files.exists(SwordFiles.schoolStages())) {
 			stages.load(SwordFiles.schoolStages());
 		}
@@ -658,20 +735,44 @@ public final class SchoolSession implements AgentSession {
 			checkSeed = seed;
 			Random draw = new Random(seed);
 			fightBot = checkBot(pair);
-			fightStyle = fightBot == Specialists.MIXER ? (pair % checkCycle() == checkCycle() - 1 ? Specialists.heldOutMixer(draw) : Specialists.mixer(draw))
+			int slot = (int) (pair % checkCycle());
+			checkReview = slot >= checkCycle() - CHECK_FIGHTS ? TIMER + slot - (checkCycle() - CHECK_FIGHTS) : -1;
+			fightStyle = fightBot == Specialists.MIXER ? (pair % checkCycle() == checkCycle() - 1 - CHECK_FIGHTS ? Specialists.heldOutMixer(draw) : Specialists.mixer(draw))
 					: Specialists.draw(fightBot, draw);
 			learner.seedSampling(seed * 0x2545F4914F6CDD1DL);
 		} else {
 			installedPlays = false;
 			fightBot = stages.drawBot(rng);
-			fightStyle = fightBot == Specialists.MIXER ? Specialists.mixer(rng) : Specialists.draw(fightBot, rng);
+			// Half of the specialists do other things as well, at random (see Specialists.varied).
+			fightStyle = fightBot == Specialists.MIXER ? Specialists.mixer(rng)
+					: rng.nextFloat() < VARIED_SHARE ? Specialists.varied(fightBot, rng) : Specialists.draw(fightBot, rng);
 			seed = rng.nextLong();
 		}
+		review = mode == Mode.CHECK ? checkReview : drawBasic();
 		Random lagDraw = new Random(seed ^ 0x1A6L);
 		// What it sees of them comes 1 to 4 ticks late, as on a real server (the user's fights, 24 Oct: 55-82 ms each way); 0 to 3
 		// and mostly 0 or 1 before, so a jump-in crit seen late was sprint-hit and a combo answered late.
 		int agentLag = 1 + lagDraw.nextInt(4);
-		EpisodePlan plan = EpisodePlan.school(fightStyle, NEAREST, FARTHEST);
+		EpisodePlan plan;
+		if (review >= 0) {
+			// The old stage's own episode: its bot (standing, strafing, hopping out of view, fighting) at a skill drawn from
+			// the middle of the stage up.
+			Random dress = mode == Mode.CHECK ? new Random(seed ^ 0xF16B7L) : rng;
+			plan = new EpisodePlan(basics[review], 0.5f + 0.5f * dress.nextFloat());
+			if (review >= TIMER) {
+				dressFight(plan.bot, review, dress);
+				// A server's: its knockback reaches the opponent a few ticks late, and the agent's a tick or two.
+				plan.botPing = dress.nextInt(4);
+				plan.agentKnockLag = dress.nextInt(3);
+			}
+			if (reviewTally[review] == null) {
+				reviewTally[review] = new Tally();
+			}
+			reviewRewards.reset();
+			reviewHop = truth.hopId();
+		} else {
+			plan = EpisodePlan.school(fightStyle, NEAREST, FARTHEST);
+		}
 		plan.seed = seed;
 		plan.seedYaw = mode == Mode.CHECK;
 		plan.agentLag = agentLag;
@@ -683,6 +784,8 @@ public final class SchoolSession implements AgentSession {
 		// One teacher against every bot: every technique of the families reached so far.
 		teacher.ordinaryFight = !OVERLAY;
 		teacher.start(checkTaught != null ? checkTaught : stages.taught(), cfg.swingMinCharge, seed ^ 0x7EAC4L);
+		teacher.seenLag(agentLag);
+		fightLag = agentLag;
 		learner.resetIntent();
 		shaping = 0f;
 		lastMomentTechnique = -1;
@@ -705,6 +808,9 @@ public final class SchoolSession implements AgentSession {
 		}
 		hasLastAction = false;
 		clicked = false;
+		theirRow = 0;
+		seenSide = 0;
+		sweep = 0;
 		frozenTicks = 0;
 		fightTicks = 0;
 		fightDealt = 0f;
@@ -717,7 +823,7 @@ public final class SchoolSession implements AgentSession {
 
 	/** Paired check: the bots it goes through, pair by pair: this stage's, then the real player twice (the second held out). */
 	private int checkCycle() {
-		return stages.current().bots.length + SchoolStages.PRIORITY_BOTS.length + 2;
+		return stages.current().bots.length + SchoolStages.PRIORITY_BOTS.length + 2 + CHECK_FIGHTS;
 	}
 
 	/** The stage's bots, the bots that jump in (the priority, in every check), and the real player twice. */
@@ -801,6 +907,14 @@ public final class SchoolSession implements AgentSession {
 			sc[0] += clicked ? 1 : 0;
 			sc[1] += clicked && clickOnTarget ? 1 : 0;
 			sc[2] += facts.hitsDealt;
+			if (facts.hitsDealt > 0) {
+				theirRow = 0;
+			}
+			if (facts.hitsTaken > 0) {
+				theirRow++;
+				sc[3] += theirRow == 2 ? 1 : 0;
+				sc[4] += theirRow == 3 ? 1 : 0;
+			}
 		}
 		if (shownDealt) {
 			clock.ticksSinceHitDealt = 0;
@@ -835,18 +949,29 @@ public final class SchoolSession implements AgentSession {
 
 		// The new observation: the picture, its body, the memory of the fight; and for the critic the truth.
 		clock.episodeFraction = Math.min(1f, fightTicks / (float) FIGHT_TICKS);
-		observer.fillObs(step.obs.base, mc, me, bot, truth, facts, hasLastAction ? lastAction : null, ActionSpace.ALL_HEADS, 9, clock, motor, idea);
+		// In a review, the old stage's keys and number, as the installed model saw them when it learned that stage.
+		observer.fillObs(step.obs.base, mc, me, bot, truth, facts, hasLastAction ? lastAction : null,
+				review >= 0 ? basics[review].headMask : ActionSpace.ALL_HEADS, review >= 0 ? BASIC_OLD[review] : 9, clock, motor, idea);
 		System.arraycopy(reader.memory(), 0, step.obs.mem, 0, step.obs.mem.length);
-		step.obs.setOpponent(botTechnique, fightStyle.p, fightBot);
+		step.obs.setOpponent(botTechnique, review >= 0 ? null : fightStyle.p, review >= 0 ? -1 : fightBot);
 
 		if (hasLastAction) {
 			fightTicks++;
 			fightDealt += facts.damageDealt;
 			fightTaken += facts.damageTaken;
 			boolean ko = facts.koDealt || facts.koTaken;
-			boolean timeUp = fightTicks >= FIGHT_TICKS;
+			boolean timeUp = review >= 0 ? fightTicks >= Math.min(basics[review].bot.attacks ? FIGHT_TICKS : REVIEW_TICKS, basics[review].episodeTicks)
+					|| reviewRewards.lostTooLong(basics[review])
+					: fightTicks >= FIGHT_TICKS;
 			boolean full = mode == Mode.TRAIN && learner.rolloutRoom() <= 1;
-			if (mode == Mode.TRAIN) {
+			if (mode == Mode.TRAIN && review >= 0) {
+				// A review: the old stage's own rewards, on the facts it scores (see Trainer).
+				fillReviewFacts(truth, me);
+				float reward = REVIEW_SCALE * reviewRewards.step(basics[review], facts, reviewTally[review]) + shaping;
+				shapingPaid += shaping;
+				shaping = 0f;
+				learner.complete(reward, ko, !ko && (timeUp || full), step.obs);
+			} else if (mode == Mode.TRAIN) {
 				float reward = PER_HEALTH * (facts.damageDealt - facts.damageTaken) + (facts.koDealt ? KNOCKOUT : 0f) - (facts.koTaken ? KNOCKOUT : 0f);
 				if (facts.hitsDealt > 0 && facts.critDealt) {
 					if (liftedFor >= 0) {
@@ -858,7 +983,9 @@ public final class SchoolSession implements AgentSession {
 						otherCrits++;
 					}
 				}
-				if (facts.hitsDealt > 0 && facts.sprintHit && reader.duel.them.falling()) {
+				// Falling as it saw them, or on the server already (seen late: "it might be landing already while client still
+				// doesn't", the user, 24 Oct 23:05).
+				if (facts.hitsDealt > 0 && facts.sprintHit && (reader.duel.them.falling() || truth.botFalling())) {
 					reward -= K2_BROKEN;
 					k2Broken++;
 				}
@@ -910,9 +1037,17 @@ public final class SchoolSession implements AgentSession {
 		if (cfg.whiffGuard && !onOpponent()) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 		}
+		if (review >= 0) {
+			// The keys the old stage plays with (the camera alone in the aim stages).
+			keys &= basics[review].headMask;
+		}
 		teacher.tick(reader.duel, reader.events, onOpponent());
 		liftTaught |= liftedFor >= 0 && teacher.technique() == Technique.B1;
-		step.teacherHeads = teacher.target(step.teacher);
+		// No technique moments against an old stage's bot that does not hit: the installed model (which learned these stages)
+		// teaches there. Against one that hits (sprint-hit, combo escape) the file's answers are taught as in a fight: the
+		// installed model never backed out of a combo of its own (a rule held S for it), and in the combo escape reviews it got
+		// out of 1 of 33 combos, S held 0-11% (24 Oct 23:00).
+		step.teacherHeads = review >= 0 && !basics[review].bot.attacks ? 0 : teacher.target(step.teacher);
 		step.teacherTechnique = step.teacherHeads != 0 ? teacher.technique().ordinal() : -1;
 		// A technique's swing a rule kept the network from: the sword not back enough for the gate, or the whiff guard.
 		int ao = ActionSpace.OFFSETS[ActionSpace.ATTACK];
@@ -990,8 +1125,10 @@ public final class SchoolSession implements AgentSession {
 		if (mode == Mode.TRAIN && OVERLAY && step.teacherHeads == 0) {
 			// The basics teacher: the swing outside the technique moments (see AIR_SWING).
 			// The golden rule (K2) holds here too: no knockback hit (sprinting) on one who is falling.
+			dev.swordai.core.pvp.Body them = reader.duel.them;
+			boolean fallingByTheHit = !them.onGround && them.vy - 0.08 * fightLag < 0.0;
 			boolean swing = ActionSpace.unlocked(keys, ActionSpace.ATTACK) && onOpponent()
-					&& !(reader.duel.them.falling() && reader.duel.me.sprinting);
+					&& !(fallingByTheHit && reader.duel.me.sprinting);
 			int off = ActionSpace.OFFSETS[ActionSpace.ATTACK];
 			step.teacher[off] = swing ? 0f : 1f;
 			step.teacher[off + 1] = swing ? 1f : 0f;
@@ -1015,6 +1152,16 @@ public final class SchoolSession implements AgentSession {
 		// Finding them: off the screen or well off the crosshair, the camera is turned straight toward where they are. In the
 		// user's real fights (24 Oct 22:05) a player who jumped out of its view was lost, the camera shaking left and right and
 		// never turning back; the bots of the school hardly ever leave its view, so nothing taught it.
+		// Off the screen, by what it can know (the user, 24 Oct 22:58: "aim practice needs to let it learn so that it knows
+		// where to look when opponent is not in sight"): turned hard toward the side they were last seen on, the same way
+		// until they are seen again, the camera levelled. Straight toward where they really are (22:13-23:00), the way to
+		// turn flipped from tick to tick with them behind it, and nothing it sees said which: taught to shake left and right.
+		if (facts.enemyVisible) {
+			sweep = 0;
+			if (Math.abs(facts.yawErrDeg) > 1f) {
+				seenSide = facts.yawErrDeg > 0f ? 1 : -1;
+			}
+		}
 		if (mode == Mode.TRAIN && OVERLAY && !onOpponent()) {
 			double dx = bot.getX() - me.getX();
 			double dz = bot.getZ() - me.getZ();
@@ -1024,8 +1171,17 @@ public final class SchoolSession implements AgentSession {
 			float yawOff = (wantYaw - me.getYRot()) % 360f;
 			yawOff = yawOff > 180f ? yawOff - 360f : yawOff < -180f ? yawOff + 360f : yawOff;
 			if (!facts.enemyVisible || Math.abs(yawOff) > 25f) {
-				nearestBin(step.teacher, ActionSpace.YAW, ActionSpace.YAW_BINS, yawOff);
-				nearestBin(step.teacher, ActionSpace.PITCH, ActionSpace.PITCH_BINS, wantPitch - me.getXRot());
+				if (!facts.enemyVisible) {
+					if (sweep == 0) {
+						sweep = seenSide != 0 ? seenSide : 1;
+					}
+					nearestBin(step.teacher, ActionSpace.YAW, ActionSpace.YAW_BINS, sweep * 180f);
+					nearestBin(step.teacher, ActionSpace.PITCH, ActionSpace.PITCH_BINS, -me.getXRot());
+					findBlind++;
+				} else {
+					nearestBin(step.teacher, ActionSpace.YAW, ActionSpace.YAW_BINS, yawOff);
+					nearestBin(step.teacher, ActionSpace.PITCH, ActionSpace.PITCH_BINS, wantPitch - me.getXRot());
+				}
 				step.teacherHeads |= (1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH);
 				if (step.teacherTechnique < 0) {
 					step.teacherTechnique = Technique.BASE.ordinal();
@@ -1083,10 +1239,11 @@ public final class SchoolSession implements AgentSession {
 			}
 			liftAim++;
 		}
-		step.policyWeight = !facts.enemyVisible && facts.reachDist > SKIP_FARTHER ? 0f : 1f;
+		// Out of view and far, a fight's steps teach nothing; finding them again is what the tracking review is for.
+		step.policyWeight = review < 0 && !facts.enemyVisible && facts.reachDist > SKIP_FARTHER ? 0f : 1f;
 		step.botTechnique = botTechnique;
 		step.botKeys = truth.botKeys();
-		step.kind = fightBot;
+		step.kind = review >= 0 ? -1 : fightBot;
 		learner.act(step, keys, mode == Mode.TRAIN, cfg.playTemperature, action);
 		if (mode == Mode.CHECK) {
 			fairJump.apply(action, me.onGround(), clock.ticksSinceHitTaken, clock.takenStreak.hits());
@@ -1134,7 +1291,8 @@ public final class SchoolSession implements AgentSession {
 		String decider = installedPlays || teacherPlaysA ? "" : " | decider: " + learner.chosen().id
 				+ (learner.told() != learner.chosen() ? ", told " + learner.told().id : "");
 		mc.gui.setOverlayMessage(Component.literal(String.format(Locale.ROOT, "%s | moment: %s%s | AI keys: %s | %s: %s | %.0f-%.0f",
-				who, now, decider, keysOf(installedPlays && !teacherPlaysA ? installed.fighter.action() : action), Specialists.NAMES[fightBot], bot,
+				who, now, decider, keysOf(installedPlays && !teacherPlaysA ? installed.fighter.action() : action),
+				review >= 0 ? "review " + basics[review].name : Specialists.NAMES[fightBot], bot,
 				fightDealt, fightTaken)), false);
 	}
 
@@ -1145,7 +1303,7 @@ public final class SchoolSession implements AgentSession {
 		}
 		boolean told = learner.toldTheTeachers();
 		int t = perf.lastTechnique;
-		if (t >= 0 && t != lastMomentTechnique) {
+		if (t >= 0 && t != lastMomentTechnique && review < 0) {
 			stages.sawMoment(fightBot, t);
 		}
 		lastMomentTechnique = t;
@@ -1163,11 +1321,330 @@ public final class SchoolSession implements AgentSession {
 		}
 	}
 
+	/** The facts the old stages' rewards score that a fight of the school does not fill (as the Trainer fills them). */
+	private void fillReviewFacts(Truth truth, LocalPlayer me) {
+		int hop = truth.hopId();
+		facts.discontinuity = hop != reviewHop;
+		reviewHop = hop;
+		facts.serverSprinting = truth.agentSprinting();
+		facts.clicked = clicked;
+		facts.clickOnTarget = clicked && clickOnTarget;
+		facts.chargeAtClick = chargeAtClick;
+		facts.charge = me.getAttackStrengthScale(0f);
+		facts.forwardAxis = ActionSpace.forwardAxis(lastAction);
+		facts.strafeAxis = ActionSpace.strafeAxis(lastAction);
+		facts.sprintKey = lastAction[ActionSpace.SPRINT] == 1;
+		facts.yawTurnDeg = turnYawThisTick;
+		facts.pitchTurnDeg = turnPitchThisTick;
+		facts.agentPitchDeg = me.getXRot();
+		facts.jumpKey = lastAction[ActionSpace.JUMP] == 1;
+	}
+
+	/**
+	 * " Horizontal tracking 3 (on them 62%, ...);" for each basic played; a basic with PASS_STEPS steps gathered is judged
+	 * against its stage's bars and starts again.
+	 */
+	private String reviewLine() {
+		StringBuilder b = new StringBuilder(basicsDone ? " [basics done: reviewed]" : " [basics first]");
+		for (int i = 0; i < reviewTally.length; i++) {
+			Tally t = reviewTally[i];
+			if (t == null || t.steps == 0) {
+				continue;
+			}
+			b.append(String.format(Locale.ROOT, " %s %d (on them %.0f%%, off by %.1f deg, in view %.0f%%, found again in %.0f ticks, lost %d/%d",
+					basics[i].name, reviewFights[i], 100f * t.onTarget(), t.aimError(), 100f * t.visible(), t.meanReacquire(),
+					t.lostEpisodes, t.episodes));
+			if (t.clicks > 0) {
+				b.append(String.format(Locale.ROOT, ", swings on them %.0f%%", 100f * t.clickAccuracy()));
+			}
+			if (t.longCombosTaken > 0) {
+				b.append(String.format(Locale.ROOT, ", combos got out of %d/%d (backed out and hit back), their combo stopped %.0f%% of hits",
+						t.comboEscapes, t.longCombosTaken, 100f * t.outRate()));
+			}
+			if (basics[i].bot.attacks) {
+				b.append(String.format(Locale.ROOT, ", crits taken %d, knockouts %d-%d", t.critsTaken, t.wins, t.losses));
+			}
+			b.append(String.format(Locale.ROOT, ", damage %.0f/%.0f", t.damageDealt, t.damageTaken));
+			if (t.steps < PASS_STEPS) {
+				b.append(String.format(Locale.ROOT, ", %d of %d steps to its judgement);", t.steps, PASS_STEPS));
+				continue;
+			}
+			String blocker = basicBlocker(basics[i], t);
+			basicOnTarget[i] = t.onTarget();
+			basicPassed[i] = blocker == null;
+			boolean first = basicPassed[i] && !basicPassedOnce[i];
+			basicPassedOnce[i] |= basicPassed[i];
+			if (first) {
+				saveBasics();
+			}
+			basicFailed[i] = basicPassed[i] ? 0 : basicFailed[i] + 1;
+			b.append(basicPassed[i] ? ", PASSED);" : ", not passed: " + blocker + ");");
+			reviewTally[i] = new Tally();
+			reviewFights[i] = 0;
+		}
+		if (!basicsDone) {
+			boolean all = true;
+			for (int i = 0; i < basics.length; i++) {
+				all &= basicPassedOnce[i] || basicFailed[i] >= PASS_TRIES;
+			}
+			if (all) {
+				basicsDone = true;
+				saveBasics();
+				b.append(" ALL BASICS PASSED: from here on they are reviewed in a quarter of the fights;");
+			}
+		}
+		return b.toString();
+	}
+
+	/** The basics: the old curriculum's first stages, the hit timing against one that stands and one that moves and jumps. */
+	private static StageSpec[] basicStages() {
+		List<StageSpec> old = Stages.defaults();
+		StageSpec standing = Stages.defaults().get(4);
+		standing.name = "Hit timing: standing";
+		standing.bot.movement = dev.swordai.core.curriculum.BotProfile.STAND;
+		standing.bot.jumpChance = 0f;
+		// Somewhere else every six seconds, so that it has to be walked up to again.
+		standing.bot.hopIntervalTicks = 120;
+		StageSpec jumping = Stages.defaults().get(4);
+		jumping.name = "Hit timing: moving and jumping";
+		jumping.bot.jumpChance = 0.08f;
+		// Tracking as a player is lost in a fight: close, sprinting sideways round it and jumping, never put somewhere else,
+		// so that it leaves the screen at an edge (or over the top) and is to be turned after.
+		StageSpec close = Stages.defaults().get(2);
+		close.name = "Tracking: close, round and jumping";
+		close.agentMaxPillar = 0;
+		close.bot.movement = dev.swordai.core.curriculum.BotProfile.STRAFE;
+		close.bot.sprint = true;
+		close.bot.minDistance = 1.5f;
+		close.bot.maxDistance = 3.2f;
+		close.bot.maxBearingDeg = 175f;
+		close.bot.maxPillar = 0;
+		close.bot.jumpChance = 0.06f;
+		close.bot.hopIntervalTicks = 0;
+		close.bot.farChance = 0f;
+		return new StageSpec[] {old.get(0), old.get(1), old.get(2), old.get(3), standing, jumping, old.get(5), old.get(6), close,
+				fightBasic("Fight: times its crit on your rhythm"), fightBasic("Fight: always jumps in to crit"), fightBasic("Fight: the spacer")};
+	}
+
+	/**
+	 * The old curriculum's last opponents as basics (the user, 24 Oct 23:05: "it must escape any combo and counter any timed
+	 * crit, that opponent hit you with crit when you sprint hit them ... and also the best way is to not be timed"): the duel
+	 * stage's rewards (damage, crits and combos taken), to the knockout; who the opponent is, is drawn per fight (dressFight).
+	 */
+	private static StageSpec fightBasic(String name) {
+		StageSpec st = Stages.defaults().get(8);
+		st.name = name;
+		st.bot.movement = dev.swordai.core.curriculum.BotProfile.FIGHT;
+		st.bot.fixedCopy = false;
+		return st;
+	}
+
+	/** The opponent of a fight basic for one fight, as the old trainer had them (Trainer: KIND_TIMER, KIND_JUMPIN, KIND_SPACER). */
+	private static void dressFight(dev.swordai.core.curriculum.BotProfile b, int basic, Random rng) {
+		b.movement = dev.swordai.core.curriculum.BotProfile.FIGHT;
+		b.sprint = true;
+		b.rushChance = 0f;
+		b.dodgeChance = 0f;
+		b.fleeChance = 0f;
+		b.jumpChance = 0f;
+		b.antic = "";
+		b.turnRateDeg = 60f;
+		b.followUpTicks = 0;
+		b.followUpReach = 0f;
+		b.followUpWhiff = 0f;
+		b.swingSlip = 0f;
+		b.farChance = 0f;
+		b.maxPillar = 0;
+		b.minBearingDeg = 0f;
+		b.maxBearingDeg = dev.swordai.core.curriculum.BotProfile.DRILL_BEARING_DEG;
+		if (basic == TIMER) {
+			// It finds the agent's rhythm (it swings the moment its sword is back) and times its crit to land as the agent's
+			// sword is not back yet, or as it comes in; hit, it punish-crits. The user's friend who beat it on 18 October.
+			b.timer = true;
+			b.punish = true;
+			b.jumpResetChance = 0.8f + 0.2f * rng.nextFloat();
+			b.critChance = 1f;
+			b.critPress = 0f;
+			b.wtap = true;
+			b.reactionTicks = rng.nextInt(2);
+			b.aimNoiseDeg = 0.5f + rng.nextFloat();
+			b.attackChargeMin = 0.92f;
+			b.preferredRange = 3.4f;
+			b.minDistance = dev.swordai.core.curriculum.BotProfile.DRILL_MIN_DISTANCE;
+			b.maxDistance = dev.swordai.core.curriculum.BotProfile.DRILL_MAX_DISTANCE;
+		} else if (basic == JUMP_IN) {
+			// Every attack a jump in and a crit on the way down, from right in front to a running jump's farthest.
+			b.jumpIn = true;
+			b.jumpInAlways = true;
+			b.critChance = 1f;
+			b.critPress = 1f;
+			b.punish = false;
+			b.wtap = false;
+			b.jumpResetChance = 0f;
+			b.reactionTicks = 0;
+			b.aimNoiseDeg = 0.5f + rng.nextFloat();
+			b.attackChargeMin = 0.95f;
+			b.preferredRange = 2.9f;
+			b.jumpInFrom = 1.8f + 3.8f * rng.nextFloat();
+			b.minDistance = 2.5f;
+			b.maxDistance = 6.5f;
+		} else {
+			// At the edge of its reach: crits from there and backs out with S, or stands and hits whatever comes into reach.
+			b.spacer = true;
+			int style = rng.nextInt(3);
+			b.critChance = style == 0 ? 0f : style == 1 ? 1f : 0.3f + 0.4f * rng.nextFloat();
+			b.critPress = 0f;
+			b.wtap = false;
+			b.reactionTicks = 0;
+			b.aimNoiseDeg = 0.3f + 0.7f * rng.nextFloat();
+			b.attackChargeMin = 0.92f + 0.08f * rng.nextFloat();
+			b.jumpResetChance = 0.5f * rng.nextFloat();
+			b.minDistance = 3.5f;
+			b.maxDistance = 6f;
+		}
+		if (rng.nextFloat() < BESIDE_SHARE) {
+			// Close by and out of the picture: off to a side, or behind (to be found first).
+			b.minBearingDeg = 70f;
+			b.maxBearingDeg = 180f;
+			b.minDistance = 1.8f;
+			b.maxDistance = 3.0f;
+		}
+	}
+
+	/** Which basic the next training fight is, or -1 for a fight of the school. The ones not passed three times as often. */
+	private int drawBasic() {
+		// Before they are all passed, the more of them passed the fewer: the techniques lost ground at 80% (24 Oct 23:20: T4
+		// 93 -> 72, T10 91 -> 74, T6a 100 -> 74, mostly on the swing), and the user: "MUST not let it lose its skill".
+		int open = 0;
+		for (boolean passed : basicPassedOnce) {
+			open += passed ? 0 : 1;
+		}
+		float share = basicsDone ? REVIEW_SHARE : BASICS_SHARE_LEAST + (BASICS_SHARE - BASICS_SHARE_LEAST) * open / basics.length;
+		if (mode != Mode.TRAIN || rng.nextFloat() >= share) {
+			return -1;
+		}
+		float[] w = new float[basics.length];
+		float total = 0f;
+		for (int i = 0; i < basics.length; i++) {
+			// Not passed: six times as often; a camera or footwork basic passed but with the crosshair on them under 80%, twice
+			// (the user, 24 Oct 23:40: "basic skill below 80% should be heavily focused").
+			boolean low = !ActionSpace.unlocked(basics[i].headMask, ActionSpace.ATTACK) && basicOnTarget[i] < 0.8f;
+			w[i] = (basicsDone ? REVIEW_WEIGHT[i] : 1f) * (basicPassed[i] ? 1f : 6f) * (low ? 2f : 1f);
+			total += w[i];
+		}
+		float u = rng.nextFloat() * total;
+		for (int i = 0; i < basics.length; i++) {
+			u -= w[i];
+			if (u < 0f) {
+				return i;
+			}
+		}
+		return basics.length - 1;
+	}
+
+	/** Why a basic's steps do not pass its stage's bars (the ones that can be told from the steps alone), or null. */
+	private static String basicBlocker(StageSpec st, Tally t) {
+		dev.swordai.core.curriculum.Promotion p = st.promote;
+		// Against one that hits: more damage dealt than taken, whatever else.
+		if (st.bot.attacks && t.damageDealt < t.damageTaken) {
+			return String.format(Locale.ROOT, "damage dealt %.0f < taken %.0f", t.damageDealt, t.damageTaken);
+		}
+		if (p.minOnTarget > 0f && t.onTarget() < p.minOnTarget) {
+			return String.format(Locale.ROOT, "on them %.0f%% < %.0f%%", 100f * t.onTarget(), 100f * p.minOnTarget);
+		}
+		if (p.minStill > 0f && t.still() < p.minStill) {
+			return String.format(Locale.ROOT, "steady aim %.0f%% < %.0f%%", 100f * t.still(), 100f * p.minStill);
+		}
+		if (p.maxAimError > 0f && t.aimError() > p.maxAimError) {
+			return String.format(Locale.ROOT, "off by %.1f deg > %.1f", t.aimError(), p.maxAimError);
+		}
+		if (p.minInRange > 0f && t.inRange() < p.minInRange) {
+			return String.format(Locale.ROOT, "in reach %.0f%% < %.0f%%", 100f * t.inRange(), 100f * p.minInRange);
+		}
+		float swingsOn = Math.max(p.minClickAccuracy, MIN_SWINGS_ON);
+		if (t.clicks >= 20 && t.clickAccuracy() < swingsOn) {
+			return String.format(Locale.ROOT, "swings on them %.0f%% < %.0f%%", 100f * t.clickAccuracy(), 100f * swingsOn);
+		}
+		if (p.maxSpamRate > 0f && t.spamRate() > p.maxSpamRate) {
+			return String.format(Locale.ROOT, "swings before the sword was back %.0f%% > %.0f%%", 100f * t.spamRate(), 100f * p.maxSpamRate);
+		}
+		if (p.minFullCharge > 0f && t.fullCharge() < p.minFullCharge) {
+			return String.format(Locale.ROOT, "full-charge hits %.0f%% < %.0f%%", 100f * t.fullCharge(), 100f * p.minFullCharge);
+		}
+		if (p.minHitsPerMinute > 0f && t.hitsPerMinute() < p.minHitsPerMinute) {
+			return String.format(Locale.ROOT, "hits a minute %.1f < %.0f", t.hitsPerMinute(), p.minHitsPerMinute);
+		}
+		if (p.minSprintHits > 0f && t.sprintHitFraction() < p.minSprintHits) {
+			return String.format(Locale.ROOT, "sprint hits %.0f%% < %.0f%%", 100f * t.sprintHitFraction(), 100f * p.minSprintHits);
+		}
+		if (p.minCombo > 0f && t.meanCombo() < p.minCombo) {
+			return String.format(Locale.ROOT, "combo %.1f < %.1f", t.meanCombo(), p.minCombo);
+		}
+		if (p.minTapRate > 0f && t.tapRate() < p.minTapRate) {
+			return String.format(Locale.ROOT, "W-taps %.0f%% < %.0f%%", 100f * t.tapRate(), 100f * p.minTapRate);
+		}
+		if (p.minHitRatio > 0f && t.hitRatio() < p.minHitRatio) {
+			return String.format(Locale.ROOT, "hits dealt:taken %.2f < %.2f", t.hitRatio(), p.minHitRatio);
+		}
+		// Out of their combo is what counts: by S held (C3) or by a jump reset and a hit back (T9), as the file has both.
+		boolean gotOut = p.minOutRate > 0f && t.outRate() >= p.minOutRate;
+		if (p.minBackRate > 0f && !gotOut && t.backRate() < p.minBackRate) {
+			return String.format(Locale.ROOT, "S held in their combo %.0f%% < %.0f%%", 100f * t.backRate(), 100f * p.minBackRate);
+		}
+		if (p.minOutRate > 0f && t.outRate() < p.minOutRate) {
+			return String.format(Locale.ROOT, "out of their combo %.0f%% < %.0f%%", 100f * t.outRate(), 100f * p.minOutRate);
+		}
+		return null;
+	}
+
+	private void loadBasics() {
+		try {
+			Path f = SwordFiles.schoolDir().resolve("basics.properties");
+			if (Files.exists(f)) {
+				java.util.Properties p = new java.util.Properties();
+				try (var in = Files.newInputStream(f)) {
+					p.load(in);
+				}
+				basicsDone = Boolean.parseBoolean(p.getProperty("done", "false"));
+				for (String name : p.getProperty("passed", "").split("\\|")) {
+					for (int i = 0; i < basics.length; i++) {
+						if (basics[i].name.equals(name.trim())) {
+							basicPassedOnce[i] = true;
+							basicPassed[i] = true;
+						}
+					}
+				}
+			}
+		} catch (IOException e) {
+			SwordAi.LOGGER.warn("basics.properties not read", e);
+		}
+	}
+
+	private void saveBasics() {
+		try {
+			java.util.Properties p = new java.util.Properties();
+			p.setProperty("done", Boolean.toString(basicsDone));
+			StringBuilder passed = new StringBuilder();
+			for (int i = 0; i < basics.length; i++) {
+				if (basicPassedOnce[i]) {
+					passed.append(passed.length() == 0 ? "" : "|").append(basics[i].name);
+				}
+			}
+			p.setProperty("passed", passed.toString());
+			try (var out = Files.newOutputStream(SwordFiles.schoolDir().resolve("basics.properties"))) {
+				p.store(out, "the school's basics (SchoolSession.BASICS_SHARE)");
+			}
+		} catch (IOException e) {
+			SwordAi.LOGGER.warn("basics.properties not written", e);
+		}
+	}
+
 	/** "120 swings, 90 with the crosshair on them (75%), 80 hits landed (67%)". */
 	private String swingLine(int side) {
 		long[] c = swingCount[side];
-		return String.format(Locale.ROOT, "%d swings, %d with the crosshair on them (%.0f%%), %d hits landed (%.0f%%)", c[0], c[1],
-				100.0 * c[1] / Math.max(1, c[0]), c[2], 100.0 * c[2] / Math.max(1, c[0]));
+		return String.format(Locale.ROOT, "%d swings, %d with the crosshair on them (%.0f%%), %d hits landed (%.0f%%); their combos: second hits in a row %d, "
+				+ "a third after %d (%.0f%%)", c[0], c[1], 100.0 * c[1] / Math.max(1, c[0]), c[2], 100.0 * c[2] / Math.max(1, c[0]), c[3], c[4],
+				100.0 * c[4] / Math.max(1, c[3]));
 	}
 
 	private static String keysOf(int[] a) {
@@ -1238,7 +1715,7 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	private void endFight(boolean won, boolean lost) {
-		if (fightBot >= 0 && fightBot < Specialists.KINDS) {
+		if (review < 0 && fightBot >= 0 && fightBot < Specialists.KINDS) {
 			botDealt[fightBot] += fightDealt;
 			botTaken[fightBot] += fightTaken;
 			botTicks[fightBot] += fightTicks;
@@ -1254,10 +1731,16 @@ public final class SchoolSession implements AgentSession {
 		String result = won ? ", knockout" : lost ? ", knocked out" : "";
 		if (mode == Mode.CHECK) {
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school pair %d %s %s%s: dealt %.1f, taken %.1f, ticks %d%s", (checkFights - 1) / 2,
-					installedPlays ? "B" : "A", Specialists.NAMES[fightBot], fightStyle.heldOut ? " (held out)" : "", fightDealt, fightTaken, fightTicks, result));
+					installedPlays ? "B" : "A", review >= TIMER ? CHECK_NAMES[review - TIMER] : Specialists.NAMES[fightBot],
+					review < 0 && fightStyle.heldOut ? " (held out)" : "", fightDealt, fightTaken, fightTicks, result));
 			if (installedPlays && ((checkFights / 2) % 10 == 0)) {
 				checkSummary();
 			}
+		} else if (review >= 0) {
+			reviewRewards.endEpisode(reviewTally[review], won, lost);
+			reviewFights[review]++;
+			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school review %s: dealt %.1f, taken %.1f, ticks %d%s", basics[review].name,
+					fightDealt, fightTaken, fightTicks, result));
 		} else {
 			stages.fight(fightBot, fightDealt, fightTaken, fightTicks);
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school fight %s: dealt %.1f, taken %.1f, ticks %d%s, teacher spoke on %d ticks; %s",
@@ -1492,10 +1975,10 @@ public final class SchoolSession implements AgentSession {
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
 				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {}, other crits {} "
-				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} | swings: {} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
+				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} | swings: {} | review of the old stages:{} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
 				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, otherCrits,
-				critChances, critSwings, sprintLetGo, liftAim, findAim, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, swingLine(0), used);
+				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, swingLine(0), reviewLine(), used);
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		otherCrits = 0;
@@ -1504,6 +1987,7 @@ public final class SchoolSession implements AgentSession {
 		sprintLetGo = 0;
 		liftAim = 0;
 		findAim = 0;
+		findBlind = 0;
 		shapingPaid = 0f;
 		momentsPaid = 0;
 		momentsWon = 0;

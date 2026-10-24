@@ -1010,6 +1010,7 @@ public final class ArenaServer {
 				b == null ? 0f : b.getAttackStrengthScale(0f),
 				b != null && b.isSprinting(),
 				b != null && b.onGround(),
+				b != null && !b.onGround() && b.getY() < b.yo,
 				agent != null && agent.isSprinting(),
 				server.getTickCount(),
 				techPlays ? TechniqueBot.lastTechnique() : -1,

@@ -328,7 +328,7 @@ public final class PvpPlayer {
 		}
 		// The golden rule (K2) for every knockback hit, a technique's too: "don't knockback-hit someone who is falling,
 		// whether during a combo or while they are critting you." A falling one sticks to the floor (K1) and crits back.
-		if (k.attack && k2 && d.them.falling() && (me.sprinting || k.sprint) && k.technique != Technique.K2) {
+		if (k.attack && k2 && fallingByTheHit(d.them) && (me.sprinting || k.sprint) && k.technique != Technique.K2) {
 			k.attack = false;
 			k.technique = Technique.K2;
 			k.taught = Keys.KEY_ATTACK;
@@ -440,6 +440,25 @@ public final class PvpPlayer {
 		planT = 0;
 		phase = 0;
 	}
+
+	/**
+	 * Ticks the view of the other is behind the game (the school's seen lag): for the golden rule (K2) and the hit on a riser
+	 * (T8), one seen rising too slowly to still be rising when the hit gets there is falling already. The user, 24 Oct 23:05:
+	 * "remember the server part have lag between client so it might be landing already while client still doesn't". 0: as seen.
+	 */
+	private int seenLag;
+
+	public void seenLag(int ticks) {
+		seenLag = Math.max(0, ticks);
+	}
+
+	/** Falling in the game by the time a hit of mine reaches them: falling as seen, or rising too slowly to outlast the lag. */
+	boolean fallingByTheHit(Body b) {
+		return !b.onGround && b.vy - RISE_LOST_A_TICK * seenLag < 0.0;
+	}
+
+	/** What a jump's rise loses in a tick (gravity 0.08, near enough with the drag). */
+	static final double RISE_LOST_A_TICK = 0.08;
 
 	/** Starts {@code p} once a reaction time has gone by. */
 	private void later(Plan p) {
@@ -797,12 +816,12 @@ public final class PvpPlayer {
 			case T8 -> {
 				// At them while they rise; once they fall it is the golden rule's (K2): leave it.
 				k.taught = Keys.KEY_MOVE | Keys.KEY_SPRINT | Keys.KEY_ATTACK;
-				if (them.onGround && planT > 2 || them.falling()) {
+				if (them.onGround && planT > 2 || fallingByTheHit(them)) {
 					return ABORT;
 				}
 				k.forward = 1;
 				k.sprint = true;
-				if (canSwing(d) && them.rising()) {
+				if (canSwing(d) && them.rising() && !fallingByTheHit(them)) {
 					k.attack = true;
 					return DONE;
 				}
