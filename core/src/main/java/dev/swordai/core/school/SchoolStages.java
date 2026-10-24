@@ -367,7 +367,24 @@ public final class SchoolStages {
 	}
 
 	/** A fight's opponent: a bot of this stage, of a stage before (rehearsal), or the real player. */
-	/** A bot of the family of a technique reached and not mastered, by how far under {@link #MASTERED} it is; -1 for none. */
+	/**
+	 * Moments of each technique seen against each bot (since this run started): against which bots a technique's
+	 * moments come. C6 (a standing crit against a jump reset) comes only against the jump-resetter, after a stun of the
+	 * network's own, one bot of three in its family: drawn by family it had one or two moments an update (24 Oct).
+	 */
+	private final float[][] botMoments = new float[Specialists.KINDS][Technique.COUNT];
+
+	/** A moment of technique {@code t} began against bot {@code bot} ({@code Specialists} index). */
+	public void sawMoment(int bot, int t) {
+		if (bot >= 0 && bot < Specialists.KINDS && t >= 0 && t < Technique.COUNT) {
+			botMoments[bot][t]++;
+		}
+	}
+
+	/**
+	 * A bot for a technique reached and not mastered, the further under {@link #MASTERED} the likelier: one it has had
+	 * that technique's moments against, by how many, else one of its family; -1 for none.
+	 */
 	int weakestBot(Random rng) {
 		int last = Math.min(reached, FAMILIES - 1);
 		float total = 0f;
@@ -387,9 +404,13 @@ public final class SchoolStages {
 		}
 		float u = rng.nextFloat() * total;
 		for (int f = 0; f <= last; f++) {
-			for (float x : w[f]) {
-				u -= x;
+			for (int i = 0; i < w[f].length; i++) {
+				u -= w[f][i];
 				if (u <= 0f) {
+					int b = botFor(STAGES[f].techniques[i].ordinal(), rng);
+					if (b >= 0) {
+						return b;
+					}
 					int[] bots = STAGES[f].bots;
 					return bots[rng.nextInt(bots.length)];
 				}
@@ -397,6 +418,25 @@ public final class SchoolStages {
 		}
 		int[] bots = STAGES[last].bots;
 		return bots[rng.nextInt(bots.length)];
+	}
+
+	/** A bot drawn by how many moments of technique {@code t} it has given; -1 before any. */
+	int botFor(int t, Random rng) {
+		float total = 0f;
+		for (int b = 0; b < Specialists.KINDS; b++) {
+			total += botMoments[b][t];
+		}
+		if (total <= 0f) {
+			return -1;
+		}
+		float u = rng.nextFloat() * total;
+		for (int b = 0; b < Specialists.KINDS; b++) {
+			u -= botMoments[b][t];
+			if (u <= 0f && botMoments[b][t] > 0f) {
+				return b;
+			}
+		}
+		return -1;
 	}
 
 	public int drawBot(Random rng) {

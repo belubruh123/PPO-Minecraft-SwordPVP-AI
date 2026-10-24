@@ -177,6 +177,8 @@ public final class SchoolSession implements AgentSession {
 	private int momentsPaid;
 	private int k2Broken;
 	private float[] pullsNow;
+	/** The technique of the moment on the last tick, so a moment's start is told to the stages with the bot it came against. */
+	private int lastMomentTechnique = -1;
 	private int critWantedFor;
 	private static final boolean[] CRIT_WANTED = new boolean[Technique.COUNT];
 	/**
@@ -614,6 +616,7 @@ public final class SchoolSession implements AgentSession {
 		teacher.start(checkTaught != null ? checkTaught : stages.taught(), cfg.swingMinCharge, seed ^ 0x7EAC4L);
 		learner.resetIntent();
 		shaping = 0f;
+		lastMomentTechnique = -1;
 		reader.reset();
 		perf.reset();
 		perfB.reset();
@@ -909,6 +912,10 @@ public final class SchoolSession implements AgentSession {
 		}
 		boolean told = learner.toldTheTeachers();
 		int t = perf.lastTechnique;
+		if (t >= 0 && t != lastMomentTechnique) {
+			stages.sawMoment(fightBot, t);
+		}
+		lastMomentTechnique = t;
 		if (told && t >= 0 && perf.lastMatch >= 0f) {
 			shaping += IMITATE * perf.lastMatch * Math.min(SHARE_MOST, pullsNow[t]);
 		}

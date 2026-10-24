@@ -117,4 +117,23 @@ class SchoolLearnerTest {
 		again.load(f);
 		assertEquals(st.masteryLine(), again.masteryLine());
 	}
+
+	/** A weak technique's fights go to the bots its moments came against. */
+	@Test
+	void weakTechniquesFightTheBotsTheirMomentsComeAgainst() {
+		SchoolStages st = new SchoolStages();
+		st.reached = SchoolStages.FAMILIES - 1;
+		java.util.Random rng = new java.util.Random(3);
+		assertEquals(-1, st.botFor(Technique.C6.ordinal(), rng), "no moments seen yet");
+		for (int i = 0; i < 5; i++) {
+			st.sawMoment(Specialists.JUMP_RESETTER, Technique.C6.ordinal());
+		}
+		for (int i = 0; i < 20; i++) {
+			assertEquals(Specialists.JUMP_RESETTER, st.botFor(Technique.C6.ordinal(), rng));
+		}
+		for (int i = 0; i < 50; i++) {
+			int b = st.weakestBot(rng);
+			assertTrue(b >= 0 && b < Specialists.KINDS);
+		}
+	}
 }
