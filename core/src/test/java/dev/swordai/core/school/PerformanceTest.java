@@ -45,5 +45,24 @@ class PerformanceTest {
 		}
 		assertEquals(1, p.takeDone(T10));
 		assertEquals(0, p.takeDone(T10), "taken once");
+		// No damage either way: it paid (not a loss), it won nothing.
+		assertEquals(1, p.takePaid(T10));
+		assertEquals(0, p.takeWon(T10));
+		// A moment done with a hit landed and none taken: paid and won; one with only a hit taken: neither.
+		for (int i = 0; i < 4; i++) {
+			p.tick(T10, heads, target, both, ActionSpace.ALL_HEADS, i == 2 ? 5f : 0f, 0f);
+		}
+		for (int i = 0; i < Performance.AFTER + 2; i++) {
+			p.tick(-1, 0, target, both, ActionSpace.ALL_HEADS, 0f, 0f);
+		}
+		for (int i = 0; i < 4; i++) {
+			p.tick(T10, heads, target, both, ActionSpace.ALL_HEADS, 0f, i == 1 ? 5f : 0f);
+		}
+		for (int i = 0; i < Performance.AFTER + 2; i++) {
+			p.tick(-1, 0, target, both, ActionSpace.ALL_HEADS, 0f, 0f);
+		}
+		assertEquals(2, p.takeDone(T10));
+		assertEquals(1, p.takePaid(T10));
+		assertEquals(1, p.takeWon(T10));
 	}
 }

@@ -52,6 +52,9 @@ public final class Performance {
 	public float lastMatch = -1f;
 	public int lastTechnique = -1;
 	private final int[] doneSince = new int[Technique.COUNT];
+	/** The same for the moments that paid (done, the damage traded not a loss), and that won damage (more dealt than taken). */
+	private final int[] paidSince = new int[Technique.COUNT];
+	private final int[] wonSince = new int[Technique.COUNT];
 	private int current = -1;
 	private int ticks;
 	private int matched;
@@ -130,12 +133,28 @@ public final class Performance {
 		lastMatch = -1f;
 		lastTechnique = -1;
 		java.util.Arrays.fill(doneSince, 0);
+		java.util.Arrays.fill(paidSince, 0);
+		java.util.Arrays.fill(wonSince, 0);
 	}
 
 	/** The moments done of technique {@code t} since the last call for it; counts them as taken. */
 	public int takeDone(int t) {
 		int n = doneSince[t];
 		doneSince[t] = 0;
+		return n;
+	}
+
+	/** The moments of technique {@code t} that paid since the last call for it. */
+	public int takePaid(int t) {
+		int n = paidSince[t];
+		paidSince[t] = 0;
+		return n;
+	}
+
+	/** The moments of technique {@code t} done that won damage since the last call for it. */
+	public int takeWon(int t) {
+		int n = wonSince[t];
+		wonSince[t] = 0;
 		return n;
 	}
 
@@ -277,6 +296,8 @@ public final class Performance {
 		moments[t]++;
 		done[t] += closingDone ? 1 : 0;
 		doneSince[t] += closingDone ? 1 : 0;
+		paidSince[t] += gain ? 1 : 0;
+		wonSince[t] += closingDone && dealt - taken > 0f ? 1 : 0;
 		paid[t] += gain ? 1 : 0;
 		if (listener != null) {
 			listener.moment(t, closingDone, gain);

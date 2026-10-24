@@ -103,8 +103,16 @@ public final class SchoolSession implements AgentSession {
 	 * the technique's pull share now (0 once mastered, up to 3 while stuck), so the reward goes where it is not learned.
 	 * An imitation reward beside the task's, as DeepMimic learns its many skills with PPO (Peng et al. 2018).
 	 */
-	static final float IMITATE = 0.02f;
+	static final float IMITATE = 0.01f;
 	static final float DONE_BONUS = 0.2f;
+	/**
+	 * Since 24 Oct 16:35 a moment is paid for what it did to the fight, not for the keys alone (the user: "let it learn to turn
+	 * that into damage the way a player would"): the done bonus only where it paid (the damage traded over it and the ticks
+	 * after not a loss), this on top where it won damage, and the per-tick imitation halved. In the update before, the
+	 * technique reward came to about +131 and the damage reward about -26: copying the keys paid five times what the
+	 * trade did, and the keys were learned (likeliest the teacher's 99%).
+	 */
+	static final float WON_BONUS = 0.3f;
 	static final float SHARE_MOST = 3f;
 	/**
 	 * The golden rule (K2) broken: a knockback hit landed on a falling player, who crits back (the user's first wish). A
@@ -200,6 +208,8 @@ public final class SchoolSession implements AgentSession {
 	private int critSwings;
 	/** Ticks of a lift the sprint let go was taught on (see the punish crit teacher). */
 	private int sprintLetGo;
+	/** Technique moments that won damage since the last update (see WON_BONUS). */
+	private int momentsWon;
 	private boolean critChanceAtClick;
 	/** Ticks since their hit threw it up from the ground, -1 once it has landed (see OTHER_CRIT); on the ground the tick before. */
 	private int liftedFor = -1;
@@ -1061,10 +1071,12 @@ public final class SchoolSession implements AgentSession {
 			shaping += IMITATE * perf.lastMatch * Math.min(SHARE_MOST, pullsNow[t]);
 		}
 		for (int i = 0; i < Technique.COUNT; i++) {
-			int n = perf.takeDone(i);
-			if (told && n > 0 && i != Technique.BASE.ordinal()) {
-				shaping += DONE_BONUS * n * Math.min(SHARE_MOST, pullsNow[i]);
-				momentsPaid += n;
+			int paid = perf.takePaid(i);
+			int won = perf.takeWon(i);
+			if (told && paid + won > 0 && i != Technique.BASE.ordinal()) {
+				shaping += (DONE_BONUS * paid + WON_BONUS * won) * Math.min(SHARE_MOST, pullsNow[i]);
+				momentsPaid += paid;
+				momentsWon += won;
 			}
 		}
 	}
@@ -1371,10 +1383,10 @@ public final class SchoolSession implements AgentSession {
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
 				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {}, other crits {} "
-				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks | their hits: {} | punish chances by their hit:{} | technique reward {} for {} moments done, K2 broken {} | swings: {} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
+				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks | their hits: {} | punish chances by their hit:{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} | swings: {} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
 				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, otherCrits,
-				critChances, critSwings, sprintLetGo, reader.takeTheirHits(), liftLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, k2Broken, swingLine(0), used);
+				critChances, critSwings, sprintLetGo, reader.takeTheirHits(), liftLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, swingLine(0), used);
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		otherCrits = 0;
@@ -1383,6 +1395,7 @@ public final class SchoolSession implements AgentSession {
 		sprintLetGo = 0;
 		shapingPaid = 0f;
 		momentsPaid = 0;
+		momentsWon = 0;
 		k2Broken = 0;
 		java.util.Arrays.fill(critTrace[0], 0L);
 		java.util.Arrays.fill(jumpIn[0], 0L);
