@@ -288,6 +288,19 @@ public final class Fighter {
 		idea.allowHolds(value);
 	}
 
+	/**
+	 * When it only watches and another plays (the school's installed model as a teacher): the keys really pressed this tick
+	 * and the hand that really turned the camera, in place of its own choice, so that its next decision sees the fight as it
+	 * went (its last keys and its hand's push are part of what it sees). Without this it went on, in training, from keys and
+	 * turns it never made, and taught from a fight that was not the one being fought (25 Oct 04:50: 35 minutes of training
+	 * from its own weights took the school network from -7 to -18 a fight against it, at any step size).
+	 */
+	public void pressed(int[] keys, AimMotor played) {
+		System.arraycopy(keys, 0, action, 0, ActionSpace.HEADS);
+		hasAction = true;
+		motor.copyFrom(played);
+	}
+
 	public void hitDealt() {
 		sinceHitDealt = 0;
 		dealtSince++;

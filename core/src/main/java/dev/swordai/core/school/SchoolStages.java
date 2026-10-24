@@ -120,7 +120,7 @@ public final class SchoolStages {
 	 * the 01:22 check came to -15.1 (from -20.0); 0.5 from 02:05, as the technique moments still kept its swings down (32 a
 	 * minute in them to the installed model's 53).
 	 */
-	public static final float PULL_CAP = 0.5f;
+	public static final float PULL_CAP = 0f; // control run 25 Oct 03:25 (was 0.5)
 	/** The moments a technique is judged by, the least of them that counts, and the bars. */
 	public static final int WINDOW = 40;
 	public static final int ENOUGH = 20;

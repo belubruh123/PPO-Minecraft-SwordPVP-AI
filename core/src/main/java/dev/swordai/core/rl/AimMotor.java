@@ -36,6 +36,14 @@ public final class AimMotor {
 		pitch.reset();
 	}
 
+	/** Takes on the hand of {@code other}: its push and whether it is moving, on both axes. */
+	public void copyFrom(AimMotor other) {
+		yaw.push = other.yaw.push;
+		yaw.moving = other.yaw.moving;
+		pitch.push = other.pitch.push;
+		pitch.moving = other.pitch.moving;
+	}
+
 	/** Advances one tick towards the wanted speeds; the rates are then this tick's camera movement. */
 	public void step(float wantedYaw, float wantedPitch) {
 		yaw.step(wantedYaw);

@@ -230,7 +230,7 @@ public final class SchoolSession implements AgentSession {
 	 * and swung at the air. This share of the training fights is one of those stages' episodes instead: that stage's bot, its
 	 * keys and its rewards.
 	 */
-	static final float REVIEW_SHARE = 0.25f;
+	static final float REVIEW_SHARE = 0f; // control run 25 Oct 03:25 (was 0.25)
 	/** The share of the specialists' training fights in which the specialist does other things too (Specialists.varied). */
 	static final float VARIED_SHARE = 0.5f;
 	/**
@@ -239,9 +239,9 @@ public final class SchoolSession implements AgentSession {
 	 * this share of the training fights are basics; the rest stay technique fights so that those are not lost. After that,
 	 * {@link #REVIEW_SHARE} ("after it is done with the basics make it constantly review it").
 	 */
-	static final float BASICS_SHARE = 0.8f;
+	static final float BASICS_SHARE = 0f; // control run 25 Oct 03:25 (was 0.8)
 	/** With all but the last basic passed, the basics' share comes down toward this. */
-	static final float BASICS_SHARE_LEAST = 0.4f;
+	static final float BASICS_SHARE_LEAST = 0f; // control run 25 Oct 03:25 (was 0.4)
 	/** Steps of a basic judged at a time against its stage's bars. */
 	static final int PASS_STEPS = 4000;
 	/** A basic that failed this many judgements in a row stops holding the rest back (and is still drawn three times as often). */
@@ -1266,6 +1266,10 @@ public final class SchoolSession implements AgentSession {
 		}
 		motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));
 		applyAction(motor.yawRate(), motor.pitchRate());
+		if (installed != null && mode == Mode.TRAIN && step.teacherWeight > 0f) {
+			// The installed model watched: it goes on from what was really pressed (see Fighter#pressed).
+			installed.fighter.pressed(action, motor);
+		}
 		clicked = action[ActionSpace.ATTACK] == 1;
 		if (liftAimedNow && clicked) {
 			liftStage = Math.max(liftStage, 5);
