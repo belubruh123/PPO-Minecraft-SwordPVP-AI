@@ -970,6 +970,12 @@ public final class PvpPlayer {
 		Body me = d.me;
 		boolean running = from >= RUNNING_JUMP_FROM;
 		k.taught = Keys.KEY_JUMP | Keys.KEY_SPRINT | Keys.KEY_ATTACK | Keys.KEY_MOVE | (around ? Keys.KEY_STRAFE : 0);
+		// T1b: around them the whole double crit, "go around them or behind them as you double crit"; only in the air it was a
+		// strafe key turned on at the jump, taught as no strafe until then, and the network missed it (24 Oct 20:34: 25%,
+		// off on A/D a fifth of its ticks).
+		if (around) {
+			k.strafe = planDir;
+		}
 		if (phase == 0) {
 			if (!me.onGround) {
 				// Still coming down from the last one: wait for the ground, walking in.
