@@ -120,7 +120,20 @@ public final class SchoolStages {
 	 * the 01:22 check came to -15.1 (from -20.0); 0.5 from 02:05, as the technique moments still kept its swings down (32 a
 	 * minute in them to the installed model's 53).
 	 */
-	public static final float PULL_CAP = 0f; // control run 25 Oct 03:25 (was 0.5)
+	public static final float PULL_CAP = 0f; // 25 Oct 06:20 synced control continued (techniques on at 0.5 cost -19.1 vs -8.6 off)
+	/**
+	 * The answers to a jump-in (part 7: hit them while they rise, T8; no knockback hit on a falling one, K2; let it land and
+	 * punish-crit, B1) taught on their own (25 Oct 07:40): with every teacher off the network was level with the installed
+	 * model (06:54 check, -0.6) but knockback-hit falling jumpers 30 to 50 times an update, the user's first complaint.
+	 */
+	public static final float JUMP_IN_PULL_CAP = 0.5f;
+	static final boolean[] JUMP_IN_ANSWER = new boolean[Technique.COUNT];
+
+	static {
+		JUMP_IN_ANSWER[Technique.T8.ordinal()] = true;
+		JUMP_IN_ANSWER[Technique.K2.ordinal()] = true;
+		JUMP_IN_ANSWER[Technique.B1.ordinal()] = true;
+	}
 	/** The moments a technique is judged by, the least of them that counts, and the bars. */
 	public static final int WINDOW = 40;
 	public static final int ENOUGH = 20;
@@ -307,7 +320,7 @@ public final class SchoolStages {
 	public float[] techPulls() {
 		float[] p = new float[Technique.COUNT];
 		for (int t = 0; t < p.length; t++) {
-			p[t] = TECH_PULL * Math.min(PULL_CAP, pullShare[t]);
+			p[t] = TECH_PULL * Math.min(JUMP_IN_ANSWER[t] ? JUMP_IN_PULL_CAP : PULL_CAP, pullShare[t]);
 		}
 		return p;
 	}
