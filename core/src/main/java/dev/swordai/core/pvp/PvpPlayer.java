@@ -116,6 +116,8 @@ public final class PvpPlayer {
 		sinceLanded = 1000;
 		wasOnGround = true;
 		theyWereOnGround = true;
+		donePlan = Plan.NONE;
+		doneAt = -1000;
 		sinceTheyTookOff = 1000;
 		backingTicks = 0;
 		inReachTicks = 0;
@@ -246,6 +248,8 @@ public final class PvpPlayer {
 				end();
 				k.clear();
 			} else if (how == DONE) {
+				donePlan = plan;
+				doneAt = tick;
 				end();
 				done = true;
 			}
@@ -277,6 +281,10 @@ public final class PvpPlayer {
 	}
 
 	private double theirLastVy;
+	/** The last plan done with its swing, and when: its hit lands a tick or more later (see hitLanded). */
+	private Plan donePlan = Plan.NONE;
+	private long doneAt = -1000;
+	private static final int HIT_AFTER_SWING = 4;
 
 	private void clocks(Duel d, Events e) {
 		Body me = d.me;
@@ -403,7 +411,10 @@ public final class PvpPlayer {
 			later(Plan.T5);
 			return;
 		}
-		if (lifted && e.theyHit != Events.CRIT && roll(Technique.T9)) {
+		// The jump reset answers a sprint hit, a stun attempt (part 7: "Sprint hit (stun attempt) -> Jump reset (T9)"); for one
+		// that goes by the file only that, and a plain hit or a crit that throws it up is the punish crit's (B1). Checked first
+		// and certain, T9 took nearly every hit from B1 (24 Oct: one punish crit moment in six updates).
+		if (lifted && e.theyHit != Events.CRIT && (!style.onlyWhenItWorks || e.theyHit == Events.SPRINT) && roll(Technique.T9)) {
 			timedJump(Technique.T9);
 			return;
 		}
@@ -426,7 +437,8 @@ public final class PvpPlayer {
 
 	/** On the tick a hit of mine lands. */
 	private void hitLanded(Duel d, Events e) {
-		Plan was = plan;
+		// The plan the hit belongs to: one that swung and was done a few ticks ago counts, as its hit lands after the swing.
+		Plan was = plan != Plan.NONE ? plan : tick - doneAt <= HIT_AFTER_SWING ? donePlan : Plan.NONE;
 		if (e.iHit == Events.CRIT) {
 			if (was == Plan.T1 || was == Plan.T1B || was == Plan.T1C) {
 				// The second crit landed: the double crit is done.
