@@ -50,11 +50,14 @@ public final class Teacher {
 			int off = ActionSpace.OFFSETS[h];
 			return target[off] > target[off + 1] ? PRESS_WEIGHT : 1f;
 		}
-		// The basics teacher's swing (the ordinary fight) weighs as its swing held back: weighed three times, it taught a
-		// swing at nothing more than a swing on them (24 Oct 16:31 check: 63% of its swings landed, the installed model's
-		// 91%, and every swing with the crosshair on them landed; that was the whole gap in damage dealt, 208 to 318).
-		if (h == ActionSpace.ATTACK && technique == Technique.BASE.ordinal()) {
-			return 1f;
+		// The basics teacher's swing weighed as its swing held back from 16:35 to 19:00 (24 Oct); with the whiff guard keeping
+		// it from swings at nothing, that and a dearer swing at nothing left it swinging a fifth less than the installed model
+		// (18:48 check: 317 swings to 400, 79% landing): weighed three times again.
+		// A strafe in a technique's moment weighs as a press too: the double crit around them (T1b) stayed at about a third,
+		// off on A/D, where every other press it is taught weighs three times.
+		if (h == ActionSpace.STRAFE && technique != Technique.BASE.ordinal()) {
+			int off = ActionSpace.OFFSETS[h];
+			return Math.max(target[off + 1], target[off + 2]) > target[off] ? PRESS_WEIGHT : 1f;
 		}
 		return pressWeight(target, h, vec);
 	}
