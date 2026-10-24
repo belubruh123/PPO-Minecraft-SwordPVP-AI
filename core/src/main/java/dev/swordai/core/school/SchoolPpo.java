@@ -210,7 +210,10 @@ public final class SchoolPpo implements AutoCloseable {
 				int which = r.teacherTechnique[i];
 				// The installed model teaches the camera (yaw and pitch); in the overlay every key between the techniques too.
 				boolean camera = h == ActionSpace.YAW || h == ActionSpace.PITCH;
-				boolean installedHere = old && (camera || set.installedBody && tech == 0);
+				// Between techniques (no teacher, or the ordinary fight's: the basics teacher holds the swing there) every key
+				// the basics teacher does not hold.
+				boolean between = tech == 0 || which == dev.swordai.core.pvp.Technique.BASE.ordinal();
+				boolean installedHere = old && (camera || set.installedBody && between && !byTech);
 				float pull = byTech ? (which >= 0 ? set.techPulls[which] : 0f) : installedHere ? set.oldPull : 0f;
 				if (!byTech && !installedHere) {
 					continue;

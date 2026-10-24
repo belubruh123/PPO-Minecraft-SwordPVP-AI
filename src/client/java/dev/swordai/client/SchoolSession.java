@@ -102,6 +102,13 @@ public final class SchoolSession implements AgentSession {
 	static final float SHARE_MOST = 3f;
 	/** The golden rule (K2) broken: a knockback hit landed on a falling player, who crits back (the user's first wish). */
 	static final float K2_BROKEN = 0.5f;
+	/**
+	 * The basics teacher (the user, 24 Oct: "make a brand new teacher specializing on teaching this"): outside the technique
+	 * moments the swing is its, as soon as the sword is back and only with the crosshair on them (the game's own pick, so in
+	 * reach): no swing at nothing ("MANY free hit", the user, 18 Oct). In the 13:36 check the school network landed about
+	 * half its swings, the installed model three in four. A swing at nothing also costs this much.
+	 */
+	static final float AIR_SWING = 0.1f;
 	/** Updates at the start of a new school that teach the critic only (the actor is the installed one's, the critic new). */
 	static final int CRITIC_WARMUP = 3;
 	/** The bot is put between these distances, in view. */
@@ -177,6 +184,8 @@ public final class SchoolSession implements AgentSession {
 	private int momentsPaid;
 	private int k2Broken;
 	private float[] pullsNow;
+	/** Per side (0 the network, 1 the installed model in a check): swings, swings with the crosshair on them, hits landed. */
+	private final long[][] swingCount = new long[2][3];
 	/** The technique of the moment on the last tick, so a moment's start is told to the stages with the bot it came against. */
 	private int lastMomentTechnique = -1;
 	/** In a check, the school network's combo jump resets mistimed now and then, as they will be in a real fight. */
@@ -724,6 +733,12 @@ public final class SchoolSession implements AgentSession {
 		clock.ticksSinceHitTaken++;
 		CombatLog.drain(facts);
 		boolean shownDealt = hasLastAction && clicked && clickOnTarget;
+		if (hasLastAction) {
+			long[] sc = swingCount[installedPlays ? 1 : 0];
+			sc[0] += clicked ? 1 : 0;
+			sc[1] += clicked && clickOnTarget ? 1 : 0;
+			sc[2] += facts.hitsDealt;
+		}
 		if (shownDealt) {
 			clock.ticksSinceHitDealt = 0;
 		}
@@ -767,6 +782,9 @@ public final class SchoolSession implements AgentSession {
 				if (facts.hitsDealt > 0 && facts.sprintHit && reader.duel.them.falling()) {
 					reward -= K2_BROKEN;
 					k2Broken++;
+				}
+				if (clicked && !clickOnTarget) {
+					reward -= AIR_SWING;
 				}
 				reward += shaping;
 				shapingPaid += shaping;
@@ -861,6 +879,17 @@ public final class SchoolSession implements AgentSession {
 			}
 			step.teacherWeight = 1f;
 		}
+		if (mode == Mode.TRAIN && OVERLAY && step.teacherHeads == 0) {
+			// The basics teacher: the swing outside the technique moments (see AIR_SWING).
+			// The golden rule (K2) holds here too: no knockback hit (sprinting) on one who is falling.
+			boolean swing = ActionSpace.unlocked(keys, ActionSpace.ATTACK) && onOpponent()
+					&& !(reader.duel.them.falling() && reader.duel.me.sprinting);
+			int off = ActionSpace.OFFSETS[ActionSpace.ATTACK];
+			step.teacher[off] = swing ? 0f : 1f;
+			step.teacher[off + 1] = swing ? 1f : 0f;
+			step.teacherHeads = 1 << ActionSpace.ATTACK;
+			step.teacherTechnique = Technique.BASE.ordinal();
+		}
 		step.policyWeight = !facts.enemyVisible && facts.reachDist > SKIP_FARTHER ? 0f : 1f;
 		step.botTechnique = botTechnique;
 		step.botKeys = truth.botKeys();
@@ -932,6 +961,13 @@ public final class SchoolSession implements AgentSession {
 				momentsPaid += n;
 			}
 		}
+	}
+
+	/** "120 swings, 90 with the crosshair on them (75%), 80 hits landed (67%)". */
+	private String swingLine(int side) {
+		long[] c = swingCount[side];
+		return String.format(Locale.ROOT, "%d swings, %d with the crosshair on them (%.0f%%), %d hits landed (%.0f%%)", c[0], c[1],
+				100.0 * c[1] / Math.max(1, c[0]), c[2], 100.0 * c[2] / Math.max(1, c[0]));
 	}
 
 	private static String keysOf(int[] a) {
@@ -1053,8 +1089,9 @@ public final class SchoolSession implements AgentSession {
 	/** Paired check: what each side did when the moments came, and what the game showed it did. */
 	private void checkSummary() {
 		SwordAi.LOGGER.info("school check after {} pairs | A (school) techniques:{} | B (installed) techniques:{} | A keys a minute off/on moments: {} | B: {} "
-				+ "| A by the game:{} | B by the game:{} | A crit moments: {} | B crit moments: {} | A jumping in: {} | B jumping in: {}", checkFights / 2, perfLine(perf),
-				perfLine(perfB), perf.keysLine(), perfB.keysLine(), ownLine(0), ownLine(1), critLine(0), critLine(1), jumpInLine(0), jumpInLine(1));
+				+ "| A by the game:{} | B by the game:{} | A crit moments: {} | B crit moments: {} | A jumping in: {} | B jumping in: {} | A swings: {} | B swings: {}",
+				checkFights / 2, perfLine(perf), perfLine(perfB), perf.keysLine(), perfB.keysLine(), ownLine(0), ownLine(1), critLine(0), critLine(1),
+				jumpInLine(0), jumpInLine(1), swingLine(0), swingLine(1));
 	}
 
 	/** One tick of a side's crit moments (see {@link #critTrace}). */
@@ -1202,10 +1239,11 @@ public final class SchoolSession implements AgentSession {
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
 				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {}, other crits {} "
-				+ "| technique reward {} for {} moments done, K2 broken {} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
+				+ "| technique reward {} for {} moments done, K2 broken {} | swings: {} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
 				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, otherCrits,
-				String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, k2Broken, used);
+				String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, k2Broken, swingLine(0), used);
+		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		otherCrits = 0;
 		shapingPaid = 0f;

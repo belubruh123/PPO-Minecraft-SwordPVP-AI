@@ -88,7 +88,8 @@ public final class TeacherReplay {
 					continue;
 				}
 				// The installed model teaches the camera; in the overlay, every key where no technique teacher speaks.
-				h = (installedBody && h == 0 ? ActionSpace.ALL_HEADS : 1 << ActionSpace.YAW | 1 << ActionSpace.PITCH) & ~h;
+				boolean between = h == 0 || t == Technique.BASE.ordinal();
+				h = (installedBody && between ? ActionSpace.ALL_HEADS : 1 << ActionSpace.YAW | 1 << ActionSpace.PITCH) & ~h;
 				t = Technique.BASE.ordinal();
 				if (h == 0) {
 					continue;
