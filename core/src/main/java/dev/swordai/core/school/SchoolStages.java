@@ -258,8 +258,10 @@ public final class SchoolStages {
 		int judged = 0;
 		for (Technique t : current().techniques) {
 			int i = t.ordinal();
+			// A technique that has not had its moments is not learned: the crit trades (T-B) passed in an hour with the double
+			// crit (T1), T1b, C1 and C2 never once come up (24 Oct). The stage then goes on to its step cap.
 			if (momentCount[i] < ENOUGH) {
-				continue;
+				return false;
 			}
 			judged++;
 			float r = doneRate(i);
@@ -394,8 +396,10 @@ public final class SchoolStages {
 			w[f] = new float[ts.length];
 			for (int i = 0; i < ts.length; i++) {
 				int t = ts[i].ordinal();
-				float r = momentCount[t] < ENOUGH / 2 ? 0f : doneRate(t);
-				w[f][i] = Math.max(0f, MASTERED - r);
+				// Starved (too few moments to judge) weighs twice: its moments only come against its own bots.
+				boolean starved = momentCount[t] < ENOUGH / 2;
+				float r = starved ? 0f : doneRate(t);
+				w[f][i] = Math.max(0f, MASTERED - r) * (starved ? 2f : 1f);
 				total += w[f][i];
 			}
 		}

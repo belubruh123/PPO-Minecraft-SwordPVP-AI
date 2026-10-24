@@ -77,6 +77,10 @@ public final class Specialists {
 				s.set(Technique.T4, p);
 				s.hitSelect = p;
 				s.reaction = 2 + rng.nextInt(3);
+				// Its spacing as a person's, not always the stun's: "too late, or too close, and they hit you through your
+				// deflection, and there is no stun" (T4). A deflection that does not stun is the reverse deflection's moment
+				// (T5); from perfect stun spacing every time, the network had none in fifteen updates (24 Oct).
+				s.spacing = 2.1f + 1.0f * rng.nextFloat();
 			}
 			case REVERSE_DEFLECTOR -> {
 				s.set(Technique.T5, p).set(Technique.T4, 0.3f);

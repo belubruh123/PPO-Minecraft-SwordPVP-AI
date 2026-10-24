@@ -524,6 +524,13 @@ public final class PvpPlayer {
 		boolean coming = d.theyClose > 0.08 && d.theirReach > Duel.REACH && d.theirReach < Duel.REACH + 1.0 && them.onGround;
 		if (coming && !approachRolled) {
 			approachRolled = true;
+			// C4: against one that sprint-jumps after a held S, "attack them right before you hold S", which kills the chase.
+			// Only C3's own start (the sword not back) led to it, so with the sword back it never came (one moment in fifteen
+			// updates, 24 Oct): its own start, the sword back, before the C3.
+			if (me.swordReady() && them.swordReady() && them.sprinting && expect(Habits.JUMP_IN, -1f) > 0.3f && roll(Technique.C4)) {
+				begin(Plan.C4);
+				return;
+			}
 			if (!me.swordReady() && them.swordReady() && them.sprinting && roll(Technique.C3)) {
 				begin(Plan.C3);
 				return;
@@ -812,8 +819,12 @@ public final class PvpPlayer {
 				// Jump and hold S; with C4 the swing first, if there is one to make.
 				k.taught = Keys.KEY_MOVE | Keys.KEY_SPRINT | Keys.KEY_JUMP | Keys.KEY_ATTACK;
 				if (phase == 0) {
+					if (plan == Plan.C4 && !canSwing(d)) {
+						// Started on its own: the attack as they come into reach, then the S.
+						return planT < 6 ? RUN : ABORT;
+					}
 					phase = 1;
-					if (canSwing(d) && roll(Technique.C4)) {
+					if (canSwing(d) && (plan == Plan.C4 || roll(Technique.C4))) {
 						plan = Plan.C4;
 						k.technique = Technique.C4;
 						k.attack = true;

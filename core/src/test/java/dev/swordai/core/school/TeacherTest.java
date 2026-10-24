@@ -75,6 +75,10 @@ class TeacherTest {
 		t[fwd] = 0.05f;
 		t[fwd + 1] = 0.9f;
 		assertEquals(1f, Teacher.pressWeight(t, dev.swordai.core.rl.ActionSpace.FORWARD, vec), "W held is not a let go");
+		int spr = dev.swordai.core.rl.ActionSpace.OFFSETS[dev.swordai.core.rl.ActionSpace.SPRINT];
+		t[spr] = 0.95f;
+		t[spr + 1] = 0.05f;
+		assertEquals(Teacher.PRESS_WEIGHT, Teacher.pressWeight(t, dev.swordai.core.rl.ActionSpace.SPRINT, vec), "sprint key let go while sprinting");
 	}
 
 	/** In a combo, about a third of its jumps on the ground come a tick late; outside a combo none do. */
