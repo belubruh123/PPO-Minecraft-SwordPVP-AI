@@ -59,6 +59,27 @@ public final class Teacher {
 			int off = ActionSpace.OFFSETS[h];
 			return Math.max(target[off + 1], target[off + 2]) > target[off] ? PRESS_WEIGHT : 1f;
 		}
+		boolean inTechnique = technique >= 0 && technique != Technique.BASE.ordinal();
+		// In a technique's moment the swing held back weighs as its swing: C7 waits for their jump, T6 for their miss, and with
+		// the basics teacher's swing on them weighing three times the network swung early there (24 Oct 19:00, off on the
+		// swing: T6 44% of its ticks, T10 12%, T5 13%, C7 11%). And S held (the way out, the step back, the stop that makes them
+		// miss) and the sprint key pressed (T8 off on it 21%, T1a 14%), as the presses they are.
+		if (inTechnique && h == ActionSpace.ATTACK) {
+			return PRESS_WEIGHT;
+		}
+		if (inTechnique && h == ActionSpace.FORWARD) {
+			int off = ActionSpace.OFFSETS[h];
+			if (target[off + 2] > Math.max(target[off], target[off + 1])) {
+				return PRESS_WEIGHT;
+			}
+		}
+		if (inTechnique && h == ActionSpace.SPRINT) {
+			int off = ActionSpace.OFFSETS[h];
+			boolean sprinting = vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_SPRINTING] >= 0.5f;
+			if (target[off + 1] > target[off] && !sprinting) {
+				return PRESS_WEIGHT;
+			}
+		}
 		return pressWeight(target, h, vec);
 	}
 
