@@ -140,9 +140,9 @@
   function cls(r) { return r == null ? 'muted' : r >= 85 ? 'good' : r >= 65 ? 'mid' : 'bad'; }
   function pct(r) { return r == null ? '-' : Math.round(r) + '%'; }
   function changeOf(t) {
-    if (t.change == null) return '<span class="muted">-</span>';
+    if (t.change == null) return '<span class="muted">-</span>' + (t.few ? '<span class="tag">few chances</span>' : '');
     var c = t.change, txt = (c > 0 ? '+' : c < 0 ? '−' : '') + Math.abs(c).toFixed(0);
-    return '<span class="' + (c >= 5 ? 'good' : c <= -5 ? 'bad' : 'muted') + '">' + txt + '</span>' + (t.stuck ? '<span class="tag s">stuck</span>' : '');
+    return '<span class="' + (c >= 5 ? 'good' : c <= -5 ? 'bad' : 'muted') + '">' + txt + '</span>' + (t.stuck ? '<span class="tag s">stuck</span>' : t.few ? '<span class="tag">few chances</span>' : '');
   }
   function ago(sec) {
     if (sec == null) return '';

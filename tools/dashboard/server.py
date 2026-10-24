@@ -53,6 +53,7 @@ GAME = re.compile(r'([A-Za-z][A-Za-z ]*?) \(([A-Z0-9a-z/]+)\) (\d+)/(\d+)')
 # About an hour of training (some 3600 steps a minute), and the least gain in it that is not standing still.
 HOUR = 216000
 STUCK_GAIN = 5.0
+FEW = 10
 
 
 def section(parts, head):
@@ -263,18 +264,22 @@ def build(cache, techniques, stages, prio):
         # swings by about 8 points either way at 50% from chance.
         change = None
         stuck = False
+        few = False
         sr = series[tid]
         if sr:
             end = ups[-1]['steps']
+            # Moments in the last hour: under FEW it is not judged as stuck (too few chances to learn from), but shown as starved.
+            recent_n = sum(u['done'][tid][1] for u in ups if u['steps'] > end - HOUR and tid in u.get('done', {}))
+            few = recent_n < FEW
             recent = [y for x, y in sr if end - HOUR < x <= end]
             prior = [y for x, y in sr if end - 2 * HOUR < x <= end - HOUR]
             if len(recent) >= 5 and len(prior) >= 5:
                 change = round(sum(recent) / len(recent) - sum(prior) / len(prior), 1)
-                stuck = sum(recent) / len(recent) < 85 and change < STUCK_GAIN
+                stuck = sum(recent) / len(recent) < 85 and change < STUCK_GAIN and not few
         rows.append({'id': tid, 'title': t['title'], 'stage': stage_of.get(tid, '-' if tid == '-' else ''),
                      'priority': tid in prio, 'moments': n, 'rate': round(100.0 * d / n, 1) if n >= MIN_MOMENTS else None,
                      'paid': round(100.0 * paid / n, 1) if n >= MIN_MOMENTS else None, 'taught': taught,
-                     'change': change, 'stuck': stuck, 'series': series[tid][-300:]})
+                     'change': change, 'stuck': stuck, 'few': few and n > 0, 'series': series[tid][-300:]})
     damage = [[u['steps'], u['dealt'], u['taken'], u['time']] for u in ups if 'dealt' in u]
     checks = parse_checks(cache.run)
     age = None
