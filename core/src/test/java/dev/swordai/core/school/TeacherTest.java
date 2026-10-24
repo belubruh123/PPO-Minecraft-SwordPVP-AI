@@ -59,10 +59,21 @@ class TeacherTest {
 		int jump = dev.swordai.core.rl.ActionSpace.OFFSETS[dev.swordai.core.rl.ActionSpace.JUMP];
 		t[jump] = 0.05f;
 		t[jump + 1] = 0.95f;
-		assertEquals(Teacher.PRESS_WEIGHT, Teacher.pressWeight(t, dev.swordai.core.rl.ActionSpace.JUMP));
+		float[] vec = new float[dev.swordai.core.rl.ObsSpec.VEC];
+		assertEquals(Teacher.PRESS_WEIGHT, Teacher.pressWeight(t, dev.swordai.core.rl.ActionSpace.JUMP, vec));
 		t[jump] = 0.95f;
 		t[jump + 1] = 0.05f;
-		assertEquals(1f, Teacher.pressWeight(t, dev.swordai.core.rl.ActionSpace.JUMP));
-		assertEquals(1f, Teacher.pressWeight(t, dev.swordai.core.rl.ActionSpace.FORWARD));
+		assertEquals(1f, Teacher.pressWeight(t, dev.swordai.core.rl.ActionSpace.JUMP, vec));
+		// W let go: weighs more only while it still sprints.
+		int fwd = dev.swordai.core.rl.ActionSpace.OFFSETS[dev.swordai.core.rl.ActionSpace.FORWARD];
+		t[fwd] = 0.9f;
+		t[fwd + 1] = 0.05f;
+		t[fwd + 2] = 0.05f;
+		assertEquals(1f, Teacher.pressWeight(t, dev.swordai.core.rl.ActionSpace.FORWARD, vec));
+		vec[dev.swordai.core.rl.ObsSpec.VEC_SCALARS + dev.swordai.core.rl.ObsSpec.SC_SPRINTING] = 1f;
+		assertEquals(Teacher.PRESS_WEIGHT, Teacher.pressWeight(t, dev.swordai.core.rl.ActionSpace.FORWARD, vec));
+		t[fwd] = 0.05f;
+		t[fwd + 1] = 0.9f;
+		assertEquals(1f, Teacher.pressWeight(t, dev.swordai.core.rl.ActionSpace.FORWARD, vec), "W held is not a let go");
 	}
 }

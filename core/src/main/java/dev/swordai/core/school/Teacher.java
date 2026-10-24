@@ -7,6 +7,7 @@ import dev.swordai.core.pvp.PvpPlayer;
 import dev.swordai.core.pvp.Style;
 import dev.swordai.core.pvp.Technique;
 import dev.swordai.core.rl.ActionSpace;
+import dev.swordai.core.rl.ObsSpec;
 
 /**
  * A technique teacher (plan part 6): the bots' own {@link PvpPlayer}, run for the learner's body with a
@@ -35,8 +36,19 @@ public final class Teacher {
 	 */
 	public static final float PRESS_WEIGHT = 3f;
 
-	/** {@link #PRESS_WEIGHT} where head {@code h} of {@code target} is a press of the jump or the swing, else 1. */
-	public static float pressWeight(float[] target, int h) {
+	/**
+	 * {@link #PRESS_WEIGHT} where head {@code h} of {@code target} is a press of the jump or the swing, or W let go while
+	 * still sprinting (the press that ends a sprint, which every crit needs: the punish crit kept W on a third of its
+	 * ticks and so stayed sprinting, 24 Oct 11:36); else 1.
+	 *
+	 * @param vec the step's vector input (its own sprint is read from it)
+	 */
+	public static float pressWeight(float[] target, int h, float[] vec) {
+		if (h == ActionSpace.FORWARD) {
+			int off = ActionSpace.OFFSETS[h];
+			boolean letGo = target[off + 1] < Math.max(target[off], target[off + 2]);
+			return letGo && vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_SPRINTING] >= 0.5f ? PRESS_WEIGHT : 1f;
+		}
 		if (h != ActionSpace.JUMP && h != ActionSpace.ATTACK) {
 			return 1f;
 		}

@@ -199,7 +199,7 @@ public final class TeacherReplay {
 					}
 					int off = ActionSpace.OFFSETS[h];
 					int size = ActionSpace.SIZES[h];
-					float wh = shadow ? w : w * Teacher.pressWeight(target[i], h);
+					float wh = shadow ? w : w * Teacher.pressWeight(target[i], h, vec[i]);
 					Policy.softmax(ws.logits, off, size, probs);
 					Teacher.aim(target[i], probs, off, size, aimed);
 					int best = 0;
