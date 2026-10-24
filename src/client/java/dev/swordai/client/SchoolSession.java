@@ -210,6 +210,8 @@ public final class SchoolSession implements AgentSession {
 	private int critSwings;
 	/** Ticks of a lift the sprint let go was taught on (see the punish crit teacher). */
 	private int sprintLetGo;
+	/** Ticks of a lift's fall the aim onto them was taught on. */
+	private int liftAim;
 	/** Per technique: swings its teacher asked for that a rule kept back, by the sword gate (0) and the whiff guard (1). */
 	private final int[][] blockedSwings = new int[Technique.COUNT][2];
 	/** Technique moments that won damage since the last update (see WON_BONUS). */
@@ -1025,6 +1027,27 @@ public final class SchoolSession implements AgentSession {
 			}
 			sprintLetGo++;
 		}
+		// The punish crit's aim: coming down onto them after their hit's lift, the camera turned onto their body. Of the falls
+		// in reach with the sword back and no sprint, the crosshair was on them on 0 to 2 of 3 to 7 an update (24 Oct 20:15),
+		// and nothing but the installed model, its pull fading, taught the camera there. Taught, not judged: the moment is
+		// judged on its keys as before.
+		if (mode == Mode.TRAIN && OVERLAY && liftedFor >= 0 && facts.falling && !me.onGround() && facts.reachDist <= 3.5f
+				&& charge > 0.5f && step.teacherTechnique != Technique.K2.ordinal()) {
+			double dx = bot.getX() - me.getX();
+			double dz = bot.getZ() - me.getZ();
+			double dy = bot.getY() + bot.getBbHeight() * 0.5 - me.getEyeY();
+			float wantYaw = (float) Math.toDegrees(Math.atan2(dz, dx)) - 90f;
+			float wantPitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
+			float yawOff = (wantYaw - me.getYRot()) % 360f;
+			yawOff = yawOff > 180f ? yawOff - 360f : yawOff < -180f ? yawOff + 360f : yawOff;
+			nearestBin(step.teacher, ActionSpace.YAW, ActionSpace.YAW_BINS, yawOff);
+			nearestBin(step.teacher, ActionSpace.PITCH, ActionSpace.PITCH_BINS, wantPitch - me.getXRot());
+			step.teacherHeads |= (1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH);
+			if (step.teacherTechnique < 0 || step.teacherTechnique == Technique.BASE.ordinal()) {
+				step.teacherTechnique = Technique.B1.ordinal();
+			}
+			liftAim++;
+		}
 		step.policyWeight = !facts.enemyVisible && facts.reachDist > SKIP_FARTHER ? 0f : 1f;
 		step.botTechnique = botTechnique;
 		step.botKeys = truth.botKeys();
@@ -1033,7 +1056,9 @@ public final class SchoolSession implements AgentSession {
 		if (mode == Mode.CHECK) {
 			fairJump.apply(action, me.onGround(), clock.ticksSinceHitTaken, clock.takenStreak.hits());
 		}
-		perf.tick(step.teacherTechnique, step.teacherHeads, step.teacher, action, keys, facts.damageDealt, facts.damageTaken);
+		// Judged on the keys: the camera a teacher shows (the punish crit's aim) is taught, not counted for done.
+		perf.tick(step.teacherTechnique, step.teacherHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH)), step.teacher, action, keys,
+				facts.damageDealt, facts.damageTaken);
 		if (mode == Mode.TRAIN) {
 			techniqueReward();
 		}
@@ -1265,6 +1290,20 @@ public final class SchoolSession implements AgentSession {
 		}
 	}
 
+	/** A head's target: the bin nearest {@code degrees}, sure. */
+	private static void nearestBin(float[] target, int head, float[] bins, float degrees) {
+		int off = ActionSpace.OFFSETS[head];
+		int best = 0;
+		for (int k = 1; k < bins.length; k++) {
+			if (Math.abs(bins[k] - degrees) < Math.abs(bins[best] - degrees)) {
+				best = k;
+			}
+		}
+		for (int k = 0; k < bins.length; k++) {
+			target[off + k] = k == best ? 1f : 0f;
+		}
+	}
+
 	/** " T4 2/5; B1 0/1" (sword gate / whiff guard), and starts the counts again. */
 	private String blockedLine() {
 		StringBuilder b = new StringBuilder();
@@ -1418,16 +1457,17 @@ public final class SchoolSession implements AgentSession {
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
 				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {}, other crits {} "
-				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} | swings: {} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
+				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {} | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} | swings: {} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
 				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, otherCrits,
-				critChances, critSwings, sprintLetGo, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, swingLine(0), used);
+				critChances, critSwings, sprintLetGo, liftAim, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, swingLine(0), used);
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		otherCrits = 0;
 		critChances = 0;
 		critSwings = 0;
 		sprintLetGo = 0;
+		liftAim = 0;
 		shapingPaid = 0f;
 		momentsPaid = 0;
 		momentsWon = 0;
