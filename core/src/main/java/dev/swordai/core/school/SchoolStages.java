@@ -254,9 +254,10 @@ public final class SchoolStages {
 	 * Of the rest, the share of fights against a bot of the family of a technique still under {@link #MASTERED}, the
 	 * weakest most often. A technique's moments come against its own family's bots: C3 (jump + hold S against a stun)
 	 * had one to three moments an update in the jumping stage and stayed at 0% all night (24 Oct; the user: a technique
-	 * that does not rise within an hour is critical).
+	 * that does not rise within an hour is critical). 0.2 until 24 Oct 17:30, when 19 techniques were under 80% (the user:
+	 * "make sure it maintains the skill and technique").
 	 */
-	public static final float WEAKEST_SHARE = 0.2f;
+	public static final float WEAKEST_SHARE = 0.35f;
 
 	static {
 		PRIORITY[Technique.T8.ordinal()] = true;

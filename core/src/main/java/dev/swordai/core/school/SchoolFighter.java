@@ -61,6 +61,12 @@ public final class SchoolFighter {
 	}
 
 	private boolean whiffGuard = true;
+	private boolean crosshairOn;
+
+	/** Whether the game has the opponent under the crosshair and in reach now. */
+	public void crosshairOnOpponent(boolean on) {
+		crosshairOn = on;
+	}
 
 	/** Whether a swing at an opponent plainly out of reach is kept back (Config.whiffGuard). */
 	public void whiffGuard(boolean on) {
@@ -98,8 +104,9 @@ public final class SchoolFighter {
 		ObsBuilder.writeActor(step.obs.base, frame, sight, body, motor, idea, hasAction ? action : null, ActionSpace.ALL_HEADS);
 		System.arraycopy(mem, 0, step.obs.mem, 0, SchoolObs.MEM);
 		int keys = SwingGate.keys(ActionSpace.ALL_HEADS, body.charge, swingMinCharge);
-		// As the installed model: no swing at an opponent plainly out of reach or off the screen (Config.whiffGuard).
-		if (whiffGuard && SwingGate.outOfReach(step.obs.base.vec)) {
+		// As the installed model: no swing at an opponent plainly out of reach or off the screen (Config.whiffGuard), unless
+		// the game has them under the crosshair (the distance read off the screen is rough).
+		if (whiffGuard && !crosshairOn && SwingGate.outOfReach(step.obs.base.vec)) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 		}
 		learner.act(step, keys, false, temperature, action);

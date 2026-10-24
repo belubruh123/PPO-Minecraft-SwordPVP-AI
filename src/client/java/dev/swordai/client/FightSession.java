@@ -351,6 +351,7 @@ final class FightSession implements AgentSession {
 		float pitchBefore = me.getXRot();
 		if (school != null) {
 			reader.tick(me, opp, clicked, chargeAtClick, sprintAtClick, critAtClick);
+			school.crosshairOnOpponent(onOpponent());
 			action = school.decide(observer.frame, body, reader.memory());
 			AgentController.apply(mc, action, school.yawRate(), school.pitchRate());
 			chargeAtClick = me.getAttackStrengthScale(0f);

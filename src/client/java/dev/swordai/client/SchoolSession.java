@@ -103,14 +103,14 @@ public final class SchoolSession implements AgentSession {
 	 * the technique's pull share now (0 once mastered, up to 3 while stuck), so the reward goes where it is not learned.
 	 * An imitation reward beside the task's, as DeepMimic learns its many skills with PPO (Peng et al. 2018).
 	 */
-	static final float IMITATE = 0.01f;
+	static final float IMITATE = 0.02f;
 	static final float DONE_BONUS = 0.2f;
 	/**
 	 * Since 24 Oct 16:35 a moment is paid for what it did to the fight, not for the keys alone (the user: "let it learn to turn
 	 * that into damage the way a player would"): the done bonus only where it paid (the damage traded over it and the ticks
-	 * after not a loss), this on top where it won damage, and the per-tick imitation halved. In the update before, the
-	 * technique reward came to about +131 and the damage reward about -26: copying the keys paid five times what the
-	 * trade did, and the keys were learned (likeliest the teacher's 99%).
+	 * after not a loss), and this on top where it won damage. In the update before, the technique reward came to about +131
+	 * and the damage reward about -26: copying the keys paid five times what the trade did. The per-tick imitation was
+	 * halved with it and put back at 17:30: the deflection's (T4) W/S and sprint slipped, 88% to 66% in the hour.
 	 */
 	static final float WON_BONUS = 0.3f;
 	static final float SHARE_MOST = 3f;
@@ -889,7 +889,9 @@ public final class SchoolSession implements AgentSession {
 		// The installed model's guard, the same for this network (24 Oct 17:10): no swing at an opponent plainly out of reach
 		// or off the screen (SwingGate.outOfReach). Without it, in the 16:31 check 37% of its swings hit nothing, the
 		// installed model's 9%, and that was the whole gap in damage dealt.
-		if (cfg.whiffGuard && SwingGate.outOfReach(step.obs.base.vec)) {
+		// Never with the opponent under the crosshair: the distance read off the screen is rough, and at 17:15 it held back a
+		// tenth to a fifth of the deflection's (T4) swings that would have landed.
+		if (cfg.whiffGuard && !onOpponent() && SwingGate.outOfReach(step.obs.base.vec)) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 		}
 		teacher.tick(reader.duel, reader.events, onOpponent());
