@@ -114,6 +114,21 @@ public final class Predictor {
 		if (n == 0) {
 			return s;
 		}
+		// Each technique weighted by how rare it is (the square root of the inverse of its share, at most 10): the
+		// ordinary fight is most of the ticks, and unweighted it guessed the ordinary fight on almost every technique
+		// moment (24 Oct: 17% right on them), so the acting network was not told that a punish crit is coming
+		// (class-balanced loss, Cui et al. 2019).
+		int[] count = new int[Technique.COUNT];
+		int classes = 0;
+		for (int k = 0; k < n; k++) {
+			if (count[r.predTechnique[labelled[k]]]++ == 0) {
+				classes++;
+			}
+		}
+		float[] weight = new float[Technique.COUNT];
+		for (int c = 0; c < Technique.COUNT; c++) {
+			weight[c] = count[c] == 0 ? 0f : (float) Math.min(10.0, Math.sqrt(n / (double) (classes * count[c])));
+		}
 		Workspace ws = newWorkspace();
 		for (int b = 0; b < batches; b++) {
 			ParamSet.zero(ws.grads);
@@ -123,7 +138,7 @@ public final class Predictor {
 				forward(ws, r.vec[i], r.mem[i]);
 				int label = r.predTechnique[i];
 				for (int c = 0; c < Technique.COUNT; c++) {
-					ws.dLogits[c] = ws.guess[c] - (c == label ? 1f : 0f);
+					ws.dLogits[c] = weight[label] * (ws.guess[c] - (c == label ? 1f : 0f));
 				}
 				s.loss -= Math.log(Math.max(1e-9f, ws.guess[label]));
 				int best = 0;

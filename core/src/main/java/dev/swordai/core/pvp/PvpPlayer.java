@@ -181,7 +181,7 @@ public final class PvpPlayer {
 	 * family cost it 20 damage a fight against the installed model (half a gate, charge 0.5, changed nothing).
 	 */
 	private boolean punishable(Duel d, Events e) {
-		return !style.onlyWhenItWorks || d.me.charge >= 0.8f && d.reach <= 2.6 && e.theyHit != Events.SPRINT;
+		return !style.onlyWhenItWorks || d.me.charge >= PUNISH_CHARGE && d.reach <= 2.6 && e.theyHit != Events.SPRINT;
 	}
 
 	/**
@@ -194,6 +194,11 @@ public final class PvpPlayer {
 	}
 
 	static final float JUMP_FOR_CRIT_CHARGE = 0.3f;
+	/**
+	 * The sword half back when thrown up is back by the way down (a fall is about six ticks, the sword about 0.08 a tick).
+	 * At 0.8 a punish crit came about once in four minutes of fighting, too seldom to be learned (24 Oct).
+	 */
+	static final float PUNISH_CHARGE = 0.5f;
 
 	/** The double crit "only works if the opponent tries to punish-crit you" (T1): for one that goes by the file, only then. */
 	private boolean punishes() {
@@ -454,6 +459,14 @@ public final class PvpPlayer {
 			// crit after every sprint hit cost about 13 damage a fight against the installed model).
 			if ((!style.onlyWhenItWorks || !d.them.onGround) && roll(Technique.T2)) {
 				begin(Plan.T2);
+				return;
+			}
+			// T10 "best time: right after you stun them. For example, deflection (T4) into uppercut." For one that goes by the
+			// file, first then; hops (T11b) hold the other moments ("hops hold a combo"). With both certain, hops always came
+			// first and the uppercut never (24 Oct: no T10 moment in the whole night).
+			boolean stunHit = was == Plan.T4 || was == Plan.T5 || was == Plan.T6;
+			if (style.onlyWhenItWorks && stunHit && roll(Technique.T10)) {
+				later(Plan.T10);
 				return;
 			}
 			if (roll(Technique.T11B)) {
