@@ -212,6 +212,8 @@ public final class SchoolSession implements AgentSession {
 	private int sprintLetGo;
 	/** Ticks of a lift's fall the aim onto them was taught on. */
 	private int liftAim;
+	/** Ticks it was taught to turn toward an opponent off the screen or well off the crosshair. */
+	private int findAim;
 	/** Per technique: swings its teacher asked for that a rule kept back, by the sword gate (0) and the whiff guard (1). */
 	private final int[][] blockedSwings = new int[Technique.COUNT][2];
 	/** Technique moments that won damage since the last update (see WON_BONUS). */
@@ -666,7 +668,9 @@ public final class SchoolSession implements AgentSession {
 			seed = rng.nextLong();
 		}
 		Random lagDraw = new Random(seed ^ 0x1A6L);
-		int agentLag = (int) Math.round(3 * Math.pow(lagDraw.nextDouble(), 1.5));
+		// What it sees of them comes 1 to 4 ticks late, as on a real server (the user's fights, 24 Oct: 55-82 ms each way); 0 to 3
+		// and mostly 0 or 1 before, so a jump-in crit seen late was sprint-hit and a combo answered late.
+		int agentLag = 1 + lagDraw.nextInt(4);
 		EpisodePlan plan = EpisodePlan.school(fightStyle, NEAREST, FARTHEST);
 		plan.seed = seed;
 		plan.seedYaw = mode == Mode.CHECK;
@@ -1004,6 +1008,27 @@ public final class SchoolSession implements AgentSession {
 				step.teacherTechnique = Technique.BASE.ordinal();
 			}
 			critChances++;
+		}
+		// Finding them: off the screen or well off the crosshair, the camera is turned straight toward where they are. In the
+		// user's real fights (24 Oct 22:05) a player who jumped out of its view was lost, the camera shaking left and right and
+		// never turning back; the bots of the school hardly ever leave its view, so nothing taught it.
+		if (mode == Mode.TRAIN && OVERLAY && !onOpponent()) {
+			double dx = bot.getX() - me.getX();
+			double dz = bot.getZ() - me.getZ();
+			double dy = bot.getY() + bot.getBbHeight() * 0.5 - me.getEyeY();
+			float wantYaw = (float) Math.toDegrees(Math.atan2(dz, dx)) - 90f;
+			float wantPitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
+			float yawOff = (wantYaw - me.getYRot()) % 360f;
+			yawOff = yawOff > 180f ? yawOff - 360f : yawOff < -180f ? yawOff + 360f : yawOff;
+			if (!facts.enemyVisible || Math.abs(yawOff) > 25f) {
+				nearestBin(step.teacher, ActionSpace.YAW, ActionSpace.YAW_BINS, yawOff);
+				nearestBin(step.teacher, ActionSpace.PITCH, ActionSpace.PITCH_BINS, wantPitch - me.getXRot());
+				step.teacherHeads |= (1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH);
+				if (step.teacherTechnique < 0) {
+					step.teacherTechnique = Technique.BASE.ordinal();
+				}
+				findAim++;
+			}
 		}
 		// The punish crit teacher (B1: "their hit knocks you up; you crit them on the way down"). Of the lifts after their
 		// sprint hits, a third came down in reach, most with the sword back, and all but one still sprinting (24 Oct 16:15):
@@ -1464,10 +1489,10 @@ public final class SchoolSession implements AgentSession {
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
 				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {}, other crits {} "
-				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {} | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} | swings: {} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
+				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} | swings: {} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
 				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, otherCrits,
-				critChances, critSwings, sprintLetGo, liftAim, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, swingLine(0), used);
+				critChances, critSwings, sprintLetGo, liftAim, findAim, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, swingLine(0), used);
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		otherCrits = 0;
@@ -1475,6 +1500,7 @@ public final class SchoolSession implements AgentSession {
 		critSwings = 0;
 		sprintLetGo = 0;
 		liftAim = 0;
+		findAim = 0;
 		shapingPaid = 0f;
 		momentsPaid = 0;
 		momentsWon = 0;

@@ -573,8 +573,14 @@ public final class SchoolStages {
 		return stage;
 	}
 
+	/**
+	 * The installed model's pull: no longer fading (24 Oct 22:15). Faded to 0.59, the school network lost the installed model's
+	 * aim and basics: in the user's real fights against a player new to the game it took more hits than it dealt, its
+	 * crosshair 3 to 15 degrees off them, shaking left and right when they jumped out of its view. It teaches the camera and
+	 * the fight between the techniques for good.
+	 */
 	public float oldPull() {
-		return OLD_PULL * Math.max(0f, 1f - schoolSteps / (float) OLD_FADE);
+		return OLD_PULL;
 	}
 
 	public void addSteps(long steps) {
