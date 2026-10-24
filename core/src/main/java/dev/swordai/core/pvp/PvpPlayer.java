@@ -64,6 +64,8 @@ public final class PvpPlayer {
 	private int sinceMySwing = 1000;
 	private int sinceTheirSwing = 1000;
 	private int sinceLanded = 1000;
+	/** The tick their hit threw it up from the ground; its crit before it lands again is a punish crit (B1). */
+	private int thrownUpAt = -1000;
 	private boolean wasOnGround = true;
 	private boolean theyWereOnGround = true;
 	private int sinceTheyTookOff = 1000;
@@ -116,6 +118,7 @@ public final class PvpPlayer {
 		sinceMySwing = 1000;
 		sinceTheirSwing = 1000;
 		sinceLanded = 1000;
+		thrownUpAt = -1000;
 		wasOnGround = true;
 		theyWereOnGround = true;
 		punishWatching = false;
@@ -207,7 +210,12 @@ public final class PvpPlayer {
 		return style.onlyWhenItWorks && me.charge < JUMP_FOR_CRIT_CHARGE;
 	}
 
-	static final float JUMP_FOR_CRIT_CHARGE = 0.3f;
+	/**
+	 * 0.3 until 24 Oct 20:15: a fall starts about six ticks after the jump, and from a third back the sword was about four
+	 * fifths back there, so of the crit family's falls in reach about half had it charged (34 in reach, 19 charged, 7 crits
+	 * in an update). From 0.4 it is back as the fall begins.
+	 */
+	static final float JUMP_FOR_CRIT_CHARGE = 0.4f;
 	/**
 	 * The sword half back when thrown up is back by the way down (a fall is about six ticks, the sword about 0.08 a tick).
 	 * At 0.8 a punish crit came about once in four minutes of fighting, too seldom to be learned (24 Oct).
@@ -447,6 +455,9 @@ public final class PvpPlayer {
 	/** On the tick a hit of theirs is felt. */
 	private void hitTaken(Duel d, Events e) {
 		boolean lifted = wasOnGround;
+		if (lifted) {
+			thrownUpAt = tick;
+		}
 		pending = Plan.NONE;
 		if ((plan == Plan.T1 || plan == Plan.T1B || plan == Plan.T1C) && e.theyHit == Events.SPRINT && roll(Technique.C2)) {
 			// C2: the double crit was sprint-hit: S at once, out of the trade still up on damage.
@@ -531,9 +542,12 @@ public final class PvpPlayer {
 				return;
 			}
 			end();
+			// A punish crit: its own B1, or any crit before landing from their hit's lift (the school's punish crit teacher
+			// lets go of the sprint there without the B1 plan, and T1c had about no moments, 24 Oct 20:10).
+			boolean punishCrit = was == Plan.B1 || tick - thrownUpAt <= 18 && sinceLanded > tick - thrownUpAt && !d.me.onGround;
 			if (was == Plan.T1A) {
 				begin(Plan.T1);
-			} else if (was == Plan.B1 && roll(Technique.T1C)) {
+			} else if (punishCrit && roll(Technique.T1C)) {
 				begin(Plan.T1C);
 			} else if (punishes() && roll(Technique.T1)) {
 				// Any crit of mine against one that tries to punish-crit: "after your first crit, immediately jump and crit

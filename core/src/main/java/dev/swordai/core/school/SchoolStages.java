@@ -280,6 +280,9 @@ public final class SchoolStages {
 				Technique.C2}) {
 			BAR[t.ordinal()] = 0.8f;
 		}
+		// The user, 24 Oct 20:10: "all the crit above 80% ... and so do punish crit at 90%".
+		TARGET[Technique.B1.ordinal()] = 0.9f;
+		BAR[Technique.B1.ordinal()] = 0.9f;
 		TARGET[Technique.T4.ordinal()] = 0.9f;
 		TARGET[Technique.C3.ordinal()] = 0.9f;
 		BAR[Technique.T4.ordinal()] = 0.9f;
