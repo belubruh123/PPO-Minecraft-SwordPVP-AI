@@ -112,6 +112,13 @@ public final class SchoolStages {
 	public static final float BEHIND = 10f;
 	/** The technique teacher's full pull; each technique's share of it follows its mastery. */
 	public static final float TECH_PULL = 1.0f;
+	/**
+	 * The most a technique teacher pulls, however far under its target (its share still grows past this, and comes into force
+	 * if the cap is lifted). Damage first (25 Oct 00:45): in the 00:26 check the school was 20 a fight behind the installed
+	 * model (236 dealt and 446 taken a minute to its 316 and 402), swinging a third less, holding S and jumping more; with the
+	 * teachers at up to two and three times their pull the damage reward had little say. 1 = the teacher's first pull.
+	 */
+	public static final float PULL_CAP = 1f;
 	/** The moments a technique is judged by, the least of them that counts, and the bars. */
 	public static final int WINDOW = 40;
 	public static final int ENOUGH = 20;
@@ -298,7 +305,7 @@ public final class SchoolStages {
 	public float[] techPulls() {
 		float[] p = new float[Technique.COUNT];
 		for (int t = 0; t < p.length; t++) {
-			p[t] = TECH_PULL * pullShare[t];
+			p[t] = TECH_PULL * Math.min(PULL_CAP, pullShare[t]);
 		}
 		return p;
 	}
