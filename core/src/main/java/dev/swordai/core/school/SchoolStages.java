@@ -223,13 +223,16 @@ public final class SchoolStages {
 	 */
 	public static final boolean[] PRIORITY = new boolean[Technique.COUNT];
 	/** The bots that give those moments, and the share of every stage's fights against them. */
-	public static final int[] PRIORITY_BOTS = {Specialists.JUMP_IN_CRITTER, Specialists.FALL_SPACER};
-	public static final float PRIORITY_SHARE = 0.25f;
+	public static final int[] PRIORITY_BOTS = {Specialists.JUMP_IN_CRITTER, Specialists.FALL_SPACER, Specialists.ATTACK_THEN_S};
+	public static final float PRIORITY_SHARE = 0.33f;
 
 	static {
 		PRIORITY[Technique.T8.ordinal()] = true;
 		PRIORITY[Technique.K2.ordinal()] = true;
 		PRIORITY[Technique.B1.ordinal()] = true;
+		// The user, 24 Oct 10:25: the uppercut matters more than hops and lunges. Its moments come against one that backs
+		// out with S after its hit (attack-then-S), so that bot is among the priority ones too.
+		PRIORITY[Technique.T10.ordinal()] = true;
 	}
 
 	/** The pull of each technique's teacher now. */

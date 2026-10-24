@@ -569,15 +569,18 @@ public final class PvpPlayer {
 				return;
 			}
 		}
-		// They back out with S: lunge after them (T11a), or an uppercut from just outside reach (T10).
+		// They back out with S: an uppercut from just outside reach (T10: "enough to catch up if they are not too far"),
+		// a lunge after them when farther (T11a: "chases players holding S"). With the lunge checked first and certain the
+		// uppercut never came here, only after a stun of its own (24 Oct: about ten moments an update, and falling); the
+		// user: the uppercut matters more than hops and lunges.
 		if (backingTicks >= 3 && !backRolled && me.onGround && d.reach > Duel.REACH - 0.3 && d.reach < Duel.REACH + 3.0) {
 			backRolled = true;
-			if (roll(Technique.T11A)) {
-				begin(Plan.T11A);
-				return;
-			}
 			if (d.reach < Duel.REACH + 1.0 && roll(Technique.T10)) {
 				begin(Plan.T10);
+				return;
+			}
+			if (roll(Technique.T11A)) {
+				begin(Plan.T11A);
 				return;
 			}
 		}
@@ -738,11 +741,14 @@ public final class PvpPlayer {
 				// Jump with the sprint on, the sprint hit at the top; then S.
 				k.taught = Keys.KEY_MOVE | Keys.KEY_SPRINT | Keys.KEY_ATTACK | Keys.KEY_JUMP;
 				if (phase == 0) {
+					// Still landing from the hit before: keep the sprint going (W and the sprint key), the jump comes on landing.
+					// It used to press nothing while waiting: "let go of W" for up to six ticks, which nothing in the file asks
+					// and every other moment contradicts.
+					k.forward = 1;
+					k.sprint = true;
 					if (!me.onGround) {
 						return planT < 6 ? RUN : ABORT;
 					}
-					k.forward = 1;
-					k.sprint = true;
 					k.jump = true;
 					phase = 1;
 					return RUN;
