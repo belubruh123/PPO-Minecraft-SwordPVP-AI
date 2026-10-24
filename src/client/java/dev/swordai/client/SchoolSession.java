@@ -202,6 +202,17 @@ public final class SchoolSession implements AgentSession {
 	/** Ticks since their hit threw it up from the ground, -1 once it has landed (see OTHER_CRIT); on the ground the tick before. */
 	private int liftedFor = -1;
 	private boolean onGroundBefore = true;
+	/**
+	 * Each lift (thrown up from the ground by their hit) by the kind of that hit (Events: sprint, crit, plain): how many, how
+	 * far toward a punish crit each got (came down in reach, with the sword back, not sprinting, the crosshair on them, a swing
+	 * there, a crit), and how many the teacher took as a punish crit (B1). The user, 24 Oct 15:50: "punish crit didn't
+	 * improve"; the game counted 0 or 1 of about 80 an update, the installed model 1-2% in the checks.
+	 */
+	private final int[][] lifts = new int[4][8];
+	private int liftKind = -1;
+	private int liftStage;
+	private boolean liftAimedNow;
+	private boolean liftTaught;
 	/** The technique reward owed to the next step, and what it paid since the last update; the pull shares it uses. */
 	private float shaping;
 	private float shapingPaid;
@@ -655,6 +666,9 @@ public final class SchoolSession implements AgentSession {
 		fairJump.reset();
 		liftedFor = -1;
 		onGroundBefore = true;
+		liftKind = -1;
+		liftStage = 0;
+		liftTaught = false;
 		reader.reset();
 		perf.reset();
 		perfB.reset();
@@ -782,6 +796,12 @@ public final class SchoolSession implements AgentSession {
 			installed.fighter.hitTaken();
 		}
 		reader.tick(me, bot, hasLastAction && clicked, chargeAtClick, sprintAtClick, critAtClick);
+		if (liftedFor == 0) {
+			endLift();
+			liftKind = reader.events.theyHit;
+		} else if (liftedFor < 0) {
+			endLift();
+		}
 		int botTechnique = truth.botTechnique();
 		if (botTechnique >= 0 && botTechnique != lastBotTechnique && botTechnique != Technique.BASE.ordinal()) {
 			botUsed[botTechnique]++;
@@ -807,6 +827,7 @@ public final class SchoolSession implements AgentSession {
 					if (liftedFor >= 0) {
 						reward += PUNISH_CRIT;
 						punishCritsPaid++;
+						liftStage = 6;
 					} else {
 						reward += OTHER_CRIT;
 						otherCrits++;
@@ -845,8 +866,15 @@ public final class SchoolSession implements AgentSession {
 		chargeAtClick = charge;
 		sprintAtClick = truth.agentSprinting();
 		critAtClick = facts.falling && !me.onGround() && !sprintAtClick && charge > 0.9f;
+		liftAimedNow = false;
+		if (liftedFor >= 0 && liftKind > 0 && facts.falling && !me.onGround() && facts.reachDist <= 3.0f) {
+			int stage = charge <= 0.9f ? 1 : sprintAtClick ? 2 : !onOpponent() ? 3 : 4;
+			liftStage = Math.max(liftStage, stage);
+			liftAimedNow = stage == 4;
+		}
 		int keys = SwingGate.keys(ActionSpace.ALL_HEADS, charge, cfg.swingMinCharge);
 		teacher.tick(reader.duel, reader.events, onOpponent());
+		liftTaught |= liftedFor >= 0 && teacher.technique() == Technique.B1;
 		step.teacherHeads = teacher.target(step.teacher);
 		step.teacherTechnique = step.teacherHeads != 0 ? teacher.technique().ordinal() : -1;
 		if (installedPlays) {
@@ -966,6 +994,9 @@ public final class SchoolSession implements AgentSession {
 		motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));
 		applyAction(motor.yawRate(), motor.pitchRate());
 		clicked = action[ActionSpace.ATTACK] == 1;
+		if (liftAimedNow && clicked) {
+			liftStage = Math.max(liftStage, 5);
+		}
 		System.arraycopy(action, 0, lastAction, 0, ActionSpace.HEADS);
 		hasLastAction = true;
 		showBar(truth);
@@ -1176,6 +1207,32 @@ public final class SchoolSession implements AgentSession {
 		}
 	}
 
+	private void endLift() {
+		if (liftKind > 0 && liftKind < lifts.length) {
+			lifts[liftKind][0]++;
+			for (int k = 1; k <= liftStage; k++) {
+				lifts[liftKind][k]++;
+			}
+			lifts[liftKind][7] += liftTaught ? 1 : 0;
+		}
+		liftKind = -1;
+		liftStage = 0;
+		liftTaught = false;
+	}
+
+	/** "after sprint hits 40: in reach 6, sword back 3, not sprinting 1, aimed 1, swung 1, crit 0, teacher B1 0; after crits ...". */
+	private String liftLine() {
+		StringBuilder b = new StringBuilder();
+		String[] names = {"", "sprint hits", "crits", "plain hits"};
+		for (int k = 1; k < lifts.length; k++) {
+			int[] c = lifts[k];
+			b.append(String.format(Locale.ROOT, "%s after %s %d: in reach %d, sword back %d, not sprinting %d, aimed %d, swung %d, crit %d, teacher B1 %d",
+					k == 1 ? "" : ";", names[k], c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]));
+			java.util.Arrays.fill(c, 0);
+		}
+		return b.toString();
+	}
+
 	private void traceJumpIn(int side) {
 		long[] c = jumpIn[side];
 		dev.swordai.core.pvp.Body them = reader.duel.them;
@@ -1290,10 +1347,10 @@ public final class SchoolSession implements AgentSession {
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
 				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {}, other crits {} "
-				+ "| crit chances {}, swung on {} | their hits: {} | technique reward {} for {} moments done, K2 broken {} | swings: {} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
+				+ "| crit chances {}, swung on {} | their hits: {} | punish chances by their hit:{} | technique reward {} for {} moments done, K2 broken {} | swings: {} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
 				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, otherCrits,
-				critChances, critSwings, reader.takeTheirHits(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, k2Broken, swingLine(0), used);
+				critChances, critSwings, reader.takeTheirHits(), liftLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, k2Broken, swingLine(0), used);
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		otherCrits = 0;
