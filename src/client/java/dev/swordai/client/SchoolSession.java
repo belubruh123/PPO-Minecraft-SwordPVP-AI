@@ -109,6 +109,14 @@ public final class SchoolSession implements AgentSession {
 	 * half its swings, the installed model three in four. A swing at nothing also costs this much.
 	 */
 	static final float AIR_SWING = 0.1f;
+	/**
+	 * The crit teacher (the user, 24 Oct 15:20, the game's count of its own moves: "punish crit 0 of 89 ... ZERO percent
+	 * here, fix it"). A crit is "a hit made while falling (not sprinting, not on the ground)"; of the update before, 339
+	 * ticks of crit moments had 9 falling in reach with the sword back, 12 swings and no crit. On every tick a crit can be
+	 * made now (falling, in reach, sword back, not sprinting, the crosshair on them) the swing is taught, technique moment
+	 * or not, and a swing made there pays this much on top of its damage.
+	 */
+	static final float CRIT_SWING = 0.3f;
 	/** Updates at the start of a new school that teach the critic only (the actor is the installed one's, the critic new). */
 	static final int CRITIC_WARMUP = 3;
 	/** The bot is put between these distances, in view. */
@@ -178,6 +186,10 @@ public final class SchoolSession implements AgentSession {
 	/** Real punish crits rewarded since the last update, and crits landed outside that window. */
 	private int punishCritsPaid;
 	private int otherCrits;
+	/** Ticks a crit could be made on (see {@link #CRIT_SWING}), the swings made on them, and whether the last decision was one. */
+	private int critChances;
+	private int critSwings;
+	private boolean critChanceAtClick;
 	/** The technique reward owed to the next step, and what it paid since the last update; the pull shares it uses. */
 	private float shaping;
 	private float shapingPaid;
@@ -786,6 +798,10 @@ public final class SchoolSession implements AgentSession {
 				if (clicked && !clickOnTarget) {
 					reward -= AIR_SWING;
 				}
+				if (clicked && critChanceAtClick) {
+					reward += CRIT_SWING;
+					critSwings++;
+				}
 				reward += shaping;
 				shapingPaid += shaping;
 				shaping = 0f;
@@ -889,6 +905,19 @@ public final class SchoolSession implements AgentSession {
 			step.teacher[off + 1] = swing ? 1f : 0f;
 			step.teacherHeads = 1 << ActionSpace.ATTACK;
 			step.teacherTechnique = Technique.BASE.ordinal();
+		}
+		critChanceAtClick = mode == Mode.TRAIN && OVERLAY && critAtClick && facts.reachDist <= 3.0f && onOpponent()
+				&& ActionSpace.unlocked(keys, ActionSpace.ATTACK);
+		if (critChanceAtClick) {
+			// The crit teacher (see CRIT_SWING): over whatever else is taught, a crit that can be made now is made.
+			int off = ActionSpace.OFFSETS[ActionSpace.ATTACK];
+			step.teacher[off] = 0f;
+			step.teacher[off + 1] = 1f;
+			step.teacherHeads |= 1 << ActionSpace.ATTACK;
+			if (step.teacherTechnique < 0) {
+				step.teacherTechnique = Technique.BASE.ordinal();
+			}
+			critChances++;
 		}
 		step.policyWeight = !facts.enemyVisible && facts.reachDist > SKIP_FARTHER ? 0f : 1f;
 		step.botTechnique = botTechnique;
@@ -1239,13 +1268,15 @@ public final class SchoolSession implements AgentSession {
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
 				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {}, other crits {} "
-				+ "| technique reward {} for {} moments done, K2 broken {} | swings: {} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
+				+ "| crit chances {}, swung on {} | their hits: {} | technique reward {} for {} moments done, K2 broken {} | swings: {} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
 				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, otherCrits,
-				String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, k2Broken, swingLine(0), used);
+				critChances, critSwings, reader.takeTheirHits(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, k2Broken, swingLine(0), used);
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		otherCrits = 0;
+		critChances = 0;
+		critSwings = 0;
 		shapingPaid = 0f;
 		momentsPaid = 0;
 		k2Broken = 0;

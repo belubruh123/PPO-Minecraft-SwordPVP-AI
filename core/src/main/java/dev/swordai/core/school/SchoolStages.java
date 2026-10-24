@@ -71,9 +71,11 @@ public final class SchoolStages {
 					new int[] {Specialists.PUNISH_CRITTER, Specialists.DOUBLE_CRITTER, Specialists.CRIT_BREAKER, Specialists.STANDING_CRITTER},
 					new Technique[] {Technique.B1, Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2, Technique.C1,
 							Technique.C2}, MIN, MAX, 0f),
+			// The uppercutter is C4's moment: "they sprint-jump toward you as they attack" after a held S. Without one in the
+			// family C4 had no moment in thirteen updates of its focus (24 Oct 15:10, 5% of 19).
 			new Stage("T-C", "stuns and deflections (T3, T4, T5, C3, C4)",
 					new int[] {Specialists.DEFLECTOR, Specialists.REVERSE_DEFLECTOR, Specialists.STUN_ESCAPER, Specialists.ATTACK_THEN_S,
-							Specialists.STUNNER},
+							Specialists.STUNNER, Specialists.UPPERCUTTER},
 					new Technique[] {Technique.T4, Technique.T5, Technique.C3, Technique.C4}, MIN, MAX, 0f),
 			new Stage("T-D", "jump resets (T9, C6, C7)",
 					new int[] {Specialists.THREE_BLOCK, Specialists.JUMP_RESETTER, Specialists.RHYTHM_COMBOER},
@@ -203,9 +205,9 @@ public final class SchoolStages {
 			// first (three times for the priority ones), holds from 85% to 90%, and fades only above 90%.
 			float r = doneRate(t);
 			float most = PRIORITY[t] ? PRIORITY_MOST : MOST;
-			if (r >= HELD) {
+			if (r >= target(t) + HOLD) {
 				pullShare[t] = Math.max(0f, pullShare[t] * 0.85f - 0.01f);
-			} else if (r < MASTERED) {
+			} else if (r < target(t)) {
 				pullShare[t] = Math.min(most, Math.max(pullShare[t], PRIORITY[t] ? 2f : 1f) + 0.25f);
 			}
 		}
@@ -213,6 +215,25 @@ public final class SchoolStages {
 
 	/** Above this a technique's pull fades. */
 	public static final float HELD = 0.9f;
+	/** How far over its target a technique's pull holds before it fades (85% -> 90%). */
+	public static final float HOLD = HELD - MASTERED;
+	/**
+	 * The user's bars (24 Oct 15:00): the deflection (T4) and jump + hold S (C3) at 90%, the reverse deflection (T5) and
+	 * attack-then-S (C4) at least 80%. A technique's pull grows while under its target and the stage is not passed while one
+	 * of its techniques is under its bar.
+	 */
+	private static final float[] TARGET = new float[Technique.COUNT];
+	private static final float[] BAR = new float[Technique.COUNT];
+
+	/** What technique {@code t}'s pull is grown to: {@link #MASTERED}, or the user's bar where higher. */
+	public static float target(int t) {
+		return Math.max(MASTERED, TARGET[t]);
+	}
+
+	/** The least technique {@code t} is to be done on for its stage to pass: {@link #FLOOR}, or the user's bar. */
+	public static float bar(int t) {
+		return Math.max(FLOOR, BAR[t]);
+	}
 	/** The most a technique's pull share grows to; for the priority ones. */
 	public static final float MOST = 2f;
 	public static final float PRIORITY_MOST = 3f;
@@ -244,6 +265,12 @@ public final class SchoolStages {
 		// The user, 24 Oct 10:25: the uppercut matters more than hops and lunges. Its moments come against one that backs
 		// out with S after its hit (attack-then-S), so that bot is among the priority ones too.
 		PRIORITY[Technique.T10.ordinal()] = true;
+		TARGET[Technique.T4.ordinal()] = 0.9f;
+		TARGET[Technique.C3.ordinal()] = 0.9f;
+		BAR[Technique.T4.ordinal()] = 0.9f;
+		BAR[Technique.C3.ordinal()] = 0.9f;
+		BAR[Technique.T5.ordinal()] = 0.8f;
+		BAR[Technique.C4.ordinal()] = 0.8f;
 	}
 
 	/** The pull of each technique's teacher now. */
@@ -269,7 +296,7 @@ public final class SchoolStages {
 			}
 			judged++;
 			float r = doneRate(i);
-			if (r < FLOOR) {
+			if (r < bar(i)) {
 				return false;
 			}
 			all += momentCount[i];
@@ -403,7 +430,7 @@ public final class SchoolStages {
 				// Starved (too few moments to judge) weighs twice: its moments only come against its own bots.
 				boolean starved = momentCount[t] < ENOUGH / 2;
 				float r = starved ? 0f : doneRate(t);
-				w[f][i] = Math.max(0f, MASTERED - r) * (starved ? 2f : 1f);
+				w[f][i] = Math.max(0f, target(t) - r) * (starved ? 2f : 1f);
 				total += w[f][i];
 			}
 		}

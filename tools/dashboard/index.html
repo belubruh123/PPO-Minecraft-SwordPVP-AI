@@ -288,6 +288,15 @@
     html += stat('Priority, trained in every stage (double to triple pull, 1 fight in 4 vs jumpers)', (data.priority || []).map(function (id) {
       var r = rateOf(id); return esc(id) + ' <span class="' + cls(r) + '">' + pct(r) + '</span>';
     }).join(', '), '<div class="k">T8 hit them rising, K2 no knockback hit on a falling one, B1 punish crit</div>');
+    var lastCheck = (data.checks || []).filter(function (c) { return c.bSwings; }).slice(-1)[0];
+    html += stat('Swings that land (last 10 updates)', data.landing == null ? '<span class="muted">not counted yet</span>' :
+      '<span class="' + cls(data.landing) + '">' + pct(data.landing) + '</span>',
+      '<div class="k">' + (lastCheck ? 'last check: school ' + landed(lastCheck.aSwings) + ', installed ' + landed(lastCheck.bSwings) :
+      'the installed model: from the next check') + '; a miss is a swing with nothing under the crosshair</div>');
+    var cc = data.critChances;
+    html += stat('Crit chances swung on (last 10 updates)', cc == null ? '<span class="muted">not counted yet</span>' :
+      (cc[0] ? '<span class="' + cls(100 * cc[1] / cc[0]) + '">' + pct(100 * cc[1] / cc[0]) + '</span> of ' + cc[0] : '0 chances'),
+      '<div class="k">ticks it could crit: falling, in reach, sword back, not sprinting, crosshair on them</div>');
     var dc = n.decider;
     html += stat('Decider (which technique to do)', dc ? '<span class="' + cls(dc[3]) + '">' + pct(dc[3]) + '</span> of starts right' :
       '<span class="muted">not learning yet</span>', dc ? '<div class="k">' + pct(dc[1]) + ' right during techniques, ' + dc[5].toFixed(1) +
@@ -389,17 +398,20 @@
     });
   }
 
+  function landed(sw) { return sw && sw[0] ? Math.round(100 * sw[2] / sw[0]) + '%' : '-'; }
+
   function renderChecks() {
     var cs = (data.checks || []).slice().reverse();
     var html = '<thead><tr><th>When</th><th>Side A</th><th>Stage</th><th class="n">Pairs</th><th class="n">A minus B a fight</th>' +
-      '<th class="n">A dealt / taken a min</th><th class="n">B dealt / taken a min</th><th class="n">KOs A / B</th></tr></thead><tbody>';
+      '<th class="n">A dealt / taken a min</th><th class="n">B dealt / taken a min</th><th class="n">KOs A / B</th><th class="n">Swings landing A / B</th></tr></thead><tbody>';
     cs.forEach(function (c) {
       var a = c.all, diff = a.aMinusB, se = a.se == null ? 0 : a.se, sig = a.se != null && Math.abs(diff) >= 2 * se;
       html += '<tr><td class="num">' + esc(c.time) + '</td><td>' + esc(c.kind) + '</td><td>' + esc(c.stage) + '</td>' +
         '<td class="n">' + a.pairs + '</td>' +
         '<td class="n"><span class="' + (diff >= 0 ? (sig ? 'good' : '') : (sig ? 'bad' : '')) + '">' + (diff > 0 ? '+' : '') + diff.toFixed(1) +
         '</span> <span class="muted">&plusmn;' + (a.se == null ? '-' : se.toFixed(1)) + '</span></td>' +
-        '<td class="n">' + esc(a.aDt) + '</td><td class="n">' + esc(a.bDt) + '</td><td class="n">' + esc(a.aKo) + ' / ' + esc(a.bKo) + '</td></tr>';
+        '<td class="n">' + esc(a.aDt) + '</td><td class="n">' + esc(a.bDt) + '</td><td class="n">' + esc(a.aKo) + ' / ' + esc(a.bKo) + '</td>' +
+        '<td class="n">' + landed(c.aSwings) + ' / ' + landed(c.bSwings) + '</td></tr>';
     });
     $('checks').innerHTML = html + '</tbody>';
   }

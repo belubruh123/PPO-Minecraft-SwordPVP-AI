@@ -33,6 +33,10 @@ final class DuelReader {
 
 	private boolean meWasOnGround = true;
 	private boolean themWasOnGround = true;
+	/** Their sprint on the tick before: the server ends a sprint the tick its sprint hit lands, so the hit shows them walking. */
+	private boolean themWereSprinting;
+	/** Their hits seen since the last {@link #takeTheirHits}: sprint (of them, seen sprinting only the tick before), plain, crit. */
+	private final int[] theirHits = new int[4];
 	private int lastMyHurt;
 	private int lastTheirHurt;
 	private boolean theyWereSwinging;
@@ -49,6 +53,7 @@ final class DuelReader {
 		events.clear();
 		meWasOnGround = true;
 		themWasOnGround = true;
+		themWereSprinting = false;
 		theyWereSwinging = false;
 		theirSinceSwing = 1000;
 		mySinceSwing = 1000;
@@ -91,8 +96,14 @@ final class DuelReader {
 			}
 			if (myHurt > lastMyHurt) {
 				// Their hit, by what its game shows of them: sprinting, or coming down with the sword back.
-				boolean crit = !duel.them.onGround && duel.them.vy < 0 && !them.isSprinting();
-				events.theyHit = Events.kindOf(duel.them.charge, them.isSprinting(), crit);
+				// A sprint hit ends their sprint on the server the tick it lands, so the game shows it with them walking: by
+				// their sprint now alone, a deflection (T4) was never a sprint hit, and the reverse deflection (T5) and the late
+				// jump + hold S (C3), which answer a sprint hit, had about no moments all day (24 Oct, T5: 17).
+				boolean sprinted = them.isSprinting() || themWereSprinting;
+				boolean crit = !duel.them.onGround && duel.them.vy < 0 && !sprinted;
+				events.theyHit = Events.kindOf(duel.them.charge, sprinted, crit);
+				theirHits[events.theyHit]++;
+				theirHits[0] += events.theyHit == Events.SPRINT && !them.isSprinting() ? 1 : 0;
 			}
 		}
 		lastMyHurt = myHurt;
@@ -104,6 +115,15 @@ final class DuelReader {
 		own.observe(mirror, mirrorEvents);
 		meWasOnGround = me.onGround();
 		themWasOnGround = them.onGround();
+		themWereSprinting = them.isSprinting();
+	}
+
+	/** "41 sprint (37 by the tick before), 12 plain, 3 crit", and starts the count again. */
+	String takeTheirHits() {
+		String line = String.format(java.util.Locale.ROOT, "%d sprint (%d by the tick before), %d plain, %d crit",
+				theirHits[Events.SPRINT], theirHits[0], theirHits[Events.PLAIN], theirHits[Events.CRIT]);
+		java.util.Arrays.fill(theirHits, 0);
+		return line;
 	}
 
 	/** The memory, as the network reads it. */

@@ -92,6 +92,12 @@ def parse_update(line, m):
     dm = re.search(r'chose as the teacher (\d+)%, on its techniques (\d+)% of (\d+), its starts (\d+)% of (\d+), '
                    r'a start where it did none ([\d.]+)% of (\d+)', section(parts, 'decider'))
     u['decider'] = [float(x) for x in dm.groups()] if dm else None
+    # Swings (since 24 Oct 14:51): swings, with the crosshair on them, hits landed.
+    sw = re.match(r'(\d+) swings, (\d+) with the crosshair on them \([^)]*\), (\d+) hits landed', section(parts, 'swings:'))
+    u['swings'] = [int(x) for x in sw.groups()] if sw else None
+    # Crit chances (since 24 Oct 15:30): ticks a crit could be made on, and the swings made on them.
+    cc = re.search(r'crit chances (\d+), swung on (\d+)', line)
+    u['critChances'] = [int(cc.group(1)), int(cc.group(2))] if cc else None
     cm = re.findall(r'(\d+)', section(parts, 'crit moments:'))
     u['crit'] = [int(x) for x in cm[:9]] if len(cm) >= 9 else None
     return u
@@ -204,6 +210,10 @@ def parse_checks(run):
                         cur['all'] = row
                 else:
                     cur['bots'].append(row)
+        elif cur is not None and line[:11] in ('  A swings:', '  B swings:'):
+            sm = re.match(r'(\d+) swings, (\d+) with the crosshair on them \([^)]*\), (\d+) hits landed', line[11:].strip())
+            if sm:
+                cur['aSwings' if line[2] == 'A' else 'bSwings'] = [int(x) for x in sm.groups()]
         elif cur is not None and line.startswith('  A jumping in:'):
             cur['aJumpIn'] = line.split(':', 1)[1].strip()
         elif cur is not None and line.startswith('  B jumping in:'):
@@ -281,6 +291,11 @@ def build(cache, techniques, stages, prio):
                      'paid': round(100.0 * paid / n, 1) if n >= MIN_MOMENTS else None, 'taught': taught,
                      'change': change, 'stuck': stuck, 'few': few and n > 0, 'series': series[tid][-300:]})
     damage = [[u['steps'], u['dealt'], u['taken'], u['time']] for u in ups if 'dealt' in u]
+    # Swings that land and crit chances swung on, over the last ten updates that count them.
+    sw = [u['swings'] for u in ups if u.get('swings')][-10:]
+    landing = round(100.0 * sum(x[2] for x in sw) / sum(x[0] for x in sw), 1) if sw and sum(x[0] for x in sw) else None
+    cc = [u['critChances'] for u in ups if u.get('critChances')][-10:]
+    crit_chances = [sum(x[0] for x in cc), sum(x[1] for x in cc)] if cc else None
     checks = parse_checks(cache.run)
     age = None
     log = os.path.join(cache.run, 'school-client.log')
@@ -296,7 +311,7 @@ def build(cache, techniques, stages, prio):
                                          'weakest', 'dealt', 'taken', 'keys', 'game', 'jumpIn', 'crit', 'update', 'decider')},
         'logAgeSeconds': age, 'state': state,
         'stages': [s for s in stages if s['name'] != 'T-F'], 'priority': prio,
-        'techniques': rows, 'damage': damage[-600:], 'checks': checks,
+        'techniques': rows, 'damage': damage[-600:], 'checks': checks, 'landing': landing, 'critChances': crit_chances,
         'served': time.strftime('%H:%M:%S'),
     }
 
