@@ -69,11 +69,10 @@ public final class Teacher {
 		if (inTechnique && (h == ActionSpace.ATTACK || h == ActionSpace.JUMP)) {
 			return PRESS_WEIGHT;
 		}
+		// W/S whatever it is to be: S alone weighed three times (19:06-19:50) leaned it to S where W was taught, and the
+		// deflection (T4), the uppercut (T10) and the rising hit (T8), all off on W/S, slipped about ten points.
 		if (inTechnique && h == ActionSpace.FORWARD) {
-			int off = ActionSpace.OFFSETS[h];
-			if (target[off + 2] > Math.max(target[off], target[off + 1])) {
-				return PRESS_WEIGHT;
-			}
+			return PRESS_WEIGHT;
 		}
 		if (inTechnique && h == ActionSpace.SPRINT) {
 			int off = ActionSpace.OFFSETS[h];
