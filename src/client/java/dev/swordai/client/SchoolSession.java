@@ -90,6 +90,18 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final int PUNISH_WINDOW = 18;
 	static final float PUNISH_CRIT = 0.5f;
+	/**
+	 * The technique reward (the user, 24 Oct: "it is quite easy for me to code a PPO bot to do these techniques": its
+	 * reward is the technique). In a fight where the network is told the teacher's technique, every tick of a moment
+	 * pays for the share of the taught keys pressed as the teacher would, and a moment done pays once more; both times
+	 * the technique's pull share now (0 once mastered, up to 3 while stuck), so the reward goes where it is not learned.
+	 * An imitation reward beside the task's, as DeepMimic learns its many skills with PPO (Peng et al. 2018).
+	 */
+	static final float IMITATE = 0.02f;
+	static final float DONE_BONUS = 0.2f;
+	static final float SHARE_MOST = 3f;
+	/** The golden rule (K2) broken: a knockback hit landed on a falling player, who crits back (the user's first wish). */
+	static final float K2_BROKEN = 0.5f;
 	/** Updates at the start of a new school that teach the critic only (the actor is the installed one's, the critic new). */
 	static final int CRITIC_WARMUP = 3;
 	/** The bot is put between these distances, in view. */
@@ -159,6 +171,12 @@ public final class SchoolSession implements AgentSession {
 	/** Real punish crits rewarded since the last update, and crits landed outside that window. */
 	private int punishCritsPaid;
 	private int otherCrits;
+	/** The technique reward owed to the next step, and what it paid since the last update; the pull shares it uses. */
+	private float shaping;
+	private float shapingPaid;
+	private int momentsPaid;
+	private int k2Broken;
+	private float[] pullsNow;
 	private int critWantedFor;
 	private static final boolean[] CRIT_WANTED = new boolean[Technique.COUNT];
 	/**
@@ -595,6 +613,7 @@ public final class SchoolSession implements AgentSession {
 		teacher.ordinaryFight = !OVERLAY;
 		teacher.start(checkTaught != null ? checkTaught : stages.taught(), cfg.swingMinCharge, seed ^ 0x7EAC4L);
 		learner.resetIntent();
+		shaping = 0f;
 		reader.reset();
 		perf.reset();
 		perfB.reset();
@@ -739,6 +758,13 @@ public final class SchoolSession implements AgentSession {
 						otherCrits++;
 					}
 				}
+				if (facts.hitsDealt > 0 && facts.sprintHit && reader.duel.them.falling()) {
+					reward -= K2_BROKEN;
+					k2Broken++;
+				}
+				reward += shaping;
+				shapingPaid += shaping;
+				shaping = 0f;
 				learner.complete(reward, ko, !ko && (timeUp || full), step.obs);
 			}
 			if (ko || timeUp || full) {
@@ -835,6 +861,9 @@ public final class SchoolSession implements AgentSession {
 		step.kind = fightBot;
 		learner.act(step, keys, mode == Mode.TRAIN, cfg.playTemperature, action);
 		perf.tick(step.teacherTechnique, step.teacherHeads, step.teacher, action, keys, facts.damageDealt, facts.damageTaken);
+		if (mode == Mode.TRAIN) {
+			techniqueReward();
+		}
 		traceCrit(0, action[ActionSpace.ATTACK] == 1);
 		traceJumpIn(0);
 		if (step.teacherHeads != 0) {
@@ -871,6 +900,25 @@ public final class SchoolSession implements AgentSession {
 		mc.gui.setOverlayMessage(Component.literal(String.format(Locale.ROOT, "%s | moment: %s%s | AI keys: %s | %s: %s | %.0f-%.0f",
 				who, now, decider, keysOf(installedPlays && !teacherPlaysA ? installed.fighter.action() : action), Specialists.NAMES[fightBot], bot,
 				fightDealt, fightTaken)), false);
+	}
+
+	/** What this step earns for doing the technique it was told (see {@link #IMITATE}); paid with the step's reward. */
+	private void techniqueReward() {
+		if (pullsNow == null) {
+			pullsNow = stages.techPulls();
+		}
+		boolean told = learner.toldTheTeachers();
+		int t = perf.lastTechnique;
+		if (told && t >= 0 && perf.lastMatch >= 0f) {
+			shaping += IMITATE * perf.lastMatch * Math.min(SHARE_MOST, pullsNow[t]);
+		}
+		for (int i = 0; i < Technique.COUNT; i++) {
+			int n = perf.takeDone(i);
+			if (told && n > 0 && i != Technique.BASE.ordinal()) {
+				shaping += DONE_BONUS * n * Math.min(SHARE_MOST, pullsNow[i]);
+				momentsPaid += n;
+			}
+		}
 	}
 
 	private static String keysOf(int[] a) {
@@ -1137,13 +1185,19 @@ public final class SchoolSession implements AgentSession {
 			}
 		}
 		stages.adapt();
+		pullsNow = stages.techPulls();
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
 				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {}, other crits {} "
-				+ "| bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(), learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
-				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, otherCrits, used);
+				+ "| technique reward {} for {} moments done, K2 broken {} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
+				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
+				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, otherCrits,
+				String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, k2Broken, used);
 		punishCritsPaid = 0;
 		otherCrits = 0;
+		shapingPaid = 0f;
+		momentsPaid = 0;
+		k2Broken = 0;
 		java.util.Arrays.fill(critTrace[0], 0L);
 		java.util.Arrays.fill(jumpIn[0], 0L);
 		float dealtAll = 0f;

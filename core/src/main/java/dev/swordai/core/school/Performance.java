@@ -44,6 +44,14 @@ public final class Performance {
 	}
 
 	private final Listener listener;
+	/**
+	 * For the technique reward: on the last tick, the share of the heads the teacher taught that the network pressed
+	 * as it would have (-1 off a technique's moment, and on the ordinary fight's); and the moments done since
+	 * {@link #takeDone} last asked, per technique.
+	 */
+	public float lastMatch = -1f;
+	public int lastTechnique = -1;
+	private final int[] doneSince = new int[Technique.COUNT];
 	private int current = -1;
 	private int ticks;
 	private int matched;
@@ -119,6 +127,16 @@ public final class Performance {
 	public void reset() {
 		current = -1;
 		closing = -1;
+		lastMatch = -1f;
+		lastTechnique = -1;
+		java.util.Arrays.fill(doneSince, 0);
+	}
+
+	/** The moments done of technique {@code t} since the last call for it; counts them as taken. */
+	public int takeDone(int t) {
+		int n = doneSince[t];
+		doneSince[t] = 0;
+		return n;
 	}
 
 	private static final int K_JUMP = 1;
@@ -176,6 +194,8 @@ public final class Performance {
 			outsideKeys[0] += jumped ? 1 : 0;
 			outsideKeys[1] += swung ? 1 : 0;
 			outsideKeys[2] += back ? 1 : 0;
+			lastMatch = -1f;
+			lastTechnique = -1;
 			return;
 		}
 		if (current == Technique.BASE.ordinal()) {
@@ -198,6 +218,8 @@ public final class Performance {
 		boolean all = true;
 		int wanted = 0;
 		int pressed = 0;
+		int counted = 0;
+		int same0 = 0;
 		for (int h = 0; h < ActionSpace.HEADS; h++) {
 			if ((heads & (1 << h)) == 0 || !ActionSpace.unlocked(mask, h)) {
 				continue;
@@ -207,6 +229,8 @@ public final class Performance {
 			boolean same = h == ActionSpace.STRAFE ? (want == 0) == (got == 0)
 					: h == ActionSpace.FORWARD && !sNeeded(current) ? (want == 1) == (got == 1) : want == got;
 			all &= same;
+			counted++;
+			same0 += same ? 1 : 0;
 			taughtTicks[current][h]++;
 			offTicks[current][h] += same ? 0 : 1;
 			if (h == ActionSpace.JUMP) {
@@ -222,6 +246,9 @@ public final class Performance {
 		}
 		ticks++;
 		matched += all ? 1 : 0;
+		boolean special = current != Technique.BASE.ordinal();
+		lastMatch = special && counted > 0 ? same0 / (float) counted : -1f;
+		lastTechnique = special ? current : -1;
 		// A key owed from last tick and still not pressed is missed; a key wanted now may still come next tick.
 		int missed = owedKeys & ~pressed;
 		if (missed != 0) {
@@ -249,6 +276,7 @@ public final class Performance {
 		boolean gain = closingDone && dealt - taken >= 0f;
 		moments[t]++;
 		done[t] += closingDone ? 1 : 0;
+		doneSince[t] += closingDone ? 1 : 0;
 		paid[t] += gain ? 1 : 0;
 		if (listener != null) {
 			listener.moment(t, closingDone, gain);

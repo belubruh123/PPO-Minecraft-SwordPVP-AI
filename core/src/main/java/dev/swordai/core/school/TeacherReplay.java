@@ -29,6 +29,14 @@ public final class TeacherReplay {
 	private final boolean shadow;
 	/** See {@link SchoolPpo.Settings#installedBody}. */
 	public boolean installedBody;
+	/**
+	 * Every other example drawn technique first (any technique with examples and a pull, alike), then one of its
+	 * examples: a rare technique (C3, K3: a few hundred of 20 000 examples) is practised as often as the common ones
+	 * (T4, T7). Tried on its own once (24 Oct 02:28) it taught jumping everywhere, the techniques' keys spilling into the
+	 * ordinary fight; with the technique told to the network ({@link SchoolNet#INTENT}) they have their own input, and
+	 * the other half of the draws stays as it was.
+	 */
+	public boolean stratified;
 	static final int SHADOW_EVERY = 3;
 	private long shadowSeen;
 	private int size;
@@ -136,6 +144,33 @@ public final class TeacherReplay {
 		}
 		float[] probs = new float[ActionSpace.TOTAL_LOGITS];
 		float[] aimed = new float[ActionSpace.TOTAL_LOGITS];
+		int[][] byTechnique = null;
+		int[] kinds = null;
+		int kindCount = 0;
+		if (stratified) {
+			int[] count = new int[Technique.COUNT];
+			for (int i = 0; i < size; i++) {
+				int t = technique[i];
+				if (t >= 0 && t < Technique.COUNT) {
+					count[t]++;
+				}
+			}
+			byTechnique = new int[Technique.COUNT][];
+			kinds = new int[Technique.COUNT];
+			for (int t = 0; t < Technique.COUNT; t++) {
+				byTechnique[t] = new int[count[t]];
+				if (count[t] > 0 && pulls[t] > 0f) {
+					kinds[kindCount++] = t;
+				}
+			}
+			int[] at = new int[Technique.COUNT];
+			for (int i = 0; i < size; i++) {
+				int t = technique[i];
+				if (t >= 0 && t < Technique.COUNT) {
+					byTechnique[t][at[t]++] = i;
+				}
+			}
+		}
 		double ce = 0;
 		int headsSeen = 0;
 		int agreed = 0;
@@ -143,7 +178,13 @@ public final class TeacherReplay {
 			ParamSet.zero(ws.grads);
 			int used = 0;
 			for (int n = 0; n < batch; n++) {
-				int i = rng.nextInt(size);
+				int i;
+				if (kindCount > 0 && (n & 1) == 1) {
+					int[] of = byTechnique[kinds[rng.nextInt(kindCount)]];
+					i = of[rng.nextInt(of.length)];
+				} else {
+					i = rng.nextInt(size);
+				}
 				int t = technique[i];
 				float w = t >= 0 && t < Technique.COUNT ? pulls[t] : 0f;
 				if (w <= 0f) {

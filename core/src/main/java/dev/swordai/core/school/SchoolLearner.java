@@ -250,6 +250,7 @@ public final class SchoolLearner implements AutoCloseable {
 		if (replay == null) {
 			// Made on the first update only: a network that only plays (the user's fights) has no use for it.
 			replay = new TeacherReplay(20_000);
+			replay.stratified = true;
 			shadowReplay = new TeacherReplay(16_000, true);
 			replayWs = actor.newWorkspace();
 		}
