@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SwordAI school</title>
+<style>
+  :root {
+    --bg: #f6f6f3; --panel: #ffffff; --fg: #1d1d1b; --muted: #6b6b66; --line: #deded8; --soft: #efefea;
+    --accent: #1f5fa8; --good: #2e7d32; --mid: #9a6400; --bad: #b3261e; --dealt: #1f5fa8; --taken: #c05621; --teacher: #8a8a84;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151514; --panel: #1d1d1b; --fg: #e7e7e2; --muted: #9b9b94; --line: #33332f; --soft: #262623;
+      --accent: #6aa2e0; --good: #6cbf73; --mid: #d6a14a; --bad: #e0675e; --dealt: #6aa2e0; --taken: #e08a50; --teacher: #8d8d86;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 2px; font-weight: 600; }
+  section, .stat { min-width: 0; }
+  h2 { font-size: 15px; margin: 0 0 8px; font-weight: 600; }
+  .status { color: var(--muted); }
+  .status b { color: var(--fg); font-weight: 600; }
+  .warn { color: var(--mid); }
+  .err { color: var(--bad); }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 12px 14px; margin-top: 14px; }
+  .num, td.n, th.n { font-variant-numeric: tabular-nums; }
+  td.n, th.n { text-align: right; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); gap: 10px 18px; }
+  .stat .k { color: var(--muted); font-size: 12px; }
+  .stat .v { font-size: 16px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .bar { position: relative; height: 8px; background: var(--soft); border: 1px solid var(--line); margin-top: 4px; }
+  .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--line); padding: 5px 8px; white-space: nowrap; }
+  td { border-bottom: 1px solid var(--soft); padding: 5px 8px; vertical-align: middle; white-space: nowrap; }
+  tr.group td { background: var(--soft); color: var(--muted); font-size: 12px; font-weight: 600; padding: 4px 8px; }
+  tr.group td.now { color: var(--fg); }
+  tr.sk { cursor: pointer; }
+  tr.sk:hover td { background: var(--soft); }
+  tr.sel td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .tag { font-size: 11px; border: 1px solid var(--line); padding: 0 4px; margin-left: 6px; color: var(--muted); }
+  .tag.p { border-color: var(--accent); color: var(--accent); }
+  .meter { position: relative; width: 150px; height: 10px; background: var(--soft); border: 1px solid var(--line); display: inline-block; vertical-align: middle; }
+  .meter i { position: absolute; left: 0; top: 0; bottom: 0; }
+  .meter s { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--muted); opacity: .6; }
+  .pct { display: inline-block; width: 46px; text-align: right; margin-right: 8px; font-variant-numeric: tabular-nums; }
+  .good { color: var(--good); } .mid { color: var(--mid); } .bad { color: var(--bad); } .muted { color: var(--muted); }
+  .chart { width: 100%; height: 230px; display: block; }
+  .readout { color: var(--muted); font-size: 12px; min-height: 18px; font-variant-numeric: tabular-nums; }
+  .legend { font-size: 12px; color: var(--muted); }
+  .legend span { margin-right: 14px; white-space: nowrap; }
+  .legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 5px; }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+  @media (max-width: 820px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 520px) { main { padding: 10px; } section { padding: 10px; } }
+  .note { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  footer { color: var(--muted); font-size: 12px; margin: 14px 0 30px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>SwordAI technique school</h1>
+  <div class="status" id="status">Loading...</div>
+
+  <section>
+    <h2>Now</h2>
+    <div class="grid" id="now"></div>
+  </section>
+
+  <section>
+    <h2>Skills</h2>
+    <div class="note">Done = the moments of the last 40 where it pressed the teacher's keys, on time (the school's own measure). Paid = done
+      and no damage lost over the moment. Keys as taught = ticks where its most likely keys are the teacher's. Lines on the bar: 65% and 85%.
+      Click a row for its chart.</div>
+    <div class="scroll"><table id="skills"></table></div>
+  </section>
+
+  <section>
+    <h2 id="skillTitle">Skill over training</h2>
+    <div class="legend"><span><i style="background:var(--accent)"></i>done, last 40 moments</span><span><i style="background:var(--muted)"></i>65% and 85%</span></div>
+    <svg class="chart" id="skillChart"></svg>
+    <div class="readout" id="skillReadout"></div>
+  </section>
+
+  <div class="two">
+    <section>
+      <h2>Damage a minute in training</h2>
+      <div class="legend"><span><i style="background:var(--dealt)"></i>dealt</span><span><i style="background:var(--taken)"></i>taken</span><span>average of 5 updates</span></div>
+      <svg class="chart" id="damageChart"></svg>
+      <div class="readout" id="damageReadout"></div>
+    </section>
+    <section>
+      <h2>Paired checks against the installed AI</h2>
+      <div class="legend"><span><i style="background:var(--accent)"></i>school network</span><span><i style="background:var(--teacher)"></i>teacher tests</span><span>A minus B a fight, bars 2 se</span></div>
+      <svg class="chart" id="checkChart"></svg>
+      <div class="readout" id="checkReadout"></div>
+    </section>
+  </div>
+
+  <section>
+    <h2>Paired checks</h2>
+    <div class="note">Same seeds for both sides. A is the school network (or a teacher test), B the installed AI. Above zero, A did better.</div>
+    <div class="scroll"><table id="checks"></table></div>
+  </section>
+
+  <section>
+    <h2>What the game itself counted (last update)</h2>
+    <div class="two">
+      <div class="scroll"><table id="game"></table></div>
+      <div class="scroll"><table id="extra"></table></div>
+    </div>
+  </section>
+
+  <footer id="foot">Reads run/school-client*.log and run/school-checks.log. Refreshes every 15 seconds.</footer>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var data = null;
+  var selected = 'T8';
+  var REFRESH = 15000;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
+  }
+  function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function fmtSteps(x) {
+    if (x == null) return '-';
+    if (x >= 1e6) return (x / 1e6).toFixed(2) + 'M';
+    if (x >= 1e3) return Math.round(x / 1e3) + 'k';
+    return String(x);
+  }
+  function cls(r) { return r == null ? 'muted' : r >= 85 ? 'good' : r >= 65 ? 'mid' : 'bad'; }
+  function pct(r) { return r == null ? '-' : Math.round(r) + '%'; }
+  function ago(sec) {
+    if (sec == null) return '';
+    if (sec < 90) return Math.round(sec) + ' s ago';
+    return Math.round(sec / 60) + ' min ago';
+  }
+
+  // ---- charts: plain SVG, sized to their box -------------------------------------------------------------------------
+  function svgEl(tag, attrs) {
+    var e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function niceTicks(lo, hi, n) {
+    if (hi <= lo) { hi = lo + 1; }
+    var span = hi - lo, step = Math.pow(10, Math.floor(Math.log10(span / n)));
+    var err = span / n / step;
+    if (err >= 7.5) step *= 10; else if (err >= 3.5) step *= 5; else if (err >= 1.5) step *= 2;
+    var out = [];
+    for (var v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6));
+    return out;
+  }
+  // series: [{points: [[x, y, extra]], color, width, dash, dots, whisker}]; opts: {yMin, yMax, refs: [y], readout, fmtY}
+  function chart(svg, series, opts) {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    var W = svg.clientWidth || 600, H = svg.clientHeight || 230;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    var L = 44, R = 10, T = 10, B = 24;
+    var xs = [], ys = [];
+    series.forEach(function (s) { s.points.forEach(function (p) { xs.push(p[0]); ys.push(p[1]); if (s.whisker) { ys.push(p[1] + p[2]); ys.push(p[1] - p[2]); } }); });
+    var muted = css('--muted'), line = css('--line');
+    if (!xs.length) {
+      var t = svgEl('text', { x: W / 2, y: H / 2, 'text-anchor': 'middle', fill: muted, 'font-size': 12 });
+      t.textContent = 'No data yet';
+      svg.appendChild(t);
+      return;
+    }
+    var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+    if (x1 === x0) { x0 -= 1; x1 += 1; }
+    var y0 = opts.yMin != null ? Math.min(opts.yMin, Math.min.apply(null, ys)) : Math.min.apply(null, ys);
+    var y1 = opts.yMax != null ? Math.max(opts.yMax, Math.max.apply(null, ys)) : Math.max.apply(null, ys);
+    (opts.refs || []).forEach(function (r) { y0 = Math.min(y0, r); y1 = Math.max(y1, r); });
+    if (y1 === y0) { y0 -= 1; y1 += 1; }
+    var pad = (y1 - y0) * 0.06; if (opts.yMin == null) y0 -= pad; if (opts.yMax == null) y1 += pad;
+    function X(v) { return L + (v - x0) / (x1 - x0) * (W - L - R); }
+    function Y(v) { return T + (1 - (v - y0) / (y1 - y0)) * (H - T - B); }
+    niceTicks(y0, y1, 5).forEach(function (v) {
+      svg.appendChild(svgEl('line', { x1: L, x2: W - R, y1: Y(v), y2: Y(v), stroke: line, 'stroke-width': 1 }));
+      var t = svgEl('text', { x: L - 6, y: Y(v) + 4, 'text-anchor': 'end', fill: muted, 'font-size': 11 });
+      t.textContent = opts.fmtY ? opts.fmtY(v) : v;
+      svg.appendChild(t);
+    });
+    var xt = niceTicks(x0, x1, Math.max(2, Math.floor(W / 110)));
+    var xstep = xt.length > 1 ? xt[1] - xt[0] : 1;
+    xt.forEach(function (v) {
+      var t = svgEl('text', { x: X(v), y: H - 6, 'text-anchor': 'middle', fill: muted, 'font-size': 11 });
+      t.textContent = xstep < 100000 ? Math.round(v / 1000) + 'k' : fmtSteps(v);
+      svg.appendChild(t);
+    });
+    (opts.refs || []).forEach(function (r) {
+      svg.appendChild(svgEl('line', { x1: L, x2: W - R, y1: Y(r), y2: Y(r), stroke: muted, 'stroke-width': 1, 'stroke-dasharray': '4 4', opacity: 0.8 }));
+    });
+    series.forEach(function (s) {
+      if (s.whisker) {
+        s.points.forEach(function (p) {
+          svg.appendChild(svgEl('line', { x1: X(p[0]), x2: X(p[0]), y1: Y(p[1] - p[2]), y2: Y(p[1] + p[2]), stroke: s.color, 'stroke-width': 1 }));
+        });
+      }
+      if (!s.dots && s.points.length > 1) {
+        var d = s.points.map(function (p, i) { return (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1); }).join(' ');
+        svg.appendChild(svgEl('path', { d: d, fill: 'none', stroke: s.color, 'stroke-width': s.width || 1.6, 'stroke-dasharray': s.dash || '' }));
+      }
+      if (s.dots || s.points.length === 1) {
+        s.points.forEach(function (p) {
+          svg.appendChild(svgEl('circle', { cx: X(p[0]), cy: Y(p[1]), r: 3.2, fill: s.hollow ? css('--panel') : s.color, stroke: s.color, 'stroke-width': 1.4 }));
+        });
+      }
+    });
+    // A readout under the chart for the nearest point, instead of floating tooltips.
+    var cursor = svgEl('line', { x1: 0, x2: 0, y1: T, y2: H - B, stroke: muted, 'stroke-width': 1, opacity: 0 });
+    svg.appendChild(cursor);
+    var all = [];
+    series.forEach(function (s) { s.points.forEach(function (p) { all.push({ x: p[0], p: p, s: s }); }); });
+    svg.onmousemove = function (ev) {
+      var rect = svg.getBoundingClientRect();
+      var mx = (ev.clientX - rect.left) * (W / rect.width);
+      var best = null, bd = 1e18;
+      all.forEach(function (a) { var dd = Math.abs(X(a.x) - mx); if (dd < bd) { bd = dd; best = a; } });
+      if (!best) return;
+      cursor.setAttribute('x1', X(best.x)); cursor.setAttribute('x2', X(best.x)); cursor.setAttribute('opacity', 0.5);
+      if (opts.readout) opts.readout(best.x, all.filter(function (a) { return a.x === best.x; }));
+    };
+    svg.onmouseleave = function () { cursor.setAttribute('opacity', 0); };
+  }
+
+  function sparkline(points) {
+    if (!points || points.length < 2) return '<span class="muted">-</span>';
+    var p = points.slice(-60), W = 110, H = 22;
+    var x0 = p[0][0], x1 = p[p.length - 1][0] || x0 + 1;
+    function X(v) { return ((v - x0) / Math.max(1, x1 - x0) * (W - 2) + 1).toFixed(1); }
+    function Y(v) { return ((1 - v / 100) * (H - 2) + 1).toFixed(1); }
+    var d = p.map(function (q, i) { return (i ? 'L' : 'M') + X(q[0]) + ' ' + Y(q[1]); }).join(' ');
+    return '<svg width="' + W + '" height="' + H + '" style="vertical-align:middle">' +
+      '<line x1="0" x2="' + W + '" y1="' + Y(65) + '" y2="' + Y(65) + '" stroke="' + css('--line') + '"/>' +
+      '<line x1="0" x2="' + W + '" y1="' + Y(85) + '" y2="' + Y(85) + '" stroke="' + css('--line') + '"/>' +
+      '<path d="' + d + '" fill="none" stroke="' + css('--accent') + '" stroke-width="1.3"/></svg>';
+  }
+
+  // ---- sections ------------------------------------------------------------------------------------------------------
+  function renderStatus() {
+    var n = data.now || {};
+    var age = data.logAgeSeconds;
+    var parts = [];
+    var stale = age != null && age > 240;
+    if (data.state === 'paired check running') parts.push('<b>Paired check running</b>');
+    else if (stale) parts.push('<span class="warn">No new log line for ' + Math.round(age / 60) + ' min: stopped or between runs</span>');
+    else parts.push('<b>Training</b>');
+    if (n.stage) parts.push('stage <b>' + esc(n.stage) + '</b> ' + esc(n.family || ''));
+    parts.push('<span class="num">' + fmtSteps(n.steps) + '</span> steps');
+    if (n.time) parts.push('last update ' + esc(n.time) + (age != null ? ' (log written ' + ago(age) + ')' : ''));
+    $('status').innerHTML = parts.join(' &middot; ');
+  }
+
+  function stat(k, v, extra) {
+    return '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v + '</div>' + (extra || '') + '</div>';
+  }
+
+  function renderNow() {
+    var n = data.now || {};
+    var html = '';
+    var frac = n.minSteps ? Math.min(1, n.stageSteps / n.minSteps) : 0;
+    var stageObj = (data.stages || []).filter(function (s) { return s.name === n.stage; })[0];
+    html += stat('Learning now', esc(n.stage || '-') + ' <span class="muted" style="font-size:13px">' + esc(n.family || '') + '</span>',
+      '<div class="bar"><i style="width:' + (frac * 100).toFixed(1) + '%"></i></div><div class="k" style="margin-top:3px">' +
+      fmtSteps(n.stageSteps) + ' of at least ' + fmtSteps(n.minSteps) + ' steps in this stage</div>');
+    var rows = data.techniques || [];
+    function rateOf(id) { var r = rows.filter(function (t) { return t.id === id; })[0]; return r ? r.rate : null; }
+    if (stageObj) {
+      html += stat('This stage\'s techniques', stageObj.techniques.map(function (id) {
+        var r = rateOf(id); return esc(id) + ' <span class="' + cls(r) + '">' + pct(r) + '</span>';
+      }).join(', '));
+    }
+    html += stat('Priority: answer to jumping in', (data.priority || []).map(function (id) {
+      var r = rateOf(id); return esc(id) + ' <span class="' + cls(r) + '">' + pct(r) + '</span>';
+    }).join(', '), '<div class="k">T8 hit them rising, K2 no knockback hit on a falling one, B1 punish crit</div>');
+    var dmg = data.damage || [];
+    var last = dmg.slice(-10);
+    var dAvg = last.length ? last.reduce(function (a, p) { return a + p[1]; }, 0) / last.length : null;
+    var tAvg = last.length ? last.reduce(function (a, p) { return a + p[2]; }, 0) / last.length : null;
+    html += stat('Damage a minute (last 10 updates)', dAvg == null ? '-' :
+      '<span style="color:var(--dealt)">' + Math.round(dAvg) + '</span> dealt, <span style="color:var(--taken)">' + Math.round(tAvg) + '</span> taken');
+    var all = rows.filter(function (t) { return t.rate != null; });
+    var at85 = all.filter(function (t) { return t.rate >= 85; }).length, at65 = all.filter(function (t) { return t.rate >= 65; }).length;
+    html += stat('Techniques done', at85 + ' at 85%+, ' + at65 + ' at 65%+', '<div class="k">of ' + all.length + ' with enough moments</div>');
+    if (n.installedPull != null) html += stat('Installed AI\'s pull', n.installedPull.toFixed(2), '<div class="k">teaches the fighting between techniques</div>');
+    $('now').innerHTML = html;
+  }
+
+  function renderSkills() {
+    var rows = data.techniques || [];
+    var cur = (data.now || {}).stage;
+    var html = '<thead><tr><th>Technique</th><th>Name</th><th>Done</th><th class="n">Paid</th><th class="n">Keys as taught</th><th class="n">Moments</th><th>Trend</th></tr></thead><tbody>';
+    (data.stages || []).forEach(function (s) {
+      var list = rows.filter(function (t) { return t.stage === s.name; });
+      if (!list.length) return;
+      html += '<tr class="group"><td colspan="7" class="' + (s.name === cur ? 'now' : '') + '">' + esc(s.name) + ' ' + esc(s.family) +
+        (s.name === cur ? ' - learning now' : '') + '</td></tr>';
+      list.forEach(function (t) {
+        var r = t.rate, w = r == null ? 0 : Math.max(0, Math.min(100, r));
+        html += '<tr class="sk' + (t.id === selected ? ' sel' : '') + '" data-id="' + esc(t.id) + '">' +
+          '<td>' + esc(t.id) + (t.priority ? '<span class="tag p">priority</span>' : '') + '</td>' +
+          '<td>' + esc(t.title) + '</td>' +
+          '<td><span class="pct ' + cls(r) + '">' + pct(r) + '</span><span class="meter"><i style="width:' + w + '%;background:var(--' +
+          (r == null ? 'line' : r >= 85 ? 'good' : r >= 65 ? 'mid' : 'bad') + ')"></i><s style="left:65%"></s><s style="left:85%"></s></span></td>' +
+          '<td class="n">' + pct(t.paid) + '</td>' +
+          '<td class="n">' + (t.taught == null ? '-' : t.taught + '%') + '</td>' +
+          '<td class="n">' + t.moments + '</td>' +
+          '<td>' + sparkline(t.series) + '</td></tr>';
+      });
+    });
+    $('skills').innerHTML = html + '</tbody>';
+    Array.prototype.forEach.call(document.querySelectorAll('tr.sk'), function (tr) {
+      tr.onclick = function () { selected = tr.getAttribute('data-id'); renderSkills(); renderSkillChart(); };
+    });
+  }
+
+  function renderSkillChart() {
+    var t = (data.techniques || []).filter(function (x) { return x.id === selected; })[0];
+    if (!t) { $('skillTitle').textContent = 'Skill over training'; chart($('skillChart'), [], {}); return; }
+    $('skillTitle').textContent = t.id + ' ' + t.title + ': done over training';
+    chart($('skillChart'), [{ points: t.series, color: css('--accent') }], {
+      yMin: 0, yMax: 100, refs: [65, 85], fmtY: function (v) { return v + '%'; },
+      readout: function (x, hits) { $('skillReadout').textContent = fmtSteps(x) + ' steps: ' + hits[0].p[1] + '% done over its last 40 moments'; }
+    });
+    $('skillReadout').textContent = t.series.length ? 'Now ' + pct(t.rate) + ' over ' + t.moments + ' moments.' : 'Not enough moments yet.';
+  }
+
+  function smooth(points, k) {
+    return points.map(function (p, i) {
+      var a = points.slice(Math.max(0, i - k + 1), i + 1);
+      return [p[0], Math.round(a.reduce(function (s, q) { return s + q[1]; }, 0) / a.length), p[2]];
+    });
+  }
+
+  function renderDamage() {
+    var d = data.damage || [];
+    var dealt = smooth(d.map(function (p) { return [p[0], p[1], p[3]]; }), 5);
+    var taken = smooth(d.map(function (p) { return [p[0], p[2], p[3]]; }), 5);
+    chart($('damageChart'), [{ points: dealt, color: css('--dealt') }, { points: taken, color: css('--taken') }], {
+      yMin: 0,
+      readout: function (x, hits) {
+        var raw = d.filter(function (p) { return p[0] === x; })[0];
+        $('damageReadout').textContent = fmtSteps(x) + ' steps (' + (raw ? raw[3] : '') + '): ' + hits.map(function (h, i) {
+          return (h.s.color === css('--dealt') ? 'dealt ' : 'taken ') + h.p[1];
+        }).join(', ') + ' (5-update average)';
+      }
+    });
+  }
+
+  function checkPoints(filter) {
+    return (data.checks || []).filter(filter).filter(function (c) { return c.steps != null; })
+      .map(function (c) { return [c.steps, c.all.aMinusB, 2 * (c.all.se || 0), c]; });
+  }
+
+  function renderCheckChart() {
+    var school = checkPoints(function (c) { return c.kind === 'school network'; });
+    var teacher = checkPoints(function (c) { return c.kind !== 'school network'; });
+    chart($('checkChart'), [
+      { points: teacher, color: css('--teacher'), dots: true, hollow: true, whisker: true },
+      { points: school, color: css('--accent'), dots: true, whisker: true }
+    ], {
+      refs: [0],
+      readout: function (x, hits) {
+        $('checkReadout').textContent = hits.map(function (h) {
+          var c = h.p[3];
+          return c.time + ' ' + c.kind + ' at ' + c.stage + ': ' + (c.all.aMinusB > 0 ? '+' : '') + c.all.aMinusB + ' (se ' + c.all.se + ')';
+        }).join('; ');
+      }
+    });
+  }
+
+  function renderChecks() {
+    var cs = (data.checks || []).slice().reverse();
+    var html = '<thead><tr><th>When</th><th>Side A</th><th>Stage</th><th class="n">Pairs</th><th class="n">A minus B a fight</th>' +
+      '<th class="n">A dealt / taken a min</th><th class="n">B dealt / taken a min</th><th class="n">KOs A / B</th></tr></thead><tbody>';
+    cs.forEach(function (c) {
+      var a = c.all, diff = a.aMinusB, se = a.se == null ? 0 : a.se, sig = a.se != null && Math.abs(diff) >= 2 * se;
+      html += '<tr><td class="num">' + esc(c.time) + '</td><td>' + esc(c.kind) + '</td><td>' + esc(c.stage) + '</td>' +
+        '<td class="n">' + a.pairs + '</td>' +
+        '<td class="n"><span class="' + (diff >= 0 ? (sig ? 'good' : '') : (sig ? 'bad' : '')) + '">' + (diff > 0 ? '+' : '') + diff.toFixed(1) +
+        '</span> <span class="muted">&plusmn;' + (a.se == null ? '-' : se.toFixed(1)) + '</span></td>' +
+        '<td class="n">' + esc(a.aDt) + '</td><td class="n">' + esc(a.bDt) + '</td><td class="n">' + esc(a.aKo) + ' / ' + esc(a.bKo) + '</td></tr>';
+    });
+    $('checks').innerHTML = html + '</tbody>';
+  }
+
+  function renderGame() {
+    var n = data.now || {};
+    var g = n.game || [];
+    var html = '<thead><tr><th>Its own moves, by the game</th><th class="n">Done</th><th class="n">Chances</th><th class="n">Rate</th></tr></thead><tbody>';
+    g.forEach(function (r) {
+      html += '<tr><td>' + esc(r[0]) + (r[1] ? ' <span class="muted">(' + esc(r[1]) + ')</span>' : '') + '</td><td class="n">' + r[2] +
+        '</td><td class="n">' + r[3] + '</td><td class="n">' + (r[3] ? Math.round(100 * r[2] / r[3]) + '%' : '-') + '</td></tr>';
+    });
+    $('game').innerHTML = html + '</tbody>';
+    var j = n.jumpIn, c = n.crit, k = n.keys;
+    var ex = '<thead><tr><th>Since the last update</th><th class="n"></th></tr></thead><tbody>';
+    if (j) {
+      ex += '<tr><td>Their jump-ins</td><td class="n">' + j[0] + '</td></tr>' +
+        '<tr><td>Its hits on them rising (T8)</td><td class="n">' + j[1] + '</td></tr>' +
+        '<tr><td>Its knockback hits on them falling (K2 broken)</td><td class="n">' + j[2] + '</td></tr>' +
+        '<tr><td>Crits taken around those</td><td class="n">' + j[3] + '</td></tr>' +
+        '<tr><td>Crits taken in all</td><td class="n">' + j[4] + '</td></tr>';
+    }
+    if (c) {
+      ex += '<tr><td>Crit moments: falling / in reach / sword back / not sprinting</td><td class="n">' + c[1] + ' / ' + c[2] + ' / ' + c[3] + ' / ' + c[4] + '</td></tr>' +
+        '<tr><td>Crit swings / real crits landed</td><td class="n">' + c[5] + ' / ' + c[8] + '</td></tr>';
+    }
+    if (k) {
+      ex += '<tr><td>Jumps a minute, off / on technique moments</td><td class="n">' + k[0] + ' / ' + k[1] + '</td></tr>' +
+        '<tr><td>Swings a minute, off / on</td><td class="n">' + k[2] + ' / ' + k[3] + '</td></tr>';
+    }
+    $('extra').innerHTML = ex + '</tbody>';
+  }
+
+  function renderAll() {
+    if (!data) return;
+    renderStatus(); renderNow(); renderSkills(); renderSkillChart(); renderDamage(); renderCheckChart(); renderChecks(); renderGame();
+    $('foot').textContent = 'Reads run/school-client*.log and run/school-checks.log. Refreshes every 15 seconds. Last read ' + data.served + '.';
+  }
+
+  function load() {
+    fetch('/api/data', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.error) throw new Error(d.error);
+      data = d;
+      renderAll();
+    }).catch(function (e) {
+      $('status').innerHTML = '<span class="err">Could not read the data (' + esc(e.message) + '). Showing the last read.</span>';
+    });
+  }
+
+  var resizeTimer = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () { if (data) { renderSkillChart(); renderDamage(); renderCheckChart(); } }, 150);
+  });
+  load();
+  setInterval(load, REFRESH);
+})();
+</script>
+</body>
+</html>

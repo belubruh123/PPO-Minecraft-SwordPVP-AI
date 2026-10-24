@@ -946,6 +946,8 @@ public final class SchoolSession implements AgentSession {
 		}
 		hasLastAction = false;
 		clicked = false;
+		java.util.Arrays.fill(recentCrits, 0);
+		sinceFallingHit = 1000;
 	}
 
 	/** The fight is broken off (a pause, frames that stopped): keys let go, the step in progress dropped. */
