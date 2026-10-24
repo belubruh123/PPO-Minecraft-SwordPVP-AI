@@ -1009,7 +1009,9 @@ public final class SchoolSession implements AgentSession {
 		// sprint hits, a third came down in reach, most with the sword back, and all but one still sprinting (24 Oct 16:15):
 		// near them with the sword coming back, W and the sprint key are let go on the way, so that no sprint is left when
 		// the crit can be made. S held stays (it ends the sprint as well); the K2 moment's own lesson stays its own.
-		if (mode == Mode.TRAIN && OVERLAY && liftedFor >= 0 && !me.onGround() && sprintAtClick && facts.reachDist <= 3.5f
+		// By its own sprint as the client shows it (what the network sees and the B1 teacher goes by), not the server's a tick
+		// behind: on that tick the two teachers asked W off and W on, and B1 was off on W/S up to a third of its ticks (20:50).
+		if (mode == Mode.TRAIN && OVERLAY && liftedFor >= 0 && !me.onGround() && me.isSprinting() && facts.reachDist <= 3.5f
 				&& charge > 0.5f && step.teacherTechnique != Technique.K2.ordinal()) {
 			int f = ActionSpace.OFFSETS[ActionSpace.FORWARD];
 			boolean back = (step.teacherHeads & (1 << ActionSpace.FORWARD)) != 0 && step.teacher[f + 2] > Math.max(step.teacher[f], step.teacher[f + 1]);
