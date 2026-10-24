@@ -60,6 +60,13 @@ public final class SchoolFighter {
 		System.arraycopy(ActionSpace.DEFAULTS, 0, action, 0, ActionSpace.HEADS);
 	}
 
+	private boolean whiffGuard = true;
+
+	/** Whether a swing at an opponent plainly out of reach is kept back (Config.whiffGuard). */
+	public void whiffGuard(boolean on) {
+		whiffGuard = on;
+	}
+
 	public void hitDealt() {
 		sinceHitDealt = 0;
 		dealtSince++;
@@ -91,6 +98,10 @@ public final class SchoolFighter {
 		ObsBuilder.writeActor(step.obs.base, frame, sight, body, motor, idea, hasAction ? action : null, ActionSpace.ALL_HEADS);
 		System.arraycopy(mem, 0, step.obs.mem, 0, SchoolObs.MEM);
 		int keys = SwingGate.keys(ActionSpace.ALL_HEADS, body.charge, swingMinCharge);
+		// As the installed model: no swing at an opponent plainly out of reach or off the screen (Config.whiffGuard).
+		if (whiffGuard && SwingGate.outOfReach(step.obs.base.vec)) {
+			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
+		}
 		learner.act(step, keys, false, temperature, action);
 		fairJump.apply(action, body.onGround, sinceHitTaken, takenStreak.hits());
 		motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));

@@ -886,6 +886,12 @@ public final class SchoolSession implements AgentSession {
 			liftAimedNow = stage == 4;
 		}
 		int keys = SwingGate.keys(ActionSpace.ALL_HEADS, charge, cfg.swingMinCharge);
+		// The installed model's guard, the same for this network (24 Oct 17:10): no swing at an opponent plainly out of reach
+		// or off the screen (SwingGate.outOfReach). Without it, in the 16:31 check 37% of its swings hit nothing, the
+		// installed model's 9%, and that was the whole gap in damage dealt.
+		if (cfg.whiffGuard && SwingGate.outOfReach(step.obs.base.vec)) {
+			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
+		}
 		teacher.tick(reader.duel, reader.events, onOpponent());
 		liftTaught |= liftedFor >= 0 && teacher.technique() == Technique.B1;
 		step.teacherHeads = teacher.target(step.teacher);

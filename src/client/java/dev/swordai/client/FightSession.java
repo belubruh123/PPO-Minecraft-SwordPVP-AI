@@ -141,6 +141,7 @@ final class FightSession implements AgentSession {
 			schoolLearner = l;
 			school = new SchoolFighter(l, loaded.cfg.aimResponse,
 					mc.hasSingleplayerServer() ? loaded.cfg.swingMinCharge : loaded.cfg.swingMinChargeOnline, loaded.cfg.playTemperature);
+			school.whiffGuard(loaded.cfg.whiffGuard);
 		} else {
 			schoolLearner = null;
 			school = null;
