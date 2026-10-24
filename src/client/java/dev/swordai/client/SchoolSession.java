@@ -964,7 +964,7 @@ public final class SchoolSession implements AgentSession {
 					|| reviewRewards.lostTooLong(basics[review])
 					: fightTicks >= FIGHT_TICKS;
 			boolean full = mode == Mode.TRAIN && learner.rolloutRoom() <= 1;
-			if (mode == Mode.TRAIN && review >= 0 && review < TIMER) {
+			if (mode == Mode.TRAIN && review >= 0) {
 				// A review: the old stage's own rewards, on the facts it scores (see Trainer).
 				fillReviewFacts(truth, me);
 				float reward = REVIEW_SCALE * reviewRewards.step(basics[review], facts, reviewTally[review]) + shaping;
@@ -972,14 +972,6 @@ public final class SchoolSession implements AgentSession {
 				shaping = 0f;
 				learner.complete(reward, ko, !ko && (timeUp || full), step.obs);
 			} else if (mode == Mode.TRAIN) {
-				if (review >= TIMER) {
-					// The fight basics are paid as the check judges a fight: damage both ways, the knockout. Their stage's (the
-					// duel's) rewards charge every hit taken on top of its damage, and the network held S half as much again as
-					// the installed model (25 Oct 01:22 check: S 160 to 108 a minute, 250 dealt a minute to 317). Their tally is
-					// still kept, for the report and their judgement.
-					fillReviewFacts(truth, me);
-					reviewRewards.step(basics[review], facts, reviewTally[review]);
-				}
 				float reward = PER_HEALTH * (facts.damageDealt - facts.damageTaken) + (facts.koDealt ? KNOCKOUT : 0f) - (facts.koTaken ? KNOCKOUT : 0f);
 				if (facts.hitsDealt > 0 && facts.critDealt) {
 					if (liftedFor >= 0) {
