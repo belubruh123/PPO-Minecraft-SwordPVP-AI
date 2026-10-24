@@ -85,6 +85,8 @@ public final class PvpPlayer {
 	private Plan plan = Plan.NONE;
 	private int planT;
 	private int phase;
+	/** The plan tick its jump (or its swing, C4) was first asked for: asked again until it leaves the ground (or swings). */
+	private int askedAt;
 	private int planDir;
 	private boolean planAlt;
 	private Plan pending = Plan.NONE;
@@ -423,6 +425,7 @@ public final class PvpPlayer {
 		plan = p;
 		planT = 0;
 		phase = 0;
+		askedAt = 0;
 		planDir = rng.nextBoolean() ? 1 : -1;
 		planAlt = false;
 	}
@@ -493,6 +496,20 @@ public final class PvpPlayer {
 		if (e.theyHit == Events.SPRINT && (!style.onlyWhenItWorks || habits.theirCombo() >= 2) && roll(Technique.C3)) {
 			begin(Plan.C3);
 		}
+	}
+
+	/**
+	 * A jump asked for and not made yet (still on the ground, up to three ticks on): asked again. It used to be asked on one
+	 * tick and the plan given up the next if still on the ground, so a jump a tick late, which still crits on the way down
+	 * (the sword is back by then), failed the moment, and one on time could too, as the body leaves the ground a tick after
+	 * the key (24 Oct 19:45: the standing crit C6 51%, off on the jump; T1b 22%).
+	 */
+	private boolean stillToJump(Body me, Keys k) {
+		if (me.onGround && planT - askedAt <= 3) {
+			k.jump = true;
+			return true;
+		}
+		return false;
 	}
 
 	/** The jump reset: on the tick the hit is felt, or a tick or two late for a press that is not exact. */
@@ -715,6 +732,10 @@ public final class PvpPlayer {
 					}
 					k.jump = true;
 					phase = 1;
+					askedAt = planT;
+					return RUN;
+				}
+				if (stillToJump(me, k)) {
 					return RUN;
 				}
 				if (me.falling() && canSwing(d)) {
@@ -896,8 +917,15 @@ public final class PvpPlayer {
 						plan = Plan.C4;
 						k.technique = Technique.C4;
 						k.attack = true;
+						askedAt = planT;
 						return RUN;
 					}
+				}
+				// C4's swing, asked for until it is made (two ticks more), before the S: a swing a tick late is still the one
+				// "right before you hold S" (24 Oct 19:45: C4 off on the swing 20% of its ticks, 79% -> 50%).
+				if (plan == Plan.C4 && askedAt > 0 && planT - askedAt <= 2 && me.sinceSwing > planT - askedAt && canSwing(d)) {
+					k.attack = true;
+					return RUN;
 				}
 				k.forward = -1;
 				if (me.onGround && planT <= 3) {
@@ -975,6 +1003,12 @@ public final class PvpPlayer {
 			k.forward = d.reach > 1.0 ? 1 : 0;
 			k.sprint = running;
 			phase = 1;
+			askedAt = planT;
+			return RUN;
+		}
+		if (stillToJump(me, k)) {
+			k.forward = d.reach > 1.0 ? 1 : 0;
+			k.sprint = running;
 			return RUN;
 		}
 		// The running jump keeps its sprint going up; coming down, W is let go while it still sprints, as a crit needs not
