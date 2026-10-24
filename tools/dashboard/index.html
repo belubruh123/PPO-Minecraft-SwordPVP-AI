@@ -44,6 +44,7 @@
   tr.sel td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
   .tag { font-size: 11px; border: 1px solid var(--line); padding: 0 4px; margin-left: 6px; color: var(--muted); }
   .tag.p { border-color: var(--accent); color: var(--accent); }
+  .tag.s { border-color: var(--bad); color: var(--bad); }
   .meter { position: relative; width: 150px; height: 10px; background: var(--soft); border: 1px solid var(--line); display: inline-block; vertical-align: middle; }
   .meter i { position: absolute; left: 0; top: 0; bottom: 0; }
   .meter s { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--muted); opacity: .6; }
@@ -138,6 +139,11 @@
   }
   function cls(r) { return r == null ? 'muted' : r >= 85 ? 'good' : r >= 65 ? 'mid' : 'bad'; }
   function pct(r) { return r == null ? '-' : Math.round(r) + '%'; }
+  function changeOf(t) {
+    if (t.change == null) return '<span class="muted">-</span>';
+    var c = t.change, txt = (c > 0 ? '+' : c < 0 ? '−' : '') + Math.abs(c).toFixed(0);
+    return '<span class="' + (c >= 5 ? 'good' : c <= -5 ? 'bad' : 'muted') + '">' + txt + '</span>' + (t.stuck ? '<span class="tag s">stuck</span>' : '');
+  }
   function ago(sec) {
     if (sec == null) return '';
     if (sec < 90) return Math.round(sec) + ' s ago';
@@ -302,11 +308,11 @@
   function renderSkills() {
     var rows = data.techniques || [];
     var cur = (data.now || {}).stage;
-    var html = '<thead><tr><th>Technique</th><th>Name</th><th>Done</th><th class="n">Paid</th><th class="n">Keys as taught</th><th class="n">Moments</th><th>Trend</th></tr></thead><tbody>';
+    var html = '<thead><tr><th>Technique</th><th>Name</th><th>Done</th><th class="n">Paid</th><th class="n">Keys as taught</th><th class="n">Moments</th><th class="n">Last hour vs hour before</th><th>Trend</th></tr></thead><tbody>';
     (data.stages || []).forEach(function (s) {
       var list = rows.filter(function (t) { return t.stage === s.name; });
       if (!list.length) return;
-      html += '<tr class="group"><td colspan="7" class="' + (s.name === cur ? 'now' : '') + '">' + esc(s.name) + ' ' + esc(s.family) +
+      html += '<tr class="group"><td colspan="8" class="' + (s.name === cur ? 'now' : '') + '">' + esc(s.name) + ' ' + esc(s.family) +
         (s.name === cur ? ' - learning now' : '') + '</td></tr>';
       list.forEach(function (t) {
         var r = t.rate, w = r == null ? 0 : Math.max(0, Math.min(100, r));
@@ -318,6 +324,7 @@
           '<td class="n">' + pct(t.paid) + '</td>' +
           '<td class="n">' + (t.taught == null ? '-' : t.taught + '%') + '</td>' +
           '<td class="n">' + t.moments + '</td>' +
+          '<td class="n">' + changeOf(t) + '</td>' +
           '<td>' + sparkline(t.series) + '</td></tr>';
       });
     });
