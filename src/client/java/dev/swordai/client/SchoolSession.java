@@ -83,6 +83,13 @@ public final class SchoolSession implements AgentSession {
 	/** The reward: damage traded, a tenth a point of health, and a knockout. */
 	static final float PER_HEALTH = 0.1f;
 	static final float KNOCKOUT = 1f;
+	/**
+	 * A real punish crit (B1): a crit the game confirms, landed within this many ticks of being hit (as {@code Habits}
+	 * counts it). Its damage alone paid it about a third of a point more than a plain hit, too little to outweigh letting
+	 * go of W while falling (the user, 24 Oct: "the reward you give isnt big"). It pays half a knockout on top.
+	 */
+	static final int PUNISH_WINDOW = 18;
+	static final float PUNISH_CRIT = 0.5f;
 	/** Updates at the start of a new school that teach the critic only (the actor is the installed one's, the critic new). */
 	static final int CRITIC_WARMUP = 3;
 	/** The bot is put between these distances, in view. */
@@ -149,6 +156,9 @@ public final class SchoolSession implements AgentSession {
 	 */
 	private final long[][] jumpIn = new long[2][5];
 	private int sinceFallingHit = 1000;
+	/** Real punish crits rewarded since the last update, and crits landed outside that window. */
+	private int punishCritsPaid;
+	private int otherCrits;
 	private int critWantedFor;
 	private static final boolean[] CRIT_WANTED = new boolean[Technique.COUNT];
 	/**
@@ -720,6 +730,14 @@ public final class SchoolSession implements AgentSession {
 			boolean full = mode == Mode.TRAIN && learner.rolloutRoom() <= 1;
 			if (mode == Mode.TRAIN) {
 				float reward = PER_HEALTH * (facts.damageDealt - facts.damageTaken) + (facts.koDealt ? KNOCKOUT : 0f) - (facts.koTaken ? KNOCKOUT : 0f);
+				if (facts.hitsDealt > 0 && facts.critDealt) {
+					if (clock.ticksSinceHitTaken <= PUNISH_WINDOW) {
+						reward += PUNISH_CRIT;
+						punishCritsPaid++;
+					} else {
+						otherCrits++;
+					}
+				}
 				learner.complete(reward, ko, !ko && (timeUp || full), step.obs);
 			}
 			if (ko || timeUp || full) {
@@ -1117,9 +1135,11 @@ public final class SchoolSession implements AgentSession {
 		stages.adapt();
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
-				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | bots went into:{}",
-				lastUpdateLine, stages.describe(), learner.predictorLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(), perf.keysLine(), ownLine(0),
-				critLine(0), jumpInLine(0), used);
+				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {}, other crits {} "
+				+ "| bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
+				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, otherCrits, used);
+		punishCritsPaid = 0;
+		otherCrits = 0;
 		java.util.Arrays.fill(critTrace[0], 0L);
 		java.util.Arrays.fill(jumpIn[0], 0L);
 		float dealtAll = 0f;
