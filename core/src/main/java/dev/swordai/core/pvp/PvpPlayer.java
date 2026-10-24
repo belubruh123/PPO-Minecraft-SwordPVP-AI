@@ -999,7 +999,9 @@ public final class PvpPlayer {
 		}
 		// The running jump keeps its sprint going up; coming down, W is let go while it still sprints, as a crit needs not
 		// sprinting (part 8), and the swing waits for that.
-		k.forward = d.reach > 1.0 && (me.rising() || !me.sprinting) ? 1 : 0;
+		// W on the way up, let go on the way down and not pressed again (as B1: off while still sprinting and on again once
+		// not, it flipped within a tick or two; T1 65%, T1b 16% at 20:50).
+		k.forward = d.reach > 1.0 && me.rising() ? 1 : 0;
 		k.sprint = running && me.rising();
 		if (around) {
 			k.strafe = planDir;
