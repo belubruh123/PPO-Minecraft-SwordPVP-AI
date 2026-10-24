@@ -71,6 +71,17 @@ final class DuelReader {
 	 * @param chargeAtClick, sprintAtClick, critAtClick how that swing was made
 	 */
 	void tick(LocalPlayer me, Player them, boolean swungLast, float chargeAtClick, boolean sprintAtClick, boolean critAtClick) {
+		tick(me, them, swungLast, chargeAtClick, sprintAtClick, critAtClick, false);
+	}
+
+	/**
+	 * @param critConfirmed the server confirmed a crit of its own just now (in the school): the hit seen is that crit, whatever
+	 *                      the click looked like. By the click alone, of 7 crits the server counted in an update 2 were seen
+	 *                      (24 Oct 18:30), so the double crit (T1, T1b, T1c), which follows its own crit, hardly ever began, and
+	 *                      the game's punish crit count missed most of them.
+	 */
+	void tick(LocalPlayer me, Player them, boolean swungLast, float chargeAtClick, boolean sprintAtClick, boolean critAtClick,
+			boolean critConfirmed) {
 		fill(duel.me, me, meWasOnGround);
 		fill(duel.them, them, themWasOnGround);
 		if (swungLast) {
@@ -98,7 +109,7 @@ final class DuelReader {
 		int theirHurt = them.hurtTime;
 		if (started) {
 			if (theirHurt > lastTheirHurt) {
-				events.iHit = mySwingKind;
+				events.iHit = critConfirmed ? Events.CRIT : mySwingKind;
 			}
 			if (myHurt > lastMyHurt) {
 				// Their hit, by what its game shows of them: sprinting, or coming down with the sword back.

@@ -214,6 +214,7 @@ public final class SchoolSession implements AgentSession {
 	private boolean critChanceAtClick;
 	/** Ticks since their hit threw it up from the ground, -1 once it has landed (see OTHER_CRIT); on the ground the tick before. */
 	private int liftedFor = -1;
+	private int ticksSinceCrit = 1000;
 	private boolean onGroundBefore = true;
 	/**
 	 * Each lift (thrown up from the ground by their hit) by the kind of that hit (Events: sprint, crit, plain): how many, how
@@ -808,7 +809,9 @@ public final class SchoolSession implements AgentSession {
 		if (installed != null && hurtNow) {
 			installed.fighter.hitTaken();
 		}
-		reader.tick(me, bot, hasLastAction && clicked, chargeAtClick, sprintAtClick, critAtClick);
+		// The server's word on its crits (see DuelReader.tick): a crit it confirmed this tick or the two before.
+		ticksSinceCrit = facts.hitsDealt > 0 && facts.critDealt ? 0 : Math.min(ticksSinceCrit + 1, 1000);
+		reader.tick(me, bot, hasLastAction && clicked, chargeAtClick, sprintAtClick, critAtClick, ticksSinceCrit <= 2);
 		if (liftedFor == 0) {
 			endLift();
 			liftKind = reader.events.theyHit;
