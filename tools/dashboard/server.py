@@ -82,6 +82,10 @@ def parse_update(line, m):
         u['game'].append(['sprint hits', '', int(sh.group(1)), int(sh.group(2))])
     ji = re.findall(r'(\d+)', section(parts, 'jumping in:'))
     u['jumpIn'] = [int(x) for x in ji[:5]] if len(ji) >= 5 else None
+    # The decider (since 24 Oct 09:53): how often it chose as the teacher, on its techniques, on its starts of one.
+    dm = re.search(r'chose as the teacher (\d+)%, on its techniques (\d+)% of (\d+), its starts (\d+)% of (\d+), '
+                   r'a start where it did none ([\d.]+)% of (\d+)', section(parts, 'decider'))
+    u['decider'] = [float(x) for x in dm.groups()] if dm else None
     cm = re.findall(r'(\d+)', section(parts, 'crit moments:'))
     u['crit'] = [int(x) for x in cm[:9]] if len(cm) >= 9 else None
     return u
@@ -267,7 +271,7 @@ def build(cache, techniques, stages, prio):
             state = 'paired check running'
     return {
         'now': {k: last.get(k) for k in ('time', 'steps', 'stage', 'family', 'stageSteps', 'minSteps', 'installedPull',
-                                         'weakest', 'dealt', 'taken', 'keys', 'game', 'jumpIn', 'crit', 'update')},
+                                         'weakest', 'dealt', 'taken', 'keys', 'game', 'jumpIn', 'crit', 'update', 'decider')},
         'logAgeSeconds': age, 'state': state,
         'stages': [s for s in stages if s['name'] != 'T-F'], 'priority': prio,
         'techniques': rows, 'damage': damage[-600:], 'checks': checks,

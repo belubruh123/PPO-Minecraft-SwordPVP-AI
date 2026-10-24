@@ -282,6 +282,10 @@
     html += stat('Priority, trained in every stage (double to triple pull, 1 fight in 4 vs jumpers)', (data.priority || []).map(function (id) {
       var r = rateOf(id); return esc(id) + ' <span class="' + cls(r) + '">' + pct(r) + '</span>';
     }).join(', '), '<div class="k">T8 hit them rising, K2 no knockback hit on a falling one, B1 punish crit</div>');
+    var dc = n.decider;
+    html += stat('Decider (which technique to do)', dc ? '<span class="' + cls(dc[3]) + '">' + pct(dc[3]) + '</span> of starts right' :
+      '<span class="muted">not learning yet</span>', dc ? '<div class="k">' + pct(dc[1]) + ' right during techniques, ' + dc[5].toFixed(1) +
+      '% false starts, ' + pct(dc[0]) + ' of all ticks</div>' : '');
     var dmg = data.damage || [];
     var last = dmg.slice(-10);
     var dAvg = last.length ? last.reduce(function (a, p) { return a + p[1]; }, 0) / last.length : null;
