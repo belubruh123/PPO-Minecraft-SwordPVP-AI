@@ -188,9 +188,12 @@ public final class PvpPlayer {
 	 * the sword nearly back already and them close, not thrown out of reach by a sprint hit. 24 Oct, in the game: of the
 	 * teacher's falls after a hit in reach, 15% had the sword back; waiting for punish crits that could not come, the crit
 	 * family cost it 20 damage a fight against the installed model (half a gate, charge 0.5, changed nothing).
+	 * A sprint hit no longer rules it out (24 Oct 16:10, in the game, once their sprint hits were read right): of the lifts
+	 * after their sprint hit about a third came down in reach, most with the sword back, and all but one still sprinting, with
+	 * no punish crit taught there; after their plain hits, where it was taught, one in ten came down in reach.
 	 */
 	private boolean punishable(Duel d, Events e) {
-		return !style.onlyWhenItWorks || d.me.charge >= PUNISH_CHARGE && d.reach <= 2.6 && e.theyHit != Events.SPRINT;
+		return !style.onlyWhenItWorks || d.me.charge >= PUNISH_CHARGE && d.reach <= 2.6;
 	}
 
 	/**
@@ -690,7 +693,8 @@ public final class PvpPlayer {
 				}
 				// Sent out of reach (a stun): there is nothing to punish; the ordinary fight takes over. For one that goes by the
 				// file, as soon as it comes down out of reach: the crit "on the way down" is not there.
-				double out = style.onlyWhenItWorks && me.falling() ? Duel.REACH + 0.3 : Duel.REACH + 1.5;
+				// On the way up a sprint hit's lift goes farther out than a plain one's, and they come after it.
+				double out = style.onlyWhenItWorks && me.falling() ? Duel.REACH + 0.3 : Duel.REACH + 2.5;
 				return me.onGround && planT > 2 || d.reach > out ? ABORT : RUN;
 			}
 			case T1, T1B, T1C -> {
