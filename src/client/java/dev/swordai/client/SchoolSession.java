@@ -179,6 +179,8 @@ public final class SchoolSession implements AgentSession {
 	private float[] pullsNow;
 	/** The technique of the moment on the last tick, so a moment's start is told to the stages with the bot it came against. */
 	private int lastMomentTechnique = -1;
+	/** In a check, the school network's combo jump resets mistimed now and then, as they will be in a real fight. */
+	private final dev.swordai.core.school.FairJump fairJump = new dev.swordai.core.school.FairJump(0x5EEDL);
 	private int critWantedFor;
 	private static final boolean[] CRIT_WANTED = new boolean[Technique.COUNT];
 	/**
@@ -617,6 +619,7 @@ public final class SchoolSession implements AgentSession {
 		learner.resetIntent();
 		shaping = 0f;
 		lastMomentTechnique = -1;
+		fairJump.reset();
 		reader.reset();
 		perf.reset();
 		perfB.reset();
@@ -863,6 +866,9 @@ public final class SchoolSession implements AgentSession {
 		step.botKeys = truth.botKeys();
 		step.kind = fightBot;
 		learner.act(step, keys, mode == Mode.TRAIN, cfg.playTemperature, action);
+		if (mode == Mode.CHECK) {
+			fairJump.apply(action, me.onGround(), clock.ticksSinceHitTaken, clock.takenStreak.hits());
+		}
 		perf.tick(step.teacherTechnique, step.teacherHeads, step.teacher, action, keys, facts.damageDealt, facts.damageTaken);
 		if (mode == Mode.TRAIN) {
 			techniqueReward();

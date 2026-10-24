@@ -64,6 +64,12 @@ public final class Style {
 	 */
 	public boolean onlyWhenItWorks = false;
 	/**
+	 * Jump resets only while being comboed (their second hit in a row and on), never on a first hit: the user, 24 Oct,
+	 * so that people can still beat it "in a normal way" (and on 13 Oct: jump resets used too much are "really not fair").
+	 * So no T9b (against a deflection, after its own attack) nor T9c (against a three-block hit), and T9 only in a combo.
+	 */
+	public boolean resetsInCombosOnly = false;
+	/**
 	 * Hit selecting (part 0, and the deflection T4): the share of the times it has the other in reach with
 	 * the other's sword back that it waits for the other's swing, instead of swinging first.
 	 */
@@ -113,6 +119,7 @@ public final class Style {
 		s.noJumps = noJumps;
 		s.adapts = adapts;
 		s.onlyWhenItWorks = onlyWhenItWorks;
+		s.resetsInCombosOnly = resetsInCombosOnly;
 		s.hitSelect = hitSelect;
 		System.arraycopy(believe, 0, s.believe, 0, believe.length);
 		s.heldOut = heldOut;

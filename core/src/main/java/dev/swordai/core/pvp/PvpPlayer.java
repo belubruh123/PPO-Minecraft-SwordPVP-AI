@@ -402,7 +402,8 @@ public final class PvpPlayer {
 			timedJump(Technique.T9A);
 			return;
 		}
-		if (lifted && e.theyHit == Events.SPRINT && sinceMySwing <= 3 && expect(Habits.DEFLECT, tellDeflect) > 0.3f && roll(Technique.T9B)) {
+		if (!style.resetsInCombosOnly && lifted && e.theyHit == Events.SPRINT && sinceMySwing <= 3 && expect(Habits.DEFLECT, tellDeflect) > 0.3f
+				&& roll(Technique.T9B)) {
 			timedJump(Technique.T9B);
 			return;
 		}
@@ -414,7 +415,8 @@ public final class PvpPlayer {
 		// The jump reset answers a sprint hit, a stun attempt (part 7: "Sprint hit (stun attempt) -> Jump reset (T9)"); for one
 		// that goes by the file only that, and a plain hit or a crit that throws it up is the punish crit's (B1). Checked first
 		// and certain, T9 took nearly every hit from B1 (24 Oct: one punish crit moment in six updates).
-		if (lifted && e.theyHit != Events.CRIT && (!style.onlyWhenItWorks || e.theyHit == Events.SPRINT) && roll(Technique.T9)) {
+		if (lifted && e.theyHit != Events.CRIT && (!style.onlyWhenItWorks || e.theyHit == Events.SPRINT)
+				&& (!style.resetsInCombosOnly || habits.theirCombo() >= 2) && roll(Technique.T9)) {
 			timedJump(Technique.T9);
 			return;
 		}
@@ -508,7 +510,7 @@ public final class PvpPlayer {
 			return;
 		}
 		// My own swing: T9b, the jump right after it, against someone who deflects.
-		if (e.iSwung && me.onGround && expect(Habits.DEFLECT, tellDeflect) > 0.25f && roll(Technique.T9B)) {
+		if (!style.resetsInCombosOnly && e.iSwung && me.onGround && expect(Habits.DEFLECT, tellDeflect) > 0.25f && roll(Technique.T9B)) {
 			jumpAt = tick + 1 + (rng.nextFloat() < style.timing ? 0 : rng.nextInt(2));
 			jumpFor = Technique.T9B;
 			return;
@@ -548,7 +550,7 @@ public final class PvpPlayer {
 				&& d.reach > Duel.REACH + 0.3 && d.reach < Duel.REACH + 2.5;
 		if (straight && !straightRolled && me.swordReady()) {
 			straightRolled = true;
-			if ((!style.onlyWhenItWorks || expect(Habits.STRAIGHT_IN, -1f) > 0.3f) && roll(Technique.T9C)) {
+			if (!style.resetsInCombosOnly && (!style.onlyWhenItWorks || expect(Habits.STRAIGHT_IN, -1f) > 0.3f) && roll(Technique.T9C)) {
 				begin(Plan.T9C);
 				return;
 			}

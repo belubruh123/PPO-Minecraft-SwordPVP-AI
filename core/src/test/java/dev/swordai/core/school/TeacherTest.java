@@ -76,4 +76,28 @@ class TeacherTest {
 		t[fwd + 1] = 0.9f;
 		assertEquals(1f, Teacher.pressWeight(t, dev.swordai.core.rl.ActionSpace.FORWARD, vec), "W held is not a let go");
 	}
+
+	/** In a combo, about a third of its jumps on the ground come a tick late; outside a combo none do. */
+	@Test
+	void comboJumpsAreSometimesLate() {
+		FairJump f = new FairJump(1L);
+		int jump = dev.swordai.core.rl.ActionSpace.JUMP;
+		int late = 0;
+		for (int i = 0; i < 1000; i++) {
+			int[] a = new int[dev.swordai.core.rl.ActionSpace.HEADS];
+			a[jump] = 1;
+			f.apply(a, true, 3, 2);
+			if (a[jump] == 0) {
+				late++;
+				int[] next = new int[dev.swordai.core.rl.ActionSpace.HEADS];
+				f.apply(next, true, 4, 2);
+				assertEquals(1, next[jump], "pressed the tick after");
+			}
+		}
+		assertEquals(FairJump.MISS, late / 1000f, 0.05f);
+		int[] a = new int[dev.swordai.core.rl.ActionSpace.HEADS];
+		a[jump] = 1;
+		f.apply(a, true, 100, 0);
+		assertEquals(1, a[jump], "not in a combo: as it is");
+	}
 }

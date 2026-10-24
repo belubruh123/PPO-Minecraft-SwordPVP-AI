@@ -32,6 +32,8 @@ public final class SchoolFighter {
 	private int sinceHitDealt = 1000;
 	private int sinceHitTaken = 1000;
 	private final TakenStreak takenStreak = new TakenStreak();
+	/** Its combo jump resets mistimed now and then, as a person's are. */
+	private final FairJump fairJump = new FairJump(System.nanoTime());
 	private int dealtSince;
 	private int takenSince;
 
@@ -45,6 +47,7 @@ public final class SchoolFighter {
 
 	public void reset() {
 		learner.resetIntent();
+		fairJump.reset();
 		sight.reset();
 		motor.reset();
 		idea.clear();
@@ -89,6 +92,7 @@ public final class SchoolFighter {
 		System.arraycopy(mem, 0, step.obs.mem, 0, SchoolObs.MEM);
 		int keys = SwingGate.keys(ActionSpace.ALL_HEADS, body.charge, swingMinCharge);
 		learner.act(step, keys, false, temperature, action);
+		fairJump.apply(action, body.onGround, sinceHitTaken, takenStreak.hits());
 		motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));
 		hasAction = true;
 		return action;
