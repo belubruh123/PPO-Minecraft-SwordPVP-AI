@@ -198,6 +198,8 @@ public final class SchoolSession implements AgentSession {
 	/** Ticks a crit could be made on (see {@link #CRIT_SWING}), the swings made on them, and whether the last decision was one. */
 	private int critChances;
 	private int critSwings;
+	/** Ticks of a lift the sprint let go was taught on (see the punish crit teacher). */
+	private int sprintLetGo;
 	private boolean critChanceAtClick;
 	/** Ticks since their hit threw it up from the ground, -1 once it has landed (see OTHER_CRIT); on the ground the tick before. */
 	private int liftedFor = -1;
@@ -969,6 +971,28 @@ public final class SchoolSession implements AgentSession {
 			}
 			critChances++;
 		}
+		// The punish crit teacher (B1: "their hit knocks you up; you crit them on the way down"). Of the lifts after their
+		// sprint hits, a third came down in reach, most with the sword back, and all but one still sprinting (24 Oct 16:15):
+		// near them with the sword coming back, W and the sprint key are let go on the way, so that no sprint is left when
+		// the crit can be made. S held stays (it ends the sprint as well); the K2 moment's own lesson stays its own.
+		if (mode == Mode.TRAIN && OVERLAY && liftedFor >= 0 && !me.onGround() && sprintAtClick && facts.reachDist <= 3.5f
+				&& charge > 0.5f && step.teacherTechnique != Technique.K2.ordinal()) {
+			int f = ActionSpace.OFFSETS[ActionSpace.FORWARD];
+			boolean back = (step.teacherHeads & (1 << ActionSpace.FORWARD)) != 0 && step.teacher[f + 2] > Math.max(step.teacher[f], step.teacher[f + 1]);
+			if (!back) {
+				step.teacher[f] = 1f;
+				step.teacher[f + 1] = 0f;
+				step.teacher[f + 2] = 0f;
+			}
+			int sp = ActionSpace.OFFSETS[ActionSpace.SPRINT];
+			step.teacher[sp] = 1f;
+			step.teacher[sp + 1] = 0f;
+			step.teacherHeads |= (1 << ActionSpace.FORWARD) | (1 << ActionSpace.SPRINT);
+			if (step.teacherTechnique < 0 || step.teacherTechnique == Technique.BASE.ordinal()) {
+				step.teacherTechnique = Technique.B1.ordinal();
+			}
+			sprintLetGo++;
+		}
 		step.policyWeight = !facts.enemyVisible && facts.reachDist > SKIP_FARTHER ? 0f : 1f;
 		step.botTechnique = botTechnique;
 		step.botKeys = truth.botKeys();
@@ -1347,15 +1371,16 @@ public final class SchoolSession implements AgentSession {
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
 				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {}, other crits {} "
-				+ "| crit chances {}, swung on {} | their hits: {} | punish chances by their hit:{} | technique reward {} for {} moments done, K2 broken {} | swings: {} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
+				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks | their hits: {} | punish chances by their hit:{} | technique reward {} for {} moments done, K2 broken {} | swings: {} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
 				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, otherCrits,
-				critChances, critSwings, reader.takeTheirHits(), liftLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, k2Broken, swingLine(0), used);
+				critChances, critSwings, sprintLetGo, reader.takeTheirHits(), liftLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, k2Broken, swingLine(0), used);
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		otherCrits = 0;
 		critChances = 0;
 		critSwings = 0;
+		sprintLetGo = 0;
 		shapingPaid = 0f;
 		momentsPaid = 0;
 		k2Broken = 0;
