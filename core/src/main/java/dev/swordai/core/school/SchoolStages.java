@@ -224,7 +224,11 @@ public final class SchoolStages {
 	public static final boolean[] PRIORITY = new boolean[Technique.COUNT];
 	/** The bots that give those moments, and the share of every stage's fights against them. */
 	public static final int[] PRIORITY_BOTS = {Specialists.JUMP_IN_CRITTER, Specialists.FALL_SPACER, Specialists.ATTACK_THEN_S};
-	public static final float PRIORITY_SHARE = 0.33f;
+	/**
+	 * A third until the priority ones were learned (24 Oct 13:40: T8 77%, K2 89%, B1 64%, T10 62%); then less, so a
+	 * stage's own bots get the fights: in the crit trades, the double crit had about one moment an update.
+	 */
+	public static final float PRIORITY_SHARE = 0.15f;
 	/**
 	 * Of the rest, the share of fights against a bot of the family of a technique still under {@link #MASTERED}, the
 	 * weakest most often. A technique's moments come against its own family's bots: C3 (jump + hold S against a stun)
