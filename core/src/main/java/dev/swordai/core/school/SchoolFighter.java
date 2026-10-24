@@ -106,7 +106,9 @@ public final class SchoolFighter {
 		int keys = SwingGate.keys(ActionSpace.ALL_HEADS, body.charge, swingMinCharge);
 		// As the installed model: no swing at an opponent plainly out of reach or off the screen (Config.whiffGuard), unless
 		// the game has them under the crosshair (the distance read off the screen is rough).
-		if (whiffGuard && !crosshairOn && SwingGate.outOfReach(step.obs.base.vec)) {
+		// Since 24 Oct 22:15 the game's pick alone: no swing without them under the crosshair in reach (the on-screen distance
+		// let through swings at an opponent aimed at but out of reach in the user's real fights).
+		if (whiffGuard && !crosshairOn) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 		}
 		learner.act(step, keys, false, temperature, action);

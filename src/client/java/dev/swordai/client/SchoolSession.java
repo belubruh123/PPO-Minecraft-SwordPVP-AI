@@ -904,7 +904,10 @@ public final class SchoolSession implements AgentSession {
 		// installed model's 9%, and that was the whole gap in damage dealt.
 		// Never with the opponent under the crosshair: the distance read off the screen is rough, and at 17:15 it held back a
 		// tenth to a fifth of the deflection's (T4) swings that would have landed.
-		if (cfg.whiffGuard && !onOpponent() && SwingGate.outOfReach(step.obs.base.vec)) {
+		// Since 22:15 no swing at all without the opponent under the crosshair in reach, as the game picks it: the distance read
+		// off the screen let through swings at an opponent aimed at but out of reach, again and again in the user's real fights
+		// (24 Oct 22:05: "constantly hit opponent when aim and not in reach"). A swing that would hit nothing is not made.
+		if (cfg.whiffGuard && !onOpponent()) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 		}
 		teacher.tick(reader.duel, reader.events, onOpponent());
