@@ -64,7 +64,9 @@ public final class Teacher {
 		// the basics teacher's swing on them weighing three times the network swung early there (24 Oct 19:00, off on the
 		// swing: T6 44% of its ticks, T10 12%, T5 13%, C7 11%). And S held (the way out, the step back, the stop that makes them
 		// miss) and the sprint key pressed (T8 off on it 21%, T1a 14%), as the presses they are.
-		if (inTechnique && h == ActionSpace.ATTACK) {
+		// The jump the same: the standing crit (T2, C6) waits for the sword before it jumps, and was off on the jump on 12-33%
+		// of its ticks (19:10), jumping while it should still wait.
+		if (inTechnique && (h == ActionSpace.ATTACK || h == ActionSpace.JUMP)) {
 			return PRESS_WEIGHT;
 		}
 		if (inTechnique && h == ActionSpace.FORWARD) {
