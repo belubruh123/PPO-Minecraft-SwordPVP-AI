@@ -116,6 +116,13 @@ public final class PvpPlayer {
 		sinceLanded = 1000;
 		wasOnGround = true;
 		theyWereOnGround = true;
+		punishWatching = false;
+		punishChances = 0;
+		punishTries = 0;
+		doubleWatching = false;
+		doubleChances = 0;
+		doubleTries = 0;
+		theirCritTick = -1000;
 		donePlan = Plan.NONE;
 		doneAt = -1000;
 		sinceTheyTookOff = 1000;
@@ -204,8 +211,59 @@ public final class PvpPlayer {
 
 	/** The double crit "only works if the opponent tries to punish-crit you" (T1): for one that goes by the file, only then. */
 	private boolean punishes() {
-		return !style.onlyWhenItWorks || expect(Habits.PUNISH_CRIT, -1f) > 0.3f;
+		return !style.onlyWhenItWorks || expect(Habits.PUNISH_CRIT, -1f) > 0.3f || rate(punishTries, punishChances) > 0.3f;
 	}
+
+	/** Whether they go for double crits: seen landing them, or trying (a jump again soon after their crit). */
+	private boolean doubleCrits() {
+		return expect(Habits.DOUBLE_CRIT, tellDouble) > 0.3f || tellDouble < 0f && rate(doubleTries, doubleChances) > 0.3f;
+	}
+
+	/**
+	 * Tries, as the file has it: the double crit "only works if the opponent tries to punish-crit you", and C1 is for "when
+	 * you expect a double crit". Landed ones are rare for everyone (the sword is back on few falls), so judged by landed ones
+	 * the opponent was never one that punish-crits: no double crit (T1) and no bait (T1a) in fifteen updates, nor C1 (24 Oct).
+	 * A punish-crit try: lifted by my hit, they swing (or crit me) before they are down. A double-crit try: after their crit
+	 * on me, they jump again within a jump and a half.
+	 */
+	private void tries(Duel d, Events e) {
+		Body them = d.them;
+		if (e.iHit != Events.NONE && theyWereOnGround) {
+			punishWatching = true;
+			punishChances++;
+		} else if (punishWatching) {
+			if (sinceMyHit <= 18 && (e.theySwung && !them.onGround || e.theyHit == Events.CRIT)) {
+				punishTries++;
+				punishWatching = false;
+			} else if (sinceMyHit > 18 || them.onGround && sinceMyHit > 3 || e.theyHit != Events.NONE) {
+				punishWatching = false;
+			}
+		}
+		if (e.theyHit == Events.CRIT) {
+			doubleWatching = true;
+			doubleChances++;
+			theirCritTick = tick;
+		} else if (doubleWatching) {
+			if (sinceTheyTookOff == 0 && tick - theirCritTick <= 24) {
+				doubleTries++;
+				doubleWatching = false;
+			} else if (tick - theirCritTick > 24) {
+				doubleWatching = false;
+			}
+		}
+	}
+
+	private static float rate(int tries, int chances) {
+		return chances == 0 ? 0f : tries / (chances + 1f);
+	}
+
+	private boolean punishWatching;
+	private int punishChances;
+	private int punishTries;
+	private boolean doubleWatching;
+	private int doubleChances;
+	private int doubleTries;
+	private long theirCritTick = -1000;
 
 	private boolean roll(Technique t) {
 		float p = pNow[t.ordinal()];
@@ -302,6 +360,7 @@ public final class PvpPlayer {
 		} else {
 			sinceTheyTookOff = Math.min(sinceTheyTookOff + 1, 1000);
 		}
+		tries(d, e);
 		// Going away from me: holding S, or flying out of a trade (with S held, they keep going once the knockback is spent).
 		backingTicks = d.theyClose < -0.12 ? backingTicks + 1 : 0;
 		inReachTicks = d.inReach() ? inReachTicks + 1 : 0;
@@ -392,7 +451,7 @@ public final class PvpPlayer {
 			return;
 		}
 		end();
-		if (e.theyHit == Events.CRIT && expect(Habits.DOUBLE_CRIT, tellDouble) > 0.3f && roll(Technique.C1)) {
+		if (e.theyHit == Events.CRIT && doubleCrits() && roll(Technique.C1)) {
 			// C1: a double crit is coming; no punish crit, a sprint hit when it comes up again.
 			begin(Plan.C1);
 			return;
@@ -453,7 +512,9 @@ public final class PvpPlayer {
 				begin(Plan.T1);
 			} else if (was == Plan.B1 && roll(Technique.T1C)) {
 				begin(Plan.T1C);
-			} else if ((was == Plan.OPEN_CRIT || was == Plan.K3 || was == Plan.T9C) && punishes() && roll(Technique.T1)) {
+			} else if (punishes() && roll(Technique.T1)) {
+				// Any crit of mine against one that tries to punish-crit: "after your first crit, immediately jump and crit
+				// the other player again" (only from these plans before, so it hardly ever came).
 				begin(roll(Technique.T1B) ? Plan.T1B : Plan.T1);
 			}
 			return;
