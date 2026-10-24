@@ -116,6 +116,7 @@ final class DuelReader {
 		b.x = p.getX();
 		b.y = p.getY();
 		b.z = p.getZ();
+		double lastVy = b.vy;
 		b.vx = p.getX() - p.xo;
 		b.vy = p.getY() - p.yo;
 		b.vz = p.getZ() - p.zo;
@@ -126,7 +127,7 @@ final class DuelReader {
 		b.charge = p.getAttackStrengthScale(0f);
 		b.sinceHurt = p.hurtTime > 0 ? 10 - p.hurtTime : 1000;
 		// Another player is drawn gliding between the positions its game is sent, so its take-off shows smaller than its own.
-		boolean tookOff = wasOnGround && !p.onGround() && b.vy > 0.1;
+		boolean tookOff = Body.tookOff(lastVy, b.vy) && p.hurtTime == 0;
 		b.sinceJump = tookOff ? 0 : Math.min(b.sinceJump + 1, 1000);
 		b.airTicks = p.onGround() ? 0 : b.airTicks + 1;
 		b.health = p.getHealth();

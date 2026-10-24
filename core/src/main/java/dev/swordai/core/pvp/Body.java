@@ -68,6 +68,14 @@ public final class Body {
 	}
 
 	/** In the air and on the way up. */
+	/**
+	 * A take-off, seen by the vertical speed alone: from not going up to going up. A client sees another player glide between
+	 * the positions it is sent, smaller than its jump and not on the tick its ground flag changes.
+	 */
+	public static boolean tookOff(double lastVy, double vy) {
+		return lastVy <= 0.02 && vy > 0.06;
+	}
+
 	public boolean rising() {
 		return !onGround && vy > 0.0;
 	}

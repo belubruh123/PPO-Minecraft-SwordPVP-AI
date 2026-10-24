@@ -268,7 +268,10 @@ public final class PvpPlayer {
 		}
 		wasOnGround = me.onGround;
 		theyWereOnGround = d.them.onGround;
+		theirLastVy = d.them.vy;
 	}
+
+	private double theirLastVy;
 
 	private void clocks(Duel d, Events e) {
 		Body me = d.me;
@@ -278,9 +281,10 @@ public final class PvpPlayer {
 		sinceMySwing = e.iSwung ? 0 : Math.min(sinceMySwing + 1, 1000);
 		sinceTheirSwing = e.theySwung ? 0 : Math.min(sinceTheirSwing + 1, 1000);
 		sinceLanded = !wasOnGround && me.onGround ? 0 : Math.min(sinceLanded + 1, 1000);
-		// Off the ground going up. Seen from a client another player glides between the positions it is sent, so its take-off
-		// shows about a third of the jump's speed (DuelReader): above 0.3 a tick, T8 never started in the game (24 Oct).
-		if (theyWereOnGround && !them.onGround && them.vy > 0.1 && e.iHit == Events.NONE) {
+		// Their take-off: from not going up to going up, not lifted by a hit of mine. Seen from a client another player glides
+		// between the positions it is sent, so the take-off shows smaller than the jump and not on the tick its ground flag
+		// changes: by the ground flag and 0.3 a tick, T8 never started in the game (24 Oct).
+		if (Body.tookOff(theirLastVy, them.vy) && sinceMyHit > 3) {
 			sinceTheyTookOff = 0;
 		} else {
 			sinceTheyTookOff = Math.min(sinceTheyTookOff + 1, 1000);

@@ -1016,17 +1016,31 @@ public final class SchoolSession implements AgentSession {
 		if (facts.hitsDealt > 0 && facts.sprintHit && them.falling()) {
 			c[2]++;
 			sinceFallingHit = 0;
-		}
-		if (facts.critsTaken > 0 && sinceFallingHit <= 10) {
+			// Their crit may come first, as they fall into it: the ten ticks before count too.
+			c[3] += critsInLastTen();
+		} else if (facts.critsTaken > 0 && sinceFallingHit <= 10) {
 			c[3] += facts.critsTaken;
 		}
 		c[4] += facts.critsTaken;
+		recentCrits[(int) (critClock++ % recentCrits.length)] = facts.critsTaken;
+	}
+
+	private final int[] recentCrits = new int[10];
+	private long critClock;
+
+	private int critsInLastTen() {
+		int n = 0;
+		for (int c : recentCrits) {
+			n += c;
+		}
+		java.util.Arrays.fill(recentCrits, 0);
+		return n;
 	}
 
 	private String jumpInLine(int side) {
 		long[] c = jumpIn[side];
 		return String.format(Locale.ROOT, "their jump-ins %d; its hits on them rising (T8) %d; its knockback hits on them falling (K2 broken) %d, crits taken "
-				+ "right after %d; crits taken in all %d", c[0], c[1], c[2], c[3], c[4]);
+				+ "within ten ticks %d; crits taken in all %d", c[0], c[1], c[2], c[3], c[4]);
 	}
 
 	private String critLine(int side) {
