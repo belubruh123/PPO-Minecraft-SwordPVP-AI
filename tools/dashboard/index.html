@@ -269,7 +269,7 @@
     var html = '';
     var frac = n.minSteps ? Math.min(1, n.stageSteps / n.minSteps) : 0;
     var stageObj = (data.stages || []).filter(function (s) { return s.name === n.stage; })[0];
-    html += stat('Learning now', esc(n.stage || '-') + ' <span class="muted" style="font-size:13px">' + esc(n.family || '') + '</span>',
+    html += stat('New family now (old ones keep being practised)', esc(n.stage || '-') + ' <span class="muted" style="font-size:13px">' + esc(n.family || '') + '</span>',
       '<div class="bar"><i style="width:' + (frac * 100).toFixed(1) + '%"></i></div><div class="k" style="margin-top:3px">' +
       fmtSteps(n.stageSteps) + ' of at least ' + fmtSteps(n.minSteps) + ' steps in this stage</div>');
     var rows = data.techniques || [];
@@ -279,7 +279,7 @@
         var r = rateOf(id); return esc(id) + ' <span class="' + cls(r) + '">' + pct(r) + '</span>';
       }).join(', '));
     }
-    html += stat('Priority: answer to jumping in', (data.priority || []).map(function (id) {
+    html += stat('Priority, trained in every stage (double to triple pull, 1 fight in 4 vs jumpers)', (data.priority || []).map(function (id) {
       var r = rateOf(id); return esc(id) + ' <span class="' + cls(r) + '">' + pct(r) + '</span>';
     }).join(', '), '<div class="k">T8 hit them rising, K2 no knockback hit on a falling one, B1 punish crit</div>');
     var dmg = data.damage || [];
