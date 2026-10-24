@@ -266,6 +266,15 @@ public final class SchoolStages {
 		// The user, 24 Oct 10:25: the uppercut matters more than hops and lunges. Its moments come against one that backs
 		// out with S after its hit (attack-then-S), so that bot is among the priority ones too.
 		PRIORITY[Technique.T10.ordinal()] = true;
+		// The user, 24 Oct 18:00: "prioritize the crit part and make all at least 80%, since crit is basically the best
+		// method beside combo" (then T1b 40%, T1c 55%, T2 57%, T1 65%, C1 75%).
+		for (Technique t : new Technique[] {Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2, Technique.C1, Technique.C2}) {
+			PRIORITY[t.ordinal()] = true;
+		}
+		for (Technique t : new Technique[] {Technique.B1, Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2, Technique.C1,
+				Technique.C2}) {
+			BAR[t.ordinal()] = 0.8f;
+		}
 		TARGET[Technique.T4.ordinal()] = 0.9f;
 		TARGET[Technique.C3.ordinal()] = 0.9f;
 		BAR[Technique.T4.ordinal()] = 0.9f;
