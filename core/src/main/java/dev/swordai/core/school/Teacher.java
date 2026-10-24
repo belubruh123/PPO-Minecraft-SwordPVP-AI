@@ -28,6 +28,22 @@ public final class Teacher {
 	 */
 	public boolean ordinaryFight = true;
 
+	/**
+	 * How much more a technique teacher's press of the jump or the swing weighs than its other keys. A press is one tick
+	 * among many of "not now", and missed on time it fails the whole moment: the uppercut missed its jump on half its
+	 * moments (24 Oct, 11-17 an update) while its other keys were right on three ticks in four.
+	 */
+	public static final float PRESS_WEIGHT = 3f;
+
+	/** {@link #PRESS_WEIGHT} where head {@code h} of {@code target} is a press of the jump or the swing, else 1. */
+	public static float pressWeight(float[] target, int h) {
+		if (h != ActionSpace.JUMP && h != ActionSpace.ATTACK) {
+			return 1f;
+		}
+		int off = ActionSpace.OFFSETS[h];
+		return target[off + 1] > target[off] ? PRESS_WEIGHT : 1f;
+	}
+
 	private final PvpPlayer player = new PvpPlayer();
 	private final Keys keys = new Keys();
 	private final boolean[] teaches = new boolean[Technique.COUNT];

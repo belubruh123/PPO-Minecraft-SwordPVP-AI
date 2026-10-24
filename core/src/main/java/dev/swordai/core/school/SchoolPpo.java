@@ -234,7 +234,7 @@ public final class SchoolPpo implements AutoCloseable {
 						best = k;
 					}
 					if (pull > 0f) {
-						aw.dLogits[off + k] += pull * (p - t);
+						aw.dLogits[off + k] += (byTech ? pull * Teacher.pressWeight(stored, h) : pull) * (p - t);
 					}
 				}
 				if (byTech) {

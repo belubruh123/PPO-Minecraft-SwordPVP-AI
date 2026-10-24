@@ -52,4 +52,17 @@ class TeacherTest {
 		}
 		assertEquals(1f, out[0] + out[1] + out[2], 1e-5);
 	}
+
+	@Test
+	void aPressOfTheJumpOrSwingWeighsMore() {
+		float[] t = new float[dev.swordai.core.rl.ActionSpace.TOTAL_LOGITS];
+		int jump = dev.swordai.core.rl.ActionSpace.OFFSETS[dev.swordai.core.rl.ActionSpace.JUMP];
+		t[jump] = 0.05f;
+		t[jump + 1] = 0.95f;
+		assertEquals(Teacher.PRESS_WEIGHT, Teacher.pressWeight(t, dev.swordai.core.rl.ActionSpace.JUMP));
+		t[jump] = 0.95f;
+		t[jump + 1] = 0.05f;
+		assertEquals(1f, Teacher.pressWeight(t, dev.swordai.core.rl.ActionSpace.JUMP));
+		assertEquals(1f, Teacher.pressWeight(t, dev.swordai.core.rl.ActionSpace.FORWARD));
+	}
 }

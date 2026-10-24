@@ -225,6 +225,13 @@ public final class SchoolStages {
 	/** The bots that give those moments, and the share of every stage's fights against them. */
 	public static final int[] PRIORITY_BOTS = {Specialists.JUMP_IN_CRITTER, Specialists.FALL_SPACER, Specialists.ATTACK_THEN_S};
 	public static final float PRIORITY_SHARE = 0.33f;
+	/**
+	 * Of the rest, the share of fights against a bot of the family of a technique still under {@link #MASTERED}, the
+	 * weakest most often. A technique's moments come against its own family's bots: C3 (jump + hold S against a stun)
+	 * had one to three moments an update in the jumping stage and stayed at 0% all night (24 Oct; the user: a technique
+	 * that does not rise within an hour is critical).
+	 */
+	public static final float WEAKEST_SHARE = 0.2f;
 
 	static {
 		PRIORITY[Technique.T8.ordinal()] = true;
@@ -360,10 +367,48 @@ public final class SchoolStages {
 	}
 
 	/** A fight's opponent: a bot of this stage, of a stage before (rehearsal), or the real player. */
+	/** A bot of the family of a technique reached and not mastered, by how far under {@link #MASTERED} it is; -1 for none. */
+	int weakestBot(Random rng) {
+		int last = Math.min(reached, FAMILIES - 1);
+		float total = 0f;
+		float[][] w = new float[last + 1][];
+		for (int f = 0; f <= last; f++) {
+			Technique[] ts = STAGES[f].techniques;
+			w[f] = new float[ts.length];
+			for (int i = 0; i < ts.length; i++) {
+				int t = ts[i].ordinal();
+				float r = momentCount[t] < ENOUGH / 2 ? 0f : doneRate(t);
+				w[f][i] = Math.max(0f, MASTERED - r);
+				total += w[f][i];
+			}
+		}
+		if (total <= 0f) {
+			return -1;
+		}
+		float u = rng.nextFloat() * total;
+		for (int f = 0; f <= last; f++) {
+			for (float x : w[f]) {
+				u -= x;
+				if (u <= 0f) {
+					int[] bots = STAGES[f].bots;
+					return bots[rng.nextInt(bots.length)];
+				}
+			}
+		}
+		int[] bots = STAGES[last].bots;
+		return bots[rng.nextInt(bots.length)];
+	}
+
 	public int drawBot(Random rng) {
 		Stage s = current();
 		if (rng.nextFloat() < PRIORITY_SHARE) {
 			return PRIORITY_BOTS[rng.nextInt(PRIORITY_BOTS.length)];
+		}
+		if (rng.nextFloat() < WEAKEST_SHARE) {
+			int b = weakestBot(rng);
+			if (b >= 0) {
+				return b;
+			}
 		}
 		if (!ALL_AT_ONCE && stage < FAMILIES) {
 			if (rng.nextFloat() >= REHEARSAL) {
