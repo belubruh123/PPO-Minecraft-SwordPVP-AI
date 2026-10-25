@@ -155,7 +155,7 @@ public final class SchoolSession implements AgentSession {
 	 * down: the punish crit's chance (B1, "their hit knocks you up; you crit them on the way down") in every such fight, where
 	 * a fight had about one in four minutes. The rest of the fight goes on as any. The user, 25 Oct: learn it in a few tries.
 	 */
-	static final float DRILL_SHARE = 0.25f;
+	static final float DRILL_SHARE = 0f; // 0.25 in runs 15-16b: punish crits in the checks never rose (4% vs 10%); off in run 17
 	static final float DRILL_NEAR = 2.2f;
 	static final float DRILL_FAR = 2.8f;
 	/** This fight is a drill: the agent's sword is set this many ticks into coming back on its first tick; -1 otherwise. */
@@ -423,7 +423,7 @@ public final class SchoolSession implements AgentSession {
 	 * 8-17 an update and the network's on 0-1 (25 Oct 17:10, the crit trace), and the let-go and punish crit (B1) targets
 	 * there were dropped as locked keys: punish crits landed 3-6% by the game. The jump on the hit (T9) stays the rules'.
 	 */
-	static final boolean RULES_LET_GO_IN_LIFT = true; // run 12 (25 Oct 17:28)
+	static final boolean RULES_LET_GO_IN_LIFT = false; // runs 12-16b (25 Oct 17:28 - 26 Oct 00:20); off in run 17: the combo escape eroded (their third hit 33% -> 52%)
 	/**
 	 * Learning without forgetting (run 9 of EXPERIMENTS.md, SchoolLearner#anchorToBase): the copying targets come from the
 	 * frozen best fighter in ANCHOR_FILE (in the school folder), its own chances on the same inputs, instead of the installed

@@ -145,14 +145,14 @@ public final class SchoolStages {
 	 * The techniques the run of EXPERIMENTS.md teaches, one family at a time (25 Oct, the one-week goal): each at its mastery
 	 * share up to RUN_PULL_CAP, its pull weighted by the outcome (SchoolPpo.TEACH_AWR_MOST). 0: none.
 	 */
-	public static final float RUN_PULL_CAP = 1f; // 1 in runs 7-11 (the crit family); 0 in run 12 (run 6's recipe); 1 in runs 13-14 (B1 alone); 0 in run 15 to 22:05, then 1 (T7)
+	public static final float RUN_PULL_CAP = 0f; // 1 in runs 7-11 (the crit family); 0 in run 12 (run 6's recipe); 1 in runs 13-14 (B1 alone); 0 in run 15 to 22:05, then 1 (T7) to run 16b; 0 in run 17
 	/**
 	 * The installed model's fight-time rules give way to a technique being learned, on its keys (run 10 of EXPERIMENTS.md).
 	 * Its StepBack ("after a hit of its own that has not sent the opponent away it steps back": W and the sprint off) took the
 	 * keys of every technique that follows its own hit: the uppercut (T10, off on the sprint 37-76% at full pull, 25 Oct
 	 * 09:20-09:43), the hops (T11b), the delayed sprint hit (C7), the standing crit (T2). The user, 15:00: the uppercut at 0%.
 	 */
-	public static final boolean RULES_YIELD = true; // 25 Oct 22:05: the jump rules (HOP, CHASE) took the three-block hit's keys
+	public static final boolean RULES_YIELD = false; // on 25 Oct 22:05 - 26 Oct 00:20 (runs 16, 16b: their combos' third hit 52%, 43%); off in run 17
 	/**
 	 * The rules give way only when it has not been hit for this many ticks: in their combo they keep their keys (the jump
 	 * reset, the step back). Giving way whenever the decider had chosen the technique, its combo escape went in the 23:19 check
@@ -361,7 +361,7 @@ public final class SchoolStages {
 	public static final int[] LOSS_BOTS = {Specialists.ATTACK_THEN_S, Specialists.STUN_ESCAPER, Specialists.UPPERCUTTER,
 			Specialists.LUNGER, Specialists.FALL_SPACER};
 	public static final float[] LOSS_WEIGHTS = {52.7f, 34.7f, 31.5f, 22.8f, 22.0f};
-	public static final float LOSS_SHARE = 0.35f; // run 15 (25 Oct 22:05)
+	public static final float LOSS_SHARE = 0.2f; // 0.35 in runs 15b-16b; 0.2 in run 17
 	public static final float PRIORITY_SHARE = 0.15f; // run 2 (EXPERIMENTS.md): the 06:54 recipe (0.25 from 09:15)
 	/**
 	 * Of the rest, the share of fights against a bot of the family of a technique still under {@link #MASTERED}, the

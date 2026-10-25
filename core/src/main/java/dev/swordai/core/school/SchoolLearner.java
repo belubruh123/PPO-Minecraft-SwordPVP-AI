@@ -84,7 +84,7 @@ public final class SchoolLearner implements AutoCloseable {
 	 * again after every update, so a win it found (a crit that landed, an exchange won) is learned from a few times, not once.
 	 * Run 15 (EXPERIMENTS.md), with the copying fading: what it learns comes from its own best fights more than from the teacher.
 	 */
-	static final float SELF_PULL = 0.3f; // 0 from run 2 to run 14 (0.5 from 09:41 to run 2); 0.3 from run 15
+	static final float SELF_PULL = 0f; // 0 from run 2 to run 14 (0.5 from 09:41 to run 2); 0.3 in runs 15-16b; 0 in run 17
 	private volatile String selfLine = "none yet";
 	private SchoolNet.Workspace replayWs;
 	private volatile String shadowLine = "no examples yet";
