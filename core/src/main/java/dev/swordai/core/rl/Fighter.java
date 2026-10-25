@@ -301,6 +301,13 @@ public final class Fighter {
 		motor.copyFrom(played);
 	}
 
+	/** The heads its rules set on its last decision (each rule's keys), as ActionSpace head bits; 0 when none did. */
+	public int ruledHeads() {
+		return ruledHeads;
+	}
+
+	private int ruledHeads;
+
 	public void hitDealt() {
 		sinceHitDealt = 0;
 		dealtSince++;
@@ -501,72 +508,97 @@ public final class Fighter {
 		}
 		learner.setSwingBias(nudged ? (answer ? answerNudge : keep ? -answerNudge : 0f) : 0f);
 		learner.act(obs, keys, false, false, temperature, action);
+		int ruled = 0;
 		if (nudged) {
 			answerForced = answer && action[ActionSpace.ATTACK] == 1;
 		}
 		if (aim) {
 			action[ActionSpace.YAW] = aimRule.yawBin();
 			action[ActionSpace.PITCH] = aimRule.pitchBin();
+			ruled |= ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
 		}
 		if (assist) {
 			idea.assist(action, headMask, visible);
 		}
+		int move = ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
+		int jumpKeys = ActionSpace.mask(ActionSpace.JUMP, ActionSpace.FORWARD, ActionSpace.SPRINT, ActionSpace.ATTACK);
 		if (straight) {
 			action[ActionSpace.STRAFE] = 0;
+			ruled |= ActionSpace.mask(ActionSpace.STRAFE);
 		}
 		if (aside != 0) {
 			action[ActionSpace.STRAFE] = aside;
+			ruled |= ActionSpace.mask(ActionSpace.STRAFE);
 		}
 		if (answer && !nudged) {
 			action[ActionSpace.ATTACK] = 1;
+			ruled |= ActionSpace.mask(ActionSpace.ATTACK);
 		}
 		if (keep && !nudged) {
 			action[ActionSpace.ATTACK] = 0;
+			ruled |= ActionSpace.mask(ActionSpace.ATTACK);
 		}
 		JumpIn.apply(action, reset);
+		if (reset != 0) {
+			ruled |= jumpKeys;
+		}
 		if (letGo) {
 			action[ActionSpace.FORWARD] = 0;
 			action[ActionSpace.SPRINT] = 0;
+			ruled |= move;
 		}
 		if (backOut) {
 			action[ActionSpace.FORWARD] = BackNudge.BACK;
+			ruled |= ActionSpace.mask(ActionSpace.FORWARD);
 		}
 		if (step != 0) {
 			action[ActionSpace.FORWARD] = step == StepBack.BACK ? BackNudge.BACK : 0;
 			action[ActionSpace.SPRINT] = 0;
+			ruled |= move;
 		}
 		if (dodge) {
 			action[ActionSpace.FORWARD] = BackNudge.BACK;
 			action[ActionSpace.SPRINT] = 0;
+			ruled |= move;
 		}
 		if (hold) {
 			action[ActionSpace.FORWARD] = 0;
 			action[ActionSpace.SPRINT] = 0;
+			ruled |= move;
 		}
 		if (meet) {
 			action[ActionSpace.FORWARD] = 1;
 			action[ActionSpace.SPRINT] = 1;
+			ruled |= move;
 		}
 		if (meetSwing) {
 			// Like the swing it owes: only carried out with the opponent still under the crosshair.
 			action[ActionSpace.ATTACK] = 1;
 			answerForced = true;
+			ruled |= ActionSpace.mask(ActionSpace.ATTACK);
 		}
 		JumpIn.apply(action, jump);
+		if (jump != 0) {
+			ruled |= jumpKeys;
+		}
 		if ((jump & JumpIn.SWING) != 0) {
 			// Like the swing it owes: only carried out with the opponent still under the crosshair.
 			answerForced = true;
 		}
 		if (holdCrit && (jump & JumpIn.SWING) == 0) {
 			action[ActionSpace.ATTACK] = 0;
+			ruled |= ActionSpace.mask(ActionSpace.ATTACK);
 		}
 		if (punish == CritTrade.WAIT) {
 			action[ActionSpace.ATTACK] = 0;
+			ruled |= ActionSpace.mask(ActionSpace.ATTACK);
 		} else if (punish != CritTrade.NONE) {
 			action[ActionSpace.FORWARD] = punish == CritTrade.LET_GO ? 0 : 1;
 			action[ActionSpace.SPRINT] = 0;
 			action[ActionSpace.ATTACK] = answer ? 1 : 0;
+			ruled |= move | ActionSpace.mask(ActionSpace.ATTACK);
 		}
+		ruledHeads = ruled;
 		if (action[ActionSpace.ATTACK] == 1) {
 			idea.swung(rng);
 		}

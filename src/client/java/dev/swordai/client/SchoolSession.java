@@ -230,7 +230,9 @@ public final class SchoolSession implements AgentSession {
 	 * and swung at the air. This share of the training fights is one of those stages' episodes instead: that stage's bot, its
 	 * keys and its rewards.
 	 */
-	static final float REVIEW_SHARE = 0f; // control run 25 Oct 03:25 (was 0.25)
+	// 0 from 25 Oct 03:25 (control run; was 0.25); 0.2 from 09:00, the user: "Review every skill while learning that so it won't
+	// forgot stuff".
+	static final float REVIEW_SHARE = 0.2f;
 	/** The share of the specialists' training fights in which the specialist does other things too (Specialists.varied). */
 	static final float VARIED_SHARE = 0.5f;
 	/**
@@ -239,9 +241,9 @@ public final class SchoolSession implements AgentSession {
 	 * this share of the training fights are basics; the rest stay technique fights so that those are not lost. After that,
 	 * {@link #REVIEW_SHARE} ("after it is done with the basics make it constantly review it").
 	 */
-	static final float BASICS_SHARE = 0f; // control run 25 Oct 03:25 (was 0.8)
+	static final float BASICS_SHARE = 0.2f; // 0 from 25 Oct 03:25 (was 0.8); 0.2 from 09:00, a review like the rest
 	/** With all but the last basic passed, the basics' share comes down toward this. */
-	static final float BASICS_SHARE_LEAST = 0f; // control run 25 Oct 03:25 (was 0.4)
+	static final float BASICS_SHARE_LEAST = 0.2f; // 0 from 25 Oct 03:25 (was 0.4); 0.2 from 09:00
 	/** Steps of a basic judged at a time against its stage's bars. */
 	static final int PASS_STEPS = 4000;
 	/** A basic that failed this many judgements in a row stops holding the rest back (and is still drawn three times as often). */
@@ -318,6 +320,9 @@ public final class SchoolSession implements AgentSession {
 	private int theirRow;
 	/** Ticks what it sees of them is behind the game this fight. */
 	private int fightLag;
+	/** Ticks the golden rule (K2_GUARD) held the swing, and ticks the installed model's rules set keys (RULE_OVERLAY). */
+	private int k2Held;
+	private int ruleTicks;
 	/** The technique of the moment on the last tick, so a moment's start is told to the stages with the bot it came against. */
 	private int lastMomentTechnique = -1;
 	/** In a check, the school network's combo jump resets mistimed now and then, as they will be in a real fight. */
@@ -330,6 +335,20 @@ public final class SchoolSession implements AgentSession {
 	 * the installed model, and the student does not get past its teacher.
 	 */
 	static final boolean OVERLAY = true;
+	/**
+	 * The installed model's fight-time rules over this network (the user, 25 Oct 08:40: build it): on a tick one of its rules
+	 * sets keys (answering a hit, backing out, its jump rules, the punish crit, the aim rule, ...), those keys are the rule's,
+	 * and the network neither chooses nor learns them there. The network with the installed weights and no rules was 7.3 a
+	 * fight behind the installed model with them (04:07 check), and every punish crit of the installed model was a rule's.
+	 */
+	static final boolean RULE_OVERLAY = true;
+	/**
+	 * The golden rule (K2) as a rule: no sprint hit while the opponent is falling by the time the hit gets there (seen lag and
+	 * a tick for the click). The user, 25 Oct 08:50: "The falling player who jump in crit on this AI cases should be the
+	 * priority to learn to counter it and requires a 99% accuracy". The file: "Don't KB-hit them (K2); let it land, punish
+	 * crit (B1)". Taught it broke 26-52 times a check, the installed model 24-31; taught harder it stopped swinging (08:22).
+	 */
+	static final boolean K2_GUARD = true;
 
 	static {
 		for (Technique t : new Technique[] {Technique.B1, Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2,
@@ -1244,7 +1263,36 @@ public final class SchoolSession implements AgentSession {
 		step.botTechnique = botTechnique;
 		step.botKeys = truth.botKeys();
 		step.kind = review >= 0 ? -1 : fightBot;
+		dev.swordai.core.pvp.Body them = reader.duel.them;
+		boolean k2Hold = K2_GUARD && (me.isSprinting() || reader.duel.me.sprinting)
+				&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, fightLag + 1);
+		if (k2Hold) {
+			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
+			k2Held++;
+		}
+		boolean installedDecided = step.teacherWeight > 0f && installed != null;
+		int ruled = 0;
+		if (RULE_OVERLAY && installed != null && (review < 0 || basics[review].bot.attacks)) {
+			if (!installedDecided) {
+				observer.fillBody(installedBody, me, bot, truth.floorY());
+				installed.fighter.crosshairOnOpponent(onOpponent());
+				installed.fighter.decide(observer.frame, installedBody);
+				installedDecided = true;
+			}
+			// Only heads still open: a rule's swing waits for the sword, the crosshair and the golden rule like the network's.
+			ruled = installed.fighter.ruledHeads() & keys;
+			keys &= ~ruled;
+		}
 		learner.act(step, keys, mode == Mode.TRAIN, cfg.playTemperature, action);
+		if (ruled != 0) {
+			int[] rule = installed.fighter.action();
+			for (int h = 0; h < ActionSpace.HEADS; h++) {
+				if ((ruled & (1 << h)) != 0) {
+					action[h] = rule[h];
+				}
+			}
+			ruleTicks++;
+		}
 		if (mode == Mode.CHECK) {
 			fairJump.apply(action, me.onGround(), clock.ticksSinceHitTaken, clock.takenStreak.hits());
 		}
@@ -1266,7 +1314,7 @@ public final class SchoolSession implements AgentSession {
 		}
 		motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));
 		applyAction(motor.yawRate(), motor.pitchRate());
-		if (installed != null && mode == Mode.TRAIN && step.teacherWeight > 0f) {
+		if (installedDecided) {
 			// The installed model watched: it goes on from what was really pressed (see Fighter#pressed).
 			installed.fighter.pressed(action, motor);
 		}
@@ -1779,6 +1827,10 @@ public final class SchoolSession implements AgentSession {
 				+ "| A by the game:{} | B by the game:{} | A crit moments: {} | B crit moments: {} | A jumping in: {} | B jumping in: {} | A swings: {} | B swings: {}",
 				checkFights / 2, perfLine(perf), perfLine(perfB), perf.keysLine(), perfB.keysLine(), ownLine(0), ownLine(1), critLine(0), critLine(1),
 				jumpInLine(0), jumpInLine(1), swingLine(0), swingLine(1));
+		SwordAi.LOGGER.info("school check rules | A: the golden rule (K2) held the swing on {} ticks, the installed model's rules set keys on {} ticks",
+				k2Held, ruleTicks);
+		k2Held = 0;
+		ruleTicks = 0;
 	}
 
 	/** One tick of a side's crit moments (see {@link #critTrace}). */
@@ -1979,10 +2031,10 @@ public final class SchoolSession implements AgentSession {
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
 				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {}, other crits {} "
-				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} | swings: {} | review of the old stages:{} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
+				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} (the golden rule held the swing on {} ticks, the installed model's rules set keys on {}) | swings: {} | review of the old stages:{} | bots went into:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
 				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, otherCrits,
-				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, swingLine(0), reviewLine(), used);
+				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2Held, ruleTicks, swingLine(0), reviewLine(), used);
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		otherCrits = 0;
@@ -1996,6 +2048,8 @@ public final class SchoolSession implements AgentSession {
 		momentsPaid = 0;
 		momentsWon = 0;
 		k2Broken = 0;
+		k2Held = 0;
+		ruleTicks = 0;
 		java.util.Arrays.fill(critTrace[0], 0L);
 		java.util.Arrays.fill(jumpIn[0], 0L);
 		float dealtAll = 0f;

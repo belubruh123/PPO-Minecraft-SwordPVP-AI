@@ -120,7 +120,9 @@ public final class SchoolStages {
 	 * the 01:22 check came to -15.1 (from -20.0); 0.5 from 02:05, as the technique moments still kept its swings down (32 a
 	 * minute in them to the installed model's 53).
 	 */
-	public static final float PULL_CAP = 0f; // 25 Oct 06:20 synced control continued (techniques on at 0.5 cost -19.1 vs -8.6 off)
+	// 25 Oct 06:20 off (techniques on at 0.5 cost -19.1 vs -8.6 off); 09:00 back at 0.2 as a review, the user: "Review every
+	// skill while learning that so it won't forgot stuff".
+	public static final float PULL_CAP = 0.2f;
 	/**
 	 * The answers to a jump-in (part 7: hit them while they rise, T8; no knockback hit on a falling one, K2; let it land and
 	 * punish-crit, B1) taught on their own (25 Oct 07:40): with every teacher off the network was level with the installed

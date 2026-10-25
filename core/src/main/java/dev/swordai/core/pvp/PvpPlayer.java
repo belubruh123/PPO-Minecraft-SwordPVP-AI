@@ -454,7 +454,12 @@ public final class PvpPlayer {
 
 	/** Falling in the game by the time a hit of mine reaches them: falling as seen, or rising too slowly to outlast the lag. */
 	boolean fallingByTheHit(Body b) {
-		return !b.onGround && b.vy - RISE_LOST_A_TICK * seenLag < 0.0;
+		return fallingByTheHit(b, seenLag);
+	}
+
+	/** {@link #fallingByTheHit(Body)} for a hit that gets there {@code lagTicks} after what is seen. */
+	public static boolean fallingByTheHit(Body b, int lagTicks) {
+		return !b.onGround && b.vy - RISE_LOST_A_TICK * Math.max(0, lagTicks) < 0.0;
 	}
 
 	/** What a jump's rise loses in a tick (gravity 0.08, near enough with the drag). */
