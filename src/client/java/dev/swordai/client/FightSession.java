@@ -20,6 +20,7 @@ import net.minecraft.world.phys.EntityHitResult;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -138,6 +139,11 @@ final class FightSession implements AgentSession {
 			SchoolLearner l = new SchoolLearner(System.nanoTime(), 1, 0.99f, 0.95f, 1);
 			try {
 				l.load(SwordFiles.schoolCheckpoint());
+				// The checks' test-time sharpening (SchoolSession.PLAY_TEMPERATURE_FILE), where the school folder has one.
+				Path temps = SwordFiles.schoolDir().resolve(SchoolSession.PLAY_TEMPERATURE_FILE);
+				if (Files.exists(temps)) {
+					l.playTemperatures(SchoolSession.readHeadTemperatures(temps));
+				}
 			} catch (IOException | RuntimeException e) {
 				l.close();
 				loaded.close();

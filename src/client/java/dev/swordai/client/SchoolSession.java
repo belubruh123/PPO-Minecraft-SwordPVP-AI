@@ -230,6 +230,11 @@ public final class SchoolSession implements AgentSession {
 	 * check; the installed model and the training stay at 1.
 	 */
 	static final String PLAY_TEMPERATURE_FILE = "play-temperature";
+	/**
+	 * A check's first pair (its seeds): with this file in the school folder holding N, a check starts at pair N, so a
+	 * confirmation runs on seeds its candidate was not picked on. Without it every check starts at pair 0.
+	 */
+	static final String CHECK_FROM_FILE = "check-from";
 	private boolean sparCheck;
 	static final int SPAR_LAG_EXTRA = 2;
 	private boolean sparFight;
@@ -645,6 +650,11 @@ public final class SchoolSession implements AgentSession {
 		if (Files.exists(SwordFiles.schoolStages())) {
 			stages.load(SwordFiles.schoolStages());
 			stages.fadeFromNow();
+		}
+		Path from = SwordFiles.schoolDir().resolve(CHECK_FROM_FILE);
+		if (mode == Mode.CHECK && Files.exists(from)) {
+			checkFights = 2L * Long.parseLong(Files.readString(from).trim());
+			SwordAi.LOGGER.info("school check: starting at pair {}", checkFights / 2);
 		}
 		Path temps = SwordFiles.schoolDir().resolve(PLAY_TEMPERATURE_FILE);
 		if (mode == Mode.CHECK && Files.exists(temps)) {
