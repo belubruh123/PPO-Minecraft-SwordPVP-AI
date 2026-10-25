@@ -121,14 +121,19 @@ public final class SchoolStages {
 	 * minute in them to the installed model's 53).
 	 */
 	// 25 Oct 06:20 off (techniques on at 0.5 cost -19.1 vs -8.6 off); 09:00 back at 0.2 as a review, the user: "Review every
-	// skill while learning that so it won't forgot stuff".
-	public static final float PULL_CAP = 0.2f;
+	// skill while learning that so it won't forgot stuff"; 09:15 no cap (each technique's mastery share, up to PRIORITY_MOST),
+	// the user: "training all the skill to back where they were like nearly all above 80% and crit need 80% and punish crit
+	// 90% while review basic skill in between".
+	public static final float PULL_CAP = 3f; // = PRIORITY_MOST
 	/**
 	 * The answers to a jump-in (part 7: hit them while they rise, T8; no knockback hit on a falling one, K2; let it land and
 	 * punish-crit, B1) taught on their own (25 Oct 07:40): with every teacher off the network was level with the installed
 	 * model (06:54 check, -0.6) but knockback-hit falling jumpers 30 to 50 times an update, the user's first complaint.
 	 */
-	public static final float JUMP_IN_PULL_CAP = 0f; // 08:25: at 0.5 the 08:22 check was -38.4, swings 105 to 338 (K2 taught it not to swing at all)
+	// 08:25 off: at 0.5 the 08:22 check was -38.4, swings 105 to 338 (K2 taught it not to swing at all). 09:15 back with the rest,
+	// the user: "knock hit on jumper thing focus while learning those": K2's swing is now the golden rule's (SchoolSession.K2_GUARD
+	// holds the attack key on every K2 moment, so nothing of "don't swing" is taught), T8 and B1 are taught.
+	public static final float JUMP_IN_PULL_CAP = 3f; // = PRIORITY_MOST
 	static final boolean[] JUMP_IN_ANSWER = new boolean[Technique.COUNT];
 
 	static {
@@ -273,12 +278,14 @@ public final class SchoolStages {
 	 */
 	public static final boolean[] PRIORITY = new boolean[Technique.COUNT];
 	/** The bots that give those moments, and the share of every stage's fights against them. */
-	public static final int[] PRIORITY_BOTS = {Specialists.JUMP_IN_CRITTER, Specialists.FALL_SPACER, Specialists.ATTACK_THEN_S};
+	// The jump-in critter twice (25 Oct 09:15, the user: "knock hit on jumper thing focus while learning those").
+	public static final int[] PRIORITY_BOTS = {Specialists.JUMP_IN_CRITTER, Specialists.JUMP_IN_CRITTER, Specialists.FALL_SPACER,
+			Specialists.ATTACK_THEN_S};
 	/**
 	 * A third until the priority ones were learned (24 Oct 13:40: T8 77%, K2 89%, B1 64%, T10 62%); then less, so a
 	 * stage's own bots get the fights: in the crit trades, the double crit had about one moment an update.
 	 */
-	public static final float PRIORITY_SHARE = 0.15f;
+	public static final float PRIORITY_SHARE = 0.25f; // 0.15 until 25 Oct 09:15 (the jump-in focus)
 	/**
 	 * Of the rest, the share of fights against a bot of the family of a technique still under {@link #MASTERED}, the
 	 * weakest most often. A technique's moments come against its own family's bots: C3 (jump + hold S against a stun)

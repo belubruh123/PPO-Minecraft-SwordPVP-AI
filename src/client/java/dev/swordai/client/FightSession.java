@@ -365,7 +365,7 @@ final class FightSession implements AgentSession {
 			}
 			// The golden rule (K2): what is seen of them is a round trip behind the server by the time a hit gets there.
 			school.holdSwing(SchoolSession.K2_GUARD && me.isSprinting()
-					&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(reader.duel.them, ownPingTicks() + 1));
+					&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(reader.duel.them, ownPingTicks() + SchoolSession.K2_MARGIN));
 			action = school.decide(observer.frame, body, reader.memory());
 			AgentController.apply(mc, action, school.yawRate(), school.pitchRate());
 			chargeAtClick = me.getAttackStrengthScale(0f);

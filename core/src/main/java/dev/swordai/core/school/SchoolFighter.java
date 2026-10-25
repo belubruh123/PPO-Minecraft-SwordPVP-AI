@@ -133,7 +133,6 @@ public final class SchoolFighter {
 		}
 		int ruled = rules != null ? rules.ruledHeads() & keys : 0;
 		keys &= ~ruled;
-		learner.act(step, keys, false, temperature, action);
 		if (ruled != 0) {
 			int[] rule = rules.action();
 			for (int h = 0; h < ActionSpace.HEADS; h++) {
@@ -142,6 +141,7 @@ public final class SchoolFighter {
 				}
 			}
 		}
+		learner.act(step, keys, ruled, false, temperature, action);
 		fairJump.apply(action, body.onGround, sinceHitTaken, takenStreak.hits());
 		motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));
 		if (rules != null) {

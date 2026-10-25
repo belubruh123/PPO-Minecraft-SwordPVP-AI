@@ -323,6 +323,9 @@ public final class SchoolSession implements AgentSession {
 	/** Ticks the golden rule (K2_GUARD) held the swing, and ticks the installed model's rules set keys (RULE_OVERLAY). */
 	private int k2Held;
 	private int ruleTicks;
+	/** The school's sprint hits on one the server had falling (Truth.botFalling), and that flag as of the step. */
+	private int k2Truth;
+	private boolean lastTruthFalling;
 	/** The technique of the moment on the last tick, so a moment's start is told to the stages with the bot it came against. */
 	private int lastMomentTechnique = -1;
 	/** In a check, the school network's combo jump resets mistimed now and then, as they will be in a real fight. */
@@ -349,6 +352,12 @@ public final class SchoolSession implements AgentSession {
 	 * crit (B1)". Taught it broke 26-52 times a check, the installed model 24-31; taught harder it stopped swinging (08:22).
 	 */
 	static final boolean K2_GUARD = true;
+	/**
+	 * Ticks past the seen lag the golden rule looks ahead: the click's tick, and the game's glide of another player toward
+	 * where it was told it is (its height, and so its fall, shown late). At one, 5 of 145 jump-ins were still knockback-hit
+	 * falling (25 Oct 09:11 check).
+	 */
+	static final int K2_MARGIN = 2;
 
 	static {
 		for (Technique t : new Technique[] {Technique.B1, Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2,
@@ -974,6 +983,7 @@ public final class SchoolSession implements AgentSession {
 		System.arraycopy(reader.memory(), 0, step.obs.mem, 0, step.obs.mem.length);
 		step.obs.setOpponent(botTechnique, review >= 0 ? null : fightStyle.p, review >= 0 ? -1 : fightBot);
 
+		lastTruthFalling = truth.botFalling();
 		if (hasLastAction) {
 			fightTicks++;
 			fightDealt += facts.damageDealt;
@@ -1264,8 +1274,10 @@ public final class SchoolSession implements AgentSession {
 		step.botKeys = truth.botKeys();
 		step.kind = review >= 0 ? -1 : fightBot;
 		dev.swordai.core.pvp.Body them = reader.duel.them;
-		boolean k2Hold = K2_GUARD && (me.isSprinting() || reader.duel.me.sprinting)
-				&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, fightLag + 1);
+		// And on every moment the teacher calls K2 (its sprint key may be about to be pressed): the swing it holds back is the
+		// rule's, not taught, so that "don't swing" cannot spread from it (the 08:22 check).
+		boolean k2Hold = K2_GUARD && ((me.isSprinting() || reader.duel.me.sprinting)
+				&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, fightLag + K2_MARGIN) || step.teacherTechnique == Technique.K2.ordinal());
 		if (k2Hold) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 			k2Held++;
@@ -1283,8 +1295,8 @@ public final class SchoolSession implements AgentSession {
 			ruled = installed.fighter.ruledHeads() & keys;
 			keys &= ~ruled;
 		}
-		learner.act(step, keys, mode == Mode.TRAIN, cfg.playTemperature, action);
 		if (ruled != 0) {
+			// The rule's keys first: the network's jump and swing are chosen knowing them (SchoolNet#sample).
 			int[] rule = installed.fighter.action();
 			for (int h = 0; h < ActionSpace.HEADS; h++) {
 				if ((ruled & (1 << h)) != 0) {
@@ -1293,6 +1305,7 @@ public final class SchoolSession implements AgentSession {
 			}
 			ruleTicks++;
 		}
+		learner.act(step, keys, ruled, mode == Mode.TRAIN, cfg.playTemperature, action);
 		if (mode == Mode.CHECK) {
 			fairJump.apply(action, me.onGround(), clock.ticksSinceHitTaken, clock.takenStreak.hits());
 		}
@@ -1827,10 +1840,11 @@ public final class SchoolSession implements AgentSession {
 				+ "| A by the game:{} | B by the game:{} | A crit moments: {} | B crit moments: {} | A jumping in: {} | B jumping in: {} | A swings: {} | B swings: {}",
 				checkFights / 2, perfLine(perf), perfLine(perfB), perf.keysLine(), perfB.keysLine(), ownLine(0), ownLine(1), critLine(0), critLine(1),
 				jumpInLine(0), jumpInLine(1), swingLine(0), swingLine(1));
-		SwordAi.LOGGER.info("school check rules | A: the golden rule (K2) held the swing on {} ticks, the installed model's rules set keys on {} ticks",
-				k2Held, ruleTicks);
+		SwordAi.LOGGER.info("school check rules | A: the golden rule (K2) held the swing on {} ticks, the installed model's rules set keys on {} ticks; "
+				+ "sprint hits on one falling on the server {}", k2Held, ruleTicks, k2Truth);
 		k2Held = 0;
 		ruleTicks = 0;
+		k2Truth = 0;
 	}
 
 	/** One tick of a side's crit moments (see {@link #critTrace}). */
@@ -1926,6 +1940,9 @@ public final class SchoolSession implements AgentSession {
 		sinceFallingHit = Math.min(sinceFallingHit + 1, 1000);
 		if (facts.hitsDealt > 0 && them.rising()) {
 			c[1]++;
+		}
+		if (side == 0 && facts.hitsDealt > 0 && facts.sprintHit && lastTruthFalling) {
+			k2Truth++;
 		}
 		if (facts.hitsDealt > 0 && facts.sprintHit && them.falling()) {
 			c[2]++;
@@ -2050,6 +2067,7 @@ public final class SchoolSession implements AgentSession {
 		k2Broken = 0;
 		k2Held = 0;
 		ruleTicks = 0;
+		k2Truth = 0;
 		java.util.Arrays.fill(critTrace[0], 0L);
 		java.util.Arrays.fill(jumpIn[0], 0L);
 		float dealtAll = 0f;

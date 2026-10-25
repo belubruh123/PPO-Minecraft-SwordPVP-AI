@@ -164,10 +164,15 @@ public final class SchoolLearner implements AutoCloseable {
 	 *             chance and the value are written into it
 	 */
 	public void act(SchoolRollout.Step step, int headMask, boolean record, float temperature, int[] actionOut) {
+		act(step, headMask, 0, record, temperature, actionOut);
+	}
+
+	/** The same, with the heads in {@code presetMask} (locked in {@code headMask}) set already in {@code actionOut}: see SchoolNet#sample. */
+	public void act(SchoolRollout.Step step, int headMask, int presetMask, boolean record, float temperature, int[] actionOut) {
 		predict(step.obs, step.pred);
 		intend(mine, chooser, chooseWs, step, record);
 		actor.forward(actWs, step.obs.base.peri, step.obs.base.fovea, step.obs.base.vec, step.obs.mem, step.pred);
-		float logp = actor.sample(actWs, headMask, false, record ? 1f : temperature, sampleRng, actionOut);
+		float logp = actor.sample(actWs, headMask, presetMask & ~headMask, false, record ? 1f : temperature, sampleRng, actionOut);
 		if (!record) {
 			return;
 		}

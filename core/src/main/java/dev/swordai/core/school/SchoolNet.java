@@ -314,6 +314,16 @@ public final class SchoolNet {
 	 * leaves {@code ws.logits} as the action was drawn from.
 	 */
 	public float sample(Workspace ws, int headMask, boolean greedy, float temperature, Random rng, int[] actionOut) {
+		return sample(ws, headMask, 0, greedy, temperature, rng, actionOut);
+	}
+
+	/**
+	 * The same, with the locked heads in {@code presetMask} keeping the keys already in {@code actionOut} (a rule's): the
+	 * jump and the swing are then chosen knowing those keys. With the rule's W and sprint read as their defaults, a jump
+	 * chosen under a rule that held W was the hop's jump in place, 185 jumps a minute to the installed model's 62 (25 Oct
+	 * 09:11 check).
+	 */
+	public float sample(Workspace ws, int headMask, int presetMask, boolean greedy, float temperature, Random rng, int[] actionOut) {
 		float logp = 0f;
 		for (int h = 0; h < ActionSpace.HEADS; h++) {
 			if (h == ActionSpace.JUMP) {
@@ -322,7 +332,9 @@ public final class SchoolNet {
 				conditionAttack(ws, actionOut);
 			}
 			if (!ActionSpace.unlocked(headMask, h)) {
-				actionOut[h] = ActionSpace.DEFAULTS[h];
+				if ((presetMask & (1 << h)) == 0) {
+					actionOut[h] = ActionSpace.DEFAULTS[h];
+				}
 				continue;
 			}
 			logp += pick(ws.logits, h, greedy, temperature, rng, ws.probs, actionOut);
