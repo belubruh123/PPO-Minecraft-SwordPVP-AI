@@ -728,7 +728,7 @@ public final class SchoolStages {
 	 * 1-14 kept the body pinned to the installed model (half pull plus the frozen best since run 9) and came out level with it
 	 * (+0.1 to +5.6): pinned to it, it can only be about as good as it. 0: no fading.
 	 */
-	public static final long FADE_STEPS = 600_000L; // run 15 (25 Oct 19:50), about three hours at 60 steps a second
+	public static final long FADE_STEPS = 0L; // 600k in run 15 (25 Oct 19:50-22:30): the checks fell as it faded (+0.6 at 0.40, -7.0 at 0.20); off from run 16
 	private long fadeFrom = -1L;
 	/**
 	 * The fade stops at this share (a pull of 0.05): fine-tuned with no copying at all, a policy forgets its skills in the
