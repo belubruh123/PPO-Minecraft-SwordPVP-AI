@@ -324,12 +324,21 @@ public final class SchoolSession implements AgentSession {
 	private int theirRow;
 	/** Ticks what it sees of them is behind the game this fight. */
 	private int fightLag;
+	/** A technique moment's own target and keys, kept for judging it when its teacher had no pull (NO_PULL_YIELDS). */
+	private final float[] judgedTarget = new float[ActionSpace.TOTAL_LOGITS];
+	private int judgedHeads;
+	private int judgedTechnique;
 	/** Ticks the golden rule (K2_GUARD) held the swing, and ticks the installed model's rules set keys (RULE_OVERLAY). */
 	private int k2Held;
 	private int ruleTicks;
 	/** The school's sprint hits on one the server had falling (Truth.botFalling), and that flag as of the step. */
 	private int k2Truth;
 	private boolean lastTruthFalling;
+	/** Per side (0 the school, 1 the installed model): fight ticks, ticks with the opponent off the screen, times they went off it. */
+	private final long[] viewTicks = new long[2];
+	private final long[] lostTicks = new long[2];
+	private final long[] lostTimes = new long[2];
+	private final boolean[] wasVisible = {true, true};
 	/** The same outside its own combo as it saw them (falling on the screen), and whether the step's hit was in its combo. */
 	private int k2Seen;
 	private boolean lastInOwnCombo;
@@ -359,6 +368,18 @@ public final class SchoolSession implements AgentSession {
 	 * which was 0, it taught nothing on 4630 lift ticks. 0: as before.
 	 */
 	static final float LET_GO_PULL = 0f; // 1 in run 3 (11:00-11:22), stopped: fundamentals first (the user, 11:17)
+	/**
+	 * Run 5 (EXPERIMENTS.md): a teacher whose pull is zero (the basics swing, the crit swing, the find-them camera, the
+	 * sprint let-go, the punish crit's aim) no longer puts its target on the step, so the installed model's stays and is
+	 * learned. Until 25 Oct 12:00 they all wrote theirs at a pull of 0: the installed model's swing was never copied on the
+	 * ordinary fight's ticks, nor its camera with the opponent off the screen or 25 degrees off (the investigation, 11:58).
+	 */
+	static final boolean NO_PULL_YIELDS = true;
+
+	private static boolean pulled(float[] pulls, int technique) {
+		return !NO_PULL_YIELDS || technique >= 0 && technique < pulls.length && pulls[technique] > 0f;
+	}
+
 	/**
 	 * The golden rule (K2) as a rule: no sprint hit while the opponent is falling by the time the hit gets there (seen lag and
 	 * a tick for the click). The user, 25 Oct 08:50: "The falling player who jump in crit on this AI cases should be the
@@ -1147,6 +1168,18 @@ public final class SchoolSession implements AgentSession {
 		}
 		step.teacherWeight = 0f;
 		step.letGoPull = 0f;
+		// A teacher with no pull leaves its keys to the installed model (NO_PULL_YIELDS): its target would replace the installed
+		// model's on those keys and teach nothing. The technique's moment is still judged on its own keys (perf, below).
+		float[] pulls = stages.techPulls();
+		int base = Technique.BASE.ordinal();
+		boolean yielded = mode == Mode.TRAIN && step.teacherHeads != 0 && !pulled(pulls, step.teacherTechnique);
+		if (yielded) {
+			judgedHeads = step.teacherHeads;
+			judgedTechnique = step.teacherTechnique;
+			System.arraycopy(step.teacher, 0, judgedTarget, 0, ActionSpace.TOTAL_LOGITS);
+			// Its keys only: the technique stays the step's label (what the network is told, what the decider learns).
+			step.teacherHeads = 0;
+		}
 		if (mode == Mode.TRAIN && stages.oldPull() > 0f && (installed != null || learner.hasOldTeacher())) {
 			if (installed != null) {
 				// What the installed model would press here, rules and all: its choice, as a target.
@@ -1173,7 +1206,7 @@ public final class SchoolSession implements AgentSession {
 			}
 			step.teacherWeight = 1f;
 		}
-		if (mode == Mode.TRAIN && OVERLAY && step.teacherHeads == 0) {
+		if (mode == Mode.TRAIN && OVERLAY && step.teacherHeads == 0 && pulled(pulls, base)) {
 			// The basics teacher: the swing outside the technique moments (see AIR_SWING).
 			// The golden rule (K2) holds here too: no knockback hit (sprinting) on one who is falling.
 			dev.swordai.core.pvp.Body them = reader.duel.them;
@@ -1189,7 +1222,7 @@ public final class SchoolSession implements AgentSession {
 		// Not on a K2 moment: its lesson is the swing held back, and a second teacher there would teach both.
 		critChanceAtClick = mode == Mode.TRAIN && OVERLAY && critAtClick && facts.reachDist <= 3.0f && onOpponent()
 				&& ActionSpace.unlocked(keys, ActionSpace.ATTACK) && step.teacherTechnique != Technique.K2.ordinal();
-		if (critChanceAtClick) {
+		if (critChanceAtClick && pulled(pulls, step.teacherTechnique >= 0 ? step.teacherTechnique : base)) {
 			// The crit teacher (see CRIT_SWING): over whatever else is taught, a crit that can be made now is made.
 			int off = ActionSpace.OFFSETS[ActionSpace.ATTACK];
 			step.teacher[off] = 0f;
@@ -1213,7 +1246,7 @@ public final class SchoolSession implements AgentSession {
 				seenSide = facts.yawErrDeg > 0f ? 1 : -1;
 			}
 		}
-		if (mode == Mode.TRAIN && OVERLAY && !onOpponent()) {
+		if (mode == Mode.TRAIN && OVERLAY && !onOpponent() && pulled(pulls, step.teacherTechnique >= 0 ? step.teacherTechnique : base)) {
 			double dx = bot.getX() - me.getX();
 			double dz = bot.getZ() - me.getZ();
 			double dy = bot.getY() + bot.getBbHeight() * 0.5 - me.getEyeY();
@@ -1247,6 +1280,7 @@ public final class SchoolSession implements AgentSession {
 		// By its own sprint as the client shows it (what the network sees and the B1 teacher goes by), not the server's a tick
 		// behind: on that tick the two teachers asked W off and W on, and B1 was off on W/S up to a third of its ticks (20:50).
 		if (mode == Mode.TRAIN && OVERLAY && liftedFor >= 0 && !me.onGround() && me.isSprinting() && facts.reachDist <= 3.5f
+				&& (LET_GO_PULL > 0f || pulled(pulls, Technique.B1.ordinal()))
 				&& charge > 0.5f && step.teacherTechnique != Technique.K2.ordinal()) {
 			int f = ActionSpace.OFFSETS[ActionSpace.FORWARD];
 			boolean back = (step.teacherHeads & (1 << ActionSpace.FORWARD)) != 0 && step.teacher[f + 2] > Math.max(step.teacher[f], step.teacher[f + 1]);
@@ -1281,6 +1315,7 @@ public final class SchoolSession implements AgentSession {
 				|| step.teacherTechnique == Technique.T1B.ordinal() || step.teacherTechnique == Technique.T1C.ordinal()
 				|| step.teacherTechnique == Technique.T2.ordinal() || step.teacherTechnique == Technique.C6.ordinal();
 		if (mode == Mode.TRAIN && OVERLAY && (liftedFor >= 0 || critFall) && facts.falling && !me.onGround() && facts.reachDist <= 3.5f
+				&& pulled(pulls, step.teacherTechnique >= 0 && step.teacherTechnique != base ? step.teacherTechnique : Technique.B1.ordinal())
 				&& charge > 0.5f && step.teacherTechnique != Technique.K2.ordinal()) {
 			double dx = bot.getX() - me.getX();
 			double dz = bot.getZ() - me.getZ();
@@ -1344,8 +1379,13 @@ public final class SchoolSession implements AgentSession {
 			fairJump.apply(action, me.onGround(), clock.ticksSinceHitTaken, clock.takenStreak.hits());
 		}
 		// Judged on the keys: the camera a teacher shows (the punish crit's aim) is taught, not counted for done.
-		perf.tick(step.teacherTechnique, step.teacherHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH)), step.teacher, action, keys,
-				facts.damageDealt, facts.damageTaken);
+		if (yielded) {
+			perf.tick(judgedTechnique, judgedHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH)), judgedTarget, action, keys,
+					facts.damageDealt, facts.damageTaken);
+		} else {
+			perf.tick(step.teacherTechnique, step.teacherHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH)), step.teacher, action, keys,
+					facts.damageDealt, facts.damageTaken);
+		}
 		if (mode == Mode.TRAIN) {
 			techniqueReward();
 		}
@@ -1875,7 +1915,9 @@ public final class SchoolSession implements AgentSession {
 				checkFights / 2, perfLine(perf), perfLine(perfB), perf.keysLine(), perfB.keysLine(), ownLine(0), ownLine(1), critLine(0), critLine(1),
 				jumpInLine(0), jumpInLine(1), swingLine(0), swingLine(1));
 		SwordAi.LOGGER.info("school check rules | A: the golden rule (K2) held the swing on {} ticks, the installed model's rules set keys on {} ticks; "
-				+ "sprint hits outside its combos on one falling: on the server {}, as seen {}", k2Held, ruleTicks, k2Truth, k2Seen);
+				+ "sprint hits outside its combos on one falling: on the server {}, as seen {} | lost view: A {} of {} ticks off the screen ({} times), "
+				+ "B {} of {} ticks ({} times)", k2Held, ruleTicks, k2Truth, k2Seen, lostTicks[0], viewTicks[0], lostTimes[0], lostTicks[1], viewTicks[1],
+				lostTimes[1]);
 		k2Held = 0;
 		ruleTicks = 0;
 		k2Truth = 0;
@@ -1967,6 +2009,13 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	private void traceJumpIn(int side) {
+		// Lost view: ticks with the opponent off the screen, and how often they went off it (the gate's fourth fundamental).
+		viewTicks[side]++;
+		if (!facts.enemyVisible) {
+			lostTicks[side]++;
+			lostTimes[side] += wasVisible[side] ? 1 : 0;
+		}
+		wasVisible[side] = facts.enemyVisible;
 		long[] c = jumpIn[side];
 		dev.swordai.core.pvp.Body them = reader.duel.them;
 		if (them.sinceJump == 0 && reader.duel.theyClose > 0.05 && reader.duel.flat < 6.5) {
