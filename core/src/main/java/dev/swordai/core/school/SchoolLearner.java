@@ -79,7 +79,12 @@ public final class SchoolLearner implements AutoCloseable {
 	private TeacherReplay selfReplay;
 	static final int SELF_CAPACITY = 4_000;
 	static final int SELF_BATCHES = 12;
-	static final float SELF_PULL = 0f; // run 2 (EXPERIMENTS.md): the 06:54 recipe (0.5 from 09:41)
+	/**
+	 * Self-imitation (Oh et al. 2018): its own steps that went clearly better than expected (TeacherReplay#addSelf) learned from
+	 * again after every update, so a win it found (a crit that landed, an exchange won) is learned from a few times, not once.
+	 * Run 15 (EXPERIMENTS.md), with the copying fading: what it learns comes from its own best fights more than from the teacher.
+	 */
+	static final float SELF_PULL = 0.3f; // 0 from run 2 to run 14 (0.5 from 09:41 to run 2); 0.3 from run 15
 	private volatile String selfLine = "none yet";
 	private SchoolNet.Workspace replayWs;
 	private volatile String shadowLine = "no examples yet";
@@ -281,7 +286,7 @@ public final class SchoolLearner implements AutoCloseable {
 					+ " of " + replay.size() + " kept";
 			if (set.oldPull > 0f && set.shadowBatches > 0) {
 				float[] pulls = new float[dev.swordai.core.pvp.Technique.COUNT];
-				pulls[dev.swordai.core.pvp.Technique.BASE.ordinal()] = set.oldPull;
+				pulls[dev.swordai.core.pvp.Technique.BASE.ordinal()] = set.oldBodyPull >= 0f ? set.oldBodyPull : set.oldPull;
 				shadowLine = shadowReplay.learn(actor, replayWs, pulls, set.shadowBatches, set.replayBatch, set.replayLr, set.maxGradNorm, rng)
 						+ " of " + shadowReplay.size() + " kept";
 			}

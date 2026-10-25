@@ -694,6 +694,30 @@ public final class SchoolStages {
 		return OLD_PULL;
 	}
 
+	/**
+	 * Run 15 (EXPERIMENTS.md): the copying of the installed model and of the frozen best on the body's keys fades from full to
+	 * nothing over this many steps from the start of the run, so the fight's own reward can take it past them (kickstarting,
+	 * Schmitt et al. 2018, DeepMind: a student distilled from a teacher with a weight annealed to zero went past the teacher).
+	 * The camera stays copied at full (24 Oct 22:15: the pull faded on every key lost its aim in the user's real fights). Runs
+	 * 1-14 kept the body pinned to the installed model (half pull plus the frozen best since run 9) and came out level with it
+	 * (+0.1 to +5.6): pinned to it, it can only be about as good as it. 0: no fading.
+	 */
+	public static final long FADE_STEPS = 600_000L; // run 15 (25 Oct 19:50), about three hours at 60 steps a second
+	private long fadeFrom = -1L;
+
+	/** The fading of the body's copying starts now (the run's start). */
+	public void fadeFromNow() {
+		fadeFrom = schoolSteps;
+	}
+
+	/** The share of the copying left on the body's keys: 1 at the run's start, 0 after FADE_STEPS. */
+	public float bodyFade() {
+		if (FADE_STEPS <= 0L || fadeFrom < 0L) {
+			return 1f;
+		}
+		return Math.max(0f, 1f - (schoolSteps - fadeFrom) / (float) FADE_STEPS);
+	}
+
 	public void addSteps(long steps) {
 		stageSteps += steps;
 		schoolSteps += steps;
@@ -774,7 +798,7 @@ public final class SchoolStages {
 		Stage s = current();
 		StringBuilder b = new StringBuilder(String.format(Locale.ROOT,
 				"%s %s, %d of at least %d steps, installed network's pull %.2f; mastery:%s damage a minute first->last:",
-				s.name, s.family, stageSteps, s.minSteps, oldPull(), masteryLine()));
+				s.name, s.family, stageSteps, s.minSteps, oldPull() * bodyFade(), masteryLine()));
 		for (int bot : s.bots) {
 			b.append(String.format(Locale.ROOT, " %s %+.0f->%+.0f (%d)", Specialists.NAMES[bot], mean(first[bot], firstCount[bot]),
 					mean(last[bot], lastCount[bot]), lastCount[bot]));

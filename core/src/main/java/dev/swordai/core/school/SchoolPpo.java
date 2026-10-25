@@ -52,6 +52,8 @@ public final class SchoolPpo implements AutoCloseable {
 		/** The pulls of the teachers for this update: each technique's teacher's ({@code Technique} ordinal), and the installed network's. */
 		public float[] techPulls = new float[dev.swordai.core.pvp.Technique.COUNT];
 		public float oldPull;
+		/** The copying's pull on the body's keys (the camera keeps oldPull), see SchoolStages#bodyFade; below 0: oldPull. */
+		public float oldBodyPull = -1f;
 		/** The installed model teaches every key where no technique teacher speaks (the overlay), not the camera only. */
 		public boolean installedBody;
 		/** Learn the critic only. */
@@ -214,7 +216,8 @@ public final class SchoolPpo implements AutoCloseable {
 				// the basics teacher does not hold.
 				boolean between = tech == 0 || which == dev.swordai.core.pvp.Technique.BASE.ordinal();
 				boolean installedHere = old && (camera || set.installedBody && between && !byTech);
-				float pull = byTech ? (which >= 0 ? set.techPulls[which] : 0f) : installedHere ? set.oldPull : 0f;
+				float pull = byTech ? (which >= 0 ? set.techPulls[which] : 0f)
+						: installedHere ? (camera || set.oldBodyPull < 0f ? set.oldPull : set.oldBodyPull) : 0f;
 				// A technique's keys (not the camera, not the ordinary fight's) by how the fight went after them: see TEACH_AWR_MOST.
 				if (byTech && !camera && which >= 0 && which != dev.swordai.core.pvp.Technique.BASE.ordinal()) {
 					pull *= (float) Math.min(TEACH_AWR_MOST, Math.exp(adv / TEACH_AWR_BETA));

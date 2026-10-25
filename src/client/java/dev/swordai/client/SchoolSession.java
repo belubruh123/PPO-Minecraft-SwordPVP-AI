@@ -584,6 +584,7 @@ public final class SchoolSession implements AgentSession {
 		loadBasics();
 		if (Files.exists(SwordFiles.schoolStages())) {
 			stages.load(SwordFiles.schoolStages());
+			stages.fadeFromNow();
 		}
 		Config icfg = SwordFiles.readConfig(SwordFiles.installedCopy().resolve("config.json"));
 		if (icfg != null && Files.exists(teacherFile)) {
@@ -2185,6 +2186,7 @@ public final class SchoolSession implements AgentSession {
 		SchoolPpo.Settings set = new SchoolPpo.Settings();
 		set.techPulls = stages.techPulls();
 		set.oldPull = stages.oldPull();
+		set.oldBodyPull = stages.oldPull() * stages.bodyFade();
 		set.installedBody = OVERLAY;
 		set.criticOnly = warmupLeft > 0;
 		if (warmupLeft > 0) {
