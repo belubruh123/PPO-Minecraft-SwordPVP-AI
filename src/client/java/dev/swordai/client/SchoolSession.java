@@ -389,7 +389,7 @@ public final class SchoolSession implements AgentSession {
 	 * model's one key; the installed model's rules still play over the network. The user, 25 Oct 14:43: "When it started to
 	 * learn skill it become dumber and loses against teacher overtime fix it".
 	 */
-	static final boolean ANCHOR_TO_BEST = false;
+	static final boolean ANCHOR_TO_BEST = true; // run 9 (25 Oct 15:02), anchor = checked-1025-1347 (run 6, the best)
 	static final String ANCHOR_FILE = "anchor.bin";
 	private static final boolean[] CRIT_FAMILY = new boolean[Technique.COUNT];
 
