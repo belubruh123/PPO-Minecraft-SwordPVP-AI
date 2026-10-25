@@ -541,6 +541,11 @@ public final class ArenaServer {
 			// was still coming back (23 Oct: 55% of the drill's fights began with it under 0.9).
 			((dev.swordai.mixin.LivingEntityAccessor) s.bot).swordai$setAttackStrengthTicker(1000);
 		}
+		if (plan.drillLift) {
+			// The punish crit drill: its sword all the way back, the agent's part of the way (it is lifted before it can swing).
+			((dev.swordai.mixin.LivingEntityAccessor) s.bot).swordai$setAttackStrengthTicker(1000);
+			((dev.swordai.mixin.LivingEntityAccessor) agent).swordai$setAttackStrengthTicker(plan.drillAgentTicker);
+		}
 		// Put back anything that went missing since the last episode.
 		s.equip(agent);
 		s.equip(s.bot);

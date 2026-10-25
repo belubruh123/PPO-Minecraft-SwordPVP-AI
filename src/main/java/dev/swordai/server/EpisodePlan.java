@@ -63,6 +63,12 @@ public final class EpisodePlan {
 	 * somewhere else whenever they had ended the fight before looking another way (Gemini's audit).
 	 */
 	public boolean seedYaw;
+	/**
+	 * The punish crit drill (SchoolSession#DRILL_SHARE): the bot starts in its reach with its sword all the way back, the
+	 * agent's sword {@link #drillAgentTicker} ticks into coming back, so the bot's sprint hit lifts the agent first.
+	 */
+	public boolean drillLift;
+	public int drillAgentTicker;
 	/** The heading the agent was given at the start, as the server set it; kept with a fight it lost. */
 	public volatile float usedYaw = Float.NaN;
 

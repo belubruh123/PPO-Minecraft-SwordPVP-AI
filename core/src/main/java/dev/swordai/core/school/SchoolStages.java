@@ -704,6 +704,12 @@ public final class SchoolStages {
 	 */
 	public static final long FADE_STEPS = 600_000L; // run 15 (25 Oct 19:50), about three hours at 60 steps a second
 	private long fadeFrom = -1L;
+	/**
+	 * The fade stops at this share (a pull of 0.05): fine-tuned with no copying at all, a policy forgets its skills in the
+	 * situations it seldom meets (Wolczyk et al. 2024, "Fine-tuning reinforcement learning models is secretly a forgetting
+	 * mitigation problem"; the research round of 25 Oct 20:45), and AlphaStar kept its copying term to the end.
+	 */
+	public static final float FADE_FLOOR = 0.1f;
 
 	/**
 	 * The fading of the body's copying starts now, unless the saved state has its start already: a check restarts the session,
@@ -720,7 +726,7 @@ public final class SchoolStages {
 		if (FADE_STEPS <= 0L || fadeFrom < 0L) {
 			return 1f;
 		}
-		return Math.max(0f, 1f - (schoolSteps - fadeFrom) / (float) FADE_STEPS);
+		return Math.max(FADE_FLOOR, 1f - (schoolSteps - fadeFrom) / (float) FADE_STEPS);
 	}
 
 	public void addSteps(long steps) {

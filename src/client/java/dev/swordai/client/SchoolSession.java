@@ -148,6 +148,21 @@ public final class SchoolSession implements AgentSession {
 	static final int CRITIC_WARMUP = 3;
 	/** The bot is put between these distances, in view. */
 	static final float NEAREST = 3f;
+	/**
+	 * The punish crit drill (start-state curriculum: Salimans and Chen 2018, the research round of 25 Oct 20:45): this share of
+	 * the training fights starts with the bot in its reach (DRILL_NEAR to DRILL_FAR) and its sword all the way back, the
+	 * agent's sword 2 to 8 ticks into coming back, so the bot's sprint hit lifts it first with its sword coming back on the way
+	 * down: the punish crit's chance (B1, "their hit knocks you up; you crit them on the way down") in every such fight, where
+	 * a fight had about one in four minutes. The rest of the fight goes on as any. The user, 25 Oct: learn it in a few tries.
+	 */
+	static final float DRILL_SHARE = 0.25f;
+	static final float DRILL_NEAR = 2.2f;
+	static final float DRILL_FAR = 2.8f;
+	/** This fight is a drill: the agent's sword is set this many ticks into coming back on its first tick; -1 otherwise. */
+	private int drillTicker = -1;
+	private boolean drillFight;
+	private int drillFights;
+	private int drillPunishCrits;
 	static final float FARTHEST = 8f;
 	/** Steps whose policy loss counts for nothing: the opponent farther than this and out of sight. */
 	static final float SKIP_FARTHER = 8f;
@@ -908,8 +923,16 @@ public final class SchoolSession implements AgentSession {
 			reviewRewards.reset();
 			reviewHop = truth.hopId();
 		} else {
-			plan = EpisodePlan.school(fightStyle, NEAREST, FARTHEST);
+			boolean drill = mode == Mode.TRAIN && rng.nextFloat() < DRILL_SHARE;
+			plan = EpisodePlan.school(fightStyle, drill ? DRILL_NEAR : NEAREST, drill ? DRILL_FAR : FARTHEST);
+			if (drill) {
+				plan.drillLift = true;
+				plan.drillAgentTicker = 2 + rng.nextInt(7);
+			}
 		}
+		drillFight = plan.drillLift;
+		drillTicker = plan.drillLift ? plan.drillAgentTicker : -1;
+		drillFights += plan.drillLift ? 1 : 0;
 		plan.seed = seed;
 		plan.seedYaw = mode == Mode.CHECK;
 		plan.agentLag = agentLag;
@@ -1096,6 +1119,11 @@ public final class SchoolSession implements AgentSession {
 		step.obs.setOpponent(botTechnique, review >= 0 ? null : fightStyle.p, review >= 0 ? -1 : fightBot);
 
 		lastTruthFalling = truth.botFalling();
+		if (!hasLastAction && drillTicker >= 0) {
+			// The drill's sword on this side too: the swing gate and what it sees go by the client's own.
+			((dev.swordai.mixin.LivingEntityAccessor) me).swordai$setAttackStrengthTicker(drillTicker);
+			drillTicker = -1;
+		}
 		if (hasLastAction) {
 			fightTicks++;
 			fightDealt += facts.damageDealt;
@@ -1118,6 +1146,7 @@ public final class SchoolSession implements AgentSession {
 					if (liftedFor >= 0) {
 						reward += PUNISH_CRIT;
 						punishCritsPaid++;
+						drillPunishCrits += drillFight ? 1 : 0;
 						liftStage = 6;
 					} else {
 						reward += OTHER_CRIT;
@@ -2246,13 +2275,15 @@ public final class SchoolSession implements AgentSession {
 		pullsNow = stages.techPulls();
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
-				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {}, other crits {} "
+				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {} ({} in {} drill fights), other crits {} "
 				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} (the golden rule held the swing on {} ticks, the installed model's rules set keys on {}) | swings: {} | review of the old stages:{} | bots went into:{} | taught now:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
-				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, otherCrits,
+				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits,
 				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2Held, ruleTicks, swingLine(0), reviewLine(), used, taughtNowLine());
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
+		drillPunishCrits = 0;
+		drillFights = 0;
 		otherCrits = 0;
 		critChances = 0;
 		critSwings = 0;
