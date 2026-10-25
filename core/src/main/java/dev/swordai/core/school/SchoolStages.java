@@ -344,6 +344,16 @@ public final class SchoolStages {
 	 * A third until the priority ones were learned (24 Oct 13:40: T8 77%, K2 89%, B1 64%, T10 62%); then less, so a
 	 * stage's own bots get the fights: in the crit trades, the double crit had about one moment an update.
 	 */
+	/**
+	 * The opponents it loses to most in the paired checks, fought this share of the training fights, each by how much it
+	 * loses to it (net damage a fight over the 13:51 to 20:36 checks of 25 Oct, about 20 fights each). The user, 25 Oct 21:20:
+	 * "look at the case it lose against to and let it fight against those and see why and the method it should do to counter".
+	 * Training only: the checks' opponents stay as they were, so the checks stay comparable.
+	 */
+	public static final int[] LOSS_BOTS = {Specialists.ATTACK_THEN_S, Specialists.STUN_ESCAPER, Specialists.UPPERCUTTER,
+			Specialists.LUNGER, Specialists.FALL_SPACER};
+	public static final float[] LOSS_WEIGHTS = {52.7f, 34.7f, 31.5f, 22.8f, 22.0f};
+	public static final float LOSS_SHARE = 0.35f; // run 15 (25 Oct 22:05)
 	public static final float PRIORITY_SHARE = 0.15f; // run 2 (EXPERIMENTS.md): the 06:54 recipe (0.25 from 09:15)
 	/**
 	 * Of the rest, the share of fights against a bot of the family of a technique still under {@link #MASTERED}, the
@@ -605,6 +615,20 @@ public final class SchoolStages {
 
 	public int drawBot(Random rng) {
 		Stage s = current();
+		if (rng.nextFloat() < LOSS_SHARE) {
+			float total = 0f;
+			for (float w : LOSS_WEIGHTS) {
+				total += w;
+			}
+			float u = rng.nextFloat() * total;
+			for (int i = 0; i < LOSS_BOTS.length; i++) {
+				u -= LOSS_WEIGHTS[i];
+				if (u <= 0f) {
+					return LOSS_BOTS[i];
+				}
+			}
+			return LOSS_BOTS[LOSS_BOTS.length - 1];
+		}
 		if (rng.nextFloat() < PRIORITY_SHARE) {
 			return PRIORITY_BOTS[rng.nextInt(PRIORITY_BOTS.length)];
 		}
