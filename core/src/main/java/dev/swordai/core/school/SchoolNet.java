@@ -324,6 +324,15 @@ public final class SchoolNet {
 	 * 09:11 check).
 	 */
 	public float sample(Workspace ws, int headMask, int presetMask, boolean greedy, float temperature, Random rng, int[] actionOut) {
+		return sample(ws, headMask, presetMask, greedy, temperature, null, rng, actionOut);
+	}
+
+	/**
+	 * The same with a temperature for each head ({@code headTemperatures[h]}, 0 or below = its most likely key), where
+	 * {@code headTemperatures} is not null: the test-time sharpening of a fight or a check, never in training.
+	 */
+	public float sample(Workspace ws, int headMask, int presetMask, boolean greedy, float temperature, float[] headTemperatures,
+			Random rng, int[] actionOut) {
 		float logp = 0f;
 		for (int h = 0; h < ActionSpace.HEADS; h++) {
 			if (h == ActionSpace.JUMP) {
@@ -337,7 +346,12 @@ public final class SchoolNet {
 				}
 				continue;
 			}
-			logp += pick(ws.logits, h, greedy, temperature, rng, ws.probs, actionOut);
+			if (headTemperatures != null) {
+				float t = headTemperatures[h];
+				logp += pick(ws.logits, h, greedy || t <= 0f, t <= 0f ? 1f : t, rng, ws.probs, actionOut);
+			} else {
+				logp += pick(ws.logits, h, greedy, temperature, rng, ws.probs, actionOut);
+			}
 		}
 		return logp;
 	}

@@ -183,7 +183,8 @@ public final class SchoolLearner implements AutoCloseable {
 		predict(step.obs, step.pred);
 		intend(mine, chooser, chooseWs, step, record);
 		actor.forward(actWs, step.obs.base.peri, step.obs.base.fovea, step.obs.base.vec, step.obs.mem, step.pred);
-		float logp = actor.sample(actWs, headMask, presetMask & ~headMask, false, record ? 1f : temperature, sampleRng, actionOut);
+		float logp = actor.sample(actWs, headMask, presetMask & ~headMask, false, record ? 1f : temperature, record ? null : playTemperatures,
+				sampleRng, actionOut);
 		if (!record) {
 			return;
 		}
@@ -462,6 +463,17 @@ public final class SchoolLearner implements AutoCloseable {
 	}
 
 	/** Same draws for both sides of a pair; see {@code Learner.seedSampling}. */
+	/**
+	 * A temperature for each head (ActionSpace order; 0 = the most likely key) for the steps it does not learn from (a check, a
+	 * fight), or null for the one temperature passed to {@link #act}. The research of 26 Oct (Jang et al. 2025): PPO agents
+	 * often play better a little sharper than they were trained; the camera most of all.
+	 */
+	public void playTemperatures(float[] perHead) {
+		playTemperatures = perHead == null ? null : perHead.clone();
+	}
+
+	private float[] playTemperatures;
+
 	public void seedSampling(long seed) {
 		sampleRng.setSeed(seed);
 		baseRng.setSeed(seed);

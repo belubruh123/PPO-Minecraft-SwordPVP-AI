@@ -216,7 +216,7 @@ public final class SchoolSession implements AgentSession {
 	 * 25 Oct fought only scripted bots and came out level with the installed model (the long check of 26 Oct 02:04: -2.7, se 2.4).
 	 */
 	private LoadedFighter sparring;
-	static final float SPAR_SHARE = 0.3f; // run 18 (26 Oct)
+	static final float SPAR_SHARE = 0.6f; // run 18 0.3 (26 Oct 03:30); run 19 0.6 (26 Oct, the research of 05:20: an exploiter's share)
 	/**
 	 * The mirror check: with this file in the school folder, every fight of a check (but the fight basics) is against the
 	 * server's copy of the installed model, A (the school network) and B (the installed model on the screen) on the same
@@ -224,6 +224,12 @@ public final class SchoolSession implements AgentSession {
 	 * network's lead over the installed model, the screen-against-server bias cancelled.
 	 */
 	static final String SPAR_CHECK_FILE = "spar-check";
+	/**
+	 * A check's test-time sharpening: with this file in the school folder (lines "head temperature", heads by ActionSpace.NAMES,
+	 * "all" for every head not named; 0 = the most likely key), the school network picks its keys at those temperatures in a
+	 * check; the installed model and the training stay at 1.
+	 */
+	static final String PLAY_TEMPERATURE_FILE = "play-temperature";
 	private boolean sparCheck;
 	static final int SPAR_LAG_EXTRA = 2;
 	private boolean sparFight;
@@ -640,6 +646,13 @@ public final class SchoolSession implements AgentSession {
 			stages.load(SwordFiles.schoolStages());
 			stages.fadeFromNow();
 		}
+		Path temps = SwordFiles.schoolDir().resolve(PLAY_TEMPERATURE_FILE);
+		if (mode == Mode.CHECK && Files.exists(temps)) {
+			float[] perHead = readHeadTemperatures(temps);
+			learner.playTemperatures(perHead);
+			SwordAi.LOGGER.info("school check: the school network picks at temperatures {} ({})", java.util.Arrays.toString(perHead),
+					String.join(" ", ActionSpace.NAMES));
+		}
 		Config icfg = SwordFiles.readConfig(SwordFiles.installedCopy().resolve("config.json"));
 		if (icfg != null && Files.exists(teacherFile)) {
 			installed = LoadedFighter.loadFrom(teacherFile, icfg, SwordFiles.installedCopy().resolve("curriculum.properties"));
@@ -916,6 +929,29 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	// ---- fights ---------------------------------------------------------------------------------
+
+	/** Reads {@link #PLAY_TEMPERATURE_FILE}: "all t" then "head t" lines; heads not named take "all" (1 if absent). */
+	static float[] readHeadTemperatures(Path file) throws IOException {
+		float[] t = new float[ActionSpace.HEADS];
+		float all = 1f;
+		java.util.Map<String, Float> named = new java.util.HashMap<>();
+		for (String line : Files.readAllLines(file)) {
+			String[] parts = line.trim().split("\\s+");
+			if (parts.length < 2 || parts[0].startsWith("#")) {
+				continue;
+			}
+			float v = Float.parseFloat(parts[1]);
+			if (parts[0].equals("all")) {
+				all = v;
+			} else {
+				named.put(parts[0], v);
+			}
+		}
+		for (int h = 0; h < ActionSpace.HEADS; h++) {
+			t[h] = named.getOrDefault(ActionSpace.NAMES[h], all);
+		}
+		return t;
+	}
 
 	private void beginFight(Truth truth) {
 		IntegratedServer server = mc.getSingleplayerServer();
