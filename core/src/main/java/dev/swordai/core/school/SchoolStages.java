@@ -175,7 +175,7 @@ public final class SchoolStages {
 	/** The installed network's pull at the school's start; it fades to nothing over the first three stages' least steps. */
 	// 2 from 25 Oct 09:55: between the techniques its keys (its W/S, its swing) held too lightly; the S of the file's escapes
 	// spread into the whole fight (S 166 a minute off the moments to its 79, swings 22 to 40; 09:49 check).
-	public static final float OLD_PULL = 1.0f; // run 2 (EXPERIMENTS.md): the 06:54 recipe (2 proposed 09:55)
+	public static final float OLD_PULL = 0.5f; // run 6 (EXPERIMENTS.md): the anchor loosened (1.0 in runs 2-5; 2 proposed 09:55)
 	/**
 	 * About a day on the screen. Since the overlay (24 Oct) the installed model teaches the fighting between the techniques,
 	 * not only the camera: it stays the network's teacher there until the network plays as well as it does.
