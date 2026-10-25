@@ -164,6 +164,15 @@ public final class SchoolStages {
 	 */
 	public static final boolean FROM_THE_FIGHT = true; // run 11 (25 Oct 17:10)
 
+	/**
+	 * Run 14 (EXPERIMENTS.md): the punish crit's swing key (the held swing in the lift and the swing on the way down) copied on
+	 * every moment, not only where it paid. Copied only where it paid (run 13) it was hardly copied at all: the crit lands on
+	 * few lifts, so the held swing that makes it was nearly never on a moment that paid, and the sword was back on 5 of 43 falls
+	 * in reach (19:00 check). Copied in full with the jumped crits in run 10 it was learned (sword back 3-13 -> 11-26 an update)
+	 * but those plans spread jumps into the fight (75 a minute to run 6's 44); the punish crit has no jump of its own.
+	 */
+	public static final boolean B1_SWING_ALWAYS = true; // run 14 (25 Oct 19:05)
+
 	/** Whether technique {@code t} is one the run teaches (RUN_TAUGHT, with RUN_PULL_CAP on). */
 	public static boolean runTaught(int t) {
 		return RUN_PULL_CAP > 0f && t >= 0 && t < Technique.COUNT && RUN_TAUGHT[t];
