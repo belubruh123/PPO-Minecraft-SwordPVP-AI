@@ -394,6 +394,15 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final boolean CRIT_HOLD_IN_AIR = true; // run 10 (25 Oct 16:15)
 	/**
+	 * Run 12 (EXPERIMENTS.md): lifted by their hit and coming down near them with the sword coming back, the installed model's
+	 * rules leave W and the sprint to the network. Its jump reset (JumpReset: W and sprint held on every airborne tick after the
+	 * jump, up to 14 ticks), its JumpIn jumps and "meet" held W there; this game ends a sprint only when W is let go, and starts
+	 * one again in the air with the sprint key. Of the falls in reach with the sword back still sprinting, W was the rules' on
+	 * 8-17 an update and the network's on 0-1 (25 Oct 17:10, the crit trace), and the let-go and punish crit (B1) targets
+	 * there were dropped as locked keys: punish crits landed 3-6% by the game. The jump on the hit (T9) stays the rules'.
+	 */
+	static final boolean RULES_LET_GO_IN_LIFT = false;
+	/**
 	 * Learning without forgetting (run 9 of EXPERIMENTS.md, SchoolLearner#anchorToBase): the copying targets come from the
 	 * frozen best fighter in ANCHOR_FILE (in the school folder), its own chances on the same inputs, instead of the installed
 	 * model's one key; the installed model's rules still play over the network. The user, 25 Oct 14:43: "When it started to
@@ -1424,6 +1433,10 @@ public final class SchoolSession implements AgentSession {
 			}
 			// Only heads still open: a rule's swing waits for the sword, the crosshair and the golden rule like the network's.
 			ruled = installed.fighter.ruledHeads() & keys;
+			if (RULES_LET_GO_IN_LIFT && liftedFor >= 0 && !me.onGround() && facts.reachDist <= 3.5f && charge > 0.5f) {
+				// Lifted by their hit and coming down near them: W and the sprint are the network's (RULES_LET_GO_IN_LIFT).
+				ruled &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
+			}
 			if (dev.swordai.core.school.SchoolStages.RULES_YIELD) {
 				// The rules give way to a technique being learned, on its keys: in training where its teacher teaches them, in
 				// a check (as in a real fight) while the decider has chosen it (SchoolStages#runTaught).
