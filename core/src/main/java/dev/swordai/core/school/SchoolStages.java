@@ -145,14 +145,14 @@ public final class SchoolStages {
 	 * The techniques the run of EXPERIMENTS.md teaches, one family at a time (25 Oct, the one-week goal): each at its mastery
 	 * share up to RUN_PULL_CAP, its pull weighted by the outcome (SchoolPpo.TEACH_AWR_MOST). 0: none.
 	 */
-	public static final float RUN_PULL_CAP = 0f; // 1 in runs 7-11 (the crit family); 0 in run 12 (run 6's recipe); 1 in runs 13-14 (B1 alone); 0 from run 15
+	public static final float RUN_PULL_CAP = 1f; // 1 in runs 7-11 (the crit family); 0 in run 12 (run 6's recipe); 1 in runs 13-14 (B1 alone); 0 in run 15 to 22:05, then 1 (T7)
 	/**
 	 * The installed model's fight-time rules give way to a technique being learned, on its keys (run 10 of EXPERIMENTS.md).
 	 * Its StepBack ("after a hit of its own that has not sent the opponent away it steps back": W and the sprint off) took the
 	 * keys of every technique that follows its own hit: the uppercut (T10, off on the sprint 37-76% at full pull, 25 Oct
 	 * 09:20-09:43), the hops (T11b), the delayed sprint hit (C7), the standing crit (T2). The user, 15:00: the uppercut at 0%.
 	 */
-	public static final boolean RULES_YIELD = false;
+	public static final boolean RULES_YIELD = true; // 25 Oct 22:05: the jump rules (HOP, CHASE) took the three-block hit's keys
 
 	/**
 	 * Run 11 (EXPERIMENTS.md): learned from the fight, not from the teacher. A technique's keys are copied only on moments that
@@ -180,9 +180,11 @@ public final class SchoolStages {
 	static final boolean[] RUN_TAUGHT = new boolean[Technique.COUNT];
 
 	static {
-		// Runs 7-11: the crit family (the punish crit, the double crits, the standing crit); from run 13 the punish crit alone:
-		// every run teaching the whole family lost, the crit tries spreading jumps into the fight.
-		for (Technique t : new Technique[] {Technique.B1}) {
+		// Runs 7-11: the crit family (the punish crit, the double crits, the standing crit); runs 13-14 the punish crit alone:
+		// every run teaching the whole family lost, the crit tries spreading jumps into the fight. From 25 Oct 22:05 the
+		// three-block hit (T7, "full-sprint hit before they are close enough to hit back"): the five opponents it loses to most
+		// win at the edge of reach, hitting first as it walks into a ready sword (the investigation of 21:30).
+		for (Technique t : new Technique[] {Technique.T7}) {
 			RUN_TAUGHT[t.ordinal()] = true;
 		}
 	}
