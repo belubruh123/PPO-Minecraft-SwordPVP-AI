@@ -145,7 +145,7 @@ public final class SchoolStages {
 	 * The techniques the run of EXPERIMENTS.md teaches, one family at a time (25 Oct, the one-week goal): each at its mastery
 	 * share up to RUN_PULL_CAP, its pull weighted by the outcome (SchoolPpo.TEACH_AWR_MOST). 0: none.
 	 */
-	public static final float RUN_PULL_CAP = 1f; // 1 in runs 7-11 (the crit family); 0 in run 12 (run 6's recipe); 1 in run 13 (B1 alone)
+	public static final float RUN_PULL_CAP = 0f; // 1 in runs 7-11 (the crit family); 0 in run 12 (run 6's recipe); 1 in runs 13-14 (B1 alone); 0 from run 15
 	/**
 	 * The installed model's fight-time rules give way to a technique being learned, on its keys (run 10 of EXPERIMENTS.md).
 	 * Its StepBack ("after a hit of its own that has not sent the opponent away it steps back": W and the sprint off) took the
