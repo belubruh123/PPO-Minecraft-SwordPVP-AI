@@ -1474,7 +1474,7 @@ public final class SchoolSession implements AgentSession {
 				// Lifted by their hit and coming down near them: W and the sprint are the network's (RULES_LET_GO_IN_LIFT).
 				ruled &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
 			}
-			if (dev.swordai.core.school.SchoolStages.RULES_YIELD) {
+			if (dev.swordai.core.school.SchoolStages.RULES_YIELD && clock.ticksSinceHitTaken > dev.swordai.core.school.SchoolStages.YIELD_AFTER_HIT) {
 				// The rules give way to a technique being learned, on its keys: in training where its teacher teaches them, in
 				// a check (as in a real fight) while the decider has chosen it (SchoolStages#runTaught).
 				int body = ActionSpace.ALL_HEADS & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);

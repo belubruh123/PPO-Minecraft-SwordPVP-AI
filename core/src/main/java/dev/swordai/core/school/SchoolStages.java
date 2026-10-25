@@ -153,6 +153,12 @@ public final class SchoolStages {
 	 * 09:20-09:43), the hops (T11b), the delayed sprint hit (C7), the standing crit (T2). The user, 15:00: the uppercut at 0%.
 	 */
 	public static final boolean RULES_YIELD = true; // 25 Oct 22:05: the jump rules (HOP, CHASE) took the three-block hit's keys
+	/**
+	 * The rules give way only when it has not been hit for this many ticks: in their combo they keep their keys (the jump
+	 * reset, the step back). Giving way whenever the decider had chosen the technique, its combo escape went in the 23:19 check
+	 * (their third hit in a row 52% to the installed model's 32%; run 6: 33%).
+	 */
+	public static final int YIELD_AFTER_HIT = 20;
 
 	/**
 	 * Run 11 (EXPERIMENTS.md): learned from the fight, not from the teacher. A technique's keys are copied only on moments that

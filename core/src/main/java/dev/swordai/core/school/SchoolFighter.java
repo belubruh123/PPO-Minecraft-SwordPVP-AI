@@ -152,7 +152,8 @@ public final class SchoolFighter {
 			ruled &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
 		}
 		// The rules give way to a technique it learned while the decider has chosen it (SchoolStages#RULES_YIELD).
-		if (ruled != 0 && SchoolStages.RULES_YIELD && SchoolStages.runTaught(learner.told().ordinal())) {
+		if (ruled != 0 && SchoolStages.RULES_YIELD && sinceHitTaken > SchoolStages.YIELD_AFTER_HIT
+				&& SchoolStages.runTaught(learner.told().ordinal())) {
 			ruled &= ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
 		}
 		keys &= ~ruled;
