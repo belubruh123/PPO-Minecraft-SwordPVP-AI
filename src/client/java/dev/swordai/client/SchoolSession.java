@@ -408,7 +408,7 @@ public final class SchoolSession implements AgentSession {
 	 * 8-17 an update and the network's on 0-1 (25 Oct 17:10, the crit trace), and the let-go and punish crit (B1) targets
 	 * there were dropped as locked keys: punish crits landed 3-6% by the game. The jump on the hit (T9) stays the rules'.
 	 */
-	static final boolean RULES_LET_GO_IN_LIFT = false;
+	static final boolean RULES_LET_GO_IN_LIFT = true; // run 12 (25 Oct 17:28)
 	/**
 	 * Learning without forgetting (run 9 of EXPERIMENTS.md, SchoolLearner#anchorToBase): the copying targets come from the
 	 * frozen best fighter in ANCHOR_FILE (in the school folder), its own chances on the same inputs, instead of the installed
