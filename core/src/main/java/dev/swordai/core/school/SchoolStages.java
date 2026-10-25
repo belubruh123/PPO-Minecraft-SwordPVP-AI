@@ -145,7 +145,7 @@ public final class SchoolStages {
 	 * The techniques the run of EXPERIMENTS.md teaches, one family at a time (25 Oct, the one-week goal): each at its mastery
 	 * share up to RUN_PULL_CAP, its pull weighted by the outcome (SchoolPpo.TEACH_AWR_MOST). 0: none.
 	 */
-	public static final float RUN_PULL_CAP = 0f;
+	public static final float RUN_PULL_CAP = 1f; // run 7 (EXPERIMENTS.md): the first technique family, the crits, with the basics reviewed in between
 	static final boolean[] RUN_TAUGHT = new boolean[Technique.COUNT];
 
 	static {

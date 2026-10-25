@@ -236,7 +236,7 @@ public final class SchoolSession implements AgentSession {
 	 */
 	// 0 from 25 Oct 03:25 (control run; was 0.25); 0.2 from 09:00, the user: "Review every skill while learning that so it won't
 	// forgot stuff".
-	static final float REVIEW_SHARE = 0f; // run 2 (EXPERIMENTS.md): the 06:54 recipe
+	static final float REVIEW_SHARE = 0.1f; // run 7 (EXPERIMENTS.md): the first technique family, the crits, with the basics reviewed in between (the user, 13:25: "letting it review in between")
 	/** The share of the specialists' training fights in which the specialist does other things too (Specialists.varied). */
 	static final float VARIED_SHARE = 0.5f;
 	/**
@@ -245,9 +245,9 @@ public final class SchoolSession implements AgentSession {
 	 * this share of the training fights are basics; the rest stay technique fights so that those are not lost. After that,
 	 * {@link #REVIEW_SHARE} ("after it is done with the basics make it constantly review it").
 	 */
-	static final float BASICS_SHARE = 0f; // run 2 (EXPERIMENTS.md): the 06:54 recipe (0.2 from 09:00)
+	static final float BASICS_SHARE = 0.1f; // run 7 (EXPERIMENTS.md): the first technique family, the crits, with the basics reviewed in between
 	/** With all but the last basic passed, the basics' share comes down toward this. */
-	static final float BASICS_SHARE_LEAST = 0f; // run 2 (EXPERIMENTS.md): the 06:54 recipe
+	static final float BASICS_SHARE_LEAST = 0.1f; // run 7 (EXPERIMENTS.md): the first technique family, the crits, with the basics reviewed in between
 	/** Steps of a basic judged at a time against its stage's bars. */
 	static final int PASS_STEPS = 4000;
 	/** A basic that failed this many judgements in a row stops holding the rest back (and is still drawn three times as often). */
@@ -367,7 +367,7 @@ public final class SchoolSession implements AgentSession {
 	 * reach, 306 with the sword back and only 86 of those not sprinting (the punish crits' leak); taught at the B1 pull,
 	 * which was 0, it taught nothing on 4630 lift ticks. 0: as before.
 	 */
-	static final float LET_GO_PULL = 0f; // 1 in run 3 (11:00-11:22), stopped: fundamentals first (the user, 11:17)
+	static final float LET_GO_PULL = 1f; // run 7 (EXPERIMENTS.md): the first technique family, the crits, with the basics reviewed in between (1 in run 3, 11:00-11:22, stopped: fundamentals first)
 	/**
 	 * Run 5 (EXPERIMENTS.md): a teacher whose pull is zero (the basics swing, the crit swing, the find-them camera, the
 	 * sprint let-go, the punish crit's aim) no longer puts its target on the step, so the installed model's stays and is
