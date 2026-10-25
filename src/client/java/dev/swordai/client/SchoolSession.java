@@ -390,7 +390,7 @@ public final class SchoolSession implements AgentSession {
 	 * starts only after a crit of its own lands, so it had no moments to learn from. The user, 15:38: "DOUBLE CRIT WHERE THE
 	 * HECK IS IT LEARNING". The frozen best fighter (ANCHOR_TO_BEST) holds the rest of the fight in place.
 	 */
-	static final boolean CRIT_HOLD_IN_AIR = false;
+	static final boolean CRIT_HOLD_IN_AIR = true; // run 10 (25 Oct 16:15)
 	/**
 	 * Learning without forgetting (run 9 of EXPERIMENTS.md, SchoolLearner#anchorToBase): the copying targets come from the
 	 * frozen best fighter in ANCHOR_FILE (in the school folder), its own chances on the same inputs, instead of the installed
