@@ -384,6 +384,14 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final boolean CRIT_HOLD_UNTAUGHT = true; // run 8 (25 Oct 14:41)
 	/**
+	 * Run 10 (EXPERIMENTS.md): the crit's held swing taught again in the air, so only the walk-in's wait for the sword (on the
+	 * ground, where it spread into the fight in run 7) stays untaught. Without it the network swung on the way up, the sword was
+	 * not back by the fall, and its crits hardly landed (punish crit by the game 4 of 90, 25 Oct 15:34); the double crit (T1)
+	 * starts only after a crit of its own lands, so it had no moments to learn from. The user, 15:38: "DOUBLE CRIT WHERE THE
+	 * HECK IS IT LEARNING". The frozen best fighter (ANCHOR_TO_BEST) holds the rest of the fight in place.
+	 */
+	static final boolean CRIT_HOLD_IN_AIR = false;
+	/**
 	 * Learning without forgetting (run 9 of EXPERIMENTS.md, SchoolLearner#anchorToBase): the copying targets come from the
 	 * frozen best fighter in ANCHOR_FILE (in the school folder), its own chances on the same inputs, instead of the installed
 	 * model's one key; the installed model's rules still play over the network. The user, 25 Oct 14:43: "When it started to
@@ -1221,7 +1229,7 @@ public final class SchoolSession implements AgentSession {
 		int ao2 = ActionSpace.OFFSETS[ActionSpace.ATTACK];
 		boolean holdUntaught = mode == Mode.TRAIN && CRIT_HOLD_UNTAUGHT && !yielded && step.teacherTechnique >= 0
 				&& CRIT_FAMILY[step.teacherTechnique] && (step.teacherHeads & (1 << ActionSpace.ATTACK)) != 0
-				&& step.teacher[ao2] >= step.teacher[ao2 + 1];
+				&& step.teacher[ao2] >= step.teacher[ao2 + 1] && !(CRIT_HOLD_IN_AIR && !me.onGround());
 		if (yielded || holdUntaught) {
 			judgedHeads = step.teacherHeads;
 			judgedTechnique = step.teacherTechnique;
