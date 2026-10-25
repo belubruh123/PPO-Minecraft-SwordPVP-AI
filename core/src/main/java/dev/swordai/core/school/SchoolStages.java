@@ -135,6 +135,12 @@ public final class SchoolStages {
 	// holds the attack key on every K2 moment, so nothing of "don't swing" is taught), T8 and B1 are taught.
 	public static final float JUMP_IN_PULL_CAP = 3f; // = PRIORITY_MOST
 	static final boolean[] JUMP_IN_ANSWER = new boolean[Technique.COUNT];
+	/**
+	 * The golden rule's teacher (K2: no knockback hit on a falling one) off from 25 Oct 09:35: in this game, as the checks
+	 * measured it, the hit on the falling jumper is what beats the jump-in critters (see SchoolSession.K2_GUARD); taught, it
+	 * kept the swing back from them and the damage went with it.
+	 */
+	public static final float K2_PULL = 0f;
 
 	static {
 		JUMP_IN_ANSWER[Technique.T8.ordinal()] = true;
@@ -329,7 +335,7 @@ public final class SchoolStages {
 	public float[] techPulls() {
 		float[] p = new float[Technique.COUNT];
 		for (int t = 0; t < p.length; t++) {
-			p[t] = TECH_PULL * Math.min(JUMP_IN_ANSWER[t] ? JUMP_IN_PULL_CAP : PULL_CAP, pullShare[t]);
+			p[t] = t == Technique.K2.ordinal() ? K2_PULL : TECH_PULL * Math.min(JUMP_IN_ANSWER[t] ? JUMP_IN_PULL_CAP : PULL_CAP, pullShare[t]);
 		}
 		return p;
 	}

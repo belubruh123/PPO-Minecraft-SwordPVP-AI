@@ -66,6 +66,12 @@ public final class SchoolFighter {
 	private boolean crosshairOn;
 	private Fighter rules;
 	private boolean swingHeld;
+	/**
+	 * Within this many ticks of its own hit, an opponent in the air is its combo's (lifted by that hit), not one jumping in:
+	 * the golden rule's guard stays off there. The user, 25 Oct 09:25: the guard made it forget to combo (its hits stunned 16%
+	 * to the installed model's 24%, sprint hits 48% to 83% in the 09:11 check).
+	 */
+	public static final int K2_COMBO_TICKS = 15;
 
 	/**
 	 * The installed model's fight-time rules over this network: on a tick one of its rules sets keys, those keys are the
@@ -128,7 +134,7 @@ public final class SchoolFighter {
 		if (whiffGuard && !crosshairOn) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 		}
-		if (swingHeld) {
+		if (swingHeld && sinceHitDealt > K2_COMBO_TICKS) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 		}
 		int ruled = rules != null ? rules.ruledHeads() & keys : 0;

@@ -87,6 +87,8 @@ public final class SchoolSession implements AgentSession {
 	/** The reward: damage traded, a tenth a point of health, and a knockout. */
 	static final float PER_HEALTH = 0.1f;
 	static final float KNOCKOUT = 1f;
+	/** Damage dealt weighs this much more than damage taken (25 Oct 09:25, the user: "prioritize to make it dealt more damage"). */
+	static final float DEALT_WEIGHT = 1.25f;
 	/**
 	 * A real punish crit (B1): a crit the game confirms, landed within this many ticks of being hit (as {@code Habits}
 	 * counts it). Its damage alone paid it about a third of a point more than a plain hit, too little to outweigh letting
@@ -122,7 +124,7 @@ public final class SchoolSession implements AgentSession {
 	 * The golden rule (K2) broken: a knockback hit landed on a falling player, who crits back (the user's first wish). A
 	 * whole knockout's worth since 24 Oct 15:40: at 0.5, 4 to 14 an update when jumpers (the uppercutter) came in.
 	 */
-	static final float K2_BROKEN = 1.0f;
+	static final float K2_BROKEN = 0f; // 1.0 until 25 Oct 09:35: see K2_GUARD
 	/**
 	 * The basics teacher (the user, 24 Oct: "make a brand new teacher specializing on teaching this"): outside the technique
 	 * moments the swing is its, as soon as the sword is back and only with the crosshair on them (the game's own pick, so in
@@ -326,6 +328,9 @@ public final class SchoolSession implements AgentSession {
 	/** The school's sprint hits on one the server had falling (Truth.botFalling), and that flag as of the step. */
 	private int k2Truth;
 	private boolean lastTruthFalling;
+	/** The same outside its own combo as it saw them (falling on the screen), and whether the step's hit was in its combo. */
+	private int k2Seen;
+	private boolean lastInOwnCombo;
 	/** The technique of the moment on the last tick, so a moment's start is told to the stages with the bot it came against. */
 	private int lastMomentTechnique = -1;
 	/** In a check, the school network's combo jump resets mistimed now and then, as they will be in a real fight. */
@@ -351,7 +356,10 @@ public final class SchoolSession implements AgentSession {
 	 * priority to learn to counter it and requires a 99% accuracy". The file: "Don't KB-hit them (K2); let it land, punish
 	 * crit (B1)". Taught it broke 26-52 times a check, the installed model 24-31; taught harder it stopped swinging (08:22).
 	 */
-	static final boolean K2_GUARD = true;
+	// Off from 09:35: in every check of the night, holding the swing on falling jumpers lost to the jump-in critters (fight-jumpin
+	// -26 to -49 with 5-9 such hits a check, -9 to +7 with 29-33; the installed model makes 20-36 and takes 2-8 crits within ten
+	// ticks of them). The user, 09:25: the guard made it forget "sprint hit on jump critter", combos and deflections.
+	static final boolean K2_GUARD = false;
 	/**
 	 * Ticks past the seen lag the golden rule looks ahead: the click's tick, and the game's glide of another player toward
 	 * where it was told it is (its height, and so its fall, shown late). At one, 5 of 145 jump-ins were still knockback-hit
@@ -928,6 +936,9 @@ public final class SchoolSession implements AgentSession {
 		facts.onGround = me.onGround();
 		clock.ticksSinceHitDealt++;
 		clock.ticksSinceHitTaken++;
+		// Before this tick's hit: whether a hit now lands within its own combo (SchoolFighter.K2_COMBO_TICKS).
+		boolean inOwnCombo = clock.ticksSinceHitDealt <= dev.swordai.core.school.SchoolFighter.K2_COMBO_TICKS;
+		lastInOwnCombo = inOwnCombo;
 		CombatLog.drain(facts);
 		boolean shownDealt = hasLastAction && clicked && clickOnTarget;
 		if (hasLastAction) {
@@ -1001,7 +1012,7 @@ public final class SchoolSession implements AgentSession {
 				shaping = 0f;
 				learner.complete(reward, ko, !ko && (timeUp || full), step.obs);
 			} else if (mode == Mode.TRAIN) {
-				float reward = PER_HEALTH * (facts.damageDealt - facts.damageTaken) + (facts.koDealt ? KNOCKOUT : 0f) - (facts.koTaken ? KNOCKOUT : 0f);
+				float reward = PER_HEALTH * (DEALT_WEIGHT * facts.damageDealt - facts.damageTaken) + (facts.koDealt ? KNOCKOUT : 0f) - (facts.koTaken ? KNOCKOUT : 0f);
 				if (facts.hitsDealt > 0 && facts.critDealt) {
 					if (liftedFor >= 0) {
 						reward += PUNISH_CRIT;
@@ -1014,7 +1025,8 @@ public final class SchoolSession implements AgentSession {
 				}
 				// Falling as it saw them, or on the server already (seen late: "it might be landing already while client still
 				// doesn't", the user, 24 Oct 23:05).
-				if (facts.hitsDealt > 0 && facts.sprintHit && (reader.duel.them.falling() || truth.botFalling())) {
+				// Not in its own combo (25 Oct 09:25, the user: the guard made it forget to combo).
+				if (facts.hitsDealt > 0 && facts.sprintHit && !inOwnCombo && (reader.duel.them.falling() || truth.botFalling())) {
 					reward -= K2_BROKEN;
 					k2Broken++;
 				}
@@ -1157,7 +1169,7 @@ public final class SchoolSession implements AgentSession {
 			dev.swordai.core.pvp.Body them = reader.duel.them;
 			boolean fallingByTheHit = !them.onGround && them.vy - 0.08 * fightLag < 0.0;
 			boolean swing = ActionSpace.unlocked(keys, ActionSpace.ATTACK) && onOpponent()
-					&& !(fallingByTheHit && reader.duel.me.sprinting);
+					&& !(K2_GUARD && fallingByTheHit && reader.duel.me.sprinting && clock.ticksSinceHitDealt > dev.swordai.core.school.SchoolFighter.K2_COMBO_TICKS);
 			int off = ActionSpace.OFFSETS[ActionSpace.ATTACK];
 			step.teacher[off] = swing ? 0f : 1f;
 			step.teacher[off + 1] = swing ? 1f : 0f;
@@ -1276,7 +1288,12 @@ public final class SchoolSession implements AgentSession {
 		dev.swordai.core.pvp.Body them = reader.duel.them;
 		// And on every moment the teacher calls K2 (its sprint key may be about to be pressed): the swing it holds back is the
 		// rule's, not taught, so that "don't swing" cannot spread from it (the 08:22 check).
-		boolean k2Hold = K2_GUARD && ((me.isSprinting() || reader.duel.me.sprinting)
+		// Never in its own combo (SchoolFighter.K2_COMBO_TICKS): there the K2 moment teaches nothing either, the damage decides.
+		boolean inCombo = clock.ticksSinceHitDealt <= dev.swordai.core.school.SchoolFighter.K2_COMBO_TICKS;
+		if (inCombo && step.teacherTechnique == Technique.K2.ordinal()) {
+			step.teacherHeads &= ~(1 << ActionSpace.ATTACK);
+		}
+		boolean k2Hold = K2_GUARD && !inCombo && ((me.isSprinting() || reader.duel.me.sprinting)
 				&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, fightLag + K2_MARGIN) || step.teacherTechnique == Technique.K2.ordinal());
 		if (k2Hold) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
@@ -1841,10 +1858,11 @@ public final class SchoolSession implements AgentSession {
 				checkFights / 2, perfLine(perf), perfLine(perfB), perf.keysLine(), perfB.keysLine(), ownLine(0), ownLine(1), critLine(0), critLine(1),
 				jumpInLine(0), jumpInLine(1), swingLine(0), swingLine(1));
 		SwordAi.LOGGER.info("school check rules | A: the golden rule (K2) held the swing on {} ticks, the installed model's rules set keys on {} ticks; "
-				+ "sprint hits on one falling on the server {}", k2Held, ruleTicks, k2Truth);
+				+ "sprint hits outside its combos on one falling: on the server {}, as seen {}", k2Held, ruleTicks, k2Truth, k2Seen);
 		k2Held = 0;
 		ruleTicks = 0;
 		k2Truth = 0;
+		k2Seen = 0;
 	}
 
 	/** One tick of a side's crit moments (see {@link #critTrace}). */
@@ -1941,8 +1959,9 @@ public final class SchoolSession implements AgentSession {
 		if (facts.hitsDealt > 0 && them.rising()) {
 			c[1]++;
 		}
-		if (side == 0 && facts.hitsDealt > 0 && facts.sprintHit && lastTruthFalling) {
-			k2Truth++;
+		if (side == 0 && facts.hitsDealt > 0 && facts.sprintHit && !lastInOwnCombo) {
+			k2Truth += lastTruthFalling ? 1 : 0;
+			k2Seen += them.falling() ? 1 : 0;
 		}
 		if (facts.hitsDealt > 0 && facts.sprintHit && them.falling()) {
 			c[2]++;
@@ -2068,6 +2087,7 @@ public final class SchoolSession implements AgentSession {
 		k2Held = 0;
 		ruleTicks = 0;
 		k2Truth = 0;
+		k2Seen = 0;
 		java.util.Arrays.fill(critTrace[0], 0L);
 		java.util.Arrays.fill(jumpIn[0], 0L);
 		float dealtAll = 0f;
