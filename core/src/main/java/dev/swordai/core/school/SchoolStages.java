@@ -154,6 +154,16 @@ public final class SchoolStages {
 	 */
 	public static final boolean RULES_YIELD = false;
 
+	/**
+	 * Run 11 (EXPERIMENTS.md): learned from the fight, not from the teacher. A technique's keys are copied only on moments that
+	 * went better than expected (the step's advantage above zero), and nothing pays for pressing the teacher's keys (the
+	 * imitation and done rewards); the game's own results pay (damage, knockouts, real crits, real punish crits). The scripted
+	 * teacher playing its techniques itself lost to the installed model in every test (24 Oct: -1.1 to -23.3 a fight), and every
+	 * run that copied it more lost more (run 7 -22.5, 9b -8.7, 10 -17.1): copying it cannot beat the installed model. The user,
+	 * 25 Oct 16:10: "My goal is to let it learn everything IN REAL FIGHT AS well so not aginst teacher".
+	 */
+	public static final boolean FROM_THE_FIGHT = true; // run 11 (25 Oct 17:10)
+
 	/** Whether technique {@code t} is one the run teaches (RUN_TAUGHT, with RUN_PULL_CAP on). */
 	public static boolean runTaught(int t) {
 		return RUN_PULL_CAP > 0f && t >= 0 && t < Technique.COUNT && RUN_TAUGHT[t];

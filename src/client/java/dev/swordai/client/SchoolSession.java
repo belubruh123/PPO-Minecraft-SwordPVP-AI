@@ -1517,14 +1517,16 @@ public final class SchoolSession implements AgentSession {
 			stages.sawMoment(fightBot, t);
 		}
 		lastMomentTechnique = t;
-		if (told && t >= 0 && perf.lastMatch >= 0f) {
+		// Learned from the fight (SchoolStages#FROM_THE_FIGHT): pressing the teacher's keys pays nothing; the game's results do.
+		boolean fromTheFight = dev.swordai.core.school.SchoolStages.FROM_THE_FIGHT;
+		if (told && t >= 0 && perf.lastMatch >= 0f && !fromTheFight) {
 			shaping += IMITATE * perf.lastMatch * Math.min(SHARE_MOST, pullsNow[t]);
 		}
 		for (int i = 0; i < Technique.COUNT; i++) {
 			int paid = perf.takePaid(i);
 			int won = perf.takeWon(i);
 			if (told && paid + won > 0 && i != Technique.BASE.ordinal()) {
-				shaping += (DONE_BONUS * paid + WON_BONUS * won) * Math.min(SHARE_MOST, pullsNow[i]);
+				shaping += fromTheFight ? 0f : (DONE_BONUS * paid + WON_BONUS * won) * Math.min(SHARE_MOST, pullsNow[i]);
 				momentsPaid += paid;
 				momentsWon += won;
 			}

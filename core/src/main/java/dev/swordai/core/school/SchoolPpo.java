@@ -223,6 +223,11 @@ public final class SchoolPpo implements AutoCloseable {
 				if (byTech && r.letGoPull[i] > 0f && (h == ActionSpace.FORWARD || h == ActionSpace.SPRINT)) {
 					pull = r.letGoPull[i] * (float) Math.min(TEACH_AWR_MOST, Math.exp(adv / TEACH_AWR_BETA));
 				}
+				// Learned from the fight (SchoolStages#FROM_THE_FIGHT): a technique's keys only where the moment went better than expected.
+				if (SchoolStages.FROM_THE_FIGHT && byTech && !camera && adv <= 0f
+						&& (which != dev.swordai.core.pvp.Technique.BASE.ordinal() || r.letGoPull[i] > 0f)) {
+					pull = 0f;
+				}
 				if (!byTech && !installedHere) {
 					continue;
 				}
