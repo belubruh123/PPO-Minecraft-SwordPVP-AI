@@ -17,8 +17,17 @@ import java.util.Random;
  * is going into, and what it chose on the tick before and for how long, so carrying on with a technique is easy and the
  * real choice is when to start one. It learns from the technique teacher's own choices (the file's "when"); it is
  * kept apart from the acting network and learns only from its own loss.
+ *
+ * <p>Since 25 Oct 09:35 each of those choices counts by how the fight went after it (advantage-weighted regression):
+ * a choice of the teacher's that was followed by more damage traded than the critic expected counts up to
+ * {@link #AWR_MOST} times, one followed by less down toward nothing. The user: "instead of guard it should learn when to
+ * not sprint hit when to and when to crit, I thought decision model does that"; copying the teacher alone, it chose the
+ * golden rule's held swing against jump-in critters every time, and lost to them in every check of the night.
  */
 public final class Chooser {
+	/** Advantage-weighted regression: weight exp(advantage / AWR_BETA), the advantages scaled to one deviation, at most AWR_MOST. */
+	public static final float AWR_BETA = 1f;
+	public static final float AWR_MOST = 3f;
 	public static final int IN = ObsSpec.VEC + SchoolObs.MEM + Predictor.OUT + SchoolNet.INTENT;
 	public static final int HIDDEN = 128;
 
@@ -122,6 +131,8 @@ public final class Chooser {
 		/** Ordinary-fight ticks after ordinary-fight ticks on which it would have started a technique. */
 		public int falseStarts;
 		public int calm;
+		/** The sum of the advantage weights (see AWR_BETA). */
+		public double weight;
 
 		@Override
 		public String toString() {
@@ -129,7 +140,8 @@ public final class Chooser {
 					"loss %.3f over %d, chose as the teacher %.0f%%, on its techniques %.0f%% of %d, its starts %.0f%% of %d, "
 							+ "a start where it did none %.1f%% of %d", loss / samples, samples, 100.0 * right / samples,
 					100.0 * rightTechnique / Math.max(1, technique), technique, 100.0 * rightStart / Math.max(1, starts), starts,
-					100.0 * falseStarts / Math.max(1, calm), calm);
+					100.0 * falseStarts / Math.max(1, calm), calm) + String.format(java.util.Locale.ROOT, ", weighed by the outcome %.2f on average",
+					weight / samples);
 		}
 	}
 
@@ -154,6 +166,17 @@ public final class Chooser {
 			return s;
 		}
 		int base = Technique.BASE.ordinal();
+		double mean = 0.0;
+		for (int k = 0; k < n; k++) {
+			mean += r.advantage[labelled[k]];
+		}
+		mean /= n;
+		double var = 0.0;
+		for (int k = 0; k < n; k++) {
+			double d = r.advantage[labelled[k]] - mean;
+			var += d * d;
+		}
+		float std = (float) Math.max(1e-6, Math.sqrt(var / n));
 		Workspace ws = newWorkspace();
 		for (int b = 0; b < batches; b++) {
 			ParamSet.zero(ws.grads);
@@ -164,8 +187,10 @@ public final class Chooser {
 				int label = r.intentLabel[i];
 				int before = techniqueOf(r.prevIntent[i], 0);
 				boolean start = label != base && label != before;
+				float w = (float) Math.min(AWR_MOST, Math.exp((r.advantage[i] - mean) / std / AWR_BETA));
+				s.weight += w;
 				for (int c = 0; c < Technique.COUNT; c++) {
-					ws.dLogits[c] = ws.chances[c] - (c == label ? 1f : 0f);
+					ws.dLogits[c] = w * (ws.chances[c] - (c == label ? 1f : 0f));
 				}
 				s.loss -= Math.log(Math.max(1e-9f, ws.chances[label]));
 				s.samples++;
