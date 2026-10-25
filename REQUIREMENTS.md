@@ -140,3 +140,5 @@ What changes it (18 October):
 - A **polished menu** (Right Shift), easy **import/export** buttons, **keybinds**; the real skin shown to the
   user while the AI sees its keyed picture.
 - `/swordai fight` only where everyone has agreed to it; nothing aimed at avoiding detection.
+
+- **25 Oct 17:12 — a sprint hit does not knock a close rising jumper away**: "against rising jumper a sprint hit won't help knock them away ... sprint hit doesn't have perfect kb to knock out if they are close thrid we have latency". T8 (hit them rising) only where the hit, landing after the latency, still sends them out of reach; close in, a sprint hit at a rising jumper is not the answer (they come down on it and crit). Judged by the game: T8 hits by distance, stunned vs crit taken after.

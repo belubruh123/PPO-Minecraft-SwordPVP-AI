@@ -210,7 +210,14 @@ public final class SchoolSession implements AgentSession {
 	 * Per side, the answer to jumping in (the priority): their take-offs toward it, its hits landed on them rising (T8), its
 	 * knockback hits landed on them falling (what K2 forbids), and the crits it took within ten ticks of one of those.
 	 */
-	private final long[][] jumpIn = new long[2][5];
+	private final long[][] jumpIn = new long[2][9];
+	/**
+	 * Its hits on a rising jumper by how close they were (under {@link #RISER_CLOSE} blocks), and the crits taken within ten
+	 * ticks after each kind. The user, 25 Oct 17:12: a sprint hit does not knock a close rising jumper away, and there is lag.
+	 */
+	static final float RISER_CLOSE = 2.0f;
+	private final int[] sinceRiserHit = {1000, 1000};
+	private final boolean[] riserHitClose = new boolean[2];
 	private int sinceFallingHit = 1000;
 	/** Real punish crits rewarded since the last update, and crits landed outside that window. */
 	private int punishCritsPaid;
@@ -2119,8 +2126,14 @@ public final class SchoolSession implements AgentSession {
 			c[0]++;
 		}
 		sinceFallingHit = Math.min(sinceFallingHit + 1, 1000);
+		sinceRiserHit[side] = Math.min(sinceRiserHit[side] + 1, 1000);
 		if (facts.hitsDealt > 0 && them.rising()) {
 			c[1]++;
+			riserHitClose[side] = facts.reachDist < RISER_CLOSE;
+			c[riserHitClose[side] ? 5 : 6]++;
+			sinceRiserHit[side] = 0;
+		} else if (facts.critsTaken > 0 && sinceRiserHit[side] <= 10) {
+			c[riserHitClose[side] ? 7 : 8] += facts.critsTaken;
 		}
 		if (side == 0 && facts.hitsDealt > 0 && facts.sprintHit && !lastInOwnCombo) {
 			k2Truth += lastTruthFalling ? 1 : 0;
@@ -2153,7 +2166,8 @@ public final class SchoolSession implements AgentSession {
 	private String jumpInLine(int side) {
 		long[] c = jumpIn[side];
 		return String.format(Locale.ROOT, "their jump-ins %d; its hits on them rising (T8) %d; its knockback hits on them falling (K2 broken) %d, crits taken "
-				+ "within ten ticks %d; crits taken in all %d", c[0], c[1], c[2], c[3], c[4]);
+				+ "within ten ticks %d; crits taken in all %d; hits on them rising close %d (crits taken after %d), further %d (crits taken after %d)",
+				c[0], c[1], c[2], c[3], c[4], c[5], c[7], c[6], c[8]);
 	}
 
 	private String critLine(int side) {
