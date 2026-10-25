@@ -530,6 +530,65 @@ public final class SchoolLearner implements AutoCloseable {
 		hasPending = false;
 	}
 
+	/**
+	 * Saves to {@code out} the blend of the school networks in {@code files} (see Soup): every weight of the actor, the critic,
+	 * the predictor and the chooser is the sum of theirs times {@code coefs}; the Adam moments, the reward scaler and the step
+	 * counts are the first network's.
+	 */
+	public static void blend(Path out, Path[] files, float[] coefs) throws IOException {
+		SchoolLearner first = new SchoolLearner(0L, 1, 0.99f, 0.95f, 1);
+		try {
+			first.load(files[0]);
+			dev.swordai.core.nn.ParamSet[] sets = first.paramSets();
+			float[][][] sum = new float[sets.length][][];
+			for (int s = 0; s < sets.length; s++) {
+				sum[s] = new float[sets[s].params().size()][];
+				for (int i = 0; i < sum[s].length; i++) {
+					sum[s][i] = new float[sets[s].params().get(i).w.length];
+				}
+			}
+			for (int f = 0; f < files.length; f++) {
+				SchoolLearner other = f == 0 ? first : new SchoolLearner(0L, 1, 0.99f, 0.95f, 1);
+				try {
+					if (f > 0) {
+						other.load(files[f]);
+					}
+					dev.swordai.core.nn.ParamSet[] os = other.paramSets();
+					for (int s = 0; s < sets.length; s++) {
+						if (os[s].params().size() != sum[s].length) {
+							throw new IOException(files[f] + " has another network shape");
+						}
+						for (int i = 0; i < sum[s].length; i++) {
+							float[] w = os[s].params().get(i).w;
+							if (w.length != sum[s][i].length) {
+								throw new IOException(files[f] + ": tensor " + os[s].params().get(i).name + " has another size");
+							}
+							for (int k = 0; k < w.length; k++) {
+								sum[s][i][k] += coefs[f] * w[k];
+							}
+						}
+					}
+				} finally {
+					if (f > 0) {
+						other.close();
+					}
+				}
+			}
+			for (int s = 0; s < sets.length; s++) {
+				for (int i = 0; i < sum[s].length; i++) {
+					System.arraycopy(sum[s][i], 0, sets[s].params().get(i).w, 0, sum[s][i].length);
+				}
+			}
+			first.save(out);
+		} finally {
+			first.close();
+		}
+	}
+
+	private dev.swordai.core.nn.ParamSet[] paramSets() {
+		return new dev.swordai.core.nn.ParamSet[] {actor.params, critic.params, predictor.params, chooser.params};
+	}
+
 	/** Whether {@code file} is a technique school checkpoint. */
 	public static boolean isSchool(Path file) {
 		try (DataInputStream in = new DataInputStream(new BufferedInputStream(Files.newInputStream(file)))) {
