@@ -59,6 +59,8 @@ final class FightSession implements AgentSession {
 	private final FrameGrabber grabber = new FrameGrabber();
 	private final Observer observer = new Observer();
 	private final BodyState body = new BodyState();
+	/** The installed model's own view of its body, for its fight-time rules over the school's network. */
+	private final BodyState rulesBody = new BodyState();
 	private final StepFacts facts = new StepFacts();
 	/** Notices when the picture has lost the opponent; acted on while the frame is drawn twice. */
 	private final BlindGuard blind = new BlindGuard();
@@ -142,6 +144,10 @@ final class FightSession implements AgentSession {
 			school = new SchoolFighter(l, loaded.cfg.aimResponse,
 					mc.hasSingleplayerServer() ? loaded.cfg.swingMinCharge : loaded.cfg.swingMinChargeOnline, loaded.cfg.playTemperature);
 			school.whiffGuard(loaded.cfg.whiffGuard);
+			if (SchoolSession.RULE_OVERLAY) {
+				school.rulesFrom(fighter);
+				rulesBody.patchedUp = loaded.patchedUp;
+			}
 		} else {
 			schoolLearner = null;
 			school = null;
@@ -157,7 +163,8 @@ final class FightSession implements AgentSession {
 	}
 
 	String skillLine() {
-		return school != null ? "Playing with the technique school's network (" + schoolLearner.totalSteps + " steps of training); no rule presses anything for it."
+		return school != null ? "Playing with the technique school's network (" + schoolLearner.totalSteps + " steps of training)"
+				+ (SchoolSession.RULE_OVERLAY ? ", the installed model's fight-time rules over it." : "; no rule presses anything for it.")
 				: loaded.skillLine();
 	}
 
@@ -303,9 +310,8 @@ final class FightSession implements AgentSession {
 		if (takenNow) {
 			if (school != null) {
 				school.hitTaken();
-			} else {
-				fighter.hitTaken();
 			}
+			fighter.hitTaken();
 			hitsTaken++;
 		}
 		lastOwnHurt = me.hurtTime;
@@ -352,6 +358,14 @@ final class FightSession implements AgentSession {
 		if (school != null) {
 			reader.tick(me, opp, clicked, chargeAtClick, sprintAtClick, critAtClick);
 			school.crosshairOnOpponent(onOpponent());
+			if (SchoolSession.RULE_OVERLAY) {
+				observer.fillBody(rulesBody, me, opp, groundY);
+				fighter.crosshairOnOpponent(onOpponent());
+				fighter.decide(observer.frame, rulesBody);
+			}
+			// The golden rule (K2): what is seen of them is a round trip behind the server by the time a hit gets there.
+			school.holdSwing(SchoolSession.K2_GUARD && me.isSprinting()
+					&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(reader.duel.them, ownPingTicks() + 1));
 			action = school.decide(observer.frame, body, reader.memory());
 			AgentController.apply(mc, action, school.yawRate(), school.pitchRate());
 			chargeAtClick = me.getAttackStrengthScale(0f);
@@ -416,9 +430,8 @@ final class FightSession implements AgentSession {
 			// and swing again at once. See FightLearnSession.hitsDealtAsShown.
 			if (school != null) {
 				school.hitDealt();
-			} else {
-				fighter.hitDealt();
 			}
+			fighter.hitDealt();
 		}
 	}
 
@@ -463,6 +476,14 @@ final class FightSession implements AgentSession {
 				say(line);
 			}
 		}
+	}
+
+	/** Its own round trip to the server, in ticks (0 in a world of its own). */
+	private int ownPingTicks() {
+		if (mc.getConnection() != null && mc.player != null && mc.getConnection().getPlayerInfo(mc.player.getUUID()) != null) {
+			return (mc.getConnection().getPlayerInfo(mc.player.getUUID()).getLatency() + 49) / 50;
+		}
+		return 0;
 	}
 
 	private int opponentPing() {

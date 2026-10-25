@@ -4,6 +4,7 @@ import dev.swordai.core.env.BodyState;
 import dev.swordai.core.env.TakenStreak;
 import dev.swordai.core.rl.ActionSpace;
 import dev.swordai.core.rl.AimMotor;
+import dev.swordai.core.rl.Fighter;
 import dev.swordai.core.rl.MixIdea;
 import dev.swordai.core.rl.ObsBuilder;
 import dev.swordai.core.rl.SightTracker;
@@ -15,9 +16,10 @@ import java.util.Arrays;
 /**
  * The network of the technique school playing a fight that is not training: the user's fights on a
  * server, and its side of a paired evaluation. It sees exactly what it sees in training (the picture,
- * its own body, the memory of the fight that the caller keeps, see {@link #decide}), and nothing
- * presses a key for it: the one limit kept is the game's own, no swing before the sword is back
- * ({@link SwingGate}).
+ * its own body, the memory of the fight that the caller keeps, see {@link #decide}). Limits kept: the
+ * game's own, no swing before the sword is back ({@link SwingGate}), no swing without the opponent
+ * under the crosshair, the golden rule (K2, {@link #holdSwing}) and, where given, the installed
+ * model's fight-time rules ({@link #rulesFrom}), as in the school's training and checks since 25 Oct.
  */
 public final class SchoolFighter {
 	private final SchoolLearner learner;
@@ -62,6 +64,21 @@ public final class SchoolFighter {
 
 	private boolean whiffGuard = true;
 	private boolean crosshairOn;
+	private Fighter rules;
+	private boolean swingHeld;
+
+	/**
+	 * The installed model's fight-time rules over this network: on a tick one of its rules sets keys, those keys are the
+	 * rule's. The caller has {@code rules} decide each tick before {@link #decide}; this keeps it on the keys really pressed.
+	 */
+	public void rulesFrom(Fighter rules) {
+		this.rules = rules;
+	}
+
+	/** No swing this tick: a sprint hit would land on one falling by the time it gets there (the golden rule, K2). */
+	public void holdSwing(boolean hold) {
+		swingHeld = hold;
+	}
 
 	/** Whether the game has the opponent under the crosshair and in reach now. */
 	public void crosshairOnOpponent(boolean on) {
@@ -111,9 +128,25 @@ public final class SchoolFighter {
 		if (whiffGuard && !crosshairOn) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 		}
+		if (swingHeld) {
+			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
+		}
+		int ruled = rules != null ? rules.ruledHeads() & keys : 0;
+		keys &= ~ruled;
 		learner.act(step, keys, false, temperature, action);
+		if (ruled != 0) {
+			int[] rule = rules.action();
+			for (int h = 0; h < ActionSpace.HEADS; h++) {
+				if ((ruled & (1 << h)) != 0) {
+					action[h] = rule[h];
+				}
+			}
+		}
 		fairJump.apply(action, body.onGround, sinceHitTaken, takenStreak.hits());
 		motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));
+		if (rules != null) {
+			rules.pressed(action, motor);
+		}
 		hasAction = true;
 		return action;
 	}
