@@ -80,6 +80,8 @@ public final class SchoolPpo implements AutoCloseable {
 		/** Cross-entropy to the technique teachers (where they spoke) and to the installed network; and how often the network's likeliest key was the technique teacher's. */
 		public float techCe;
 		public float oldCe;
+		/** The same over the body's keys alone (not the camera): how far the body has gone from what it copies. */
+		public float oldBodyCe;
 		public float techAgree;
 		public int techSteps;
 		public long millis;
@@ -88,9 +90,9 @@ public final class SchoolPpo implements AutoCloseable {
 		public String toString() {
 			return String.format(java.util.Locale.ROOT,
 					"%d steps, %d epochs, policy %.4f, value %.4f, kl %.4f, clipped %.2f, explained %.2f, lr %.1e, entropy W/S %.2f jump %.2f swing %.2f, "
-							+ "teacher: technique ce %.3f agree %.0f%% on %d, installed ce %.3f, %d ms",
+							+ "teacher: technique ce %.3f agree %.0f%% on %d, installed ce %.3f (body %.3f), %d ms",
 					samples, epochs, policyLoss, valueLoss, kl, clipFraction, explained, actorLr, entropy[ActionSpace.FORWARD],
-					entropy[ActionSpace.JUMP], entropy[ActionSpace.ATTACK], techCe, 100f * techAgree, techSteps, oldCe, millis);
+					entropy[ActionSpace.JUMP], entropy[ActionSpace.ATTACK], techCe, 100f * techAgree, techSteps, oldCe, oldBodyCe, millis);
 		}
 	}
 
@@ -138,9 +140,11 @@ public final class SchoolPpo implements AutoCloseable {
 		int entCount;
 		double techCe;
 		double oldCe;
+		double oldBodyCe;
 		int techAgree;
 		int techSteps;
 		int oldSteps;
+		int oldBodySteps;
 
 		void reset() {
 			policyLoss = 0;
@@ -151,9 +155,11 @@ public final class SchoolPpo implements AutoCloseable {
 			entCount = 0;
 			techCe = 0;
 			oldCe = 0;
+			oldBodyCe = 0;
 			techAgree = 0;
 			techSteps = 0;
 			oldSteps = 0;
+			oldBodySteps = 0;
 		}
 
 		void run(SchoolRollout r, int[] order, int from, int to, float advMean, float advStd, Settings set) {
@@ -264,6 +270,10 @@ public final class SchoolPpo implements AutoCloseable {
 				} else if (old) {
 					oldCe += ce;
 					oldSteps++;
+					if (!camera) {
+						oldBodyCe += ce;
+						oldBodySteps++;
+					}
 				}
 			}
 		}
@@ -318,9 +328,11 @@ public final class SchoolPpo implements AutoCloseable {
 		long entCount = 0;
 		double techCe = 0;
 		double oldCe = 0;
+		double oldBodyCe = 0;
 		long techAgree = 0;
 		long techSteps = 0;
 		long oldSteps = 0;
+		long oldBodySteps = 0;
 		long seen = 0;
 		for (int epoch = 0; epoch < set.epochs; epoch++) {
 			shuffle(order, rng);
@@ -349,9 +361,11 @@ public final class SchoolPpo implements AutoCloseable {
 					entCount += w.entCount;
 					techCe += w.techCe;
 					oldCe += w.oldCe;
+					oldBodyCe += w.oldBodyCe;
 					techAgree += w.techAgree;
 					techSteps += w.techSteps;
 					oldSteps += w.oldSteps;
+					oldBodySteps += w.oldBodySteps;
 				}
 				epochSeen += to - from;
 			}
@@ -382,6 +396,7 @@ public final class SchoolPpo implements AutoCloseable {
 		st.techAgree = techSteps == 0 ? 0f : (float) techAgree / techSteps;
 		st.techSteps = (int) (techSteps / Math.max(1, st.epochs));
 		st.oldCe = oldSteps == 0 ? 0f : (float) (oldCe / oldSteps);
+		st.oldBodyCe = oldBodySteps == 0 ? 0f : (float) (oldBodyCe / oldBodySteps);
 		st.actorLr = actorLr;
 		st.millis = (System.nanoTime() - start) / 1_000_000L;
 		return st;
