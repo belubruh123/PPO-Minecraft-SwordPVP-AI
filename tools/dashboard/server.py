@@ -100,7 +100,25 @@ def parse_update(line, m):
     u['critChances'] = [int(cc.group(1)), int(cc.group(2))] if cc else None
     cm = re.findall(r'(\d+)', section(parts, 'crit moments:'))
     u['crit'] = [int(x) for x in cm[:9]] if len(cm) >= 9 else None
+    # The techniques taught now (since 25 Oct 15:24): those whose teacher has a pull; the rest of the keys are copied.
+    tn = section(parts, 'taught now:')
+    u['taughtNow'] = tn.split() if tn else None
     return u
+
+
+def current_run():
+    """The last run of EXPERIMENTS.md: its number, start, the one change, its result so far."""
+    path = os.path.join(REPO, 'EXPERIMENTS.md')
+    if not os.path.exists(path):
+        return None
+    last = None
+    for line in open(path, encoding='utf8', errors='replace'):
+        cells = [c.strip() for c in line.strip().strip('|').split('|')]
+        if len(cells) >= 5 and re.match(r'^\d+[a-z]?$', cells[0]):
+            last = cells
+    if not last:
+        return None
+    return {'id': last[0], 'start': last[1], 'change': last[3], 'result': last[4]}
 
 
 class LogCache:
@@ -307,8 +325,10 @@ def build(cache, techniques, stages, prio):
         if 'school pair' in tail[-4000:]:
             state = 'paired check running'
     return {
-        'now': {k: last.get(k) for k in ('time', 'steps', 'stage', 'family', 'stageSteps', 'minSteps', 'installedPull',
-                                         'weakest', 'dealt', 'taken', 'keys', 'game', 'jumpIn', 'crit', 'update', 'decider')},
+        'now': dict({k: last.get(k) for k in ('time', 'steps', 'stage', 'family', 'stageSteps', 'minSteps', 'installedPull',
+                                              'weakest', 'dealt', 'taken', 'keys', 'game', 'jumpIn', 'crit', 'update', 'decider')},
+                    taughtNow=next((u['taughtNow'] for u in reversed(ups) if u.get('taughtNow') is not None), None)),
+        'run': current_run(),
         'logAgeSeconds': age, 'state': state,
         'stages': [s for s in stages if s['name'] != 'T-F'], 'priority': prio,
         'techniques': rows, 'damage': damage[-600:], 'checks': checks, 'landing': landing, 'critChances': crit_chances,

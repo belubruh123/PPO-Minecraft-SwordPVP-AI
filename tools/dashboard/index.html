@@ -275,17 +275,22 @@
     var html = '';
     var frac = n.minSteps ? Math.min(1, n.stageSteps / n.minSteps) : 0;
     var stageObj = (data.stages || []).filter(function (s) { return s.name === n.stage; })[0];
-    html += stat('New family now (old ones keep being practised)', esc(n.stage || '-') + ' <span class="muted" style="font-size:13px">' + esc(n.family || '') + '</span>',
-      '<div class="bar"><i style="width:' + (frac * 100).toFixed(1) + '%"></i></div><div class="k" style="margin-top:3px">' +
-      fmtSteps(n.stageSteps) + ' of at least ' + fmtSteps(n.minSteps) + ' steps in this stage</div>');
     var rows = data.techniques || [];
     function rateOf(id) { var r = rows.filter(function (t) { return t.id === id; })[0]; return r ? r.rate : null; }
-    if (stageObj) {
-      html += stat('This stage\'s techniques', stageObj.techniques.map(function (id) {
+    var run = data.run;
+    var taughtNow = n.taughtNow;
+    html += stat('Learning now' + (run ? ' (run ' + esc(run.id) + ', since ' + esc(run.start) + ')' : ''),
+      taughtNow == null ? '<span class="muted">from the next update</span>' :
+      !taughtNow.length || taughtNow[0] === 'none' ? 'no technique: fundamentals only (every key copied from the best fighter)' :
+      taughtNow.map(function (id) {
+        if (id === 'let-go') return 'sprint let-go';
         var r = rateOf(id); return esc(id) + ' <span class="' + cls(r) + '">' + pct(r) + '</span>';
-      }).join(', '));
-    }
-    html += stat('Priority, trained in every stage (double to triple pull, 1 fight in 4 vs jumpers)', (data.priority || []).map(function (id) {
+      }).join(', '),
+      (run ? '<div class="k">' + esc(run.change) + '</div>' : '') +
+      '<div class="k">every other technique: not taught in this run, its keys copied</div>');
+    html += stat('Opponents now', esc(n.stage || '-') + ' <span class="muted" style="font-size:13px">' + esc(n.family || '') + '</span>',
+      '<div class="k">the bots of this stage (half of the fights), the other stages\' bots in the rest</div>');
+    html += stat('Priority (focused when their family is taught)', (data.priority || []).map(function (id) {
       var r = rateOf(id); return esc(id) + ' <span class="' + cls(r) + '">' + pct(r) + '</span>';
     }).join(', '), '<div class="k">T8 hit them rising, K2 no knockback hit on a falling one, B1 punish crit</div>');
     var lastCheck = (data.checks || []).filter(function (c) { return c.bSwings; }).slice(-1)[0];
@@ -322,11 +327,12 @@
       var list = rows.filter(function (t) { return t.stage === s.name; });
       if (!list.length) return;
       html += '<tr class="group"><td colspan="8" class="' + (s.name === cur ? 'now' : '') + '">' + esc(s.name) + ' ' + esc(s.family) +
-        (s.name === cur ? ' - learning now' : '') + '</td></tr>';
+        (s.name === cur ? ' - opponents now' : '') + '</td></tr>';
+      var tn = (data.now || {}).taughtNow;
       list.forEach(function (t) {
         var r = t.rate, w = r == null ? 0 : Math.max(0, Math.min(100, r));
         html += '<tr class="sk' + (t.id === selected ? ' sel' : '') + '" data-id="' + esc(t.id) + '">' +
-          '<td>' + esc(t.id) + (t.priority ? '<span class="tag p">priority</span>' : '') + '</td>' +
+          '<td>' + esc(t.id) + (tn == null ? '' : tn.indexOf(t.id) >= 0 ? '<span class="tag p">taught now</span>' : '<span class="tag">copied</span>') + '</td>' +
           '<td>' + esc(t.title) + '</td>' +
           '<td><span class="pct ' + cls(r) + '">' + pct(r) + '</span><span class="meter"><i style="width:' + w + '%;background:var(--' +
           (r == null ? 'line' : r >= 85 ? 'good' : r >= 65 ? 'mid' : 'bad') + ')"></i><s style="left:65%"></s><s style="left:85%"></s></span></td>' +
