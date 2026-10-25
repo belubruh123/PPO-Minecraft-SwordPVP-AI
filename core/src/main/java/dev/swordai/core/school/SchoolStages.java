@@ -142,6 +142,20 @@ public final class SchoolStages {
 	 */
 	public static final float K2_PULL = 0f;
 	/**
+	 * The techniques the run of EXPERIMENTS.md teaches, one family at a time (25 Oct, the one-week goal): each at its mastery
+	 * share up to RUN_PULL_CAP, its pull weighted by the outcome (SchoolPpo.TEACH_AWR_MOST). 0: none.
+	 */
+	public static final float RUN_PULL_CAP = 0f;
+	static final boolean[] RUN_TAUGHT = new boolean[Technique.COUNT];
+
+	static {
+		// Run 3: the crits (the punish crit, the double crits, the standing crit).
+		for (Technique t : new Technique[] {Technique.B1, Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2}) {
+			RUN_TAUGHT[t.ordinal()] = true;
+		}
+	}
+
+	/**
 	 * The basics teacher's swing (the ordinary fight's moments: swing as soon as the sword is back with them under the
 	 * crosshair) at least this hard. 25 Oct 09:55: on those moments it did not swing on 43-64% of them, 14-28 swings a
 	 * minute off the techniques to the installed model's 40, and the damage dealt went with it (215 a minute to 297).
@@ -345,6 +359,9 @@ public final class SchoolStages {
 			p[t] = t == Technique.K2.ordinal() ? K2_PULL : TECH_PULL * Math.min(JUMP_IN_ANSWER[t] ? JUMP_IN_PULL_CAP : PULL_CAP, pullShare[t]);
 			if (t == Technique.BASE.ordinal()) {
 				p[t] = Math.max(p[t], BASE_PULL_LEAST);
+			}
+			if (RUN_PULL_CAP > 0f && RUN_TAUGHT[t]) {
+				p[t] = TECH_PULL * Math.min(RUN_PULL_CAP, pullShare[t]);
 			}
 		}
 		return p;

@@ -353,6 +353,13 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final boolean RULE_OVERLAY = true;
 	/**
+	 * The sprint let-go teacher's own pull (run 3 of EXPERIMENTS.md): after their hit lifts it, near them with the sword
+	 * coming back and still sprinting, W and sprint let go so the crit can be made. Of 2060 lifts in run 2, 560 came down in
+	 * reach, 306 with the sword back and only 86 of those not sprinting (the punish crits' leak); taught at the B1 pull,
+	 * which was 0, it taught nothing on 4630 lift ticks. 0: as before.
+	 */
+	static final float LET_GO_PULL = 1f; // run 3 (0 until 25 Oct 11:00)
+	/**
 	 * The golden rule (K2) as a rule: no sprint hit while the opponent is falling by the time the hit gets there (seen lag and
 	 * a tick for the click). The user, 25 Oct 08:50: "The falling player who jump in crit on this AI cases should be the
 	 * priority to learn to counter it and requires a 99% accuracy". The file: "Don't KB-hit them (K2); let it land, punish
@@ -1139,6 +1146,7 @@ public final class SchoolSession implements AgentSession {
 			return;
 		}
 		step.teacherWeight = 0f;
+		step.letGoPull = 0f;
 		if (mode == Mode.TRAIN && stages.oldPull() > 0f && (installed != null || learner.hasOldTeacher())) {
 			if (installed != null) {
 				// What the installed model would press here, rules and all: its choice, as a target.
@@ -1251,7 +1259,14 @@ public final class SchoolSession implements AgentSession {
 			step.teacher[sp] = 1f;
 			step.teacher[sp + 1] = 0f;
 			step.teacherHeads |= (1 << ActionSpace.FORWARD) | (1 << ActionSpace.SPRINT);
-			if (step.teacherTechnique < 0 || step.teacherTechnique == Technique.BASE.ordinal()) {
+			if (LET_GO_PULL > 0f) {
+				// Its own pull on these two keys (SchoolPpo#teach); the step keeps the ordinary fight's label, so the installed
+				// model still teaches the other keys here.
+				step.letGoPull = LET_GO_PULL;
+				if (step.teacherTechnique < 0) {
+					step.teacherTechnique = Technique.BASE.ordinal();
+				}
+			} else if (step.teacherTechnique < 0 || step.teacherTechnique == Technique.BASE.ordinal()) {
 				step.teacherTechnique = Technique.B1.ordinal();
 			}
 			sprintLetGo++;

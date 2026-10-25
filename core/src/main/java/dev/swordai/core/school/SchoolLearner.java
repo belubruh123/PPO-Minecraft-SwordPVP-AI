@@ -207,6 +207,7 @@ public final class SchoolLearner implements AutoCloseable {
 		System.arraycopy(from.teacher, 0, to.teacher, 0, ActionSpace.TOTAL_LOGITS);
 		to.teacherHeads = from.teacherHeads;
 		to.teacherWeight = from.teacherWeight;
+		to.letGoPull = from.letGoPull;
 		to.teacherTechnique = from.teacherTechnique;
 		to.policyWeight = from.policyWeight;
 		to.botTechnique = from.botTechnique;

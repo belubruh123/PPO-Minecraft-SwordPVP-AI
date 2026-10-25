@@ -219,6 +219,10 @@ public final class SchoolPpo implements AutoCloseable {
 				if (byTech && !camera && which >= 0 && which != dev.swordai.core.pvp.Technique.BASE.ordinal()) {
 					pull *= (float) Math.min(TEACH_AWR_MOST, Math.exp(adv / TEACH_AWR_BETA));
 				}
+				// The sprint let-go teacher's W/S and sprint, at its own pull and by the outcome, whatever the step's label.
+				if (byTech && r.letGoPull[i] > 0f && (h == ActionSpace.FORWARD || h == ActionSpace.SPRINT)) {
+					pull = r.letGoPull[i] * (float) Math.min(TEACH_AWR_MOST, Math.exp(adv / TEACH_AWR_BETA));
+				}
 				if (!byTech && !installedHere) {
 					continue;
 				}
