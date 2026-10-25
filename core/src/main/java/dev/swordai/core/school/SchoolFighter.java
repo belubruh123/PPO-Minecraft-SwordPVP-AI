@@ -81,6 +81,16 @@ public final class SchoolFighter {
 		this.rules = rules;
 	}
 
+	private boolean rulesLetGo;
+
+	/**
+	 * This tick the installed model's rules leave W and the sprint to the network: lifted by their hit and coming down near them
+	 * with the sword coming back, as in the school's training since run 12 (SchoolSession#RULES_LET_GO_IN_LIFT).
+	 */
+	public void rulesLetGo(boolean on) {
+		rulesLetGo = on;
+	}
+
 	/** No swing this tick: a sprint hit would land on one falling by the time it gets there (the golden rule, K2). */
 	public void holdSwing(boolean hold) {
 		swingHeld = hold;
@@ -138,6 +148,9 @@ public final class SchoolFighter {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 		}
 		int ruled = rules != null ? rules.ruledHeads() & keys : 0;
+		if (rulesLetGo) {
+			ruled &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
+		}
 		// The rules give way to a technique it learned while the decider has chosen it (SchoolStages#RULES_YIELD).
 		if (ruled != 0 && SchoolStages.RULES_YIELD && SchoolStages.runTaught(learner.told().ordinal())) {
 			ruled &= ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);

@@ -81,6 +81,9 @@ final class FightSession implements AgentSession {
 	private String opponentName = "?";
 	private double groundY;
 	private int lastOwnHurt;
+	/** Ticks since a hit taken on the ground lifted it, -1 when not lifted (the rules leave W to the network in its fall). */
+	private int liftedFor = -1;
+	private boolean groundBefore = true;
 	private int lastOpponentHurt;
 	private int ticksSinceConnect = 1000;
 	private int frozenTicks;
@@ -307,6 +310,12 @@ final class FightSession implements AgentSession {
 			ticksSinceConnect++;
 		}
 		boolean takenNow = me.hurtTime > lastOwnHurt;
+		// Lifted by their hit (taken on the ground), counted until it is down again (as SchoolSession's liftedFor).
+		liftedFor = takenNow && groundBefore ? 0 : liftedFor < 0 ? -1 : liftedFor + 1;
+		if (liftedFor > 3 && me.onGround() || liftedFor > SchoolSession.PUNISH_WINDOW) {
+			liftedFor = -1;
+		}
+		groundBefore = me.onGround();
 		if (takenNow) {
 			if (school != null) {
 				school.hitTaken();
@@ -366,6 +375,8 @@ final class FightSession implements AgentSession {
 			// The golden rule (K2): what is seen of them is a round trip behind the server by the time a hit gets there.
 			school.holdSwing(SchoolSession.K2_GUARD && me.isSprinting()
 					&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(reader.duel.them, ownPingTicks() + SchoolSession.K2_MARGIN));
+			school.rulesLetGo(SchoolSession.RULES_LET_GO_IN_LIFT && liftedFor >= 0 && !me.onGround()
+					&& Math.sqrt(opp.getBoundingBox().distanceToSqr(me.getEyePosition())) <= 3.5 && me.getAttackStrengthScale(0f) > 0.5f);
 			action = school.decide(observer.frame, body, reader.memory());
 			AgentController.apply(mc, action, school.yawRate(), school.pitchRate());
 			chargeAtClick = me.getAttackStrengthScale(0f);
