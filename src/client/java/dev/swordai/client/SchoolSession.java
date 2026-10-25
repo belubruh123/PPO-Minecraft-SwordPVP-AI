@@ -208,6 +208,22 @@ public final class SchoolSession implements AgentSession {
 	 * the installed teacher's target (plan part 6: each old rule becomes a teacher, its pull fading).
 	 */
 	private LoadedFighter installed;
+	/**
+	 * The installed model as a sparring opponent (the user, 25 Oct: beat the teacher): a second copy (a Fighter is not
+	 * thread-safe) playing the bot on the server (ArenaServer's rival, BotPilot: ReplicaBody with the SyntheticEye picture,
+	 * measured 99% like the screen's) in SPAR_SHARE of the training fights, its view {@link #SPAR_LAG_EXTRA} ticks later than
+	 * the agent's as the old self-play had it (Config.screenCopyLagTicks: the screen's side loses about two ticks). Every run of
+	 * 25 Oct fought only scripted bots and came out level with the installed model (the long check of 26 Oct 02:04: -2.7, se 2.4).
+	 */
+	private LoadedFighter sparring;
+	static final float SPAR_SHARE = 0.3f; // run 18 (26 Oct)
+	static final int SPAR_LAG_EXTRA = 2;
+	private boolean sparFight;
+	private int sparFights;
+	private int sparWon;
+	private int sparLost;
+	private float sparDealt;
+	private float sparTaken;
 	private final BodyState installedBody = new BodyState();
 
 	// ---- the fight --------------------------------------------------------------------------------
@@ -441,6 +457,21 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	/** " B1 T1 T1a ... let-go": the techniques whose teacher has a pull now (the rest of the keys copied); for the dashboard. */
+	/** The sparring fights against the installed model since the last update: how many, won-lost, net damage a fight. */
+	private String sparLine() {
+		if (sparring == null) {
+			return " off";
+		}
+		String line = sparFights == 0 ? " none yet" : String.format(Locale.ROOT, " %d fights, knockouts %d-%d, dealt %.0f taken %.0f, net %.1f a fight",
+				sparFights, sparWon, sparLost, sparDealt, sparTaken, (sparDealt - sparTaken) / sparFights);
+		sparFights = 0;
+		sparWon = 0;
+		sparLost = 0;
+		sparDealt = 0f;
+		sparTaken = 0f;
+		return line;
+	}
+
 	private String taughtNowLine() {
 		float[] p = stages.techPulls();
 		StringBuilder b = new StringBuilder();
@@ -605,6 +636,9 @@ public final class SchoolSession implements AgentSession {
 		if (icfg != null && Files.exists(teacherFile)) {
 			installed = LoadedFighter.loadFrom(teacherFile, icfg, SwordFiles.installedCopy().resolve("curriculum.properties"));
 			installedBody.patchedUp = installed.patchedUp;
+			if (SPAR_SHARE > 0f && mode == Mode.TRAIN) {
+				sparring = LoadedFighter.loadFrom(teacherFile, icfg, SwordFiles.installedCopy().resolve("curriculum.properties"));
+			}
 			// The swing waits for the sword as the installed model's does here (a full hit, a tick before the very end of the
 			// wait; online has its own longer wait): both sides of the check alike, and the school as it would play once
 			// installed. The dev config's 1.0 had the school swing a tick later than the model it is checked against (24 Oct).
@@ -633,7 +667,13 @@ public final class SchoolSession implements AgentSession {
 		grabber.setEnabled(true);
 		IntegratedServer server = mc.getSingleplayerServer();
 		UUID me = mc.player.getUUID();
-		server.execute(() -> ArenaServer.start(server, me, cfg));
+		LoadedFighter spar = sparring;
+		server.execute(() -> {
+			ArenaServer.start(server, me, cfg);
+			if (spar != null) {
+				ArenaServer.setRivals(new dev.swordai.server.BotPilot[] {new dev.swordai.server.BotPilot(spar.fighter, spar.frameAgeTicks, spar.patchedUp)});
+			}
+		});
 	}
 
 	/** The installed network: the copy kept for the school. */
@@ -906,6 +946,7 @@ public final class SchoolSession implements AgentSession {
 		// and mostly 0 or 1 before, so a jump-in crit seen late was sprint-hit and a combo answered late.
 		int agentLag = 1 + lagDraw.nextInt(4);
 		EpisodePlan plan;
+		sparFight = false;
 		if (review >= 0) {
 			// The old stage's own episode: its bot (standing, strafing, hopping out of view, fighting) at a skill drawn from
 			// the middle of the stage up.
@@ -925,6 +966,13 @@ public final class SchoolSession implements AgentSession {
 		} else {
 			boolean drill = mode == Mode.TRAIN && rng.nextFloat() < DRILL_SHARE;
 			plan = EpisodePlan.school(fightStyle, drill ? DRILL_NEAR : NEAREST, drill ? DRILL_FAR : FARTHEST);
+			sparFight = !drill && sparring != null && mode == Mode.TRAIN && rng.nextFloat() < SPAR_SHARE;
+			if (sparFight) {
+				// The installed model plays the bot (ArenaServer's rival): no scripted style.
+				plan.style = null;
+				plan.bot.movement = dev.swordai.core.curriculum.BotProfile.SELF;
+				plan.botLag = Math.min(8, agentLag + SPAR_LAG_EXTRA);
+			}
 			if (drill) {
 				plan.drillLift = true;
 				plan.drillAgentTicker = 2 + rng.nextInt(7);
@@ -1116,7 +1164,7 @@ public final class SchoolSession implements AgentSession {
 		observer.fillObs(step.obs.base, mc, me, bot, truth, facts, hasLastAction ? lastAction : null,
 				review >= 0 ? basics[review].headMask : ActionSpace.ALL_HEADS, review >= 0 ? BASIC_OLD[review] : 9, clock, motor, idea);
 		System.arraycopy(reader.memory(), 0, step.obs.mem, 0, step.obs.mem.length);
-		step.obs.setOpponent(botTechnique, review >= 0 ? null : fightStyle.p, review >= 0 ? -1 : fightBot);
+		step.obs.setOpponent(botTechnique, review >= 0 || sparFight ? null : fightStyle.p, review >= 0 || sparFight ? -1 : fightBot);
 
 		lastTruthFalling = truth.botFalling();
 		if (!hasLastAction && drillTicker >= 0) {
@@ -2003,6 +2051,14 @@ public final class SchoolSession implements AgentSession {
 			reviewFights[review]++;
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school review %s: dealt %.1f, taken %.1f, ticks %d%s", basics[review].name,
 					fightDealt, fightTaken, fightTicks, result));
+		} else if (sparFight) {
+			sparFights++;
+			sparDealt += fightDealt;
+			sparTaken += fightTaken;
+			sparWon += won ? 1 : 0;
+			sparLost += lost ? 1 : 0;
+			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school fight installed-model (sparring): dealt %.1f, taken %.1f, ticks %d%s", fightDealt,
+					fightTaken, fightTicks, result));
 		} else {
 			stages.fight(fightBot, fightDealt, fightTaken, fightTicks);
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school fight %s: dealt %.1f, taken %.1f, ticks %d%s, teacher spoke on %d ticks; %s",
@@ -2276,10 +2332,10 @@ public final class SchoolSession implements AgentSession {
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
 				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {} ({} in {} drill fights), other crits {} "
-				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} (the golden rule held the swing on {} ticks, the installed model's rules set keys on {}) | swings: {} | review of the old stages:{} | bots went into:{} | taught now:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
+				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} (the golden rule held the swing on {} ticks, the installed model's rules set keys on {}) | swings: {} | review of the old stages:{} | bots went into:{} | taught now:{} | sparring the installed model:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
 				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits,
-				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2Held, ruleTicks, swingLine(0), reviewLine(), used, taughtNowLine());
+				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2Held, ruleTicks, swingLine(0), reviewLine(), used, taughtNowLine(), sparLine());
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		drillPunishCrits = 0;
@@ -2401,8 +2457,18 @@ public final class SchoolSession implements AgentSession {
 			WindowGuard.restore(mc);
 			OptionsGuard.restore(mc);
 			IntegratedServer server = mc.getSingleplayerServer();
+			LoadedFighter spar = sparring;
+			sparring = null;
 			if (server != null) {
-				server.execute(() -> ArenaServer.stop(server));
+				// The sparring copy plays on the server thread: closed there, once the arena has stopped.
+				server.execute(() -> {
+					ArenaServer.stop(server);
+					if (spar != null) {
+						spar.close();
+					}
+				});
+			} else if (spar != null) {
+				spar.close();
 			}
 		}
 		say("Stopped (" + reason + ").");
