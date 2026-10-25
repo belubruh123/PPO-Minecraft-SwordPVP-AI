@@ -172,7 +172,7 @@ public final class SchoolPpo implements AutoCloseable {
 					boolean inside = ratio >= 1f - set.clip && ratio <= 1f + set.clip;
 					float dLogp = (surr1 <= surr2 || inside) ? -adv * ratio * w : 0f;
 					Policy.gradient(mask, r.action[i], probs, ent, dLogp, w > 0f ? set.entropy : ZERO, aw.dLogits);
-					teach(r, i, mask, set);
+					teach(r, i, mask, set, adv);
 					actor.backward(aw, r.peri[i], r.fovea[i], r.vec[i], r.mem[i]);
 					policyLoss -= Math.min(surr1, surr2) * w;
 					kl += r.logp[i] - logp;
@@ -194,7 +194,7 @@ public final class SchoolPpo implements AutoCloseable {
 		/** The teachers' pull: weight * (p - q) on each head they hold for. */
 		private final float[] aimed = new float[ActionSpace.TOTAL_LOGITS];
 
-		private void teach(SchoolRollout r, int i, int mask, Settings set) {
+		private void teach(SchoolRollout r, int i, int mask, Settings set, float adv) {
 			float[] stored = r.teacher[i];
 			float[] q = aimed;
 			int tech = r.teacherHeads[i];
@@ -215,6 +215,10 @@ public final class SchoolPpo implements AutoCloseable {
 				boolean between = tech == 0 || which == dev.swordai.core.pvp.Technique.BASE.ordinal();
 				boolean installedHere = old && (camera || set.installedBody && between && !byTech);
 				float pull = byTech ? (which >= 0 ? set.techPulls[which] : 0f) : installedHere ? set.oldPull : 0f;
+				// A technique's keys (not the camera, not the ordinary fight's) by how the fight went after them: see TEACH_AWR_MOST.
+				if (byTech && !camera && which >= 0 && which != dev.swordai.core.pvp.Technique.BASE.ordinal()) {
+					pull *= (float) Math.min(TEACH_AWR_MOST, Math.exp(adv / TEACH_AWR_BETA));
+				}
 				if (!byTech && !installedHere) {
 					continue;
 				}
@@ -253,6 +257,14 @@ public final class SchoolPpo implements AutoCloseable {
 	}
 
 	private static final float[] ZERO = new float[ActionSpace.HEADS];
+	/**
+	 * A technique teacher's pull on a step, times exp(advantage / TEACH_AWR_BETA) (the advantage in deviations), at most
+	 * TEACH_AWR_MOST: a technique done where the fight then went better than the critic expected is taught harder, one where
+	 * it went worse hardly at all. 25 Oct 09:35, the user: damage first, "it should learn when to"; at a flat pull the
+	 * techniques cost the school 10 to 20 a fight against the installed model (06:16, 09:29 checks).
+	 */
+	static final float TEACH_AWR_BETA = 1f;
+	static final float TEACH_AWR_MOST = 3f;
 
 	/** One update over a rollout whose advantages are computed. */
 	public Stats update(SchoolRollout r, Random rng, Settings set) {

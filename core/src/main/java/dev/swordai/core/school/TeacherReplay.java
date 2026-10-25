@@ -120,6 +120,59 @@ public final class TeacherReplay {
 		}
 	}
 
+	/** The body's keys (not the camera): what {@link #addSelf} keeps of its own steps. */
+	static final int BODY_HEADS = ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.STRAFE, ActionSpace.SPRINT, ActionSpace.JUMP, ActionSpace.ATTACK);
+	/** A step of its own is kept by {@link #addSelf} when its advantage is this many deviations above the rollout's mean. */
+	public static final float SELF_MIN = 1f;
+
+	/**
+	 * Self-imitation (Oh et al. 2018, "Self-Imitation Learning"): its own steps whose fight went clearly better than the
+	 * critic expected (advantage at least {@link #SELF_MIN} deviations up), with its own body keys as the target, kept
+	 * under {@link Technique#BASE}'s slot. The user, 25 Oct 09:40: when to sprint-hit, when not and when to crit should be
+	 * learned "by few episodes, maybe 10-20": a good outcome is learned from again after every update, not once in a batch
+	 * of 4 000 steps.
+	 */
+	public void addSelf(SchoolRollout r) {
+		if (r.size == 0) {
+			return;
+		}
+		double mean = 0.0;
+		for (int i = 0; i < r.size; i++) {
+			mean += r.advantage[i];
+		}
+		mean /= r.size;
+		double var = 0.0;
+		for (int i = 0; i < r.size; i++) {
+			double d = r.advantage[i] - mean;
+			var += d * d;
+		}
+		double std = Math.max(1e-6, Math.sqrt(var / r.size));
+		for (int i = 0; i < r.size; i++) {
+			if ((r.advantage[i] - mean) / std < SELF_MIN || r.policyWeight[i] <= 0f) {
+				continue;
+			}
+			int h = BODY_HEADS & r.headMask[i];
+			if (h == 0) {
+				continue;
+			}
+			int j = next;
+			next = (next + 1) % capacity;
+			size = Math.min(capacity, size + 1);
+			System.arraycopy(r.peri[i], 0, peri[j], 0, ObsSpec.PERI_SIZE);
+			System.arraycopy(r.fovea[i], 0, fovea[j], 0, ObsSpec.FOVEA_SIZE);
+			System.arraycopy(r.vec[i], 0, vec[j], 0, ObsSpec.VEC);
+			System.arraycopy(r.mem[i], 0, mem[j], 0, SchoolObs.MEM);
+			System.arraycopy(r.pred[i], 0, pred[j], 0, SchoolNet.SIDE);
+			java.util.Arrays.fill(target[j], 0f);
+			for (int k = 0; k < ActionSpace.HEADS; k++) {
+				target[j][ActionSpace.OFFSETS[k] + r.action[i][k]] = 1f;
+				cond[j][k] = r.action[i][k];
+			}
+			heads[j] = h;
+			technique[j] = Technique.BASE.ordinal();
+		}
+	}
+
 	/** What one pass of learning did: the mean cross-entropy to the teachers before it, and how often the network's likeliest key was theirs. */
 	public static final class Stats {
 		public int steps;

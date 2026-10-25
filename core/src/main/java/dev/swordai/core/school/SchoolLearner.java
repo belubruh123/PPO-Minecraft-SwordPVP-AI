@@ -75,6 +75,12 @@ public final class SchoolLearner implements AutoCloseable {
 	private TeacherReplay replay;
 	/** And the installed teacher's examples, so the network comes to play as the installed fighter does, quickly. */
 	private TeacherReplay shadowReplay;
+	/** Its own best steps (TeacherReplay#addSelf), learned from again after every update with {@link #SELF_PULL}. */
+	private TeacherReplay selfReplay;
+	static final int SELF_CAPACITY = 4_000;
+	static final int SELF_BATCHES = 12;
+	static final float SELF_PULL = 0.5f;
+	private volatile String selfLine = "none yet";
 	private SchoolNet.Workspace replayWs;
 	private volatile String shadowLine = "no examples yet";
 	private volatile String replayLine = "no examples yet";
@@ -257,9 +263,11 @@ public final class SchoolLearner implements AutoCloseable {
 			replay = new TeacherReplay(20_000);
 			replay.stratified = true;
 			shadowReplay = new TeacherReplay(16_000, true);
+			selfReplay = new TeacherReplay(SELF_CAPACITY);
 			replayWs = actor.newWorkspace();
 		}
 		replay.addFrom(rollout);
+		selfReplay.addSelf(rollout);
 		if (set.oldPull > 0f) {
 			shadowReplay.installedBody = set.installedBody;
 			shadowReplay.addFrom(rollout);
@@ -273,6 +281,12 @@ public final class SchoolLearner implements AutoCloseable {
 				shadowLine = shadowReplay.learn(actor, replayWs, pulls, set.shadowBatches, set.replayBatch, set.replayLr, set.maxGradNorm, rng)
 						+ " of " + shadowReplay.size() + " kept";
 			}
+		}
+		if (!set.criticOnly && SELF_PULL > 0f) {
+			float[] pulls = new float[dev.swordai.core.pvp.Technique.COUNT];
+			pulls[dev.swordai.core.pvp.Technique.BASE.ordinal()] = SELF_PULL;
+			selfLine = selfReplay.learn(actor, replayWs, pulls, SELF_BATCHES, 64, set.replayLr, set.maxGradNorm, rng)
+					+ " of " + selfReplay.size() + " kept";
 		}
 		if (predictorLr > 0f) {
 			Predictor.Stats p = predictor.learn(rollout, predictorLr, Math.max(1, rollout.size / 64), 64, set.maxGradNorm, rng);
@@ -356,7 +370,7 @@ public final class SchoolLearner implements AutoCloseable {
 	}
 
 	public String replayLine() {
-		return replayLine + "; installed's examples: " + shadowLine;
+		return replayLine + "; installed's examples: " + shadowLine + "; its own best moments again: " + selfLine;
 	}
 
 	public float actorLr() {
