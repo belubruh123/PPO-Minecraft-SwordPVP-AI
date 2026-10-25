@@ -182,6 +182,9 @@ public final class SchoolLearner implements AutoCloseable {
 		if (!record) {
 			return;
 		}
+		if (anchored && base != null && step.teacherWeight > 0f) {
+			anchorTargets(step, actionOut);
+		}
 		step.headMask = headMask;
 		step.logp = logp;
 		System.arraycopy(actionOut, 0, step.action, 0, ActionSpace.HEADS);
@@ -410,6 +413,36 @@ public final class SchoolLearner implements AutoCloseable {
 
 	public boolean hasBase() {
 		return base != null;
+	}
+
+	/**
+	 * Learning without forgetting (Li and Hoiem 2016): with a base loaded ({@link #loadBase}) and this on, the copying target
+	 * of every step the installed model teaches is the base's own chances on the same inputs, on every key no technique
+	 * teacher holds, instead of the installed model's one key. The base is the best fighter so far, frozen: what the
+	 * techniques are learned on top of, kept. The user, 25 Oct 14:43: "When it started to learn skill it become dumber and
+	 * loses against teacher overtime fix it" (run 7: -22.5 against the installed model, from +5.6).
+	 */
+	public void anchorToBase(boolean on) {
+		anchored = on;
+	}
+
+	private boolean anchored;
+	private final float[] anchorProbs = new float[ActionSpace.TOTAL_LOGITS];
+	private final byte[] anchorAction = new byte[ActionSpace.HEADS];
+
+	private void anchorTargets(SchoolRollout.Step step, int[] action) {
+		base.forward(baseWs, step.obs.base.peri, step.obs.base.fovea, step.obs.base.vec, step.obs.mem, step.pred);
+		for (int h = 0; h < ActionSpace.HEADS; h++) {
+			anchorAction[h] = (byte) action[h];
+		}
+		// The jump and the swing as the base would choose them after the keys really pressed, as the update conditions them.
+		base.condition(baseWs, anchorAction);
+		Policy.allProbs(baseWs.logits, anchorProbs);
+		for (int h = 0; h < ActionSpace.HEADS; h++) {
+			if ((step.teacherHeads & (1 << h)) == 0) {
+				System.arraycopy(anchorProbs, ActionSpace.OFFSETS[h], step.teacher, ActionSpace.OFFSETS[h], ActionSpace.SIZES[h]);
+			}
+		}
 	}
 
 	public void actBase(SchoolRollout.Step step, int headMask, float temperature, int[] actionOut) {

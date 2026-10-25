@@ -383,6 +383,14 @@ public final class SchoolSession implements AgentSession {
 	 * With this on, those plans teach W, sprint, jump and the crit's own swing; when to hold is the damage's.
 	 */
 	static final boolean CRIT_HOLD_UNTAUGHT = true; // run 8 (25 Oct 14:41)
+	/**
+	 * Learning without forgetting (run 9 of EXPERIMENTS.md, SchoolLearner#anchorToBase): the copying targets come from the
+	 * frozen best fighter in ANCHOR_FILE (in the school folder), its own chances on the same inputs, instead of the installed
+	 * model's one key; the installed model's rules still play over the network. The user, 25 Oct 14:43: "When it started to
+	 * learn skill it become dumber and loses against teacher overtime fix it".
+	 */
+	static final boolean ANCHOR_TO_BEST = false;
+	static final String ANCHOR_FILE = "anchor.bin";
 	private static final boolean[] CRIT_FAMILY = new boolean[Technique.COUNT];
 
 	static {
@@ -525,6 +533,12 @@ public final class SchoolSession implements AgentSession {
 			// The school starts from the installed network, widened, which plays as it did (plan part 7).
 			learner.loadOldTeacher(teacherFile, true);
 			warmupLeft = CRITIC_WARMUP;
+		}
+		Path anchor = SwordFiles.schoolDir().resolve(ANCHOR_FILE);
+		if (mode == Mode.TRAIN && ANCHOR_TO_BEST && Files.exists(anchor)) {
+			learner.loadBase(anchor);
+			learner.anchorToBase(true);
+			SwordAi.LOGGER.info("school: copying targets from the frozen best fighter {} (learning without forgetting)", anchor.getFileName());
 		}
 		loadBasics();
 		if (Files.exists(SwordFiles.schoolStages())) {
