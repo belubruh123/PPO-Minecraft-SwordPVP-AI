@@ -126,7 +126,7 @@ public final class SchoolStages {
 	 * punish-crit, B1) taught on their own (25 Oct 07:40): with every teacher off the network was level with the installed
 	 * model (06:54 check, -0.6) but knockback-hit falling jumpers 30 to 50 times an update, the user's first complaint.
 	 */
-	public static final float JUMP_IN_PULL_CAP = 0.5f;
+	public static final float JUMP_IN_PULL_CAP = 0f; // 08:25: at 0.5 the 08:22 check was -38.4, swings 105 to 338 (K2 taught it not to swing at all)
 	static final boolean[] JUMP_IN_ANSWER = new boolean[Technique.COUNT];
 
 	static {
