@@ -203,7 +203,9 @@ public final class SchoolSession implements AgentSession {
 	 * made (and of them the ones the game would make crits), the hits and the crits landed. Whether the crits are real,
 	 * and if not, which of their needs is missing (24 Oct: the teacher's own punish crits came 4 in 363).
 	 */
-	private final long[][] critTrace = new long[2][9];
+	private final long[][] critTrace = new long[2][12];
+	/** The keys the installed model's rules pressed on this tick, for the crit trace (who held W in the fall). */
+	private int ruledNow;
 	/**
 	 * Per side, the answer to jumping in (the priority): their take-offs toward it, its hits landed on them rising (T8), its
 	 * knockback hits landed on them falling (what K2 forbids), and the crits it took within ten ticks of one of those.
@@ -1184,6 +1186,7 @@ public final class SchoolSession implements AgentSession {
 			int[] chosen = installed.fighter.decide(observer.frame, installedBody);
 			System.arraycopy(chosen, 0, action, 0, ActionSpace.HEADS);
 			perfB.tick(step.teacherTechnique, step.teacherHeads, step.teacher, action, ActionSpace.ALL_HEADS, facts.damageDealt, facts.damageTaken);
+			ruledNow = installed.fighter.ruledHeads();
 			traceCrit(1, action[ActionSpace.ATTACK] == 1);
 			traceJumpIn(1);
 			applyAction(installed.fighter.yawRate(), installed.fighter.pitchRate());
@@ -1208,6 +1211,7 @@ public final class SchoolSession implements AgentSession {
 				action[ActionSpace.ATTACK] = k.attack && onOpponent() && ActionSpace.unlocked(keys, ActionSpace.ATTACK) ? 1 : 0;
 			}
 			perf.tick(step.teacherTechnique, step.teacherHeads, step.teacher, action, ActionSpace.ALL_HEADS, facts.damageDealt, facts.damageTaken);
+			ruledNow = 0;
 			traceCrit(0, action[ActionSpace.ATTACK] == 1);
 			traceJumpIn(0);
 			applyAction(installed.fighter.yawRate(), installed.fighter.pitchRate());
@@ -1455,6 +1459,7 @@ public final class SchoolSession implements AgentSession {
 		if (mode == Mode.TRAIN) {
 			techniqueReward();
 		}
+		ruledNow = ruled;
 		traceCrit(0, action[ActionSpace.ATTACK] == 1);
 		traceJumpIn(0);
 		if (step.teacherHeads != 0) {
@@ -2012,6 +2017,17 @@ public final class SchoolSession implements AgentSession {
 				if (chargeAtClick > 0.9f) {
 					c[3]++;
 					c[4] += sprintAtClick ? 0 : 1;
+					// Still sprinting: W held by a rule, by the network, or let go and the sprint not yet ended.
+					if (sprintAtClick) {
+						int fwd = action[ActionSpace.FORWARD];
+						if (fwd != 1) {
+							c[11]++;
+						} else if ((ruledNow & (1 << ActionSpace.FORWARD)) != 0) {
+							c[9]++;
+						} else {
+							c[10]++;
+						}
+					}
 				}
 			}
 		}
@@ -2128,7 +2144,8 @@ public final class SchoolSession implements AgentSession {
 	private String critLine(int side) {
 		long[] c = critTrace[side];
 		return String.format(Locale.ROOT, "%d ticks, falling %d, and in reach %d, and charged %d, and not sprinting (server) %d; swings %d (crits at the click %d); "
-				+ "hits %d, crits %d", c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8]);
+				+ "hits %d, crits %d; sprinting with the sword back: W by a rule %d, W by the network %d, W let go %d",
+				c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8], c[9], c[10], c[11]);
 	}
 
 	private void startUpdate() {

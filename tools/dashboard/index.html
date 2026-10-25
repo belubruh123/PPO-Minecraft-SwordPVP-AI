@@ -298,10 +298,15 @@
       '<span class="' + cls(data.landing) + '">' + pct(data.landing) + '</span>',
       '<div class="k">' + (lastCheck ? 'last check: school ' + landed(lastCheck.aSwings) + ', installed ' + landed(lastCheck.bSwings) :
       'the installed model: from the next check') + '; a miss is a swing with nothing under the crosshair</div>');
+    var pu = data.punish;
+    html += stat('Punish crits landed, by the game (last 10 updates)', pu == null || !pu[1] ? '<span class="muted">no chances yet</span>' :
+      '<span class="' + cls(100 * pu[0] / pu[1]) + '">' + pct(100 * pu[0] / pu[1]) + '</span> of ' + pu[1],
+      '<div class="k">lifted by their hit, a crit landed on them before it is down</div>');
     var cc = data.critChances;
-    html += stat('Crit chances swung on (last 10 updates)', cc == null ? '<span class="muted">not counted yet</span>' :
-      (cc[0] ? '<span class="' + cls(100 * cc[1] / cc[0]) + '">' + pct(100 * cc[1] / cc[0]) + '</span> of ' + cc[0] : '0 chances'),
-      '<div class="k">ticks it could crit: falling, in reach, sword back, not sprinting, crosshair on them</div>');
+    html += stat('In its crit moments (last 10 updates)', cc == null ? '<span class="muted">not counted yet</span>' :
+      (cc[0] ? '<span class="' + cls(100 * cc[2] / cc[0]) + '">' + pct(100 * cc[2] / cc[0]) + '</span> ready to crit' : '0 ticks'),
+      '<div class="k">falling in reach ' + (cc ? cc[0] : 0) + ' ticks: sword back on ' + (cc ? cc[1] : 0) + ', and not sprinting on ' +
+      (cc ? cc[2] : 0) + '; real crits landed ' + (cc ? cc[3] : 0) + '</div>');
     var dc = n.decider;
     html += stat('Decider (which technique to do)', dc ? '<span class="' + cls(dc[3]) + '">' + pct(dc[3]) + '</span> of starts right' :
       '<span class="muted">not learning yet</span>', dc ? '<div class="k">' + pct(dc[1]) + ' right during techniques, ' + dc[5].toFixed(1) +

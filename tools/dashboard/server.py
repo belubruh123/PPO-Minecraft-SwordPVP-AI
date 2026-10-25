@@ -312,8 +312,12 @@ def build(cache, techniques, stages, prio):
     # Swings that land and crit chances swung on, over the last ten updates that count them.
     sw = [u['swings'] for u in ups if u.get('swings')][-10:]
     landing = round(100.0 * sum(x[2] for x in sw) / sum(x[0] for x in sw), 1) if sw and sum(x[0] for x in sw) else None
-    cc = [u['critChances'] for u in ups if u.get('critChances')][-10:]
-    crit_chances = [sum(x[0] for x in cc), sum(x[1] for x in cc)] if cc else None
+    # Its crit moments over the last ten updates: falling in reach, the sword back, not sprinting, real crits landed; and
+    # the punish crits the game counted landed of their chances.
+    cr = [u['crit'] for u in ups if u.get('crit')][-10:]
+    crit_chances = [sum(x[2] for x in cr), sum(x[3] for x in cr), sum(x[4] for x in cr), sum(x[8] for x in cr)] if cr else None
+    pc = [g for u in ups[-10:] for g in u.get('game', []) if g[1] == 'B1']
+    punish = [sum(g[2] for g in pc), sum(g[3] for g in pc)] if pc else None
     checks = parse_checks(cache.run)
     age = None
     log = os.path.join(cache.run, 'school-client.log')
@@ -331,7 +335,7 @@ def build(cache, techniques, stages, prio):
         'run': current_run(),
         'logAgeSeconds': age, 'state': state,
         'stages': [s for s in stages if s['name'] != 'T-F'], 'priority': prio,
-        'techniques': rows, 'damage': damage[-600:], 'checks': checks, 'landing': landing, 'critChances': crit_chances,
+        'techniques': rows, 'damage': damage[-600:], 'checks': checks, 'landing': landing, 'critChances': crit_chances, 'punish': punish,
         'served': time.strftime('%H:%M:%S'),
     }
 
