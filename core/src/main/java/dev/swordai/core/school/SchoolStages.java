@@ -124,7 +124,7 @@ public final class SchoolStages {
 	// skill while learning that so it won't forgot stuff"; 09:15 no cap (each technique's mastery share, up to PRIORITY_MOST),
 	// the user: "training all the skill to back where they were like nearly all above 80% and crit need 80% and punish crit
 	// 90% while review basic skill in between".
-	public static final float PULL_CAP = 3f; // = PRIORITY_MOST
+	public static final float PULL_CAP = 0f; // run 2 (EXPERIMENTS.md): the 06:54 recipe (3 = PRIORITY_MOST from 09:15)
 	/**
 	 * The answers to a jump-in (part 7: hit them while they rise, T8; no knockback hit on a falling one, K2; let it land and
 	 * punish-crit, B1) taught on their own (25 Oct 07:40): with every teacher off the network was level with the installed
@@ -133,7 +133,7 @@ public final class SchoolStages {
 	// 08:25 off: at 0.5 the 08:22 check was -38.4, swings 105 to 338 (K2 taught it not to swing at all). 09:15 back with the rest,
 	// the user: "knock hit on jumper thing focus while learning those": K2's swing is now the golden rule's (SchoolSession.K2_GUARD
 	// holds the attack key on every K2 moment, so nothing of "don't swing" is taught), T8 and B1 are taught.
-	public static final float JUMP_IN_PULL_CAP = 3f; // = PRIORITY_MOST
+	public static final float JUMP_IN_PULL_CAP = 0f; // run 2 (EXPERIMENTS.md): the 06:54 recipe (3 from 09:15)
 	static final boolean[] JUMP_IN_ANSWER = new boolean[Technique.COUNT];
 	/**
 	 * The golden rule's teacher (K2: no knockback hit on a falling one) off from 25 Oct 09:35: in this game, as the checks
@@ -141,6 +141,12 @@ public final class SchoolStages {
 	 * kept the swing back from them and the damage went with it.
 	 */
 	public static final float K2_PULL = 0f;
+	/**
+	 * The basics teacher's swing (the ordinary fight's moments: swing as soon as the sword is back with them under the
+	 * crosshair) at least this hard. 25 Oct 09:55: on those moments it did not swing on 43-64% of them, 14-28 swings a
+	 * minute off the techniques to the installed model's 40, and the damage dealt went with it (215 a minute to 297).
+	 */
+	public static final float BASE_PULL_LEAST = 0f; // run 2 (EXPERIMENTS.md): the 06:54 recipe (2 proposed 09:55)
 
 	static {
 		JUMP_IN_ANSWER[Technique.T8.ordinal()] = true;
@@ -153,7 +159,9 @@ public final class SchoolStages {
 	public static final float FLOOR = 0.65f;
 	public static final float MASTERED = 0.85f;
 	/** The installed network's pull at the school's start; it fades to nothing over the first three stages' least steps. */
-	public static final float OLD_PULL = 1.0f;
+	// 2 from 25 Oct 09:55: between the techniques its keys (its W/S, its swing) held too lightly; the S of the file's escapes
+	// spread into the whole fight (S 166 a minute off the moments to its 79, swings 22 to 40; 09:49 check).
+	public static final float OLD_PULL = 1.0f; // run 2 (EXPERIMENTS.md): the 06:54 recipe (2 proposed 09:55)
 	/**
 	 * About a day on the screen. Since the overlay (24 Oct) the installed model teaches the fighting between the techniques,
 	 * not only the camera: it stays the network's teacher there until the network plays as well as it does.
@@ -285,13 +293,12 @@ public final class SchoolStages {
 	public static final boolean[] PRIORITY = new boolean[Technique.COUNT];
 	/** The bots that give those moments, and the share of every stage's fights against them. */
 	// The jump-in critter twice (25 Oct 09:15, the user: "knock hit on jumper thing focus while learning those").
-	public static final int[] PRIORITY_BOTS = {Specialists.JUMP_IN_CRITTER, Specialists.JUMP_IN_CRITTER, Specialists.FALL_SPACER,
-			Specialists.ATTACK_THEN_S};
+	public static final int[] PRIORITY_BOTS = {Specialists.JUMP_IN_CRITTER, Specialists.FALL_SPACER, Specialists.ATTACK_THEN_S}; // run 2 (EXPERIMENTS.md): the 06:54 recipe
 	/**
 	 * A third until the priority ones were learned (24 Oct 13:40: T8 77%, K2 89%, B1 64%, T10 62%); then less, so a
 	 * stage's own bots get the fights: in the crit trades, the double crit had about one moment an update.
 	 */
-	public static final float PRIORITY_SHARE = 0.25f; // 0.15 until 25 Oct 09:15 (the jump-in focus)
+	public static final float PRIORITY_SHARE = 0.15f; // run 2 (EXPERIMENTS.md): the 06:54 recipe (0.25 from 09:15)
 	/**
 	 * Of the rest, the share of fights against a bot of the family of a technique still under {@link #MASTERED}, the
 	 * weakest most often. A technique's moments come against its own family's bots: C3 (jump + hold S against a stun)
@@ -336,6 +343,9 @@ public final class SchoolStages {
 		float[] p = new float[Technique.COUNT];
 		for (int t = 0; t < p.length; t++) {
 			p[t] = t == Technique.K2.ordinal() ? K2_PULL : TECH_PULL * Math.min(JUMP_IN_ANSWER[t] ? JUMP_IN_PULL_CAP : PULL_CAP, pullShare[t]);
+			if (t == Technique.BASE.ordinal()) {
+				p[t] = Math.max(p[t], BASE_PULL_LEAST);
+			}
 		}
 		return p;
 	}

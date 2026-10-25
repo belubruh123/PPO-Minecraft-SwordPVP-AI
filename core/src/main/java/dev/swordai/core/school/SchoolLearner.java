@@ -79,7 +79,7 @@ public final class SchoolLearner implements AutoCloseable {
 	private TeacherReplay selfReplay;
 	static final int SELF_CAPACITY = 4_000;
 	static final int SELF_BATCHES = 12;
-	static final float SELF_PULL = 0.5f;
+	static final float SELF_PULL = 0f; // run 2 (EXPERIMENTS.md): the 06:54 recipe (0.5 from 09:41)
 	private volatile String selfLine = "none yet";
 	private SchoolNet.Workspace replayWs;
 	private volatile String shadowLine = "no examples yet";

@@ -264,7 +264,7 @@ public final class SchoolPpo implements AutoCloseable {
 	 * techniques cost the school 10 to 20 a fight against the installed model (06:16, 09:29 checks).
 	 */
 	static final float TEACH_AWR_BETA = 1f;
-	static final float TEACH_AWR_MOST = 3f;
+	static final float TEACH_AWR_MOST = 1.5f; // 3 for the first hour: with the full pulls it taught the escapes' S up to six times over
 
 	/** One update over a rollout whose advantages are computed. */
 	public Stats update(SchoolRollout r, Random rng, Settings set) {

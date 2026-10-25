@@ -88,7 +88,7 @@ public final class SchoolSession implements AgentSession {
 	static final float PER_HEALTH = 0.1f;
 	static final float KNOCKOUT = 1f;
 	/** Damage dealt weighs this much more than damage taken (25 Oct 09:25, the user: "prioritize to make it dealt more damage"). */
-	static final float DEALT_WEIGHT = 1.25f;
+	static final float DEALT_WEIGHT = 1f; // run 2 (EXPERIMENTS.md): the 06:54 recipe (1.25 at 09:41, 1.5 proposed 09:55)
 	/**
 	 * A real punish crit (B1): a crit the game confirms, landed within this many ticks of being hit (as {@code Habits}
 	 * counts it). Its damage alone paid it about a third of a point more than a plain hit, too little to outweigh letting
@@ -124,7 +124,9 @@ public final class SchoolSession implements AgentSession {
 	 * The golden rule (K2) broken: a knockback hit landed on a falling player, who crits back (the user's first wish). A
 	 * whole knockout's worth since 24 Oct 15:40: at 0.5, 4 to 14 an update when jumpers (the uppercutter) came in.
 	 */
-	static final float K2_BROKEN = 0f; // 1.0 until 25 Oct 09:35: see K2_GUARD
+	static final float K2_BROKEN = 1.0f; // run 2 (EXPERIMENTS.md): the 06:54 recipe (0 from 09:35)
+	/** The K2_BROKEN penalty not paid within its own combo (09:25); off in run 2, as in the 06:54 recipe. */
+	static final boolean K2_COMBO_EXEMPT = false;
 	/**
 	 * The basics teacher (the user, 24 Oct: "make a brand new teacher specializing on teaching this"): outside the technique
 	 * moments the swing is its, as soon as the sword is back and only with the crosshair on them (the game's own pick, so in
@@ -234,7 +236,7 @@ public final class SchoolSession implements AgentSession {
 	 */
 	// 0 from 25 Oct 03:25 (control run; was 0.25); 0.2 from 09:00, the user: "Review every skill while learning that so it won't
 	// forgot stuff".
-	static final float REVIEW_SHARE = 0.2f;
+	static final float REVIEW_SHARE = 0f; // run 2 (EXPERIMENTS.md): the 06:54 recipe
 	/** The share of the specialists' training fights in which the specialist does other things too (Specialists.varied). */
 	static final float VARIED_SHARE = 0.5f;
 	/**
@@ -243,9 +245,9 @@ public final class SchoolSession implements AgentSession {
 	 * this share of the training fights are basics; the rest stay technique fights so that those are not lost. After that,
 	 * {@link #REVIEW_SHARE} ("after it is done with the basics make it constantly review it").
 	 */
-	static final float BASICS_SHARE = 0.2f; // 0 from 25 Oct 03:25 (was 0.8); 0.2 from 09:00, a review like the rest
+	static final float BASICS_SHARE = 0f; // run 2 (EXPERIMENTS.md): the 06:54 recipe (0.2 from 09:00)
 	/** With all but the last basic passed, the basics' share comes down toward this. */
-	static final float BASICS_SHARE_LEAST = 0.2f; // 0 from 25 Oct 03:25 (was 0.4); 0.2 from 09:00
+	static final float BASICS_SHARE_LEAST = 0f; // run 2 (EXPERIMENTS.md): the 06:54 recipe
 	/** Steps of a basic judged at a time against its stage's bars. */
 	static final int PASS_STEPS = 4000;
 	/** A basic that failed this many judgements in a row stops holding the rest back (and is still drawn three times as often). */
@@ -1026,7 +1028,7 @@ public final class SchoolSession implements AgentSession {
 				// Falling as it saw them, or on the server already (seen late: "it might be landing already while client still
 				// doesn't", the user, 24 Oct 23:05).
 				// Not in its own combo (25 Oct 09:25, the user: the guard made it forget to combo).
-				if (facts.hitsDealt > 0 && facts.sprintHit && !inOwnCombo && (reader.duel.them.falling() || truth.botFalling())) {
+				if (facts.hitsDealt > 0 && facts.sprintHit && !(K2_COMBO_EXEMPT && inOwnCombo) && (reader.duel.them.falling() || truth.botFalling())) {
 					reward -= K2_BROKEN;
 					k2Broken++;
 				}

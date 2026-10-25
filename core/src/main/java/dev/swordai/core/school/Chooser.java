@@ -28,6 +28,8 @@ public final class Chooser {
 	/** Advantage-weighted regression: weight exp(advantage / AWR_BETA), the advantages scaled to one deviation, at most AWR_MOST. */
 	public static final float AWR_BETA = 1f;
 	public static final float AWR_MOST = 3f;
+	/** Off in run 2 (EXPERIMENTS.md): the 06:54 recipe (on from 09:41). */
+	public static final boolean AWR = false;
 	public static final int IN = ObsSpec.VEC + SchoolObs.MEM + Predictor.OUT + SchoolNet.INTENT;
 	public static final int HIDDEN = 128;
 
@@ -187,7 +189,7 @@ public final class Chooser {
 				int label = r.intentLabel[i];
 				int before = techniqueOf(r.prevIntent[i], 0);
 				boolean start = label != base && label != before;
-				float w = (float) Math.min(AWR_MOST, Math.exp((r.advantage[i] - mean) / std / AWR_BETA));
+				float w = AWR ? (float) Math.min(AWR_MOST, Math.exp((r.advantage[i] - mean) / std / AWR_BETA)) : 1f;
 				s.weight += w;
 				for (int c = 0; c < Technique.COUNT; c++) {
 					ws.dLogits[c] = w * (ws.chances[c] - (c == label ? 1f : 0f));
