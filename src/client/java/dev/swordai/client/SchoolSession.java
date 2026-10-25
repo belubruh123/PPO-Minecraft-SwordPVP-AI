@@ -217,6 +217,14 @@ public final class SchoolSession implements AgentSession {
 	 */
 	private LoadedFighter sparring;
 	static final float SPAR_SHARE = 0.3f; // run 18 (26 Oct)
+	/**
+	 * The mirror check: with this file in the school folder, every fight of a check (but the fight basics) is against the
+	 * server's copy of the installed model, A (the school network) and B (the installed model on the screen) on the same
+	 * seeds. B against its own copy should come out about level if the server's copy is fair; A minus B is the school
+	 * network's lead over the installed model, the screen-against-server bias cancelled.
+	 */
+	static final String SPAR_CHECK_FILE = "spar-check";
+	private boolean sparCheck;
 	static final int SPAR_LAG_EXTRA = 2;
 	private boolean sparFight;
 	private int sparFights;
@@ -636,7 +644,8 @@ public final class SchoolSession implements AgentSession {
 		if (icfg != null && Files.exists(teacherFile)) {
 			installed = LoadedFighter.loadFrom(teacherFile, icfg, SwordFiles.installedCopy().resolve("curriculum.properties"));
 			installedBody.patchedUp = installed.patchedUp;
-			if (SPAR_SHARE > 0f && mode == Mode.TRAIN) {
+			sparCheck = mode == Mode.CHECK && Files.exists(SwordFiles.schoolDir().resolve(SPAR_CHECK_FILE));
+			if (SPAR_SHARE > 0f && mode == Mode.TRAIN || sparCheck) {
 				sparring = LoadedFighter.loadFrom(teacherFile, icfg, SwordFiles.installedCopy().resolve("curriculum.properties"));
 			}
 			// The swing waits for the sword as the installed model's does here (a full hit, a tick before the very end of the
@@ -966,7 +975,7 @@ public final class SchoolSession implements AgentSession {
 		} else {
 			boolean drill = mode == Mode.TRAIN && rng.nextFloat() < DRILL_SHARE;
 			plan = EpisodePlan.school(fightStyle, drill ? DRILL_NEAR : NEAREST, drill ? DRILL_FAR : FARTHEST);
-			sparFight = !drill && sparring != null && mode == Mode.TRAIN && rng.nextFloat() < SPAR_SHARE;
+			sparFight = !drill && sparring != null && (mode == Mode.TRAIN ? rng.nextFloat() < SPAR_SHARE : sparCheck);
 			if (sparFight) {
 				// The installed model plays the bot (ArenaServer's rival): no scripted style.
 				plan.style = null;
@@ -2041,7 +2050,7 @@ public final class SchoolSession implements AgentSession {
 		String result = won ? ", knockout" : lost ? ", knocked out" : "";
 		if (mode == Mode.CHECK) {
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school pair %d %s %s%s: dealt %.1f, taken %.1f, ticks %d%s", (checkFights - 1) / 2,
-					installedPlays ? "B" : "A", review >= TIMER ? CHECK_NAMES[review - TIMER] : Specialists.NAMES[fightBot],
+					installedPlays ? "B" : "A", review >= TIMER ? CHECK_NAMES[review - TIMER] : sparFight ? "installed-model" : Specialists.NAMES[fightBot],
 					review < 0 && fightStyle.heldOut ? " (held out)" : "", fightDealt, fightTaken, fightTicks, result));
 			if (installedPlays && ((checkFights / 2) % 10 == 0)) {
 				checkSummary();
