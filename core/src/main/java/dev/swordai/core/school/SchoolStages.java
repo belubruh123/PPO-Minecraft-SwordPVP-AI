@@ -333,6 +333,14 @@ public final class SchoolStages {
 	 * "make sure it maintains the skill and technique").
 	 */
 	public static final float WEAKEST_SHARE = 0.55f;
+	/**
+	 * Run 10 (EXPERIMENTS.md): with a run teaching one family (RUN_TAUGHT), the weakest-technique fights go to that family's
+	 * techniques only. Until then they went to every family's weakest (the uppercut, the hops, the jump resets, none taught in
+	 * the run), and the crit run fought the punish-critter in 1-2 of about 9 fights an update: the double crit, which "only
+	 * works if the opponent tries to punish-crit you", had 2 moments in 10 minutes (25 Oct 15:44). The user, 15:38: "DOUBLE
+	 * CRIT WHERE THE HECK IS IT LEARNING".
+	 */
+	public static final boolean WEAKEST_RUN_ONLY = false;
 	/** Under this a technique's pull toward its bots is {@link #UNDER_WEIGHT} times its gap (the user, 24 Oct 23:40: "any skill below 80% should be heavily focused"). */
 	public static final float UNDER = 0.8f;
 	public static final float UNDER_WEIGHT = 3f;
@@ -524,6 +532,10 @@ public final class SchoolStages {
 			w[f] = new float[ts.length];
 			for (int i = 0; i < ts.length; i++) {
 				int t = ts[i].ordinal();
+				if (WEAKEST_RUN_ONLY && RUN_PULL_CAP > 0f && !RUN_TAUGHT[t]) {
+					w[f][i] = 0f;
+					continue;
+				}
 				// Starved (too few moments to judge) weighs twice: its moments only come against its own bots.
 				boolean starved = momentCount[t] < ENOUGH / 2;
 				float r = starved ? 0f : doneRate(t);
