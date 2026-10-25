@@ -145,7 +145,7 @@ public final class SchoolStages {
 	 * The techniques the run of EXPERIMENTS.md teaches, one family at a time (25 Oct, the one-week goal): each at its mastery
 	 * share up to RUN_PULL_CAP, its pull weighted by the outcome (SchoolPpo.TEACH_AWR_MOST). 0: none.
 	 */
-	public static final float RUN_PULL_CAP = 0f; // 1 in runs 7-11 (the crit family); 0 from run 12: run 6's recipe
+	public static final float RUN_PULL_CAP = 1f; // 1 in runs 7-11 (the crit family); 0 in run 12 (run 6's recipe); 1 in run 13 (B1 alone)
 	/**
 	 * The installed model's fight-time rules give way to a technique being learned, on its keys (run 10 of EXPERIMENTS.md).
 	 * Its StepBack ("after a hit of its own that has not sent the opponent away it steps back": W and the sprint off) took the
@@ -171,8 +171,9 @@ public final class SchoolStages {
 	static final boolean[] RUN_TAUGHT = new boolean[Technique.COUNT];
 
 	static {
-		// Run 3: the crits (the punish crit, the double crits, the standing crit).
-		for (Technique t : new Technique[] {Technique.B1, Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2}) {
+		// Runs 7-11: the crit family (the punish crit, the double crits, the standing crit); from run 13 the punish crit alone:
+		// every run teaching the whole family lost, the crit tries spreading jumps into the fight.
+		for (Technique t : new Technique[] {Technique.B1}) {
 			RUN_TAUGHT[t.ordinal()] = true;
 		}
 	}
