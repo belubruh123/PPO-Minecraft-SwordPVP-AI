@@ -705,9 +705,14 @@ public final class SchoolStages {
 	public static final long FADE_STEPS = 600_000L; // run 15 (25 Oct 19:50), about three hours at 60 steps a second
 	private long fadeFrom = -1L;
 
-	/** The fading of the body's copying starts now (the run's start). */
+	/**
+	 * The fading of the body's copying starts now, unless the saved state has its start already: a check restarts the session,
+	 * and until 25 Oct 20:44 every check started the fade again (the pull back at 0.48 after 0.40 at the 20:36 check).
+	 */
 	public void fadeFromNow() {
-		fadeFrom = schoolSteps;
+		if (fadeFrom < 0L) {
+			fadeFrom = schoolSteps;
+		}
 	}
 
 	/** The share of the copying left on the body's keys: 1 at the run's start, 0 after FADE_STEPS. */
@@ -812,6 +817,9 @@ public final class SchoolStages {
 		p.setProperty("reached", Integer.toString(reached));
 		p.setProperty("stageSteps", Long.toString(stageSteps));
 		p.setProperty("schoolSteps", Long.toString(schoolSteps));
+		if (fadeFrom >= 0L) {
+			p.setProperty("fadeFrom", Long.toString(fadeFrom));
+		}
 		for (int b = 0; b < Specialists.KINDS; b++) {
 			p.setProperty("first." + b, join(first[b], firstCount[b]));
 			p.setProperty("last." + b, join(last[b], lastCount[b]) + "@" + lastAt[b]);
@@ -842,6 +850,7 @@ public final class SchoolStages {
 		reached = Math.max(Math.min(stage, FAMILIES - 1), Integer.parseInt(p.getProperty("reached", "0")));
 		stageSteps = Long.parseLong(p.getProperty("stageSteps", "0"));
 		schoolSteps = Long.parseLong(p.getProperty("schoolSteps", "0"));
+		fadeFrom = Long.parseLong(p.getProperty("fadeFrom", "-1"));
 		for (int b = 0; b < Specialists.KINDS; b++) {
 			firstCount[b] = split(p.getProperty("first." + b, ""), first[b]);
 			String l = p.getProperty("last." + b, "@0");
