@@ -145,7 +145,19 @@ public final class SchoolStages {
 	 * The techniques the run of EXPERIMENTS.md teaches, one family at a time (25 Oct, the one-week goal): each at its mastery
 	 * share up to RUN_PULL_CAP, its pull weighted by the outcome (SchoolPpo.TEACH_AWR_MOST). 0: none.
 	 */
-	public static final float RUN_PULL_CAP = 1f; // run 7 (EXPERIMENTS.md): the first technique family, the crits, with the basics reviewed in between
+	public static final float RUN_PULL_CAP = 1f;
+	/**
+	 * The installed model's fight-time rules give way to a technique being learned, on its keys (run 10 of EXPERIMENTS.md).
+	 * Its StepBack ("after a hit of its own that has not sent the opponent away it steps back": W and the sprint off) took the
+	 * keys of every technique that follows its own hit: the uppercut (T10, off on the sprint 37-76% at full pull, 25 Oct
+	 * 09:20-09:43), the hops (T11b), the delayed sprint hit (C7), the standing crit (T2). The user, 15:00: the uppercut at 0%.
+	 */
+	public static final boolean RULES_YIELD = false;
+
+	/** Whether technique {@code t} is one the run teaches (RUN_TAUGHT, with RUN_PULL_CAP on). */
+	public static boolean runTaught(int t) {
+		return RUN_PULL_CAP > 0f && t >= 0 && t < Technique.COUNT && RUN_TAUGHT[t];
+	} // run 7 (EXPERIMENTS.md): the first technique family, the crits, with the basics reviewed in between
 	static final boolean[] RUN_TAUGHT = new boolean[Technique.COUNT];
 
 	static {

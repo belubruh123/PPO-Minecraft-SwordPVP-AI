@@ -1397,6 +1397,14 @@ public final class SchoolSession implements AgentSession {
 			}
 			// Only heads still open: a rule's swing waits for the sword, the crosshair and the golden rule like the network's.
 			ruled = installed.fighter.ruledHeads() & keys;
+			if (dev.swordai.core.school.SchoolStages.RULES_YIELD) {
+				// The rules give way to a technique being learned, on its keys: in training where its teacher teaches them, in
+				// a check (as in a real fight) while the decider has chosen it (SchoolStages#runTaught).
+				int body = ActionSpace.ALL_HEADS & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
+				int give = mode == Mode.TRAIN ? step.teacherHeads & body
+						: dev.swordai.core.school.SchoolStages.runTaught(learner.told().ordinal()) ? body : 0;
+				ruled &= ~give;
+			}
 			keys &= ~ruled;
 		}
 		if (ruled != 0) {
