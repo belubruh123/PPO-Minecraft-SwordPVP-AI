@@ -358,7 +358,7 @@ public final class SchoolSession implements AgentSession {
 	 * reach, 306 with the sword back and only 86 of those not sprinting (the punish crits' leak); taught at the B1 pull,
 	 * which was 0, it taught nothing on 4630 lift ticks. 0: as before.
 	 */
-	static final float LET_GO_PULL = 1f; // run 3 (0 until 25 Oct 11:00)
+	static final float LET_GO_PULL = 0f; // 1 in run 3 (11:00-11:22), stopped: fundamentals first (the user, 11:17)
 	/**
 	 * The golden rule (K2) as a rule: no sprint hit while the opponent is falling by the time the hit gets there (seen lag and
 	 * a tick for the click). The user, 25 Oct 08:50: "The falling player who jump in crit on this AI cases should be the
