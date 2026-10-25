@@ -375,6 +375,21 @@ public final class SchoolSession implements AgentSession {
 	 * ordinary fight's ticks, nor its camera with the opponent off the screen or 25 degrees off (the investigation, 11:58).
 	 */
 	static final boolean NO_PULL_YIELDS = true;
+	/**
+	 * The crits' held swing not taught (run 8 of EXPERIMENTS.md if run 7 is worse): the punish crit (B1) teaches no swing on
+	 * every tick until it falls in reach without a sprint, the standing crit (T2) while the sword comes back and on the way
+	 * up, the double crits until the fall (PvpPlayer step, jumpedCrit). Taught in run 7, its swings off the techniques fell
+	 * from 25-44 a minute to 11-19 and the damage dealt from 303-327 to 234-298, as "don't swing" spread from K2 at 08:22.
+	 * With this on, those plans teach W, sprint, jump and the crit's own swing; when to hold is the damage's.
+	 */
+	static final boolean CRIT_HOLD_UNTAUGHT = true; // run 8 (25 Oct 14:41)
+	private static final boolean[] CRIT_FAMILY = new boolean[Technique.COUNT];
+
+	static {
+		for (Technique t : new Technique[] {Technique.B1, Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2, Technique.C6}) {
+			CRIT_FAMILY[t.ordinal()] = true;
+		}
+	}
 
 	private static boolean pulled(float[] pulls, int technique) {
 		return !NO_PULL_YIELDS || technique >= 0 && technique < pulls.length && pulls[technique] > 0f;
@@ -1173,13 +1188,19 @@ public final class SchoolSession implements AgentSession {
 		float[] pulls = stages.techPulls();
 		int base = Technique.BASE.ordinal();
 		boolean yielded = mode == Mode.TRAIN && step.teacherHeads != 0 && !pulled(pulls, step.teacherTechnique);
-		if (yielded) {
+		// A crit's held swing (waiting for the fall) is not taught (CRIT_HOLD_UNTAUGHT): only its swing when the crit is due.
+		int ao2 = ActionSpace.OFFSETS[ActionSpace.ATTACK];
+		boolean holdUntaught = mode == Mode.TRAIN && CRIT_HOLD_UNTAUGHT && !yielded && step.teacherTechnique >= 0
+				&& CRIT_FAMILY[step.teacherTechnique] && (step.teacherHeads & (1 << ActionSpace.ATTACK)) != 0
+				&& step.teacher[ao2] >= step.teacher[ao2 + 1];
+		if (yielded || holdUntaught) {
 			judgedHeads = step.teacherHeads;
 			judgedTechnique = step.teacherTechnique;
 			System.arraycopy(step.teacher, 0, judgedTarget, 0, ActionSpace.TOTAL_LOGITS);
 			// Its keys only: the technique stays the step's label (what the network is told, what the decider learns).
-			step.teacherHeads = 0;
+			step.teacherHeads = yielded ? 0 : step.teacherHeads & ~(1 << ActionSpace.ATTACK);
 		}
+		boolean judgedApart = yielded || holdUntaught;
 		if (mode == Mode.TRAIN && stages.oldPull() > 0f && (installed != null || learner.hasOldTeacher())) {
 			if (installed != null) {
 				// What the installed model would press here, rules and all: its choice, as a target.
@@ -1379,7 +1400,7 @@ public final class SchoolSession implements AgentSession {
 			fairJump.apply(action, me.onGround(), clock.ticksSinceHitTaken, clock.takenStreak.hits());
 		}
 		// Judged on the keys: the camera a teacher shows (the punish crit's aim) is taught, not counted for done.
-		if (yielded) {
+		if (judgedApart) {
 			perf.tick(judgedTechnique, judgedHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH)), judgedTarget, action, keys,
 					facts.damageDealt, facts.damageTaken);
 		} else {
