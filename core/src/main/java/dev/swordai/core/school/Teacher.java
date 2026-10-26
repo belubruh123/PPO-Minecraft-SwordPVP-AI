@@ -43,7 +43,18 @@ public final class Teacher {
 	 *
 	 * @param vec the step's vector input (its own sprint is read from it)
 	 */
+	/**
+	 * The punish crit (B1, and its wait against a jump-in) weighs this much more again on every key it teaches. The user,
+	 * 26 Oct 16:30: "just guide it to ALWAYS do it ... I want to see it over 90%"; its jump-ins were punished 8-15%.
+	 */
+	public static final float PUNISH_WEIGHT = 3f;
+
 	public static float pressWeight(float[] target, int h, float[] vec, int technique) {
+		float w = techniquePressWeight(target, h, vec, technique);
+		return technique == Technique.B1.ordinal() ? PUNISH_WEIGHT * w : w;
+	}
+
+	private static float techniquePressWeight(float[] target, int h, float[] vec, int technique) {
 		// The golden rule (K2): its swing held back weighs as a press. Taught as a plain "no swing" beside every swing the
 		// basics teacher weighs three times, it slipped from 85-100% to about 60% an update (24 Oct 15:35, the user).
 		if (h == ActionSpace.ATTACK && technique == Technique.K2.ordinal()) {

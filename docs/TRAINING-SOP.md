@@ -11,7 +11,7 @@
    2. the combo escape (C3, T9).
    After that, the next weakest technique from the hit report.
 2. **Give it a measure** that the game counts, so that 90% means something. Examples:
-   - jump-in countered: in the 40 ticks after their take-off, it lands its own crit (a punish crit) and no sprint hit on them falling (K2). Hitting them while they rise (T8) does not count by itself: with lag and knockback that does not take them out of reach, their crit still lands (the user, 26 Oct 14:30; the hit log: 25% of the time within 20 ticks). The bots' and the installed AI's jump-ins are counted apart and both need 90%;
+   - jump-in countered: in the 40 ticks after their take-off, their hit on it is answered by its own crit (the punish crit, B1) and no sprint hit on them falling (K2). A jump-in where they never hit it and it made no K2 is not counted (nothing to punish). Hitting them while they rise (T8) does not count by itself: with lag and knockback that does not take them out of reach, their crit still lands (the user, 26 Oct 14:30; the hit log: 25% of the time within 20 ticks). The bots' and the installed AI's jump-ins are counted apart and both need 90%;
    - crit scene won: dealt more than taken;
    - combo got out of: no third hit in a row.
 3. **Train its scenes.** Every failure of the focus in a full fight is kept as a scene: both fighters' exact state (position, motion, look, sword clock, health, hurt time) from just before the moment, 60-100 ticks long. Training starts episodes from these scenes (teleport, same opponent). Each scene is fought again until it is won **3 times in a row**; it then goes to the mastered pile.

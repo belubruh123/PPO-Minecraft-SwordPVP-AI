@@ -643,6 +643,9 @@ public final class SchoolSession implements AgentSession {
 	private final boolean[] exPunish = new boolean[2];
 	/** Its own crit anywhere in the exchange (before or after theirs). */
 	private final boolean[] exOwnCrit = new boolean[2];
+	/** Their hit landed on it in the exchange; its own crit after that hit (the punish crit). */
+	private final boolean[] exHit = new boolean[2];
+	private final boolean[] exAnswer = new boolean[2];
 	private final int[] exFrom = new int[2];
 	/** A jump-in not countered in this fight, to keep as a scene at keepJumpInAt: from fight tick jumpInFrom. */
 	private int jumpInFrom = -1;
@@ -652,6 +655,8 @@ public final class SchoolSession implements AgentSession {
 	private boolean sceneK2;
 	private boolean scenePunish;
 	private boolean sceneOwnCrit;
+	private boolean sceneHit;
+	private boolean sceneAnswer;
 	private int focus;
 	private int focusReached;
 	/** Rolling outcomes for the focus bars: per kind, the last scene fights won; the full fights' jump-ins and combos. */
@@ -1514,6 +1519,8 @@ public final class SchoolSession implements AgentSession {
 		sceneK2 = false;
 		scenePunish = false;
 		sceneOwnCrit = false;
+		sceneHit = false;
+		sceneAnswer = false;
 		secondHitAt = -1;
 		comboFrom = -1;
 		sceneRow = 0;
@@ -2731,7 +2738,7 @@ public final class SchoolSession implements AgentSession {
 			sceneFights++;
 			sceneNet += fightDealt - fightTaken;
 			sceneNetBefore += sceneNow.net;
-			boolean sceneWon = sceneNow.kind == KIND_JUMPIN ? !sceneK2 && sceneOwnCrit
+			boolean sceneWon = sceneNow.kind == KIND_JUMPIN ? !sceneK2 && (!sceneHit || sceneAnswer)
 					: sceneNow.kind == KIND_COMBO ? sceneRowMost < 2 : fightDealt > fightTaken;
 			if (!sceneReview) {
 				sceneRoll[sceneNow.kind].add(sceneWon);
@@ -3042,6 +3049,8 @@ public final class SchoolSession implements AgentSession {
 			exK2[side] = false;
 			exPunish[side] = false;
 			exOwnCrit[side] = false;
+			exHit[side] = false;
+			exAnswer[side] = false;
 			exFrom[side] = fightTicks;
 		}
 		boolean k2Now = facts.hitsDealt > 0 && facts.sprintHit && them.falling();
@@ -3050,6 +3059,8 @@ public final class SchoolSession implements AgentSession {
 			exK2[side] |= k2Now;
 			exPunish[side] |= exCrit[side] && facts.hitsDealt > 0 && facts.critDealt;
 			exOwnCrit[side] |= facts.hitsDealt > 0 && facts.critDealt;
+			exAnswer[side] |= exHit[side] && facts.hitsDealt > 0 && facts.critDealt;
+			exHit[side] |= facts.hitsTaken > 0;
 			if (++exAt[side] >= JUMPIN_WINDOW) {
 				finishJumpIn(side);
 			}
@@ -3059,6 +3070,8 @@ public final class SchoolSession implements AgentSession {
 			sceneK2 |= k2Now;
 			scenePunish |= sceneCrit && facts.hitsDealt > 0 && facts.critDealt;
 			sceneOwnCrit |= facts.hitsDealt > 0 && facts.critDealt;
+			sceneAnswer |= sceneHit && facts.hitsDealt > 0 && facts.critDealt;
+			sceneHit |= facts.hitsTaken > 0;
 		}
 		sinceFallingHit = Math.min(sinceFallingHit + 1, 1000);
 		sinceRiserHit[side] = Math.min(sinceRiserHit[side] + 1, 1000);
@@ -3115,7 +3128,10 @@ public final class SchoolSession implements AgentSession {
 	private int sceneRowMost;
 
 	/**
-	 * A jump-in exchange is over: countered or not (see JUMPIN_WINDOW). Countered only by its own crit (a punish crit) and no
+	 * A jump-in exchange is over (see JUMPIN_WINDOW). It counts once their hit landed on it, or it knockback-hit them falling
+	 * (K2); it is countered when their hit was answered by its own crit (the punish crit, B1) and no K2. One where they never
+	 * hit it is not counted either way: nothing to punish (26 Oct 16:30; 14:41-16:30 every jump-in counted, and 17 of 22 had no
+	 * crit either side, so 90% was out of reach whatever it did). Before that the counter was only by its own crit, and no
 	 * sprint hit on them falling. The user, 26 Oct 14:30: "a falling player or even a rising player with lag ... will still
 	 * land a crit because knock back won't get them instantly out of reach so it must be a punish crit". The check hit log
 	 * agreed: after its hit on them rising (T8) their crit still came within 20 ticks 25% of the time (the installed model
@@ -3123,19 +3139,20 @@ public final class SchoolSession implements AgentSession {
 	 */
 	private void finishJumpIn(int side) {
 		long[] c = jumpIn[side];
-		boolean countered = !exK2[side] && exOwnCrit[side];
-		c[9]++;
+		boolean counted = exHit[side] || exK2[side];
+		boolean countered = counted && !exK2[side] && exAnswer[side];
+		c[9] += counted ? 1 : 0;
 		c[10] += countered ? 1 : 0;
-		c[11] += exCrit[side] && !exPunish[side] ? 1 : 0;
+		c[11] += exHit[side] && !exAnswer[side] && !exK2[side] ? 1 : 0;
 		c[12] += exK2[side] ? 1 : 0;
-		c[13] += countered && exPunish[side] ? 1 : 0;
-		c[14] += !exCrit[side] && !exOwnCrit[side] ? 1 : 0;
+		c[13] += countered && exCrit[side] ? 1 : 0;
+		c[14] += counted ? 0 : 1;
 		exAt[side] = -1;
-		// The counter (its own crit) pays in the scenes too (26 Oct 16:10): the jump-in scenes are where it is drilled.
+		// The counter (the punish crit) pays in the scenes too (26 Oct 16:10): the jump-in scenes are where it is drilled.
 		if (side == 0 && mode == Mode.TRAIN && review < 0 && countered) {
 			shaping += JUMPIN_COUNTERED;
 		}
-		if (side == 0 && mode == Mode.TRAIN && review < 0 && sceneNow == null) {
+		if (side == 0 && mode == Mode.TRAIN && review < 0 && sceneNow == null && counted) {
 			trainJumpIns++;
 			trainJumpInsCountered += countered ? 1 : 0;
 			(sparFight ? jumpInSparRoll : jumpInRoll).add(countered);
@@ -3160,8 +3177,8 @@ public final class SchoolSession implements AgentSession {
 
 	private String jumpInLine(int side) {
 		long[] c = jumpIn[side];
-		return String.format(Locale.ROOT, "their jump-ins %d, countered by its own crit %d of %d (%.0f%%; its crit after theirs in %d; a crit taken and not answered in %d, "
-				+ "no crit either side in %d, a sprint hit on them falling in %d); "
+		return String.format(Locale.ROOT, "their jump-ins %d, of those with their hit on it or a K2: punished with its crit %d of %d (%.0f%%; their crit punished in %d; "
+				+ "their hit not punished in %d, no hit of theirs (not counted) %d, a sprint hit on them falling in %d); "
 				+ "its hits on them rising (T8) %d; its knockback hits on them falling (K2 broken) %d, crits taken "
 				+ "within ten ticks %d; crits taken in all %d; hits on them rising close %d (crits taken after %d), further %d (crits taken after %d)",
 				c[0], c[10], c[9], c[9] == 0 ? 0f : 100f * c[10] / c[9], c[13], c[11], c[14], c[12], c[1], c[2], c[3], c[4], c[5], c[7], c[6], c[8]);
