@@ -261,7 +261,7 @@ public final class SchoolSession implements AgentSession {
 	 * Per side, the answer to jumping in (the priority): their take-offs toward it, its hits landed on them rising (T8), its
 	 * knockback hits landed on them falling (what K2 forbids), and the crits it took within ten ticks of one of those.
 	 */
-	private final long[][] jumpIn = new long[2][9];
+	private final long[][] jumpIn = new long[2][13];
 	/**
 	 * Its hits on a rising jumper by how close they were (under {@link #RISER_CLOSE} blocks), and the crits taken within ten
 	 * ticks after each kind. The user, 25 Oct 17:12: a sprint hit does not knock a close rising jumper away, and there is lag.
@@ -504,6 +504,21 @@ public final class SchoolSession implements AgentSession {
 	 * minutes until it is won (with 400 at a time each came back about every half hour, 09:45).
 	 */
 	static final int SCENES_ACTIVE = 60;
+	/**
+	 * Jump-in scenes (the user, 26 Oct 10:00: "let it learn to counter jump in crit and not sprint hit ... I want it 90%+"; the
+	 * file: T8, hit them while they rise; K2, never knockback-hit a falling player; B1, let it land and punish crit). A jump-in
+	 * (their take-off toward it inside 6.5 blocks) is countered when, in the JUMPIN_WINDOW ticks after it, it takes no crit and
+	 * lands no sprint hit on them while they fall. Every jump-in it does not counter in a full fight is kept as a scene from
+	 * JUMPIN_BEFORE ticks before the take-off, JUMPIN_SCENE_TICKS long, fought again until countered SCENE_MASTERED times in a
+	 * row; JUMPIN_SCENE_SHARE of the scene fights are these. A countered jump-in pays JUMPIN_COUNTERED.
+	 */
+	static final int JUMPIN_WINDOW = 30;
+	static final int JUMPIN_BEFORE = 20;
+	static final int JUMPIN_SCENE_TICKS = 60;
+	static final float JUMPIN_SCENE_SHARE = 0.5f;
+	static final float JUMPIN_COUNTERED = 0.5f;
+	static final int KIND_CRIT = 0;
+	static final int KIND_JUMPIN = 1;
 	static final String SCENE_FILE = "scenes.txt";
 	/**
 	 * Mastered scenes reviewed in between (the user, 26 Oct 09:25: "review in between"): this share of the scene fights fight a
@@ -522,11 +537,16 @@ public final class SchoolSession implements AgentSession {
 		float net;
 		int wins;
 		int replays;
+		int kind;
 		double[] state;
 
+		int ticks() {
+			return kind == KIND_JUMPIN ? JUMPIN_SCENE_TICKS : SCENE_WINDOW;
+		}
+
 		String line() {
-			StringBuilder b = new StringBuilder(String.format(Locale.ROOT, "%d %d %d %d %d %d %.1f %d %d", bot, styleSeed, varied ? 1 : 0,
-					spar ? 1 : 0, agentLag, botLag, net, wins, replays));
+			StringBuilder b = new StringBuilder(String.format(Locale.ROOT, "%d %d %d %d %d %d %.1f %d %d %d", bot, styleSeed, varied ? 1 : 0,
+					spar ? 1 : 0, agentLag, botLag, net, wins, replays, kind));
 			for (double v : state) {
 				b.append(' ').append(v);
 			}
@@ -549,9 +569,12 @@ public final class SchoolSession implements AgentSession {
 			}
 			sc.wins = Integer.parseInt(f[7]);
 			sc.replays = Integer.parseInt(f[8]);
-			sc.state = new double[f.length - 9];
+			// Crit scenes kept 09:40-10:20 had no kind.
+			int at = f.length == 9 + 28 ? 9 : 10;
+			sc.kind = at == 10 ? Integer.parseInt(f[9]) : KIND_CRIT;
+			sc.state = new double[f.length - at];
 			for (int i = 0; i < sc.state.length; i++) {
-				sc.state[i] = Double.parseDouble(f[9 + i]);
+				sc.state[i] = Double.parseDouble(f[at + i]);
 			}
 			return sc;
 		}
@@ -576,6 +599,31 @@ public final class SchoolSession implements AgentSession {
 	private int sceneWins;
 	private int scenesMastered;
 	private int scenesMasteredAll;
+	/** Each side's jump-in exchange: ticks since their take-off (-1: none), a crit taken, a sprint hit on them falling. */
+	private final int[] exAt = {-1, -1};
+	private final boolean[] exCrit = new boolean[2];
+	private final boolean[] exK2 = new boolean[2];
+	private final int[] exFrom = new int[2];
+	/** A jump-in not countered in this fight, to keep as a scene at keepJumpInAt: from fight tick jumpInFrom. */
+	private int jumpInFrom = -1;
+	private int keepJumpInAt;
+	/** In a scene fight: a crit taken, a sprint hit on them falling. */
+	private boolean sceneCrit;
+	private boolean sceneK2;
+	private int jumpInScenes;
+	private int jumpInScenesWon;
+	private int jumpInScenesMastered;
+	private int trainJumpIns;
+	private int trainJumpInsCountered;
+
+	private int countKind(int kind) {
+		int n = 0;
+		for (Scene sc : scenes) {
+			n += sc.kind == kind ? 1 : 0;
+		}
+		return n;
+	}
+
 	/** Fight ticks of the crits taken in this fight whose scene is not kept yet. */
 	private final int[] critAt = new int[16];
 	private int critsPending;
@@ -600,7 +648,7 @@ public final class SchoolSession implements AgentSession {
 			List<String> lines = Files.readAllLines(file);
 			for (String line : lines.subList(Math.max(0, lines.size() - SCENES_KEPT), lines.size())) {
 				Scene sc = line.isBlank() ? null : Scene.parse(line);
-				if (sc != null && (into != scenes || into.size() < SCENES_ACTIVE)) {
+				if (sc != null && (into != scenes || countKind(sc.kind) < SCENES_ACTIVE)) {
 					into.add(sc);
 				}
 			}
@@ -623,13 +671,17 @@ public final class SchoolSession implements AgentSession {
 		while (critsPending > 0 && (fightOver || fightTicks >= critAt[0] + SCENE_WINDOW - SCENE_BEFORE)) {
 			int start = Math.max(1, critAt[0] - SCENE_BEFORE + 1);
 			System.arraycopy(critAt, 1, critAt, 0, --critsPending);
-			keepScene(start);
+			keepScene(start, KIND_CRIT);
+		}
+		if (jumpInFrom >= 0 && (fightOver || fightTicks >= keepJumpInAt)) {
+			keepScene(Math.max(1, jumpInFrom - JUMPIN_BEFORE), KIND_JUMPIN);
+			jumpInFrom = -1;
 		}
 	}
 
 	/** Keeps the scene from fight tick {@code start} to now. */
-	private void keepScene(int start) {
-		if (fightTicks - start >= histTick.length - 1 || scenes.size() >= SCENES_ACTIVE) {
+	private void keepScene(int start, int kind) {
+		if (fightTicks - start >= histTick.length - 1 || countKind(kind) >= SCENES_ACTIVE) {
 			return;
 		}
 		float sum = 0f;
@@ -648,6 +700,7 @@ public final class SchoolSession implements AgentSession {
 		sc.agentLag = fightLag;
 		sc.botLag = sparBotLag;
 		sc.net = sum;
+		sc.kind = kind;
 		sc.state = state;
 		scenes.add(sc);
 		scenesHarvested++;
@@ -665,7 +718,15 @@ public final class SchoolSession implements AgentSession {
 				scenesHarvested, sceneFights, sceneFights == 0 ? "" : String.format(Locale.ROOT, ", won %d (%.0f%%): net %.1f a scene (the first time %.1f)",
 						sceneWins, 100f * sceneWins / sceneFights, sceneNet / sceneFights, sceneNetBefore / sceneFights),
 				scenesMastered, scenesMasteredAll) + String.format(Locale.ROOT, "; mastered ones reviewed %d, lost again %d (%d mastered kept)",
-				sceneReviews, sceneForgot, mastered.size());
+				sceneReviews, sceneForgot, mastered.size())
+				+ String.format(Locale.ROOT, "; jump-in scenes kept %d, fought again %d, countered %d (%.0f%%), mastered %d; jump-ins countered in the full fights %d of %d (%.0f%%)",
+						countKind(KIND_JUMPIN), jumpInScenes, jumpInScenesWon, jumpInScenes == 0 ? 0f : 100f * jumpInScenesWon / jumpInScenes,
+						jumpInScenesMastered, trainJumpInsCountered, trainJumpIns, trainJumpIns == 0 ? 0f : 100f * trainJumpInsCountered / trainJumpIns);
+		jumpInScenes = 0;
+		jumpInScenesWon = 0;
+		jumpInScenesMastered = 0;
+		trainJumpIns = 0;
+		trainJumpInsCountered = 0;
 		sceneReviews = 0;
 		sceneForgot = 0;
 		scenesHarvested = 0;
@@ -1188,6 +1249,11 @@ public final class SchoolSession implements AgentSession {
 	private void beginFight(Truth truth) {
 		sceneNow = null;
 		critsPending = 0;
+		jumpInFrom = -1;
+		exAt[0] = -1;
+		exAt[1] = -1;
+		sceneCrit = false;
+		sceneK2 = false;
 		IntegratedServer server = mc.getSingleplayerServer();
 		if (server == null) {
 			stop("left the world");
@@ -1250,6 +1316,16 @@ public final class SchoolSession implements AgentSession {
 			if (mode == Mode.TRAIN && !drill && (!scenes.isEmpty() || !mastered.isEmpty()) && rng.nextFloat() < SCENE_SHARE) {
 				sceneReview = !mastered.isEmpty() && (scenes.isEmpty() || rng.nextFloat() < SCENE_REVIEW_SHARE);
 				List<Scene> from = sceneReview ? mastered : scenes;
+				if (!sceneReview) {
+					int kind = countKind(KIND_JUMPIN) > 0 && (countKind(KIND_CRIT) == 0 || rng.nextFloat() < JUMPIN_SCENE_SHARE) ? KIND_JUMPIN : KIND_CRIT;
+					List<Scene> ofKind = new ArrayList<>();
+					for (Scene sc : scenes) {
+						if (sc.kind == kind) {
+							ofKind.add(sc);
+						}
+					}
+					from = ofKind;
+				}
 				sceneNow = from.get(rng.nextInt(from.size()));
 			}
 			if (sceneNow != null) {
@@ -1481,7 +1557,7 @@ public final class SchoolSession implements AgentSession {
 			boolean ko = facts.koDealt || facts.koTaken;
 			boolean timeUp = review >= 0 ? fightTicks >= Math.min(basics[review].bot.attacks ? FIGHT_TICKS : REVIEW_TICKS, basics[review].episodeTicks)
 					|| reviewRewards.lostTooLong(basics[review])
-					: fightTicks >= (sceneNow != null ? SCENE_WINDOW : FIGHT_TICKS);
+					: fightTicks >= (sceneNow != null ? sceneNow.ticks() : FIGHT_TICKS);
 			if (mode == Mode.TRAIN && review < 0 && sceneNow == null && !drillFight) {
 				harvest(truth.tick(), facts.damageDealt - facts.damageTaken, facts.critsTaken > 0, ko || timeUp);
 			}
@@ -2366,7 +2442,12 @@ public final class SchoolSession implements AgentSession {
 			sceneFights++;
 			sceneNet += fightDealt - fightTaken;
 			sceneNetBefore += sceneNow.net;
-			boolean sceneWon = fightDealt > fightTaken;
+			boolean sceneWon = sceneNow.kind == KIND_JUMPIN ? !sceneCrit && !sceneK2 : fightDealt > fightTaken;
+			if (sceneNow.kind == KIND_JUMPIN && !sceneReview) {
+				jumpInScenes++;
+				jumpInScenesWon += sceneWon ? 1 : 0;
+				jumpInScenesMastered += sceneWon && sceneNow.wins + 1 >= SCENE_MASTERED ? 1 : 0;
+			}
 			sceneWins += sceneWon ? 1 : 0;
 			sceneNow.replays++;
 			if (sceneReview) {
@@ -2610,7 +2691,26 @@ public final class SchoolSession implements AgentSession {
 		long[] c = jumpIn[side];
 		dev.swordai.core.pvp.Body them = reader.duel.them;
 		if (them.sinceJump == 0 && reader.duel.theyClose > 0.05 && reader.duel.flat < 6.5) {
+			if (exAt[side] >= 0) {
+				finishJumpIn(side);
+			}
 			c[0]++;
+			exAt[side] = 0;
+			exCrit[side] = false;
+			exK2[side] = false;
+			exFrom[side] = fightTicks;
+		}
+		boolean k2Now = facts.hitsDealt > 0 && facts.sprintHit && them.falling();
+		if (exAt[side] >= 0) {
+			exCrit[side] |= facts.critsTaken > 0;
+			exK2[side] |= k2Now;
+			if (++exAt[side] >= JUMPIN_WINDOW) {
+				finishJumpIn(side);
+			}
+		}
+		if (sceneNow != null) {
+			sceneCrit |= facts.critsTaken > 0;
+			sceneK2 |= k2Now;
 		}
 		sinceFallingHit = Math.min(sinceFallingHit + 1, 1000);
 		sinceRiserHit[side] = Math.min(sinceRiserHit[side] + 1, 1000);
@@ -2638,6 +2738,27 @@ public final class SchoolSession implements AgentSession {
 		recentCrits[(int) (critClock++ % recentCrits.length)] = facts.critsTaken;
 	}
 
+	/** A jump-in exchange is over: countered or not (see JUMPIN_WINDOW). */
+	private void finishJumpIn(int side) {
+		long[] c = jumpIn[side];
+		boolean countered = !exCrit[side] && !exK2[side];
+		c[9]++;
+		c[10] += countered ? 1 : 0;
+		c[11] += exCrit[side] ? 1 : 0;
+		c[12] += exK2[side] ? 1 : 0;
+		exAt[side] = -1;
+		if (side == 0 && mode == Mode.TRAIN && review < 0 && sceneNow == null) {
+			trainJumpIns++;
+			trainJumpInsCountered += countered ? 1 : 0;
+			if (countered) {
+				shaping += JUMPIN_COUNTERED;
+			} else if (!drillFight && jumpInFrom < 0) {
+				jumpInFrom = exFrom[side];
+				keepJumpInAt = exFrom[side] + JUMPIN_SCENE_TICKS - JUMPIN_BEFORE;
+			}
+		}
+	}
+
 	private final int[] recentCrits = new int[10];
 	private long critClock;
 
@@ -2652,9 +2773,10 @@ public final class SchoolSession implements AgentSession {
 
 	private String jumpInLine(int side) {
 		long[] c = jumpIn[side];
-		return String.format(Locale.ROOT, "their jump-ins %d; its hits on them rising (T8) %d; its knockback hits on them falling (K2 broken) %d, crits taken "
+		return String.format(Locale.ROOT, "their jump-ins %d, countered %d of %d (%.0f%%; a crit taken in %d, a sprint hit on them falling in %d); "
+				+ "its hits on them rising (T8) %d; its knockback hits on them falling (K2 broken) %d, crits taken "
 				+ "within ten ticks %d; crits taken in all %d; hits on them rising close %d (crits taken after %d), further %d (crits taken after %d)",
-				c[0], c[1], c[2], c[3], c[4], c[5], c[7], c[6], c[8]);
+				c[0], c[10], c[9], c[9] == 0 ? 0f : 100f * c[10] / c[9], c[11], c[12], c[1], c[2], c[3], c[4], c[5], c[7], c[6], c[8]);
 	}
 
 	private String critLine(int side) {
