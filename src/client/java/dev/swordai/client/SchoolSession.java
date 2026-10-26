@@ -474,7 +474,7 @@ public final class SchoolSession implements AgentSession {
 	 * LET_GO_AT_CRIT_REACH and the sword back (26 Oct 20:40). The whole lift (RULES_LET_GO_IN_LIFT) let it stop sprinting
 	 * (84%) but took the rules' pressure with it (-82 a minute); here the rules keep W for the rest of the lift.
 	 */
-	static final boolean RULES_LET_GO_AT_CRIT = true;
+	static final boolean RULES_LET_GO_AT_CRIT = false; // on 20:37-21:06: not sprinting 49% -> 67%, punished flat (26%); the full fights -28..-37 a minute (before +10), combos got out of 49% -> 40%: off
 	static final float LET_GO_AT_CRIT_REACH = 3.0f;
 	static final float LET_GO_AT_CRIT_CHARGE = 0.85f;
 	static final boolean RULES_LET_GO_IN_LIFT = false; // runs 12-16b (25 Oct 17:28 - 26 Oct 00:20); off in run 17: the combo escape eroded (their third hit 33% -> 52%); on again 26 Oct 19:12-19:36: not sprinting in reach with the sword back 41-49% -> 84%, but the aim there fell 78% -> 57% (punished 23-28%), the full fights went from +54..-23 to -82..-86 net a minute against every kind of opponent (dealt 340 -> 290) and combos got out of 47% -> 39%: off
