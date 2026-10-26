@@ -479,15 +479,25 @@ public final class SchoolSession implements AgentSession {
 	/** " B1 T1 T1a ... let-go": the techniques whose teacher has a pull now (the rest of the keys copied); for the dashboard. */
 	/**
 	 * Scene replay (the user, 26 Oct 08:50: "just give it the 60-120 frames that it actually needs to perform the action to
-	 * train ... just tp the teacher to exact location where this scene will be taken"). Every SCENE_WINDOW ticks of a training
-	 * fight in which it took SCENE_LOST or more damage more than it dealt is kept as a scene: both fighters as they were at the
-	 * window's start (ArenaServer's SceneRecorder), with the opponent that fought it. SCENE_SHARE of the training fights then
-	 * start from a kept scene, both put back exactly, against the same opponent, for SCENE_WINDOW ticks: the lost moments
-	 * fought again and again, without the walking in around them. Kept in SCENE_FILE (the newest SCENES_KEPT).
+	 * train ... just tp the teacher to exact location where this scene will be taken"). The moments of the training fights where
+	 * an opponent crits it are kept as scenes: both fighters as they were at the scene's start (ArenaServer's SceneRecorder),
+	 * with the opponent that fought it. SCENE_SHARE of the training fights then start from a kept scene, both put back exactly,
+	 * against the same opponent, for SCENE_WINDOW ticks: the lost moments fought again and again, without the walking in
+	 * around them. Kept in SCENE_FILE (the newest SCENES_KEPT).
 	 */
-	static final float SCENE_SHARE = 0.5f; // run 21
+	static final float SCENE_SHARE = 0.8f; // run 21: 0.5 from 09:20, 0.8 from 09:35 (the user: "only make each episode SPECIALLY to see that part")
 	static final int SCENE_WINDOW = 100;
-	static final float SCENE_LOST = 14f;
+	/**
+	 * Run 21 from 09:35 (the user: "train until it ALWAYS deals more damage than crit guy"): a scene is the moment an opponent
+	 * crits it, from SCENE_BEFORE ticks before the crit to SCENE_WINDOW - SCENE_BEFORE after; it is fought again until it
+	 * deals more than it takes there SCENE_MASTERED times in a row, then it is put away (mastered).
+	 */
+	static final int SCENE_BEFORE = 60;
+	static final int SCENE_MASTERED = 3;
+	/** Of the full fights left (where new scenes come from), the share against the bots that crit. */
+	static final float CRIT_BOT_SHARE = 0.5f;
+	static final int[] CRIT_BOTS = {Specialists.PUNISH_CRITTER, Specialists.DOUBLE_CRITTER, Specialists.CRIT_BREAKER,
+			Specialists.STANDING_CRITTER, Specialists.JUMP_IN_CRITTER};
 	static final int SCENES_KEPT = 400;
 	static final String SCENE_FILE = "scenes.txt";
 
@@ -499,11 +509,13 @@ public final class SchoolSession implements AgentSession {
 		int agentLag;
 		int botLag;
 		float net;
+		int wins;
+		int replays;
 		double[] state;
 
 		String line() {
-			StringBuilder b = new StringBuilder(String.format(Locale.ROOT, "%d %d %d %d %d %d %.1f", bot, styleSeed, varied ? 1 : 0, spar ? 1 : 0,
-					agentLag, botLag, net));
+			StringBuilder b = new StringBuilder(String.format(Locale.ROOT, "%d %d %d %d %d %d %.1f %d %d", bot, styleSeed, varied ? 1 : 0,
+					spar ? 1 : 0, agentLag, botLag, net, wins, replays));
 			for (double v : state) {
 				b.append(' ').append(v);
 			}
@@ -520,9 +532,11 @@ public final class SchoolSession implements AgentSession {
 			sc.agentLag = Integer.parseInt(f[4]);
 			sc.botLag = Integer.parseInt(f[5]);
 			sc.net = Float.parseFloat(f[6]);
-			sc.state = new double[f.length - 7];
+			sc.wins = Integer.parseInt(f[7]);
+			sc.replays = Integer.parseInt(f[8]);
+			sc.state = new double[f.length - 9];
 			for (int i = 0; i < sc.state.length; i++) {
-				sc.state[i] = Double.parseDouble(f[7 + i]);
+				sc.state[i] = Double.parseDouble(f[9 + i]);
 			}
 			return sc;
 		}
@@ -533,7 +547,6 @@ public final class SchoolSession implements AgentSession {
 	private Scene sceneNow;
 	private final long[] histTick = new long[256];
 	private final float[] histNet = new float[256];
-	private int harvestQuiet;
 	private long fightStyleSeed;
 	private boolean fightVaried;
 	private int sparBotLag;
@@ -541,6 +554,12 @@ public final class SchoolSession implements AgentSession {
 	private int scenesHarvested;
 	private float sceneNet;
 	private float sceneNetBefore;
+	private int sceneWins;
+	private int scenesMastered;
+	private int scenesMasteredAll;
+	/** Fight ticks of the crits taken in this fight whose scene is not kept yet. */
+	private final int[] critAt = new int[16];
+	private int critsPending;
 
 	/** A specialist's style from its own seed, so that a scene can bring the same opponent back. */
 	private static dev.swordai.core.pvp.Style styleOf(int bot, long styleSeed, boolean varied) {
@@ -565,26 +584,34 @@ public final class SchoolSession implements AgentSession {
 		}
 	}
 
-	/** One training tick of a fight: keeps the window just past as a scene where it lost the trade. */
-	private void harvest(long tick, float net) {
+	/**
+	 * One training tick of a full fight: a crit taken now is kept as a scene once SCENE_WINDOW - SCENE_BEFORE more ticks have
+	 * gone by (or the fight ends): from SCENE_BEFORE ticks before it, with what it dealt and took over the window.
+	 */
+	private void harvest(long tick, float net, boolean critTaken, boolean fightOver) {
 		int k = fightTicks % histTick.length;
 		histTick[k] = tick;
 		histNet[k] = net;
-		if (harvestQuiet > 0) {
-			harvestQuiet--;
-			return;
+		if (critTaken && critsPending < critAt.length && (critsPending == 0 || fightTicks - critAt[critsPending - 1] >= 20)) {
+			critAt[critsPending++] = fightTicks;
 		}
-		if (fightTicks < SCENE_WINDOW || fightTicks % 10 != 0) {
+		while (critsPending > 0 && (fightOver || fightTicks >= critAt[0] + SCENE_WINDOW - SCENE_BEFORE)) {
+			int start = Math.max(1, critAt[0] - SCENE_BEFORE + 1);
+			System.arraycopy(critAt, 1, critAt, 0, --critsPending);
+			keepScene(start);
+		}
+	}
+
+	/** Keeps the scene from fight tick {@code start} to now. */
+	private void keepScene(int start) {
+		if (fightTicks - start >= histTick.length - 1) {
 			return;
 		}
 		float sum = 0f;
-		for (int i = 0; i < SCENE_WINDOW; i++) {
-			sum += histNet[(fightTicks - i + histTick.length) % histTick.length];
+		for (int t = start; t <= fightTicks; t++) {
+			sum += histNet[t % histTick.length];
 		}
-		if (sum > -SCENE_LOST) {
-			return;
-		}
-		double[] state = ArenaServer.sceneAt(histTick[(fightTicks - SCENE_WINDOW + 1) % histTick.length]);
+		double[] state = ArenaServer.sceneAt(histTick[start % histTick.length]);
 		if (state == null) {
 			return;
 		}
@@ -602,7 +629,6 @@ public final class SchoolSession implements AgentSession {
 			scenes.remove(0);
 		}
 		scenesHarvested++;
-		harvestQuiet = SCENE_WINDOW / 2;
 		try {
 			Files.writeString(SwordFiles.schoolDir().resolve(SCENE_FILE), sc.line() + System.lineSeparator(),
 					java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
@@ -611,16 +637,32 @@ public final class SchoolSession implements AgentSession {
 		}
 	}
 
-	/** The scenes since the last update: kept, fought again, and how those went against how they went the first time. */
+	/** The crit scenes since the last update: kept, fought again, won, mastered, against how they went the first time. */
 	private String sceneLine() {
-		String line = String.format(Locale.ROOT, " kept %d (%d new), fought again %d%s", scenes.size(), scenesHarvested, sceneFights,
-				sceneFights == 0 ? "" : String.format(Locale.ROOT, ": net %.1f a scene (the first time %.1f)", sceneNet / sceneFights,
-						sceneNetBefore / sceneFights));
+		String line = String.format(Locale.ROOT, " crit scenes kept %d (%d new), fought again %d%s, mastered %d (%d in all)", scenes.size(),
+				scenesHarvested, sceneFights, sceneFights == 0 ? "" : String.format(Locale.ROOT, ", won %d (%.0f%%): net %.1f a scene (the first time %.1f)",
+						sceneWins, 100f * sceneWins / sceneFights, sceneNet / sceneFights, sceneNetBefore / sceneFights),
+				scenesMastered, scenesMasteredAll);
 		scenesHarvested = 0;
 		sceneFights = 0;
+		sceneWins = 0;
 		sceneNet = 0f;
 		sceneNetBefore = 0f;
+		scenesMastered = 0;
+		saveScenes();
 		return line;
+	}
+
+	private void saveScenes() {
+		StringBuilder b = new StringBuilder();
+		for (Scene sc : scenes) {
+			b.append(sc.line()).append(System.lineSeparator());
+		}
+		try {
+			Files.writeString(SwordFiles.schoolDir().resolve(SCENE_FILE), b);
+		} catch (IOException e) {
+			SwordAi.LOGGER.warn("school: the kept scenes could not be saved: {}", e.getMessage());
+		}
 	}
 
 	/** The sparring fights against the installed model since the last update: how many, won-lost, net damage a fight. */
@@ -1115,7 +1157,7 @@ public final class SchoolSession implements AgentSession {
 
 	private void beginFight(Truth truth) {
 		sceneNow = null;
-		harvestQuiet = 0;
+		critsPending = 0;
 		IntegratedServer server = mc.getSingleplayerServer();
 		if (server == null) {
 			stop("left the world");
@@ -1141,7 +1183,7 @@ public final class SchoolSession implements AgentSession {
 			learner.seedSampling(seed * 0x2545F4914F6CDD1DL);
 		} else {
 			installedPlays = false;
-			fightBot = stages.drawBot(rng);
+			fightBot = rng.nextFloat() < CRIT_BOT_SHARE ? CRIT_BOTS[rng.nextInt(CRIT_BOTS.length)] : stages.drawBot(rng);
 			// Half of the specialists do other things as well, at random (see Specialists.varied); drawn from a seed of its own,
 			// so that a scene of this fight can bring the same opponent back.
 			fightStyleSeed = rng.nextLong();
@@ -1406,7 +1448,7 @@ public final class SchoolSession implements AgentSession {
 					|| reviewRewards.lostTooLong(basics[review])
 					: fightTicks >= (sceneNow != null ? SCENE_WINDOW : FIGHT_TICKS);
 			if (mode == Mode.TRAIN && review < 0 && sceneNow == null && !drillFight) {
-				harvest(truth.tick(), facts.damageDealt - facts.damageTaken);
+				harvest(truth.tick(), facts.damageDealt - facts.damageTaken, facts.critsTaken > 0, ko || timeUp);
 			}
 			boolean full = mode == Mode.TRAIN && learner.rolloutRoom() <= 1;
 			if (mode == Mode.TRAIN && review >= 0) {
@@ -2287,6 +2329,15 @@ public final class SchoolSession implements AgentSession {
 			sceneFights++;
 			sceneNet += fightDealt - fightTaken;
 			sceneNetBefore += sceneNow.net;
+			boolean sceneWon = fightDealt > fightTaken;
+			sceneWins += sceneWon ? 1 : 0;
+			sceneNow.wins = sceneWon ? sceneNow.wins + 1 : 0;
+			sceneNow.replays++;
+			if (sceneNow.wins >= SCENE_MASTERED) {
+				scenes.remove(sceneNow);
+				scenesMastered++;
+				scenesMasteredAll++;
+			}
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school scene %s (lost %.1f there the first time): dealt %.1f, taken %.1f, ticks %d%s",
 					sceneNow.spar ? "installed-model" : Specialists.NAMES[fightBot], -sceneNow.net, fightDealt, fightTaken, fightTicks, result));
 		} else if (sparFight) {
