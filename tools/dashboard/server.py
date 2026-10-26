@@ -242,6 +242,15 @@ def parse_checks(run):
 # ---- what the page gets ------------------------------------------------------------------------------------------------
 
 
+def read_models(run):
+    """run/models.json: each trained model's fresh-seed results against the installed AI (written as the checks come in)."""
+    path = os.path.join(run, 'models.json')
+    try:
+        return json.load(open(path, encoding='utf8'))
+    except (OSError, ValueError):
+        return []
+
+
 def build(cache, techniques, stages, prio):
     ups = cache.updates()
     stage_of = {}
@@ -336,6 +345,7 @@ def build(cache, techniques, stages, prio):
         'logAgeSeconds': age, 'state': state,
         'stages': [s for s in stages if s['name'] != 'T-F'], 'priority': prio,
         'techniques': rows, 'damage': damage[-600:], 'checks': checks, 'landing': landing, 'critChances': crit_chances, 'punish': punish,
+        'models': read_models(cache.run),
         'served': time.strftime('%H:%M:%S'),
     }
 
