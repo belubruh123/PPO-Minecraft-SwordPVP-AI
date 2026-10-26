@@ -1076,6 +1076,9 @@ public final class SchoolSession implements AgentSession {
 		sweep = 0;
 		frozenTicks = 0;
 		fightTicks = 0;
+		java.util.Arrays.fill(rowDealt, 0);
+		java.util.Arrays.fill(rowTaken, 0);
+		java.util.Arrays.fill(sinceSwing, 999);
 		fightDealt = 0f;
 		fightTaken = 0f;
 		fightTeacherTicks = 0;
@@ -1338,6 +1341,7 @@ public final class SchoolSession implements AgentSession {
 			ruledNow = installed.fighter.ruledHeads();
 			traceCrit(1, action[ActionSpace.ATTACK] == 1);
 			traceJumpIn(1);
+			logHits(1, action[ActionSpace.ATTACK] == 1, truth.botFalling());
 			applyAction(installed.fighter.yawRate(), installed.fighter.pitchRate());
 			clicked = action[ActionSpace.ATTACK] == 1;
 			showBar(truth);
@@ -1363,6 +1367,7 @@ public final class SchoolSession implements AgentSession {
 			ruledNow = 0;
 			traceCrit(0, action[ActionSpace.ATTACK] == 1);
 			traceJumpIn(0);
+			logHits(0, action[ActionSpace.ATTACK] == 1, truth.botFalling());
 			applyAction(installed.fighter.yawRate(), installed.fighter.pitchRate());
 			clicked = action[ActionSpace.ATTACK] == 1;
 			// The fight's clock runs from its first action on (the school's network sets this on its side).
@@ -1615,6 +1620,7 @@ public final class SchoolSession implements AgentSession {
 		ruledNow = ruled;
 		traceCrit(0, action[ActionSpace.ATTACK] == 1);
 		traceJumpIn(0);
+		logHits(0, action[ActionSpace.ATTACK] == 1, truth.botFalling());
 		if (step.teacherHeads != 0) {
 			fightTeacherTicks++;
 			int t = step.teacherTechnique;
@@ -2098,6 +2104,7 @@ public final class SchoolSession implements AgentSession {
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school pair %d %s %s%s: dealt %.1f, taken %.1f, ticks %d%s", (checkFights - 1) / 2,
 					installedPlays ? "B" : "A", review >= TIMER ? CHECK_NAMES[review - TIMER] : sparFight ? "installed-model" : Specialists.NAMES[fightBot],
 					review < 0 && fightStyle.heldOut ? " (held out)" : "", fightDealt, fightTaken, fightTicks, result));
+			flushHits();
 			if (installedPlays && ((checkFights / 2) % 10 == 0)) {
 				checkSummary();
 			}
@@ -2156,6 +2163,65 @@ public final class SchoolSession implements AgentSession {
 		ruleTicks = 0;
 		k2Truth = 0;
 		k2Seen = 0;
+	}
+
+	/**
+	 * Every hit of a check, dealt or taken, with what the side was doing then (the user, 26 Oct 08:40: look at the fights it
+	 * loses and at what it does that deals less damage). Appended to HIT_LOG in the school folder at the end of each fight;
+	 * tools/hits-report.py reads it.
+	 */
+	static final String HIT_LOG = "hits.csv";
+	static final String HIT_HEADER = "pair,side,bot,tick,dealt,taken,hitsDealt,crit,sprintHit,hitCharge,punishCrit,uppercut,hitsTaken,critsTaken,"
+			+ "sprintsTaken,onGround,falling,sprinting,sprintKey,charge,reach,forward,strafe,jumpKey,sinceSwing,myRow,theirRow,themFalling,"
+			+ "themRising,oppCharge,knockedUp,walkedInOnCooldown,ruled,situation";
+	private final StringBuilder hitRows = new StringBuilder();
+	private final int[] rowDealt = new int[2];
+	private final int[] rowTaken = new int[2];
+	private final int[] sinceSwing = {999, 999};
+
+	private void logHits(int side, boolean swung, boolean botFalling) {
+		if (mode != Mode.CHECK) {
+			return;
+		}
+		sinceSwing[side] = swung ? 0 : Math.min(sinceSwing[side] + 1, 999);
+		if (facts.hitsDealt <= 0 && facts.hitsTaken <= 0) {
+			return;
+		}
+		if (facts.hitsDealt > 0) {
+			rowDealt[side]++;
+			rowTaken[side] = 0;
+		}
+		if (facts.hitsTaken > 0) {
+			rowTaken[side]++;
+			rowDealt[side] = 0;
+		}
+		String bot = review >= TIMER ? CHECK_NAMES[review - TIMER] : sparFight ? "installed-model" : Specialists.NAMES[fightBot];
+		String situation = step.teacherTechnique >= 0 ? Technique.values()[step.teacherTechnique].name() : "-";
+		hitRows.append(String.format(Locale.ROOT,
+				"%d,%s,%s,%d,%.1f,%.1f,%d,%d,%d,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%.2f,%d,%d,%d,%s%n",
+				(checkFights - 1) / 2, side == 0 ? "A" : "B", bot, fightTicks, facts.damageDealt, facts.damageTaken, facts.hitsDealt,
+				facts.critDealt ? 1 : 0, facts.sprintHit ? 1 : 0, facts.hitCharge, facts.punishCrit ? 1 : 0, facts.uppercut ? 1 : 0,
+				facts.hitsTaken, facts.critsTaken, facts.sprintsTaken, facts.onGround ? 1 : 0, facts.falling ? 1 : 0,
+				facts.serverSprinting ? 1 : 0, facts.sprintKey ? 1 : 0, facts.charge, facts.reachDist, facts.forwardAxis, facts.strafeAxis,
+				facts.jumpKey ? 1 : 0, sinceSwing[side], rowDealt[side], rowTaken[side], reader.duel.them.falling() || botFalling ? 1 : 0,
+				reader.duel.them.rising() ? 1 : 0, facts.oppCharge, facts.knockedUp ? 1 : 0, facts.walkedInOnCooldown ? 1 : 0, ruledNow,
+				situation));
+	}
+
+	private void flushHits() {
+		if (hitRows.length() == 0) {
+			return;
+		}
+		Path file = SwordFiles.schoolDir().resolve(HIT_LOG);
+		try {
+			if (!Files.exists(file)) {
+				Files.writeString(file, HIT_HEADER + System.lineSeparator());
+			}
+			Files.writeString(file, hitRows, java.nio.file.StandardOpenOption.APPEND);
+		} catch (IOException e) {
+			SwordAi.LOGGER.warn("school: the hit log could not be written: {}", e.getMessage());
+		}
+		hitRows.setLength(0);
 	}
 
 	/** One tick of a side's crit moments (see {@link #critTrace}). */
