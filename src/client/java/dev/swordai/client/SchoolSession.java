@@ -500,6 +500,12 @@ public final class SchoolSession implements AgentSession {
 			Specialists.STANDING_CRITTER, Specialists.JUMP_IN_CRITTER};
 	static final int SCENES_KEPT = 400;
 	static final String SCENE_FILE = "scenes.txt";
+	/**
+	 * Mastered scenes reviewed in between (the user, 26 Oct 09:25: "review in between"): this share of the scene fights fight a
+	 * mastered scene again; one lost goes back to be learned. The basics keep their own review (REVIEW_SHARE).
+	 */
+	static final float SCENE_REVIEW_SHARE = 0.15f;
+	static final String MASTERED_FILE = "scenes-mastered.txt";
 
 	private static final class Scene {
 		int bot;
@@ -543,8 +549,12 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	private final List<Scene> scenes = new ArrayList<>();
-	/** The scene this fight starts from, or null. */
+	private final List<Scene> mastered = new ArrayList<>();
+	/** The scene this fight starts from, or null; and whether it is a mastered one reviewed. */
 	private Scene sceneNow;
+	private boolean sceneReview;
+	private int sceneReviews;
+	private int sceneForgot;
 	private final long[] histTick = new long[256];
 	private final float[] histNet = new float[256];
 	private long fightStyleSeed;
@@ -568,7 +578,12 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	private void loadScenes() {
-		Path file = SwordFiles.schoolDir().resolve(SCENE_FILE);
+		loadScenes(SCENE_FILE, scenes);
+		loadScenes(MASTERED_FILE, mastered);
+	}
+
+	private void loadScenes(String name, List<Scene> into) {
+		Path file = SwordFiles.schoolDir().resolve(name);
 		if (!Files.exists(file)) {
 			return;
 		}
@@ -576,11 +591,11 @@ public final class SchoolSession implements AgentSession {
 			List<String> lines = Files.readAllLines(file);
 			for (String line : lines.subList(Math.max(0, lines.size() - SCENES_KEPT), lines.size())) {
 				if (!line.isBlank()) {
-					scenes.add(Scene.parse(line));
+					into.add(Scene.parse(line));
 				}
 			}
 		} catch (IOException | RuntimeException e) {
-			SwordAi.LOGGER.warn("school: the kept scenes could not be read: {}", e.getMessage());
+			SwordAi.LOGGER.warn("school: the kept scenes in {} could not be read: {}", name, e.getMessage());
 		}
 	}
 
@@ -642,7 +657,10 @@ public final class SchoolSession implements AgentSession {
 		String line = String.format(Locale.ROOT, " crit scenes kept %d (%d new), fought again %d%s, mastered %d (%d in all)", scenes.size(),
 				scenesHarvested, sceneFights, sceneFights == 0 ? "" : String.format(Locale.ROOT, ", won %d (%.0f%%): net %.1f a scene (the first time %.1f)",
 						sceneWins, 100f * sceneWins / sceneFights, sceneNet / sceneFights, sceneNetBefore / sceneFights),
-				scenesMastered, scenesMasteredAll);
+				scenesMastered, scenesMasteredAll) + String.format(Locale.ROOT, "; mastered ones reviewed %d, lost again %d (%d mastered kept)",
+				sceneReviews, sceneForgot, mastered.size());
+		sceneReviews = 0;
+		sceneForgot = 0;
 		scenesHarvested = 0;
 		sceneFights = 0;
 		sceneWins = 0;
@@ -654,14 +672,19 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	private void saveScenes() {
+		saveScenes(SCENE_FILE, scenes);
+		saveScenes(MASTERED_FILE, mastered);
+	}
+
+	private static void saveScenes(String name, List<Scene> list) {
 		StringBuilder b = new StringBuilder();
-		for (Scene sc : scenes) {
+		for (Scene sc : list) {
 			b.append(sc.line()).append(System.lineSeparator());
 		}
 		try {
-			Files.writeString(SwordFiles.schoolDir().resolve(SCENE_FILE), b);
+			Files.writeString(SwordFiles.schoolDir().resolve(name), b);
 		} catch (IOException e) {
-			SwordAi.LOGGER.warn("school: the kept scenes could not be saved: {}", e.getMessage());
+			SwordAi.LOGGER.warn("school: the kept scenes could not be saved in {}: {}", name, e.getMessage());
 		}
 	}
 
@@ -1216,7 +1239,12 @@ public final class SchoolSession implements AgentSession {
 			reviewHop = truth.hopId();
 		} else {
 			boolean drill = mode == Mode.TRAIN && rng.nextFloat() < DRILL_SHARE;
-			sceneNow = mode == Mode.TRAIN && !drill && !scenes.isEmpty() && rng.nextFloat() < SCENE_SHARE ? scenes.get(rng.nextInt(scenes.size())) : null;
+			sceneReview = false;
+			if (mode == Mode.TRAIN && !drill && (!scenes.isEmpty() || !mastered.isEmpty()) && rng.nextFloat() < SCENE_SHARE) {
+				sceneReview = !mastered.isEmpty() && (scenes.isEmpty() || rng.nextFloat() < SCENE_REVIEW_SHARE);
+				List<Scene> from = sceneReview ? mastered : scenes;
+				sceneNow = from.get(rng.nextInt(from.size()));
+			}
 			if (sceneNow != null) {
 				fightBot = sceneNow.bot;
 				fightStyleSeed = sceneNow.styleSeed;
@@ -2331,12 +2359,27 @@ public final class SchoolSession implements AgentSession {
 			sceneNetBefore += sceneNow.net;
 			boolean sceneWon = fightDealt > fightTaken;
 			sceneWins += sceneWon ? 1 : 0;
-			sceneNow.wins = sceneWon ? sceneNow.wins + 1 : 0;
 			sceneNow.replays++;
-			if (sceneNow.wins >= SCENE_MASTERED) {
-				scenes.remove(sceneNow);
-				scenesMastered++;
-				scenesMasteredAll++;
+			if (sceneReview) {
+				sceneReviews++;
+				if (!sceneWon) {
+					// Forgotten: back to be learned again.
+					sceneForgot++;
+					mastered.remove(sceneNow);
+					sceneNow.wins = 0;
+					scenes.add(sceneNow);
+				}
+			} else {
+				sceneNow.wins = sceneWon ? sceneNow.wins + 1 : 0;
+				if (sceneNow.wins >= SCENE_MASTERED) {
+					scenes.remove(sceneNow);
+					mastered.add(sceneNow);
+					if (mastered.size() > SCENES_KEPT) {
+						mastered.remove(0);
+					}
+					scenesMastered++;
+					scenesMasteredAll++;
+				}
 			}
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school scene %s (lost %.1f there the first time): dealt %.1f, taken %.1f, ticks %d%s",
 					sceneNow.spar ? "installed-model" : Specialists.NAMES[fightBot], -sceneNow.net, fightDealt, fightTaken, fightTicks, result));
