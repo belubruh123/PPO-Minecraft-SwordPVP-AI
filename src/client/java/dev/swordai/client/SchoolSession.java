@@ -532,10 +532,13 @@ public final class SchoolSession implements AgentSession {
 	 * One technique at a time (the user, 26 Oct 10:55: "once they learn crit ... learn other technique one by one ... it is ok
 	 * to make a run be trained for all case focusingly whole day (make sure to review older technique still as well)"): of the
 	 * scene fights FOCUS_SHARE go to the focus's kinds, the rest to the earlier focuses' (their review); a focus moves on by
-	 * itself once its bars are met over the last FOCUS_EVENTS events in the full fights and FOCUS_REPLAYS scene fights:
-	 * the crits: jump-ins countered 90%, crit scenes won 80%; the combo escape: their third hit after 25% of their seconds or
-	 * fewer, combo scenes won 80%. Kept in FOCUS_FILE.
+	 * itself once its bars (FOCUS_BAR) are met over the last FOCUS_EVENTS events in the full fights and FOCUS_REPLAYS scene
+	 * fights: the crits: jump-ins countered, crit scenes won; the combo escape: combos got out of, combo scenes won. A learned
+	 * focus is guarded in review: once its measures (counted again from its learning) fall under the bar it is the focus again
+	 * (RETRAIN; the user, 11:00: "if any older technique falls below 90% investigate plus retrain to make it always 90% plus").
+	 * docs/TRAINING-SOP.md. Kept in FOCUS_FILE: the focus and the furthest reached.
 	 */
+	static final float FOCUS_BAR = 0.9f;
 	static final int[][] FOCUS_KINDS = {{KIND_CRIT, KIND_JUMPIN}, {KIND_COMBO}};
 	static final String[] FOCUS_NAMES = {"the crits (crit scenes, jump-in counter)", "the combo escape"};
 	static final float FOCUS_SHARE = 0.8f;
@@ -634,6 +637,7 @@ public final class SchoolSession implements AgentSession {
 	private boolean sceneCrit;
 	private boolean sceneK2;
 	private int focus;
+	private int focusReached;
 	/** Rolling outcomes for the focus bars: per kind, the last scene fights won; the full fights' jump-ins and combos. */
 	private final Rolling[] sceneRoll = {new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS)};
 	private final Rolling jumpInRoll = new Rolling(FOCUS_EVENTS);
@@ -673,6 +677,12 @@ public final class SchoolSession implements AgentSession {
 			return count == ring.length;
 		}
 
+		void clear() {
+			count = 0;
+			next = 0;
+			good = 0;
+		}
+
 		float share() {
 			return count == 0 ? 0f : good / (float) count;
 		}
@@ -686,31 +696,88 @@ public final class SchoolSession implements AgentSession {
 		try {
 			Path f = SwordFiles.schoolDir().resolve(FOCUS_FILE);
 			if (Files.exists(f)) {
-				focus = Math.max(0, Math.min(FOCUS_KINDS.length - 1, Integer.parseInt(Files.readString(f).trim())));
+				String[] v = Files.readString(f).trim().split(" ");
+				focus = Math.max(0, Math.min(FOCUS_KINDS.length - 1, Integer.parseInt(v[0])));
+				focusReached = v.length > 1 ? Math.max(focus, Math.min(FOCUS_KINDS.length - 1, Integer.parseInt(v[1]))) : focus;
 			}
 		} catch (IOException | RuntimeException e) {
 			SwordAi.LOGGER.warn("school: the focus could not be read: {}", e.getMessage());
 		}
 	}
 
-	/** Moves the focus on once its bars are met. */
+	/** A focus's measures: the full fights' and its scenes'. */
+	private Rolling[] measures(int f) {
+		return f == 0 ? new Rolling[] {jumpInRoll, sceneRoll[KIND_CRIT]} : new Rolling[] {comboRoll, sceneRoll[KIND_COMBO]};
+	}
+
+	private static boolean allFull(Rolling[] m) {
+		for (Rolling r : m) {
+			if (!r.full()) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static boolean allAbove(Rolling[] m) {
+		for (Rolling r : m) {
+			if (r.share() < FOCUS_BAR) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/** Moves the focus on once its bars are met; a learned one that falls under them is retrained first. */
 	private void checkFocus() {
-		boolean met = switch (focus) {
-			case 0 -> jumpInRoll.full() && jumpInRoll.share() >= 0.9f && sceneRoll[KIND_CRIT].full() && sceneRoll[KIND_CRIT].share() >= 0.8f;
-			case 1 -> comboRoll.full() && comboRoll.share() >= 0.75f && sceneRoll[KIND_COMBO].full() && sceneRoll[KIND_COMBO].share() >= 0.8f;
-			default -> false;
-		};
-		if (!met || focus >= FOCUS_KINDS.length - 1) {
+		for (int f = 0; f < focusReached; f++) {
+			if (f == focus) {
+				continue;
+			}
+			Rolling[] m = measures(f);
+			if (allFull(m) && !allAbove(m)) {
+				SwordAi.LOGGER.info("school: RETRAIN {}: in review it fell under {}% ({}, {}); investigate (tools/hits-report.py, its scenes)",
+						FOCUS_NAMES[f], Math.round(100 * FOCUS_BAR), m[0].line(), m[1].line());
+				setFocus(f);
+				return;
+			}
+		}
+		Rolling[] m = measures(focus);
+		if (!allFull(m) || !allAbove(m)) {
 			return;
 		}
-		SwordAi.LOGGER.info("school: {} learned (jump-ins countered {}, crit scenes won {}, combos got out of {}, combo scenes won {}); now {}",
-				FOCUS_NAMES[focus], jumpInRoll.line(), sceneRoll[KIND_CRIT].line(), comboRoll.line(), sceneRoll[KIND_COMBO].line(), FOCUS_NAMES[focus + 1]);
-		focus++;
+		int next = focus < focusReached ? focusReached : focus + 1;
+		if (next >= FOCUS_KINDS.length) {
+			return;
+		}
+		SwordAi.LOGGER.info("school: {} learned ({}, {}); now {}", FOCUS_NAMES[focus], m[0].line(), m[1].line(), FOCUS_NAMES[next]);
+		// Counted again from here, so that its review judges it afresh.
+		for (Rolling r : m) {
+			r.clear();
+		}
+		setFocus(next);
+	}
+
+	private void setFocus(int f) {
+		focus = f;
+		focusReached = Math.max(focusReached, f);
 		try {
-			Files.writeString(SwordFiles.schoolDir().resolve(FOCUS_FILE), Integer.toString(focus));
+			Files.writeString(SwordFiles.schoolDir().resolve(FOCUS_FILE), focus + " " + focusReached);
 		} catch (IOException e) {
 			SwordAi.LOGGER.warn("school: the focus could not be saved: {}", e.getMessage());
 		}
+	}
+
+	/** Whether a scene kind belongs to a focus learned already (the furthest reached is still being learned). */
+	private boolean learnedKind(int kind) {
+		for (int f = 0; f < focusReached; f++) {
+			for (int k : FOCUS_KINDS[f]) {
+				if (k == kind) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	private boolean inFocus(int kind) {
@@ -846,8 +913,8 @@ public final class SchoolSession implements AgentSession {
 			kindFights[k] = 0;
 			kindWon[k] = 0;
 		}
-		line += String.format(Locale.ROOT, " | focus: %s; jump-ins countered in the full fights, last %s (bar 90%%); their combos got out of, last %s%s",
-				FOCUS_NAMES[focus], jumpInRoll.line(), comboRoll.line(), kindsLine);
+		line += String.format(Locale.ROOT, " | focus: %s (furthest %s); jump-ins countered in the full fights, last %s (bar %d%%); their combos got out of, last %s%s",
+				FOCUS_NAMES[focus], FOCUS_NAMES[focusReached], jumpInRoll.line(), Math.round(100 * FOCUS_BAR), comboRoll.line(), kindsLine);
 		jumpInScenes = 0;
 		jumpInScenesWon = 0;
 		jumpInScenesMastered = 0;
@@ -1451,7 +1518,7 @@ public final class SchoolSession implements AgentSession {
 					boolean focusNow = rng.nextFloat() < FOCUS_SHARE;
 					List<Integer> kinds = new ArrayList<>();
 					for (int k = 0; k < KINDS; k++) {
-						boolean earlier = !inFocus(k) && k < FOCUS_KINDS[focus][0];
+						boolean earlier = !inFocus(k) && learnedKind(k);
 						if (countKind(k) > 0 && (focusNow ? inFocus(k) : earlier)) {
 							kinds.add(k);
 						}

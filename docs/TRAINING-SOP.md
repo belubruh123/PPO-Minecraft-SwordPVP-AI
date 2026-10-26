@@ -1,0 +1,56 @@
+# SwordAI training SOP (the user's standing procedure, 26 Oct 2026)
+
+## The standard
+- Every technique at **90% or more**, counted by the game in real first-person fights, and kept there.
+- The trained network beats the installed model on **fresh-seed** checks (seeds never used to pick it).
+- Techniques and their counters come only from `docs/PVP-TECHNIQUES.md`.
+
+## 1. Learn one technique at a time (the focus)
+1. **Pick the focus.** It is the weakest technique by the game's counts and the hit log (`tools/hits-report.py`). Order so far:
+   1. the crits: crit scenes, and the jump-in counter (T8, K2, then B1);
+   2. the combo escape (C3, T9).
+   After that, the next weakest technique from the hit report.
+2. **Give it a measure** that the game counts, so that 90% means something. Examples:
+   - jump-in countered: in the 30 ticks after their take-off, no crit taken and no sprint hit on them falling;
+   - crit scene won: dealt more than taken;
+   - combo got out of: no third hit in a row.
+3. **Train its scenes.** Every failure of the focus in a full fight is kept as a scene: both fighters' exact state (position, motion, look, sword clock, health, hurt time) from just before the moment, 60-100 ticks long. Training starts episodes from these scenes (teleport, same opponent). Each scene is fought again until it is won **3 times in a row**; it then goes to the mastered pile.
+4. **One run may train one focus for a whole day.** Do not cut a method off after a short run.
+
+## 2. Review in between (so nothing is forgotten)
+Every training run keeps all of these going at the same time:
+- **Basics**: 15% of fights (aim, hit timing, older stages).
+- **Earlier focuses**: 20% of the scene fights go to their scenes.
+- **Mastered scenes**: 15% of the scene fights test one again. A mastered scene that is lost goes back to be learned.
+- **Full fights**: every technique's bots plus the installed model (40% of the full fights).
+
+## 3. Learned, then guarded
+1. **A focus is learned** when its measures reach 90% over the last 300 events in full fights and the last 200 scene fights. It then moves to review, and the next focus starts. This happens automatically (`SchoolSession` `FOCUS_*`, saved in `school/focus.txt`).
+2. **If a learned technique falls below 90% in review:**
+   - Training makes it the focus again at once (the log says `RETRAIN`).
+   - **Investigate why**, the same hour: run `tools/hits-report.py` on the latest check, look at its scenes, and find which actions lose it.
+   - Fix the cause only with methods from the file. Retrain until it is at 90% again.
+   - Log the cause and the fix in `EXPERIMENTS.md`.
+
+## 4. Measure honestly
+- **Every check** writes the hit log (`school/hits.csv`). Run `tools/hits-report.py` and name the biggest damage gap against the installed model.
+- **Decide on fresh seeds only.** Use `screen.sh` with `FROM=` (a pair range never used before), 133 pairs on scripted bots, plus a mirror check with `MIRROR=1` against the server's installed copy.
+  - A screen on pairs 0-66 is not evidence: on 26 Oct the screens' +5 to +11 became -3 on fresh seeds.
+- **Watch the damage trend over steps** (6-update averages, full fights only), not just 10-minute slices.
+  - Scene fights lose by design. Keep them out of the damage curve.
+- **Never call a model "best"** without fresh-seed evidence.
+
+## 5. Install
+- Install only a network proven better than the installed best on fresh seeds: scripted check and mirror check.
+- Back up the profile first (`install-school.sh` does this).
+- Record it in `run/best-*/BEST.txt` and in `EXPERIMENTS.md`.
+- Keep every trained network and its scenes. Never throw learned data away.
+
+## 6. Every ten minutes (the standing review)
+Report:
+- swings landing, lost view, damage dealt and taken (full fights, by kind of opponent), K2 broken;
+- their combos' third hit;
+- the focus and its bars (e.g. jump-ins countered X%), scenes won and mastered, any RETRAIN;
+- techniques by `tech-review.py`.
+
+Never redeploy during a paired check, nor within 20 minutes of the last redeploy. Train first person only, never headless.
