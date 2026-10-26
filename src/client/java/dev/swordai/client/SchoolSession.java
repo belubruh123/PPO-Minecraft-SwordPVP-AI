@@ -641,6 +641,11 @@ public final class SchoolSession implements AgentSession {
 	/** Rolling outcomes for the focus bars: per kind, the last scene fights won; the full fights' jump-ins and combos. */
 	private final Rolling[] sceneRoll = {new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS)};
 	private final Rolling jumpInRoll = new Rolling(FOCUS_EVENTS);
+	/**
+	 * The installed AI's jump-ins (sparring) apart: on fresh seeds its jump-ins were countered 40% while the bots' were 76%
+	 * (26 Oct 12:05), and one measure over both hid it. The crits' bar needs both.
+	 */
+	private final Rolling jumpInSparRoll = new Rolling(FOCUS_EVENTS);
 	private final Rolling comboRoll = new Rolling(FOCUS_EVENTS);
 	/** Fight tick of their second hit in a row now (-1: none), and a combo scene to keep at keepComboAt from comboFrom. */
 	private int secondHitAt = -1;
@@ -730,7 +735,7 @@ public final class SchoolSession implements AgentSession {
 
 	/** A focus's measures: the full fights' and its scenes'. */
 	private Rolling[] measures(int f) {
-		return f == 0 ? new Rolling[] {jumpInRoll, sceneRoll[KIND_CRIT]} : new Rolling[] {comboRoll, sceneRoll[KIND_COMBO]};
+		return f == 0 ? new Rolling[] {jumpInRoll, sceneRoll[KIND_CRIT], jumpInSparRoll} : new Rolling[] {comboRoll, sceneRoll[KIND_COMBO]};
 	}
 
 	private static boolean allFull(Rolling[] m) {
@@ -788,7 +793,7 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	private Rolling[] rollings() {
-		return new Rolling[] {jumpInRoll, comboRoll, sceneRoll[KIND_CRIT], sceneRoll[KIND_JUMPIN], sceneRoll[KIND_COMBO]};
+		return new Rolling[] {jumpInRoll, comboRoll, sceneRoll[KIND_CRIT], sceneRoll[KIND_JUMPIN], sceneRoll[KIND_COMBO], jumpInSparRoll};
 	}
 
 	private void saveFocus() {
@@ -948,8 +953,8 @@ public final class SchoolSession implements AgentSession {
 			kindFights[k] = 0;
 			kindWon[k] = 0;
 		}
-		line += String.format(Locale.ROOT, " | focus: %s (furthest %s); jump-ins countered in the full fights, last %s (bar %d%%); their combos got out of, last %s%s",
-				FOCUS_NAMES[focus], FOCUS_NAMES[focusReached], jumpInRoll.line(), Math.round(100 * FOCUS_BAR), comboRoll.line(), kindsLine);
+		line += String.format(Locale.ROOT, " | focus: %s (furthest %s); jump-ins countered in the full fights, the bots' last %s, the installed AI's last %s (bar %d%%); their combos got out of, last %s%s",
+				FOCUS_NAMES[focus], FOCUS_NAMES[focusReached], jumpInRoll.line(), jumpInSparRoll.line(), Math.round(100 * FOCUS_BAR), comboRoll.line(), kindsLine);
 		jumpInScenes = 0;
 		jumpInScenesWon = 0;
 		jumpInScenesMastered = 0;
@@ -1568,10 +1573,15 @@ public final class SchoolSession implements AgentSession {
 					}
 					int kind = kinds.get(rng.nextInt(kinds.size()));
 					List<Scene> ofKind = new ArrayList<>();
+					List<Scene> ofSpar = new ArrayList<>();
 					for (Scene sc : scenes) {
 						if (sc.kind == kind) {
-							ofKind.add(sc);
+							(sc.spar ? ofSpar : ofKind).add(sc);
 						}
+					}
+					// The installed AI's scenes as often as the bots' (its jump-ins were countered 40%, the bots' 76%).
+					if (!ofSpar.isEmpty() && (ofKind.isEmpty() || rng.nextBoolean())) {
+						ofKind = ofSpar;
 					}
 					from = ofKind;
 				}
@@ -3037,7 +3047,7 @@ public final class SchoolSession implements AgentSession {
 		if (side == 0 && mode == Mode.TRAIN && review < 0 && sceneNow == null) {
 			trainJumpIns++;
 			trainJumpInsCountered += countered ? 1 : 0;
-			jumpInRoll.add(countered);
+			(sparFight ? jumpInSparRoll : jumpInRoll).add(countered);
 			if (countered) {
 				shaping += JUMPIN_COUNTERED;
 			} else if (!drillFight && jumpInFrom < 0) {
