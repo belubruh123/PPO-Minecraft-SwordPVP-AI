@@ -469,7 +469,7 @@ public final class SchoolSession implements AgentSession {
 	 * 8-17 an update and the network's on 0-1 (25 Oct 17:10, the crit trace), and the let-go and punish crit (B1) targets
 	 * there were dropped as locked keys: punish crits landed 3-6% by the game. The jump on the hit (T9) stays the rules'.
 	 */
-	static final boolean RULES_LET_GO_IN_LIFT = false; // runs 12-16b (25 Oct 17:28 - 26 Oct 00:20); off in run 17: the combo escape eroded (their third hit 33% -> 52%)
+	static final boolean RULES_LET_GO_IN_LIFT = true; // runs 12-16b (25 Oct 17:28 - 26 Oct 00:20); off in run 17: the combo escape eroded (their third hit 33% -> 52%); on again 26 Oct 19:10: of the falls in reach with the sword back still sprinting, W was the rules' on 15 and the network's on 0 (18:34-18:44), with the let-go taught on 5307 lift ticks; punish chances critted flat at 20-25%
 	/**
 	 * Learning without forgetting (run 9 of EXPERIMENTS.md, SchoolLearner#anchorToBase): the copying targets come from the
 	 * frozen best fighter in ANCHOR_FILE (in the school folder), its own chances on the same inputs, instead of the installed
