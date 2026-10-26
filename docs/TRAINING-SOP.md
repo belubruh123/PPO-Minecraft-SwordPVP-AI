@@ -54,4 +54,11 @@ Report:
 - the focus and its bars (e.g. jump-ins countered X%), scenes won and mastered, any RETRAIN;
 - techniques by `tech-review.py`.
 
-Never redeploy during a paired check, nor within 20 minutes of the last redeploy. Train first person only, never headless.
+## 7. Redeploys: only at checkpoints
+- A redeploy stops training and restarts it, and every change it brings changes what the running numbers mean. So **changes are batched and deployed once, at a checkpoint** (every ~2 hours, just before the fresh-seed checks), never in between.
+- Between checkpoints, a change waits committed in the repo. A quick fix of something just changed is not a reason to redeploy.
+- The only exception is a broken run: training stopped, a crash, or a measure that cannot be read.
+- The ten-minute reviews report and investigate; they do not redeploy.
+- Never redeploy during a paired check. (26 Oct: six redeploys between 10:03 and 13:10, and another planned for 13:31, which the user stopped.)
+
+Train first person only, never headless.
