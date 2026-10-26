@@ -2891,7 +2891,7 @@ public final class SchoolSession implements AgentSession {
 		String lead = String.format(Locale.ROOT, "%s,%d,%d,%d,%08x,", KIND_NAMES[sceneNow.kind], won ? 1 : 0, sceneReview ? 1 : 0,
 				learner.toldTheTeachers() ? 0 : 1, sceneKey(sceneNow));
 		StringBuilder rows = new StringBuilder();
-		for (String row : hitRows.toString().split("\R")) {
+		for (String row : hitRows.toString().split("\\R")) {
 			if (!row.isEmpty()) {
 				rows.append(lead).append(row).append(System.lineSeparator());
 			}
