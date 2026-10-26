@@ -381,8 +381,11 @@ final class FightSession implements AgentSession {
 			// The golden rule (K2): what is seen of them is a round trip behind the server by the time a hit gets there.
 			school.holdSwing(SchoolSession.K2_GUARD && me.isSprinting()
 					&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(reader.duel.them, ownPingTicks() + SchoolSession.K2_MARGIN));
-			school.rulesLetGo(SchoolSession.RULES_LET_GO_IN_LIFT && liftedFor >= 0 && !me.onGround()
-					&& Math.sqrt(opp.getBoundingBox().distanceToSqr(me.getEyePosition())) <= 3.5 && me.getAttackStrengthScale(0f) > 0.5f);
+			double reachNow = Math.sqrt(opp.getBoundingBox().distanceToSqr(me.getEyePosition()));
+			school.rulesLetGo(SchoolSession.RULES_LET_GO_IN_LIFT && liftedFor >= 0 && !me.onGround() && reachNow <= 3.5
+					&& me.getAttackStrengthScale(0f) > 0.5f
+					|| SchoolSession.RULES_LET_GO_AT_CRIT && liftedFor >= 0 && !me.onGround() && me.getY() < me.yo
+					&& reachNow <= SchoolSession.LET_GO_AT_CRIT_REACH && me.getAttackStrengthScale(0f) >= SchoolSession.LET_GO_AT_CRIT_CHARGE);
 			action = school.decide(observer.frame, body, reader.memory());
 			AgentController.apply(mc, action, school.yawRate(), school.pitchRate());
 			chargeAtClick = me.getAttackStrengthScale(0f);

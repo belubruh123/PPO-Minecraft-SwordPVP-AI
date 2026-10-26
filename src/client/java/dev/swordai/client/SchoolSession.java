@@ -469,6 +469,14 @@ public final class SchoolSession implements AgentSession {
 	 * 8-17 an update and the network's on 0-1 (25 Oct 17:10, the crit trace), and the let-go and punish crit (B1) targets
 	 * there were dropped as locked keys: punish crits landed 3-6% by the game. The jump on the hit (T9) stays the rules'.
 	 */
+	/**
+	 * W and the sprint are the network's only in the punish crit's own ticks: lifted by their hit, falling, within
+	 * LET_GO_AT_CRIT_REACH and the sword back (26 Oct 20:40). The whole lift (RULES_LET_GO_IN_LIFT) let it stop sprinting
+	 * (84%) but took the rules' pressure with it (-82 a minute); here the rules keep W for the rest of the lift.
+	 */
+	static final boolean RULES_LET_GO_AT_CRIT = true;
+	static final float LET_GO_AT_CRIT_REACH = 3.0f;
+	static final float LET_GO_AT_CRIT_CHARGE = 0.85f;
 	static final boolean RULES_LET_GO_IN_LIFT = false; // runs 12-16b (25 Oct 17:28 - 26 Oct 00:20); off in run 17: the combo escape eroded (their third hit 33% -> 52%); on again 26 Oct 19:12-19:36: not sprinting in reach with the sword back 41-49% -> 84%, but the aim there fell 78% -> 57% (punished 23-28%), the full fights went from +54..-23 to -82..-86 net a minute against every kind of opponent (dealt 340 -> 290) and combos got out of 47% -> 39%: off
 	/**
 	 * Learning without forgetting (run 9 of EXPERIMENTS.md, SchoolLearner#anchorToBase): the copying targets come from the
@@ -2230,6 +2238,11 @@ public final class SchoolSession implements AgentSession {
 			ruled = installed.fighter.ruledHeads() & keys;
 			if (RULES_LET_GO_IN_LIFT && liftedFor >= 0 && !me.onGround() && facts.reachDist <= 3.5f && charge > 0.5f) {
 				// Lifted by their hit and coming down near them: W and the sprint are the network's (RULES_LET_GO_IN_LIFT).
+				ruled &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
+			}
+			if (RULES_LET_GO_AT_CRIT && liftedFor >= 0 && facts.falling && !me.onGround() && facts.reachDist <= LET_GO_AT_CRIT_REACH
+					&& charge >= LET_GO_AT_CRIT_CHARGE) {
+				// The punish crit's own ticks: W and the sprint are the network's (RULES_LET_GO_AT_CRIT).
 				ruled &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
 			}
 			if (dev.swordai.core.school.SchoolStages.RULES_YIELD && clock.ticksSinceHitTaken > dev.swordai.core.school.SchoolStages.YIELD_AFTER_HIT) {
