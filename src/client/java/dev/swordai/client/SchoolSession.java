@@ -507,12 +507,13 @@ public final class SchoolSession implements AgentSession {
 	/**
 	 * Jump-in scenes (the user, 26 Oct 10:00: "let it learn to counter jump in crit and not sprint hit ... I want it 90%+"; the
 	 * file: T8, hit them while they rise; K2, never knockback-hit a falling player; B1, let it land and punish crit). A jump-in
-	 * (their take-off toward it inside 6.5 blocks) is countered when, in the JUMPIN_WINDOW ticks after it, it takes no crit and
-	 * lands no sprint hit on them while they fall. Every jump-in it does not counter in a full fight is kept as a scene from
+	 * (their take-off toward it inside 6.5 blocks) is countered when, in the JUMPIN_WINDOW ticks after it, it lands no sprint
+	 * hit on them while they fall (K2) and either takes no crit (T8: hit while they rise) or answers the crit with a crit of its
+	 * own (B1: "let it land, punish crit", the file's answer to a falling jumper; counted a failure until 26 Oct 12:30). Every jump-in it does not counter in a full fight is kept as a scene from
 	 * JUMPIN_BEFORE ticks before the take-off, JUMPIN_SCENE_TICKS long, fought again until countered SCENE_MASTERED times in a
 	 * row; JUMPIN_SCENE_SHARE of the scene fights are these. A countered jump-in pays JUMPIN_COUNTERED.
 	 */
-	static final int JUMPIN_WINDOW = 30;
+	static final int JUMPIN_WINDOW = 40; // 30 until 26 Oct 12:30: the punish crit after their crit needs the time
 	static final int JUMPIN_BEFORE = 20;
 	static final int JUMPIN_SCENE_TICKS = 60;
 	static final float JUMPIN_SCENE_SHARE = 0.5f;
@@ -629,6 +630,7 @@ public final class SchoolSession implements AgentSession {
 	private final int[] exAt = {-1, -1};
 	private final boolean[] exCrit = new boolean[2];
 	private final boolean[] exK2 = new boolean[2];
+	private final boolean[] exPunish = new boolean[2];
 	private final int[] exFrom = new int[2];
 	/** A jump-in not countered in this fight, to keep as a scene at keepJumpInAt: from fight tick jumpInFrom. */
 	private int jumpInFrom = -1;
@@ -636,6 +638,7 @@ public final class SchoolSession implements AgentSession {
 	/** In a scene fight: a crit taken, a sprint hit on them falling. */
 	private boolean sceneCrit;
 	private boolean sceneK2;
+	private boolean scenePunish;
 	private int focus;
 	private int focusReached;
 	/** Rolling outcomes for the focus bars: per kind, the last scene fights won; the full fights' jump-ins and combos. */
@@ -1488,6 +1491,7 @@ public final class SchoolSession implements AgentSession {
 		exAt[1] = -1;
 		sceneCrit = false;
 		sceneK2 = false;
+		scenePunish = false;
 		secondHitAt = -1;
 		comboFrom = -1;
 		sceneRow = 0;
@@ -2704,7 +2708,7 @@ public final class SchoolSession implements AgentSession {
 			sceneFights++;
 			sceneNet += fightDealt - fightTaken;
 			sceneNetBefore += sceneNow.net;
-			boolean sceneWon = sceneNow.kind == KIND_JUMPIN ? !sceneCrit && !sceneK2
+			boolean sceneWon = sceneNow.kind == KIND_JUMPIN ? !sceneK2 && (!sceneCrit || scenePunish)
 					: sceneNow.kind == KIND_COMBO ? sceneRowMost < 2 : fightDealt > fightTaken;
 			if (!sceneReview) {
 				sceneRoll[sceneNow.kind].add(sceneWon);
@@ -2967,12 +2971,14 @@ public final class SchoolSession implements AgentSession {
 			exAt[side] = 0;
 			exCrit[side] = false;
 			exK2[side] = false;
+			exPunish[side] = false;
 			exFrom[side] = fightTicks;
 		}
 		boolean k2Now = facts.hitsDealt > 0 && facts.sprintHit && them.falling();
 		if (exAt[side] >= 0) {
 			exCrit[side] |= facts.critsTaken > 0;
 			exK2[side] |= k2Now;
+			exPunish[side] |= exCrit[side] && facts.hitsDealt > 0 && facts.critDealt;
 			if (++exAt[side] >= JUMPIN_WINDOW) {
 				finishJumpIn(side);
 			}
@@ -2980,6 +2986,7 @@ public final class SchoolSession implements AgentSession {
 		if (sceneNow != null) {
 			sceneCrit |= facts.critsTaken > 0;
 			sceneK2 |= k2Now;
+			scenePunish |= sceneCrit && facts.hitsDealt > 0 && facts.critDealt;
 		}
 		sinceFallingHit = Math.min(sinceFallingHit + 1, 1000);
 		sinceRiserHit[side] = Math.min(sinceRiserHit[side] + 1, 1000);
@@ -3038,10 +3045,10 @@ public final class SchoolSession implements AgentSession {
 	/** A jump-in exchange is over: countered or not (see JUMPIN_WINDOW). */
 	private void finishJumpIn(int side) {
 		long[] c = jumpIn[side];
-		boolean countered = !exCrit[side] && !exK2[side];
+		boolean countered = !exK2[side] && (!exCrit[side] || exPunish[side]);
 		c[9]++;
 		c[10] += countered ? 1 : 0;
-		c[11] += exCrit[side] ? 1 : 0;
+		c[11] += exCrit[side] && !exPunish[side] ? 1 : 0;
 		c[12] += exK2[side] ? 1 : 0;
 		exAt[side] = -1;
 		if (side == 0 && mode == Mode.TRAIN && review < 0 && sceneNow == null) {
@@ -3071,7 +3078,7 @@ public final class SchoolSession implements AgentSession {
 
 	private String jumpInLine(int side) {
 		long[] c = jumpIn[side];
-		return String.format(Locale.ROOT, "their jump-ins %d, countered %d of %d (%.0f%%; a crit taken in %d, a sprint hit on them falling in %d); "
+		return String.format(Locale.ROOT, "their jump-ins %d, countered %d of %d (%.0f%%; a crit taken and not answered in %d, a sprint hit on them falling in %d); "
 				+ "its hits on them rising (T8) %d; its knockback hits on them falling (K2 broken) %d, crits taken "
 				+ "within ten ticks %d; crits taken in all %d; hits on them rising close %d (crits taken after %d), further %d (crits taken after %d)",
 				c[0], c[10], c[9], c[9] == 0 ? 0f : 100f * c[10] / c[9], c[11], c[12], c[1], c[2], c[3], c[4], c[5], c[7], c[6], c[8]);
