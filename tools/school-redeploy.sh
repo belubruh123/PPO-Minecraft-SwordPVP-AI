@@ -24,6 +24,17 @@ open(p, "w").write(" ".join(v))
 print("jump-in measures start again")
 PYEOF
 fi
+# RESET_PUNISH=1: the same for the punish crit's bar (punish chances critted, the 9th field) after a change of what a chance is.
+if [ -n "$RESET_PUNISH" ]; then
+  python - <<'PYEOF'
+p = "D:/swordai/run/swordai/school/focus.txt"
+v = open(p).read().split()
+if len(v) > 8:
+    v[8] = "-"
+open(p, "w").write(" ".join(v))
+print("punish measure starts again")
+PYEOF
+fi
 # GOTO_STAGE=N: once the client has saved and stopped, the school goes to stage N (0 = T-A ... 4 = T-E) from its start.
 if [ -n "$GOTO_STAGE" ]; then
   sed -i "s/^stage=.*/stage=$GOTO_STAGE/; s/^stageSteps=.*/stageSteps=0/" /d/swordai/run/swordai/school/stages.properties

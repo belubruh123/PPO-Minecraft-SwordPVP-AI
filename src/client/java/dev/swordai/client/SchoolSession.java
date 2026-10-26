@@ -435,6 +435,9 @@ public final class SchoolSession implements AgentSession {
 	 * which was 0, it taught nothing on 4630 lift ticks. 0: as before.
 	 */
 	static final float LET_GO_PULL = 1f; // run 7 (EXPERIMENTS.md): the first technique family, the crits, with the basics reviewed in between (1 in run 3, 11:00-11:22, stopped: fundamentals first)
+	/** The let-go is taught from the lift on, within this many blocks and with the sword this far back (3.5 and 0.5 until 26 Oct 18:10). */
+	static final float LET_GO_REACH = 4.5f;
+	static final float LET_GO_CHARGE = 0.3f;
 	/**
 	 * Run 5 (EXPERIMENTS.md): a teacher whose pull is zero (the basics swing, the crit swing, the find-them camera, the
 	 * sprint let-go, the punish crit's aim) no longer puts its target on the step, so the installed model's stays and is
@@ -2139,9 +2142,12 @@ public final class SchoolSession implements AgentSession {
 		// the crit can be made. S held stays (it ends the sprint as well); the K2 moment's own lesson stays its own.
 		// By its own sprint as the client shows it (what the network sees and the B1 teacher goes by), not the server's a tick
 		// behind: on that tick the two teachers asked W off and W on, and B1 was off on W/S up to a third of its ticks (20:50).
-		if (mode == Mode.TRAIN && OVERLAY && liftedFor >= 0 && !me.onGround() && me.isSprinting() && facts.reachDist <= 3.5f
+		// From the lift on (LET_GO_REACH, LET_GO_CHARGE): taught only within 3.5 blocks and the sword half back until 26 Oct 18:10,
+		// the let-go came too late, and the sprint ends a tick after W: 17:09-17:50, of 457 falls in reach with the sword back
+		// after their sprint hits, 263 were still sprinting (W let go on most of them, a tick late).
+		if (mode == Mode.TRAIN && OVERLAY && liftedFor >= 0 && !me.onGround() && me.isSprinting() && facts.reachDist <= LET_GO_REACH
 				&& (LET_GO_PULL > 0f || pulled(pulls, Technique.B1.ordinal()))
-				&& charge > 0.5f && step.teacherTechnique != Technique.K2.ordinal()) {
+				&& charge > LET_GO_CHARGE && step.teacherTechnique != Technique.K2.ordinal()) {
 			int f = ActionSpace.OFFSETS[ActionSpace.FORWARD];
 			boolean back = (step.teacherHeads & (1 << ActionSpace.FORWARD)) != 0 && step.teacher[f + 2] > Math.max(step.teacher[f], step.teacher[f + 1]);
 			if (!back) {
@@ -3031,7 +3037,9 @@ public final class SchoolSession implements AgentSession {
 
 	private void endLift() {
 		// A punish chance (it came down in reach after their hit) in a full fight: the punish crit's bar, and a scene if missed.
-		if (liftKind > 0 && liftStage >= 1 && mode == Mode.TRAIN && review < 0 && sceneNow == null) {
+		// A chance once it came down in reach with the sword back (stage 2): with the sword not back there is no crit to make.
+		// Counted from stage 1 (in reach) 17:09-18:10, when 45% of those had the sword down from their trade.
+		if (liftKind > 0 && liftStage >= 2 && mode == Mode.TRAIN && review < 0 && sceneNow == null) {
 			boolean punished = liftStage >= 6;
 			punishRoll.add(punished);
 			if (!punished && !drillFight && punishFrom < 0) {
