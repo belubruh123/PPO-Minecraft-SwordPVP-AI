@@ -373,7 +373,7 @@ public final class SchoolLearner implements AutoCloseable {
 		int intent = record && st.forced ? label : st.chosen;
 		// Its own choice in training is drawn from its chances, so that it tries other techniques and learns which won.
 		if (record && !st.forced && Chooser.OUTCOME) {
-			intent = draw(cw.chances);
+			intent = ch.draw(cw, intentRng.nextFloat());
 		}
 		step.choice = record && !st.forced ? intent : -1;
 		st.ticks = intent == st.last ? st.ticks + 1 : 0;
@@ -383,17 +383,6 @@ public final class SchoolLearner implements AutoCloseable {
 		step.pred[off + intent] = 1f;
 		step.pred[off + SchoolNet.INTENT_TICKS] = Math.min(1f, st.ticks / SchoolNet.INTENT_LONG);
 		System.arraycopy(step.pred, off, st.before, 0, SchoolNet.INTENT);
-	}
-
-	private int draw(float[] chances) {
-		float u = intentRng.nextFloat();
-		for (int i = 0; i < chances.length; i++) {
-			u -= chances[i];
-			if (u < 0f) {
-				return i;
-			}
-		}
-		return Technique.BASE.ordinal();
 	}
 
 	public String replayLine() {

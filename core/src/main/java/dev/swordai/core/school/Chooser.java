@@ -40,6 +40,13 @@ public final class Chooser {
 	public static final boolean OUTCOME = true;
 	public static final float OUTCOME_WEIGHT = 1f;
 	public static final float OUTCOME_CUT = 3f;
+	/**
+	 * Its own choices are drawn from its chances sharpened by this temperature (the same likeliest, which is what it plays
+	 * outside training). At 1 (13:10-13:35) a drawn other technique was carried on by its "doing it for N ticks" input and
+	 * the told technique left the teacher's on 33-45% of the ticks; the scenes it chose in were won 7 of 22 against 19 of
+	 * 28 told the teacher's.
+	 */
+	public static final float OUTCOME_TEMPERATURE = 0.5f;
 	public static final int IN = ObsSpec.VEC + SchoolObs.MEM + Predictor.OUT + SchoolNet.INTENT;
 	public static final int HIDDEN = 128;
 
@@ -63,6 +70,8 @@ public final class Chooser {
 		final float[] logits = new float[Technique.COUNT];
 		/** The chance of each technique. */
 		public final float[] chances = new float[Technique.COUNT];
+		/** The chances its own choices are drawn from in training ({@link #OUTCOME_TEMPERATURE}). */
+		final float[] drawn = new float[Technique.COUNT];
 		final float[] dLogits = new float[Technique.COUNT];
 		final float[] dH2 = new float[HIDDEN];
 		final float[] dH1 = new float[HIDDEN];
@@ -109,6 +118,36 @@ public final class Chooser {
 			}
 		}
 		return best;
+	}
+
+	/**
+	 * Draws a technique from the chances of the last {@link #forward}, sharpened by {@link #OUTCOME_TEMPERATURE}; leaves
+	 * the sharpened chances in {@code ws.drawn}.
+	 */
+	public int draw(Workspace ws, float u) {
+		sharpen(ws);
+		for (int i = 0; i < Technique.COUNT; i++) {
+			u -= ws.drawn[i];
+			if (u < 0f) {
+				return i;
+			}
+		}
+		return Technique.BASE.ordinal();
+	}
+
+	private static void sharpen(Workspace ws) {
+		float max = Float.NEGATIVE_INFINITY;
+		for (int i = 0; i < Technique.COUNT; i++) {
+			max = Math.max(max, ws.logits[i]);
+		}
+		float sum = 0f;
+		for (int i = 0; i < Technique.COUNT; i++) {
+			ws.drawn[i] = (float) Math.exp((ws.logits[i] - max) / OUTCOME_TEMPERATURE);
+			sum += ws.drawn[i];
+		}
+		for (int i = 0; i < Technique.COUNT; i++) {
+			ws.drawn[i] /= sum;
+		}
 	}
 
 	private static void relu(float[] x) {
@@ -243,10 +282,12 @@ public final class Chooser {
 				}
 				int own = r.choice[i];
 				if (OUTCOME && own >= 0) {
+					// The gradient of log p(own) under the sharpened chances it was drawn from (onehot - drawn; its 1 / temperature left in the step size).
+					sharpen(ws);
 					// -a log p(own): its own choice up when the fight went better after it than expected, down when worse.
 					float a = OUTCOME_WEIGHT * Math.max(-OUTCOME_CUT, Math.min(OUTCOME_CUT, (float) ((r.advantage[i] - ownMean) / ownStd)));
 					for (int c = 0; c < Technique.COUNT; c++) {
-						ws.dLogits[c] += a * (ws.chances[c] - (c == own ? 1f : 0f));
+						ws.dLogits[c] += a * (ws.drawn[c] - (c == own ? 1f : 0f));
 					}
 				}
 				s.loss -= Math.log(Math.max(1e-9f, ws.chances[label]));
