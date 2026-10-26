@@ -217,7 +217,7 @@ public final class SchoolSession implements AgentSession {
 	 * 25 Oct fought only scripted bots and came out level with the installed model (the long check of 26 Oct 02:04: -2.7, se 2.4).
 	 */
 	private LoadedFighter sparring;
-	static final float SPAR_SHARE = 0.6f; // run 18 0.3 (26 Oct 03:30); run 19 0.6 (26 Oct, the research of 05:20: an exploiter's share)
+	static final float SPAR_SHARE = 0.4f; // run 18 0.3 (26 Oct 03:30); run 19-21 0.6 (the research of 05:20); 0.4 of the full fights from run 21 09:40 (the rest the technique bots, reviewed)
 	/**
 	 * The mirror check: with this file in the school folder, every fight of a check (but the fight basics) is against the
 	 * server's copy of the installed model, A (the school network) and B (the installed model on the screen) on the same
@@ -296,7 +296,7 @@ public final class SchoolSession implements AgentSession {
 	 */
 	// 0 from 25 Oct 03:25 (control run; was 0.25); 0.2 from 09:00, the user: "Review every skill while learning that so it won't
 	// forgot stuff".
-	static final float REVIEW_SHARE = 0.1f; // run 7 (EXPERIMENTS.md): the first technique family, the crits, with the basics reviewed in between (the user, 13:25: "letting it review in between")
+	static final float REVIEW_SHARE = 0.15f; // 0.1 until 26 Oct 09:40 // run 7 (EXPERIMENTS.md): the first technique family, the crits, with the basics reviewed in between (the user, 13:25: "letting it review in between")
 	/** The share of the specialists' training fights in which the specialist does other things too (Specialists.varied). */
 	static final float VARIED_SHARE = 0.5f;
 	/**
@@ -485,7 +485,7 @@ public final class SchoolSession implements AgentSession {
 	 * against the same opponent, for SCENE_WINDOW ticks: the lost moments fought again and again, without the walking in
 	 * around them. Kept in SCENE_FILE (the newest SCENES_KEPT).
 	 */
-	static final float SCENE_SHARE = 0.8f; // run 21: 0.5 from 09:20, 0.8 from 09:35 (the user: "only make each episode SPECIALLY to see that part")
+	static final float SCENE_SHARE = 0.6f; // run 21: 0.5 from 09:20; 0.6 from 09:40 with the other techniques and the basics reviewed in between (the user, 09:27: "The AI need to review other technique and basic during other training so it won't forget")
 	static final int SCENE_WINDOW = 100;
 	/**
 	 * Run 21 from 09:35 (the user: "train until it ALWAYS deals more damage than crit guy"): a scene is the moment an opponent
@@ -495,7 +495,7 @@ public final class SchoolSession implements AgentSession {
 	static final int SCENE_BEFORE = 60;
 	static final int SCENE_MASTERED = 3;
 	/** Of the full fights left (where new scenes come from), the share against the bots that crit. */
-	static final float CRIT_BOT_SHARE = 0.5f;
+	static final float CRIT_BOT_SHARE = 0.25f; // the rest: every technique's bots (the review of the other techniques)
 	static final int[] CRIT_BOTS = {Specialists.PUNISH_CRITTER, Specialists.DOUBLE_CRITTER, Specialists.CRIT_BREAKER,
 			Specialists.STANDING_CRITTER, Specialists.JUMP_IN_CRITTER};
 	static final int SCENES_KEPT = 400;
@@ -539,7 +539,7 @@ public final class SchoolSession implements AgentSession {
 			sc.botLag = Integer.parseInt(f[5]);
 			sc.net = Float.parseFloat(f[6]);
 			// The first scenes (26 Oct 09:20-09:40) had no wins and replays.
-			int at = f.length % 2 == 1 ? 9 : 7;
+			int at = f.length == 7 + 28 ? 7 : 9;
 			if (at == 9) {
 				sc.wins = Integer.parseInt(f[7]);
 				sc.replays = Integer.parseInt(f[8]);
