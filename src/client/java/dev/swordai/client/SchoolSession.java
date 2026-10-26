@@ -2333,7 +2333,9 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	private void endFight(boolean won, boolean lost) {
-		if (review < 0 && fightBot >= 0 && fightBot < Specialists.KINDS) {
+		// Full fights only: a scene starts at a moment it was crit and so loses by design; with them in, the damage curve fell
+		// the moment the scenes came in (26 Oct 09:41) while the full fights had not got worse. The scenes have their own line.
+		if (review < 0 && sceneNow == null && fightBot >= 0 && fightBot < Specialists.KINDS) {
 			botDealt[fightBot] += fightDealt;
 			botTaken[fightBot] += fightTaken;
 			botTicks[fightBot] += fightTicks;
