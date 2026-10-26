@@ -683,6 +683,24 @@ public final class SchoolSession implements AgentSession {
 			good = 0;
 		}
 
+		/** Oldest first, "1" good and "0" not; "-" when empty. */
+		String save() {
+			StringBuilder b = new StringBuilder();
+			for (int i = 0; i < count; i++) {
+				b.append(ring[(next - count + i + ring.length) % ring.length] ? '1' : '0');
+			}
+			return b.length() == 0 ? "-" : b.toString();
+		}
+
+		void load(String v) {
+			clear();
+			for (int i = 0; i < v.length(); i++) {
+				if (v.charAt(i) == '1' || v.charAt(i) == '0') {
+					add(v.charAt(i) == '1');
+				}
+			}
+		}
+
 		float share() {
 			return count == 0 ? 0f : good / (float) count;
 		}
@@ -699,6 +717,11 @@ public final class SchoolSession implements AgentSession {
 				String[] v = Files.readString(f).trim().split(" ");
 				focus = Math.max(0, Math.min(FOCUS_KINDS.length - 1, Integer.parseInt(v[0])));
 				focusReached = v.length > 1 ? Math.max(focus, Math.min(FOCUS_KINDS.length - 1, Integer.parseInt(v[1]))) : focus;
+				// The rolling measures (a check restarts the session every 45 minutes; the bars take hours).
+				Rolling[] all = rollings();
+				for (int i = 0; i < all.length && 2 + i < v.length; i++) {
+					all[i].load(v[2 + i]);
+				}
 			}
 		} catch (IOException | RuntimeException e) {
 			SwordAi.LOGGER.warn("school: the focus could not be read: {}", e.getMessage());
@@ -761,8 +784,20 @@ public final class SchoolSession implements AgentSession {
 	private void setFocus(int f) {
 		focus = f;
 		focusReached = Math.max(focusReached, f);
+		saveFocus();
+	}
+
+	private Rolling[] rollings() {
+		return new Rolling[] {jumpInRoll, comboRoll, sceneRoll[KIND_CRIT], sceneRoll[KIND_JUMPIN], sceneRoll[KIND_COMBO]};
+	}
+
+	private void saveFocus() {
+		StringBuilder b = new StringBuilder(focus + " " + focusReached);
+		for (Rolling r : rollings()) {
+			b.append(' ').append(r.save());
+		}
 		try {
-			Files.writeString(SwordFiles.schoolDir().resolve(FOCUS_FILE), focus + " " + focusReached);
+			Files.writeString(SwordFiles.schoolDir().resolve(FOCUS_FILE), b);
 		} catch (IOException e) {
 			SwordAi.LOGGER.warn("school: the focus could not be saved: {}", e.getMessage());
 		}
@@ -929,6 +964,7 @@ public final class SchoolSession implements AgentSession {
 		sceneNetBefore = 0f;
 		scenesMastered = 0;
 		saveScenes();
+		saveFocus();
 		return line;
 	}
 
