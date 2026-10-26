@@ -5,6 +5,11 @@ touch /d/swordai/run/school-cycle.stop
 printf 'swordai stop\r\n' > /d/swordai/run/swordai/inbox.txt
 sleep 8
 powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { (\$_.Name -in 'cmd.exe','java.exe','bash.exe') -and \$_.CommandLine -match 'start-school\.cmd|net\.fabricmc|schoolcycle\.sh' } | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force -ErrorAction SilentlyContinue }"
+# CLEAR_SCENES=1: once the client has stopped, the kept scenes (scenes.txt, scenes-mastered.txt) are put aside and it starts with none.
+if [ -n "$CLEAR_SCENES" ]; then
+  for f in scenes.txt scenes-mastered.txt; do [ -f /d/swordai/run/swordai/school/$f ] && mv /d/swordai/run/swordai/school/$f /d/swordai/run/swordai/school/$f.old-$(date +%H%M); done
+  echo "scenes put aside"
+fi
 # GOTO_STAGE=N: once the client has saved and stopped, the school goes to stage N (0 = T-A ... 4 = T-E) from its start.
 if [ -n "$GOTO_STAGE" ]; then
   sed -i "s/^stage=.*/stage=$GOTO_STAGE/; s/^stageSteps=.*/stageSteps=0/" /d/swordai/run/swordai/school/stages.properties
