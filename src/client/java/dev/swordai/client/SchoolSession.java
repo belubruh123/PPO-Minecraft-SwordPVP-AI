@@ -2474,7 +2474,7 @@ public final class SchoolSession implements AgentSession {
 		for (int i = 0; i < basics.length; i++) {
 			// Not passed: six times as often; a camera or footwork basic passed but with the crosshair on them under 80%, twice
 			// (the user, 24 Oct 23:40: "basic skill below 80% should be heavily focused").
-			boolean low = !ActionSpace.unlocked(basics[i].headMask, ActionSpace.ATTACK) && basicOnTarget[i] < 0.8f;
+			boolean low = !ActionSpace.unlocked(basics[i].headMask, ActionSpace.ATTACK) && basicOnTarget[i] < 0.9f; // 0.8 until 26 Oct 11:10 (the SOP: every skill 90%)
 			w[i] = (basicsDone ? REVIEW_WEIGHT[i] : 1f) * (basicPassed[i] ? 1f : 6f) * (low ? 2f : 1f);
 			total += w[i];
 		}
