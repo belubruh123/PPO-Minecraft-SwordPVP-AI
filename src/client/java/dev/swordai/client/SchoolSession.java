@@ -538,11 +538,15 @@ public final class SchoolSession implements AgentSession {
 			sc.agentLag = Integer.parseInt(f[4]);
 			sc.botLag = Integer.parseInt(f[5]);
 			sc.net = Float.parseFloat(f[6]);
-			sc.wins = Integer.parseInt(f[7]);
-			sc.replays = Integer.parseInt(f[8]);
-			sc.state = new double[f.length - 9];
+			// The first scenes (26 Oct 09:20-09:40) had no wins and replays.
+			int at = f.length % 2 == 1 ? 9 : 7;
+			if (at == 9) {
+				sc.wins = Integer.parseInt(f[7]);
+				sc.replays = Integer.parseInt(f[8]);
+			}
+			sc.state = new double[f.length - at];
 			for (int i = 0; i < sc.state.length; i++) {
-				sc.state[i] = Double.parseDouble(f[9 + i]);
+				sc.state[i] = Double.parseDouble(f[at + i]);
 			}
 			return sc;
 		}
