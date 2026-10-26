@@ -2326,7 +2326,7 @@ public final class SchoolSession implements AgentSession {
 		SchoolPpo.Settings set = new SchoolPpo.Settings();
 		set.techPulls = stages.techPulls();
 		set.oldPull = stages.oldPull();
-		set.oldBodyPull = stages.oldPull() * stages.bodyFade();
+		set.oldBodyPull = stages.bodyPull();
 		set.installedBody = OVERLAY;
 		set.criticOnly = warmupLeft > 0;
 		if (warmupLeft > 0) {
@@ -2356,6 +2356,9 @@ public final class SchoolSession implements AgentSession {
 			return;
 		} finally {
 			pending = null;
+		}
+		if (stats.oldBodyCe > 0f) {
+			stages.noteBodyCe(stats.oldBodyCe);
 		}
 		long nowMillis = System.currentTimeMillis();
 		long steps = learner.totalSteps;

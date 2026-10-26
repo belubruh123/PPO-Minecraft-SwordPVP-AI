@@ -761,6 +761,36 @@ public final class SchoolStages {
 		return Math.max(FADE_FLOOR, 1f - (schoolSteps - fadeFrom) / (float) FADE_STEPS);
 	}
 
+	/**
+	 * Run 20 (EXPERIMENTS.md): a budget for how far the body may go from what it copies instead of a fixed pull (the adaptive
+	 * KL controller of Ziegler et al. 2019, "Fine-Tuning Language Models from Human Preferences"; VPT, Baker et al. 2022, kept
+	 * its copying term and let it shrink slowly). After every update the body's pull moves by at most BUDGET_STEP (a share of
+	 * itself) toward keeping the body keys' cross-entropy to their copying targets at BODY_CE_TARGET: it loosens while the body
+	 * stays close and tightens once it goes past. The research of 26 Oct 05:20: since run 9 every untaught key copies the frozen
+	 * run 6 at a fixed 0.5 (ANCHOR_TO_BEST), so every run ties run 6. 0: the fixed pull (OLD_PULL times bodyFade).
+	 */
+	public static final float BODY_CE_TARGET = 0.40f; // run 20 (26 Oct); at the fixed 0.5 the body sat at 0.24-0.30 (run 19)
+	public static final float BUDGET_STEP = 0.03f;
+	public static final float BUDGET_MIN_PULL = 0.05f;
+	private float bodyPull = -1f;
+
+	/** The copying's pull on the body's keys now (the camera keeps oldPull). */
+	public float bodyPull() {
+		if (BODY_CE_TARGET <= 0f) {
+			return oldPull() * bodyFade();
+		}
+		return bodyPull < 0f ? oldPull() : bodyPull;
+	}
+
+	/** An update is over: the body keys' cross-entropy to their copying targets was {@code ce}. */
+	public void noteBodyCe(float ce) {
+		if (BODY_CE_TARGET <= 0f || ce <= 0f) {
+			return;
+		}
+		float e = Math.max(-1f, Math.min(1f, (ce - BODY_CE_TARGET) / BODY_CE_TARGET));
+		bodyPull = Math.max(BUDGET_MIN_PULL, Math.min(OLD_PULL, bodyPull() * (float) Math.exp(BUDGET_STEP * e)));
+	}
+
 	public void addSteps(long steps) {
 		stageSteps += steps;
 		schoolSteps += steps;
@@ -841,7 +871,7 @@ public final class SchoolStages {
 		Stage s = current();
 		StringBuilder b = new StringBuilder(String.format(Locale.ROOT,
 				"%s %s, %d of at least %d steps, installed network's pull %.2f; mastery:%s damage a minute first->last:",
-				s.name, s.family, stageSteps, s.minSteps, oldPull() * bodyFade(), masteryLine()));
+				s.name, s.family, stageSteps, s.minSteps, bodyPull(), masteryLine()));
 		for (int bot : s.bots) {
 			b.append(String.format(Locale.ROOT, " %s %+.0f->%+.0f (%d)", Specialists.NAMES[bot], mean(first[bot], firstCount[bot]),
 					mean(last[bot], lastCount[bot]), lastCount[bot]));
@@ -857,6 +887,9 @@ public final class SchoolStages {
 		p.setProperty("schoolSteps", Long.toString(schoolSteps));
 		if (fadeFrom >= 0L) {
 			p.setProperty("fadeFrom", Long.toString(fadeFrom));
+		}
+		if (bodyPull >= 0f) {
+			p.setProperty("bodyPull", Float.toString(bodyPull));
 		}
 		for (int b = 0; b < Specialists.KINDS; b++) {
 			p.setProperty("first." + b, join(first[b], firstCount[b]));
@@ -889,6 +922,7 @@ public final class SchoolStages {
 		stageSteps = Long.parseLong(p.getProperty("stageSteps", "0"));
 		schoolSteps = Long.parseLong(p.getProperty("schoolSteps", "0"));
 		fadeFrom = Long.parseLong(p.getProperty("fadeFrom", "-1"));
+		bodyPull = Float.parseFloat(p.getProperty("bodyPull", "-1"));
 		for (int b = 0; b < Specialists.KINDS; b++) {
 			firstCount[b] = split(p.getProperty("first." + b, ""), first[b]);
 			String l = p.getProperty("last." + b, "@0");
