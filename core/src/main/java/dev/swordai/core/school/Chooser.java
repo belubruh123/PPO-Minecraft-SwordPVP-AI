@@ -30,6 +30,16 @@ public final class Chooser {
 	public static final float AWR_MOST = 3f;
 	/** Off in run 2 (EXPERIMENTS.md): the 06:54 recipe (on from 09:41). */
 	public static final boolean AWR = false;
+	/**
+	 * Learns when to do what from how the fight went after its own choices (policy gradient on its own drawn choices,
+	 * the advantages scaled to one deviation and cut at {@link #OUTCOME_CUT}), on top of copying the teacher's, which keeps
+	 * it near the file's "when" until the outcomes say otherwise. The user, 26 Oct 12:55: "I am afraid decision model
+	 * cannot know when to do what so let it learn as well". AWR above only weighs the teacher's own choices, so it could
+	 * never choose what the teacher does not.
+	 */
+	public static final boolean OUTCOME = true;
+	public static final float OUTCOME_WEIGHT = 1f;
+	public static final float OUTCOME_CUT = 3f;
 	public static final int IN = ObsSpec.VEC + SchoolObs.MEM + Predictor.OUT + SchoolNet.INTENT;
 	public static final int HIDDEN = 128;
 
@@ -135,6 +145,11 @@ public final class Chooser {
 		public int calm;
 		/** The sum of the advantage weights (see AWR_BETA). */
 		public double weight;
+		/** Its own choices learned from (OUTCOME): those away from the teacher's, and the advantage after each sort. */
+		public int own;
+		public int away;
+		public double awayAdvantage;
+		public double asTeacherAdvantage;
 
 		@Override
 		public String toString() {
@@ -143,7 +158,9 @@ public final class Chooser {
 							+ "a start where it did none %.1f%% of %d", loss / samples, samples, 100.0 * right / samples,
 					100.0 * rightTechnique / Math.max(1, technique), technique, 100.0 * rightStart / Math.max(1, starts), starts,
 					100.0 * falseStarts / Math.max(1, calm), calm) + String.format(java.util.Locale.ROOT, ", weighed by the outcome %.2f on average",
-					weight / samples);
+					weight / samples) + (own == 0 ? "" : String.format(java.util.Locale.ROOT,
+					"; its own choices %d, away from the teacher's %.0f%%, the outcome after those %+.3f, after the teacher's %+.3f",
+					own, 100.0 * away / own, awayAdvantage / Math.max(1, away), asTeacherAdvantage / Math.max(1, own - away)));
 		}
 	}
 
@@ -179,6 +196,36 @@ public final class Chooser {
 			var += d * d;
 		}
 		float std = (float) Math.max(1e-6, Math.sqrt(var / n));
+		// Its own choices' advantages scaled apart (OUTCOME).
+		double ownMean = 0.0;
+		int owns = 0;
+		for (int k = 0; k < n; k++) {
+			if (r.choice[labelled[k]] >= 0) {
+				ownMean += r.advantage[labelled[k]];
+				owns++;
+			}
+		}
+		ownMean /= Math.max(1, owns);
+		double ownVar = 0.0;
+		for (int k = 0; k < n; k++) {
+			if (r.choice[labelled[k]] >= 0) {
+				double d = r.advantage[labelled[k]] - ownMean;
+				ownVar += d * d;
+			}
+		}
+		float ownStd = (float) Math.max(1e-6, Math.sqrt(ownVar / Math.max(1, owns)));
+		for (int k = 0; k < n; k++) {
+			int i = labelled[k];
+			if (r.choice[i] >= 0) {
+				s.own++;
+				if (r.choice[i] != r.intentLabel[i]) {
+					s.away++;
+					s.awayAdvantage += r.advantage[i];
+				} else {
+					s.asTeacherAdvantage += r.advantage[i];
+				}
+			}
+		}
 		Workspace ws = newWorkspace();
 		for (int b = 0; b < batches; b++) {
 			ParamSet.zero(ws.grads);
@@ -193,6 +240,14 @@ public final class Chooser {
 				s.weight += w;
 				for (int c = 0; c < Technique.COUNT; c++) {
 					ws.dLogits[c] = w * (ws.chances[c] - (c == label ? 1f : 0f));
+				}
+				int own = r.choice[i];
+				if (OUTCOME && own >= 0) {
+					// -a log p(own): its own choice up when the fight went better after it than expected, down when worse.
+					float a = OUTCOME_WEIGHT * Math.max(-OUTCOME_CUT, Math.min(OUTCOME_CUT, (float) ((r.advantage[i] - ownMean) / ownStd)));
+					for (int c = 0; c < Technique.COUNT; c++) {
+						ws.dLogits[c] += a * (ws.chances[c] - (c == own ? 1f : 0f));
+					}
 				}
 				s.loss -= Math.log(Math.max(1e-9f, ws.chances[label]));
 				s.samples++;

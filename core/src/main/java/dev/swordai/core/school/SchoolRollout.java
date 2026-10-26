@@ -25,6 +25,11 @@ public final class SchoolRollout {
 	/** The technique being done the tick before (the {@link Chooser}'s input), and the teacher's technique now (its label; -1 for none). */
 	public final float[][] prevIntent;
 	public final int[] intentLabel;
+	/**
+	 * The technique the chooser chose itself (drawn from its chances) where the network was told it, -1 where it was told
+	 * the teacher's: the chooser learns from how the fight went after these ({@link Chooser#OUTCOME}).
+	 */
+	public final int[] choice;
 	/** Whether the technique the network was told is the teacher's own: where not, the teacher's keys are not taught on it. */
 	public final boolean[] intentAgrees;
 	public final byte[][] action;
@@ -69,6 +74,7 @@ public final class SchoolRollout {
 		pred = new float[capacity][SchoolNet.SIDE];
 		prevIntent = new float[capacity][SchoolNet.INTENT];
 		intentLabel = new int[capacity];
+		choice = new int[capacity];
 		intentAgrees = new boolean[capacity];
 		action = new byte[capacity][ActionSpace.HEADS];
 		headMask = new int[capacity];
@@ -107,6 +113,7 @@ public final class SchoolRollout {
 		System.arraycopy(s.pred, 0, pred[i], 0, SchoolNet.SIDE);
 		System.arraycopy(s.prevIntent, 0, prevIntent[i], 0, SchoolNet.INTENT);
 		intentLabel[i] = s.intentLabel;
+		choice[i] = s.choice;
 		intentAgrees[i] = s.intentLabel < 0 || Chooser.techniqueOf(s.pred, Predictor.OUT) == s.intentLabel;
 		for (int h = 0; h < ActionSpace.HEADS; h++) {
 			action[i][h] = (byte) s.action[h];
@@ -133,6 +140,7 @@ public final class SchoolRollout {
 		public final float[] pred = new float[SchoolNet.SIDE];
 		public final float[] prevIntent = new float[SchoolNet.INTENT];
 		public int intentLabel = -1;
+		public int choice = -1;
 		public final int[] action = new int[ActionSpace.HEADS];
 		public int headMask;
 		public float logp;

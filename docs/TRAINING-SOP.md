@@ -11,11 +11,12 @@
    2. the combo escape (C3, T9).
    After that, the next weakest technique from the hit report.
 2. **Give it a measure** that the game counts, so that 90% means something. Examples:
-   - jump-in countered: in the 30 ticks after their take-off, no crit taken and no sprint hit on them falling;
+   - jump-in countered: in the 40 ticks after their take-off, no sprint hit on them falling (K2), and either no crit taken (T8) or their crit answered with its own crit (B1, let it land and punish crit); the bots' and the installed AI's jump-ins are counted apart and both need 90%;
    - crit scene won: dealt more than taken;
    - combo got out of: no third hit in a row.
 3. **Train its scenes.** Every failure of the focus in a full fight is kept as a scene: both fighters' exact state (position, motion, look, sword clock, health, hurt time) from just before the moment, 60-100 ticks long. Training starts episodes from these scenes (teleport, same opponent). Each scene is fought again until it is won **3 times in a row**; it then goes to the mastered pile.
 4. **One run may train one focus for a whole day.** Do not cut a method off after a short run.
+5. **The decider learns the focus too.** The decision model (which technique to do now) learns from how the fight went after its own choices, on top of copying the teacher's. It chooses in half of the scene fights, so it learns *when* in the same order: the crits first, then the combo escape, then the next technique. Its line in the update log says how often its own choices left the teacher's and whether the outcome after them was better; the scenes it chose in are counted apart from those told the teacher's.
 
 ## 2. Review in between (so nothing is forgotten)
 Every training run keeps all of these going at the same time:

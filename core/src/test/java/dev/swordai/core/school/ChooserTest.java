@@ -104,16 +104,67 @@ class ChooserTest {
 		assertEquals(1f, s.prevIntent[T10]);
 		l.complete(0f, false, false, s.obs);
 
+		assertEquals(-1, s.choice, "told the teacher's, so not its own choice");
+
 		l.teacherForcing = 0f;
 		l.resetIntent();
 		l.act(s, ActionSpace.ALL_HEADS, true, 1f, act);
-		assertEquals(l.chosen(), l.told());
+		// In training its own choice is drawn from its chances (Chooser.OUTCOME) and kept to learn from.
+		assertEquals(l.told().ordinal(), s.choice);
 		assertEquals(T10, s.intentLabel, "the chooser still learns from the teacher");
 		l.complete(0f, false, false, s.obs);
 		l.act(s, ActionSpace.ALL_HEADS, false, 1f, act);
 		assertEquals(l.chosen(), l.told());
 		assertEquals(-1, s.intentLabel);
+		assertEquals(-1, s.choice);
 		l.close();
+	}
+
+	/**
+	 * The teacher never does an uppercut, but at the moments (one input high) the fight went better after its own
+	 * uppercuts and worse after its ordinary fight: it learns to choose the uppercut there, and only there.
+	 */
+	@Test
+	void chooserLearnsFromTheOutcomeOfItsOwnChoices() {
+		SchoolRollout r = new SchoolRollout(4000);
+		Random rng = new Random(9);
+		SchoolRollout.Step s = new SchoolRollout.Step();
+		boolean[] moment = new boolean[4000];
+		for (int t = 0; t < 4000; t++) {
+			for (int i = 0; i < ObsSpec.VEC; i++) {
+				s.obs.base.vec[i] = rng.nextFloat() * 0.4f;
+			}
+			moment[t] = rng.nextInt(10) == 0;
+			if (moment[t]) {
+				s.obs.base.vec[3] = 1f;
+			}
+			intent(s.pred, BASE, 0f);
+			System.arraycopy(s.pred, Predictor.OUT, s.prevIntent, 0, SchoolNet.INTENT);
+			s.intentLabel = BASE;
+			s.choice = moment[t] && rng.nextBoolean() ? T10 : BASE;
+			r.add(s, 0f, false);
+			r.advantage[t] = moment[t] ? (s.choice == T10 ? 2f : -2f) : 0f;
+		}
+		Chooser c = new Chooser(1L);
+		Chooser.Stats st = null;
+		for (int round = 0; round < 30; round++) {
+			st = c.learn(r, 3e-3f, 60, 64, 1f, rng);
+		}
+		Chooser.Workspace ws = c.newWorkspace();
+		int uppercutAtMoments = 0;
+		int moments = 0;
+		int uppercutElsewhere = 0;
+		for (int t = 0; t < 4000; t++) {
+			int best = c.forward(ws, r.vec[t], r.mem[t], r.pred[t], r.prevIntent[t]);
+			if (moment[t]) {
+				moments++;
+				uppercutAtMoments += best == T10 ? 1 : 0;
+			} else {
+				uppercutElsewhere += best == T10 ? 1 : 0;
+			}
+		}
+		assertTrue(uppercutAtMoments > 0.9 * moments, uppercutAtMoments + " of " + moments + "; " + st);
+		assertTrue(uppercutElsewhere < 0.02 * (4000 - moments), uppercutElsewhere + " elsewhere; " + st);
 	}
 
 	@Test

@@ -217,6 +217,13 @@ public final class SchoolSession implements AgentSession {
 	 * 25 Oct fought only scripted bots and came out level with the installed model (the long check of 26 Oct 02:04: -2.7, se 2.4).
 	 */
 	private LoadedFighter sparring;
+	/**
+	 * In a scene fight the acting network is told the decider's own choice in this share (the teacher's in the rest), so
+	 * that the decider learns when to do what (Chooser.OUTCOME) where the focus is: the crits' scenes first, then the combo
+	 * escape's (26 Oct 13:00; the full fights keep the learner's 0.85 of the teacher's).
+	 */
+	static final float SCENE_DECIDER_SHARE = 0.5f;
+	static final float TEACHER_FORCING = 0.85f;
 	static final float SPAR_SHARE = 0.4f; // run 18 0.3 (26 Oct 03:30); run 19-21 0.6 (the research of 05:20); 0.4 of the full fights from run 21 09:40 (the rest the technique bots, reviewed)
 	/**
 	 * The mirror check: with this file in the school folder, every fight of a check (but the fight basics) is against the
@@ -624,6 +631,9 @@ public final class SchoolSession implements AgentSession {
 	private float sceneNet;
 	private float sceneNetBefore;
 	private int sceneWins;
+	/** Scene fights in which the decider chose (not told the teacher's), and those won. */
+	private int sceneDecided;
+	private int sceneDecidedWon;
 	private int scenesMastered;
 	private int scenesMasteredAll;
 	/** Each side's jump-in exchange: ticks since their take-off (-1: none), a crit taken, a sprint hit on them falling. */
@@ -946,6 +956,9 @@ public final class SchoolSession implements AgentSession {
 						sceneWins, 100f * sceneWins / sceneFights, sceneNet / sceneFights, sceneNetBefore / sceneFights),
 				scenesMastered, scenesMasteredAll) + String.format(Locale.ROOT, "; mastered ones reviewed %d, lost again %d (%d mastered kept)",
 				sceneReviews, sceneForgot, mastered.size())
+				+ String.format(Locale.ROOT, "; the decider chose in %d of them, won %d (%.0f%%), told the teacher's won %d of %d", sceneDecided,
+						sceneDecidedWon, sceneDecided == 0 ? 0f : 100f * sceneDecidedWon / sceneDecided, sceneWins - sceneDecidedWon,
+						sceneFights - sceneDecided)
 				+ String.format(Locale.ROOT, "; jump-in scenes kept %d, fought again %d, countered %d (%.0f%%), mastered %d; jump-ins countered in the full fights %d of %d (%.0f%%)",
 						countKind(KIND_JUMPIN), jumpInScenes, jumpInScenesWon, jumpInScenes == 0 ? 0f : 100f * jumpInScenesWon / jumpInScenes,
 						jumpInScenesMastered, trainJumpInsCountered, trainJumpIns, trainJumpIns == 0 ? 0f : 100f * trainJumpInsCountered / trainJumpIns);
@@ -968,6 +981,8 @@ public final class SchoolSession implements AgentSession {
 		scenesHarvested = 0;
 		sceneFights = 0;
 		sceneWins = 0;
+		sceneDecided = 0;
+		sceneDecidedWon = 0;
 		sceneNet = 0f;
 		sceneNetBefore = 0f;
 		scenesMastered = 0;
@@ -1632,6 +1647,7 @@ public final class SchoolSession implements AgentSession {
 		teacher.start(checkTaught != null ? checkTaught : stages.taught(), cfg.swingMinCharge, seed ^ 0x7EAC4L);
 		teacher.seenLag(agentLag);
 		fightLag = agentLag;
+		learner.teacherForcing = sceneNow != null ? 1f - SCENE_DECIDER_SHARE : TEACHER_FORCING;
 		learner.resetIntent();
 		shaping = 0f;
 		lastMomentTechnique = -1;
@@ -2722,6 +2738,10 @@ public final class SchoolSession implements AgentSession {
 				jumpInScenesMastered += sceneWon && sceneNow.wins + 1 >= SCENE_MASTERED ? 1 : 0;
 			}
 			sceneWins += sceneWon ? 1 : 0;
+			if (!learner.toldTheTeachers()) {
+				sceneDecided++;
+				sceneDecidedWon += sceneWon ? 1 : 0;
+			}
 			sceneNow.replays++;
 			if (sceneReview) {
 				sceneReviews++;
