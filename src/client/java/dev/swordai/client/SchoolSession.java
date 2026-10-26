@@ -499,6 +499,11 @@ public final class SchoolSession implements AgentSession {
 	static final int[] CRIT_BOTS = {Specialists.PUNISH_CRITTER, Specialists.DOUBLE_CRITTER, Specialists.CRIT_BREAKER,
 			Specialists.STANDING_CRITTER, Specialists.JUMP_IN_CRITTER};
 	static final int SCENES_KEPT = 400;
+	/**
+	 * At most this many scenes are learned at a time; a new one comes in only as one is mastered, so each comes back every few
+	 * minutes until it is won (with 400 at a time each came back about every half hour, 09:45).
+	 */
+	static final int SCENES_ACTIVE = 60;
 	static final String SCENE_FILE = "scenes.txt";
 	/**
 	 * Mastered scenes reviewed in between (the user, 26 Oct 09:25: "review in between"): this share of the scene fights fight a
@@ -538,15 +543,15 @@ public final class SchoolSession implements AgentSession {
 			sc.agentLag = Integer.parseInt(f[4]);
 			sc.botLag = Integer.parseInt(f[5]);
 			sc.net = Float.parseFloat(f[6]);
-			// The first scenes (26 Oct 09:20-09:40) had no wins and replays.
-			int at = f.length == 7 + 28 ? 7 : 9;
-			if (at == 9) {
-				sc.wins = Integer.parseInt(f[7]);
-				sc.replays = Integer.parseInt(f[8]);
+			if (f.length == 7 + 28) {
+				// The lost windows of 26 Oct 09:20-09:40, before the scenes were the crits: not kept.
+				return null;
 			}
-			sc.state = new double[f.length - at];
+			sc.wins = Integer.parseInt(f[7]);
+			sc.replays = Integer.parseInt(f[8]);
+			sc.state = new double[f.length - 9];
 			for (int i = 0; i < sc.state.length; i++) {
-				sc.state[i] = Double.parseDouble(f[at + i]);
+				sc.state[i] = Double.parseDouble(f[9 + i]);
 			}
 			return sc;
 		}
@@ -594,8 +599,9 @@ public final class SchoolSession implements AgentSession {
 		try {
 			List<String> lines = Files.readAllLines(file);
 			for (String line : lines.subList(Math.max(0, lines.size() - SCENES_KEPT), lines.size())) {
-				if (!line.isBlank()) {
-					into.add(Scene.parse(line));
+				Scene sc = line.isBlank() ? null : Scene.parse(line);
+				if (sc != null && (into != scenes || into.size() < SCENES_ACTIVE)) {
+					into.add(sc);
 				}
 			}
 		} catch (IOException | RuntimeException e) {
@@ -623,7 +629,7 @@ public final class SchoolSession implements AgentSession {
 
 	/** Keeps the scene from fight tick {@code start} to now. */
 	private void keepScene(int start) {
-		if (fightTicks - start >= histTick.length - 1) {
+		if (fightTicks - start >= histTick.length - 1 || scenes.size() >= SCENES_ACTIVE) {
 			return;
 		}
 		float sum = 0f;
@@ -644,9 +650,6 @@ public final class SchoolSession implements AgentSession {
 		sc.net = sum;
 		sc.state = state;
 		scenes.add(sc);
-		if (scenes.size() > SCENES_KEPT) {
-			scenes.remove(0);
-		}
 		scenesHarvested++;
 		try {
 			Files.writeString(SwordFiles.schoolDir().resolve(SCENE_FILE), sc.line() + System.lineSeparator(),
