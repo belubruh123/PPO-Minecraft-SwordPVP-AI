@@ -519,6 +519,29 @@ public final class SchoolSession implements AgentSession {
 	static final float JUMPIN_COUNTERED = 0.5f;
 	static final int KIND_CRIT = 0;
 	static final int KIND_JUMPIN = 1;
+	/**
+	 * Combo scenes: their second hit in a row on it that went on to a third, from COMBO_BEFORE ticks before the second hit,
+	 * JUMPIN_SCENE_TICKS long; won when no second hit in a row lands from the scene's start (the third of the first time):
+	 * it got out (C3 jump and hold S, T9 jump reset).
+	 */
+	static final int KIND_COMBO = 2;
+	static final int KINDS = 3;
+	static final String[] KIND_NAMES = {"crit", "jump-in", "combo"};
+	static final int COMBO_BEFORE = 20;
+	/**
+	 * One technique at a time (the user, 26 Oct 10:55: "once they learn crit ... learn other technique one by one ... it is ok
+	 * to make a run be trained for all case focusingly whole day (make sure to review older technique still as well)"): of the
+	 * scene fights FOCUS_SHARE go to the focus's kinds, the rest to the earlier focuses' (their review); a focus moves on by
+	 * itself once its bars are met over the last FOCUS_EVENTS events in the full fights and FOCUS_REPLAYS scene fights:
+	 * the crits: jump-ins countered 90%, crit scenes won 80%; the combo escape: their third hit after 25% of their seconds or
+	 * fewer, combo scenes won 80%. Kept in FOCUS_FILE.
+	 */
+	static final int[][] FOCUS_KINDS = {{KIND_CRIT, KIND_JUMPIN}, {KIND_COMBO}};
+	static final String[] FOCUS_NAMES = {"the crits (crit scenes, jump-in counter)", "the combo escape"};
+	static final float FOCUS_SHARE = 0.8f;
+	static final int FOCUS_EVENTS = 300;
+	static final int FOCUS_REPLAYS = 200;
+	static final String FOCUS_FILE = "focus.txt";
 	static final String SCENE_FILE = "scenes.txt";
 	/**
 	 * Mastered scenes reviewed in between (the user, 26 Oct 09:25: "review in between"): this share of the scene fights fight a
@@ -541,7 +564,7 @@ public final class SchoolSession implements AgentSession {
 		double[] state;
 
 		int ticks() {
-			return kind == KIND_JUMPIN ? JUMPIN_SCENE_TICKS : SCENE_WINDOW;
+			return kind == KIND_CRIT ? SCENE_WINDOW : JUMPIN_SCENE_TICKS;
 		}
 
 		String line() {
@@ -610,6 +633,95 @@ public final class SchoolSession implements AgentSession {
 	/** In a scene fight: a crit taken, a sprint hit on them falling. */
 	private boolean sceneCrit;
 	private boolean sceneK2;
+	private int focus;
+	/** Rolling outcomes for the focus bars: per kind, the last scene fights won; the full fights' jump-ins and combos. */
+	private final Rolling[] sceneRoll = {new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS)};
+	private final Rolling jumpInRoll = new Rolling(FOCUS_EVENTS);
+	private final Rolling comboRoll = new Rolling(FOCUS_EVENTS);
+	/** Fight tick of their second hit in a row now (-1: none), and a combo scene to keep at keepComboAt from comboFrom. */
+	private int secondHitAt = -1;
+	private int comboFrom = -1;
+	private int keepComboAt;
+	/** In a scene fight: their most hits in a row from its start. */
+	private int sceneRow;
+	private final int[] kindFights = new int[KINDS];
+	private final int[] kindWon = new int[KINDS];
+
+	/** The last n outcomes. */
+	private static final class Rolling {
+		private final boolean[] ring;
+		private int count;
+		private int next;
+		private int good;
+
+		Rolling(int n) {
+			ring = new boolean[n];
+		}
+
+		void add(boolean ok) {
+			if (count == ring.length) {
+				good -= ring[next] ? 1 : 0;
+			} else {
+				count++;
+			}
+			ring[next] = ok;
+			good += ok ? 1 : 0;
+			next = (next + 1) % ring.length;
+		}
+
+		boolean full() {
+			return count == ring.length;
+		}
+
+		float share() {
+			return count == 0 ? 0f : good / (float) count;
+		}
+
+		String line() {
+			return String.format(Locale.ROOT, "%.0f%% of %d", 100f * share(), count);
+		}
+	}
+
+	private void loadFocus() {
+		try {
+			Path f = SwordFiles.schoolDir().resolve(FOCUS_FILE);
+			if (Files.exists(f)) {
+				focus = Math.max(0, Math.min(FOCUS_KINDS.length - 1, Integer.parseInt(Files.readString(f).trim())));
+			}
+		} catch (IOException | RuntimeException e) {
+			SwordAi.LOGGER.warn("school: the focus could not be read: {}", e.getMessage());
+		}
+	}
+
+	/** Moves the focus on once its bars are met. */
+	private void checkFocus() {
+		boolean met = switch (focus) {
+			case 0 -> jumpInRoll.full() && jumpInRoll.share() >= 0.9f && sceneRoll[KIND_CRIT].full() && sceneRoll[KIND_CRIT].share() >= 0.8f;
+			case 1 -> comboRoll.full() && comboRoll.share() >= 0.75f && sceneRoll[KIND_COMBO].full() && sceneRoll[KIND_COMBO].share() >= 0.8f;
+			default -> false;
+		};
+		if (!met || focus >= FOCUS_KINDS.length - 1) {
+			return;
+		}
+		SwordAi.LOGGER.info("school: {} learned (jump-ins countered {}, crit scenes won {}, combos got out of {}, combo scenes won {}); now {}",
+				FOCUS_NAMES[focus], jumpInRoll.line(), sceneRoll[KIND_CRIT].line(), comboRoll.line(), sceneRoll[KIND_COMBO].line(), FOCUS_NAMES[focus + 1]);
+		focus++;
+		try {
+			Files.writeString(SwordFiles.schoolDir().resolve(FOCUS_FILE), Integer.toString(focus));
+		} catch (IOException e) {
+			SwordAi.LOGGER.warn("school: the focus could not be saved: {}", e.getMessage());
+		}
+	}
+
+	private boolean inFocus(int kind) {
+		for (int k : FOCUS_KINDS[focus]) {
+			if (k == kind) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private int jumpInScenes;
 	private int jumpInScenesWon;
 	private int jumpInScenesMastered;
@@ -637,6 +749,7 @@ public final class SchoolSession implements AgentSession {
 	private void loadScenes() {
 		loadScenes(SCENE_FILE, scenes);
 		loadScenes(MASTERED_FILE, mastered);
+		loadFocus();
 	}
 
 	private void loadScenes(String name, List<Scene> into) {
@@ -676,6 +789,10 @@ public final class SchoolSession implements AgentSession {
 		if (jumpInFrom >= 0 && (fightOver || fightTicks >= keepJumpInAt)) {
 			keepScene(Math.max(1, jumpInFrom - JUMPIN_BEFORE), KIND_JUMPIN);
 			jumpInFrom = -1;
+		}
+		if (comboFrom >= 0 && (fightOver || fightTicks >= keepComboAt)) {
+			keepScene(Math.max(1, comboFrom - COMBO_BEFORE), KIND_COMBO);
+			comboFrom = -1;
 		}
 	}
 
@@ -722,6 +839,15 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, "; jump-in scenes kept %d, fought again %d, countered %d (%.0f%%), mastered %d; jump-ins countered in the full fights %d of %d (%.0f%%)",
 						countKind(KIND_JUMPIN), jumpInScenes, jumpInScenesWon, jumpInScenes == 0 ? 0f : 100f * jumpInScenesWon / jumpInScenes,
 						jumpInScenesMastered, trainJumpInsCountered, trainJumpIns, trainJumpIns == 0 ? 0f : 100f * trainJumpInsCountered / trainJumpIns);
+		StringBuilder kindsLine = new StringBuilder();
+		for (int k = 0; k < KINDS; k++) {
+			kindsLine.append(String.format(Locale.ROOT, "; %s scenes kept %d, won %d of %d (last %s)", KIND_NAMES[k], countKind(k), kindWon[k],
+					kindFights[k], sceneRoll[k].line()));
+			kindFights[k] = 0;
+			kindWon[k] = 0;
+		}
+		line += String.format(Locale.ROOT, " | focus: %s; jump-ins countered in the full fights, last %s (bar 90%%); their combos got out of, last %s%s",
+				FOCUS_NAMES[focus], jumpInRoll.line(), comboRoll.line(), kindsLine);
 		jumpInScenes = 0;
 		jumpInScenesWon = 0;
 		jumpInScenesMastered = 0;
@@ -1254,6 +1380,10 @@ public final class SchoolSession implements AgentSession {
 		exAt[1] = -1;
 		sceneCrit = false;
 		sceneK2 = false;
+		secondHitAt = -1;
+		comboFrom = -1;
+		sceneRow = 0;
+		sceneRowMost = 0;
 		IntegratedServer server = mc.getSingleplayerServer();
 		if (server == null) {
 			stop("left the world");
@@ -1317,7 +1447,23 @@ public final class SchoolSession implements AgentSession {
 				sceneReview = !mastered.isEmpty() && (scenes.isEmpty() || rng.nextFloat() < SCENE_REVIEW_SHARE);
 				List<Scene> from = sceneReview ? mastered : scenes;
 				if (!sceneReview) {
-					int kind = countKind(KIND_JUMPIN) > 0 && (countKind(KIND_CRIT) == 0 || rng.nextFloat() < JUMPIN_SCENE_SHARE) ? KIND_JUMPIN : KIND_CRIT;
+					// The focus's kinds (equally), or the earlier focuses' (their review); whatever has scenes.
+					boolean focusNow = rng.nextFloat() < FOCUS_SHARE;
+					List<Integer> kinds = new ArrayList<>();
+					for (int k = 0; k < KINDS; k++) {
+						boolean earlier = !inFocus(k) && k < FOCUS_KINDS[focus][0];
+						if (countKind(k) > 0 && (focusNow ? inFocus(k) : earlier)) {
+							kinds.add(k);
+						}
+					}
+					if (kinds.isEmpty()) {
+						for (int k = 0; k < KINDS; k++) {
+							if (countKind(k) > 0) {
+								kinds.add(k);
+							}
+						}
+					}
+					int kind = kinds.get(rng.nextInt(kinds.size()));
 					List<Scene> ofKind = new ArrayList<>();
 					for (Scene sc : scenes) {
 						if (sc.kind == kind) {
@@ -1503,6 +1649,9 @@ public final class SchoolSession implements AgentSession {
 				theirRow++;
 				sc[3] += theirRow == 2 ? 1 : 0;
 				sc[4] += theirRow == 3 ? 1 : 0;
+			}
+			if (mode == Mode.TRAIN && review < 0) {
+				trackCombo(facts.hitsDealt > 0, facts.hitsTaken > 0);
 			}
 		}
 		if (shownDealt) {
@@ -2442,7 +2591,14 @@ public final class SchoolSession implements AgentSession {
 			sceneFights++;
 			sceneNet += fightDealt - fightTaken;
 			sceneNetBefore += sceneNow.net;
-			boolean sceneWon = sceneNow.kind == KIND_JUMPIN ? !sceneCrit && !sceneK2 : fightDealt > fightTaken;
+			boolean sceneWon = sceneNow.kind == KIND_JUMPIN ? !sceneCrit && !sceneK2
+					: sceneNow.kind == KIND_COMBO ? sceneRowMost < 2 : fightDealt > fightTaken;
+			if (!sceneReview) {
+				sceneRoll[sceneNow.kind].add(sceneWon);
+				kindFights[sceneNow.kind]++;
+				kindWon[sceneNow.kind] += sceneWon ? 1 : 0;
+				checkFocus();
+			}
 			if (sceneNow.kind == KIND_JUMPIN && !sceneReview) {
 				jumpInScenes++;
 				jumpInScenesWon += sceneWon ? 1 : 0;
@@ -2738,6 +2894,34 @@ public final class SchoolSession implements AgentSession {
 		recentCrits[(int) (critClock++ % recentCrits.length)] = facts.critsTaken;
 	}
 
+	/**
+	 * Their combo in a training fight: a second hit in a row starts one; a third ends it lost (a combo scene to keep), its own
+	 * hit or JUMPIN_WINDOW ticks without a third end it got out of. In a scene fight, their most hits in a row since its start.
+	 */
+	private void trackCombo(boolean dealt, boolean taken) {
+		if (sceneNow != null) {
+			sceneRow = taken ? sceneRow + 1 : dealt ? 0 : sceneRow;
+			sceneRowMost = Math.max(sceneRowMost, sceneRow);
+			return;
+		}
+		if (secondHitAt >= 0 && (dealt || fightTicks - secondHitAt > JUMPIN_WINDOW)) {
+			comboRoll.add(true);
+			secondHitAt = -1;
+		}
+		if (taken && theirRow == 2) {
+			secondHitAt = fightTicks;
+		} else if (taken && theirRow == 3 && secondHitAt >= 0) {
+			comboRoll.add(false);
+			if (!drillFight && comboFrom < 0) {
+				comboFrom = secondHitAt;
+				keepComboAt = secondHitAt + JUMPIN_SCENE_TICKS - COMBO_BEFORE;
+			}
+			secondHitAt = -1;
+		}
+	}
+
+	private int sceneRowMost;
+
 	/** A jump-in exchange is over: countered or not (see JUMPIN_WINDOW). */
 	private void finishJumpIn(int side) {
 		long[] c = jumpIn[side];
@@ -2750,6 +2934,7 @@ public final class SchoolSession implements AgentSession {
 		if (side == 0 && mode == Mode.TRAIN && review < 0 && sceneNow == null) {
 			trainJumpIns++;
 			trainJumpInsCountered += countered ? 1 : 0;
+			jumpInRoll.add(countered);
 			if (countered) {
 				shaping += JUMPIN_COUNTERED;
 			} else if (!drillFight && jumpInFrom < 0) {
