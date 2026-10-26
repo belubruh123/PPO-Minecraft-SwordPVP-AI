@@ -10,6 +10,20 @@ if [ -n "$CLEAR_SCENES" ]; then
   for f in scenes.txt scenes-mastered.txt; do [ -f /d/swordai/run/swordai/school/$f ] && mv /d/swordai/run/swordai/school/$f /d/swordai/run/swordai/school/$f.old-$(date +%H%M); done
   echo "scenes put aside"
 fi
+# RESET_JUMPIN=1: once the client has stopped, the jump-in measures in focus.txt (the bots', the installed AI's and the
+# jump-in scenes') start again: for a change of what counts as countered (26 Oct: only its own crit, a punish crit).
+if [ -n "$RESET_JUMPIN" ]; then
+  python - <<'PYEOF'
+p = "D:/swordai/run/swordai/school/focus.txt"
+v = open(p).read().split()
+# focus, furthest, then jumpInRoll, comboRoll, crit scenes, jump-in scenes, combo scenes, jumpInSparRoll
+for i in (2, 5, 7):
+    if i < len(v):
+        v[i] = "-"
+open(p, "w").write(" ".join(v))
+print("jump-in measures start again")
+PYEOF
+fi
 # GOTO_STAGE=N: once the client has saved and stopped, the school goes to stage N (0 = T-A ... 4 = T-E) from its start.
 if [ -n "$GOTO_STAGE" ]; then
   sed -i "s/^stage=.*/stage=$GOTO_STAGE/; s/^stageSteps=.*/stageSteps=0/" /d/swordai/run/swordai/school/stages.properties

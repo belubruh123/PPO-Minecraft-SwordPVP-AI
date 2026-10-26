@@ -268,7 +268,7 @@ public final class SchoolSession implements AgentSession {
 	 * Per side, the answer to jumping in (the priority): their take-offs toward it, its hits landed on them rising (T8), its
 	 * knockback hits landed on them falling (what K2 forbids), and the crits it took within ten ticks of one of those.
 	 */
-	private final long[][] jumpIn = new long[2][13];
+	private final long[][] jumpIn = new long[2][15];
 	/**
 	 * Its hits on a rising jumper by how close they were (under {@link #RISER_CLOSE} blocks), and the crits taken within ten
 	 * ticks after each kind. The user, 25 Oct 17:12: a sprint hit does not knock a close rising jumper away, and there is lag.
@@ -641,6 +641,8 @@ public final class SchoolSession implements AgentSession {
 	private final boolean[] exCrit = new boolean[2];
 	private final boolean[] exK2 = new boolean[2];
 	private final boolean[] exPunish = new boolean[2];
+	/** Its own crit anywhere in the exchange (before or after theirs). */
+	private final boolean[] exOwnCrit = new boolean[2];
 	private final int[] exFrom = new int[2];
 	/** A jump-in not countered in this fight, to keep as a scene at keepJumpInAt: from fight tick jumpInFrom. */
 	private int jumpInFrom = -1;
@@ -649,6 +651,7 @@ public final class SchoolSession implements AgentSession {
 	private boolean sceneCrit;
 	private boolean sceneK2;
 	private boolean scenePunish;
+	private boolean sceneOwnCrit;
 	private int focus;
 	private int focusReached;
 	/** Rolling outcomes for the focus bars: per kind, the last scene fights won; the full fights' jump-ins and combos. */
@@ -1507,6 +1510,7 @@ public final class SchoolSession implements AgentSession {
 		sceneCrit = false;
 		sceneK2 = false;
 		scenePunish = false;
+		sceneOwnCrit = false;
 		secondHitAt = -1;
 		comboFrom = -1;
 		sceneRow = 0;
@@ -2724,7 +2728,7 @@ public final class SchoolSession implements AgentSession {
 			sceneFights++;
 			sceneNet += fightDealt - fightTaken;
 			sceneNetBefore += sceneNow.net;
-			boolean sceneWon = sceneNow.kind == KIND_JUMPIN ? !sceneK2 && (!sceneCrit || scenePunish)
+			boolean sceneWon = sceneNow.kind == KIND_JUMPIN ? !sceneK2 && sceneOwnCrit
 					: sceneNow.kind == KIND_COMBO ? sceneRowMost < 2 : fightDealt > fightTaken;
 			if (!sceneReview) {
 				sceneRoll[sceneNow.kind].add(sceneWon);
@@ -3034,6 +3038,7 @@ public final class SchoolSession implements AgentSession {
 			exCrit[side] = false;
 			exK2[side] = false;
 			exPunish[side] = false;
+			exOwnCrit[side] = false;
 			exFrom[side] = fightTicks;
 		}
 		boolean k2Now = facts.hitsDealt > 0 && facts.sprintHit && them.falling();
@@ -3041,6 +3046,7 @@ public final class SchoolSession implements AgentSession {
 			exCrit[side] |= facts.critsTaken > 0;
 			exK2[side] |= k2Now;
 			exPunish[side] |= exCrit[side] && facts.hitsDealt > 0 && facts.critDealt;
+			exOwnCrit[side] |= facts.hitsDealt > 0 && facts.critDealt;
 			if (++exAt[side] >= JUMPIN_WINDOW) {
 				finishJumpIn(side);
 			}
@@ -3049,6 +3055,7 @@ public final class SchoolSession implements AgentSession {
 			sceneCrit |= facts.critsTaken > 0;
 			sceneK2 |= k2Now;
 			scenePunish |= sceneCrit && facts.hitsDealt > 0 && facts.critDealt;
+			sceneOwnCrit |= facts.hitsDealt > 0 && facts.critDealt;
 		}
 		sinceFallingHit = Math.min(sinceFallingHit + 1, 1000);
 		sinceRiserHit[side] = Math.min(sinceRiserHit[side] + 1, 1000);
@@ -3104,14 +3111,22 @@ public final class SchoolSession implements AgentSession {
 
 	private int sceneRowMost;
 
-	/** A jump-in exchange is over: countered or not (see JUMPIN_WINDOW). */
+	/**
+	 * A jump-in exchange is over: countered or not (see JUMPIN_WINDOW). Countered only by its own crit (a punish crit) and no
+	 * sprint hit on them falling. The user, 26 Oct 14:30: "a falling player or even a rising player with lag ... will still
+	 * land a crit because knock back won't get them instantly out of reach so it must be a punish crit". The check hit log
+	 * agreed: after its hit on them rising (T8) their crit still came within 20 ticks 25% of the time (the installed model
+	 * 32%), and it critted back 5 of 42 times. Until then a T8 hit with no crit after it counted as countered.
+	 */
 	private void finishJumpIn(int side) {
 		long[] c = jumpIn[side];
-		boolean countered = !exK2[side] && (!exCrit[side] || exPunish[side]);
+		boolean countered = !exK2[side] && exOwnCrit[side];
 		c[9]++;
 		c[10] += countered ? 1 : 0;
 		c[11] += exCrit[side] && !exPunish[side] ? 1 : 0;
 		c[12] += exK2[side] ? 1 : 0;
+		c[13] += countered && exPunish[side] ? 1 : 0;
+		c[14] += !exCrit[side] && !exOwnCrit[side] ? 1 : 0;
 		exAt[side] = -1;
 		if (side == 0 && mode == Mode.TRAIN && review < 0 && sceneNow == null) {
 			trainJumpIns++;
@@ -3140,10 +3155,11 @@ public final class SchoolSession implements AgentSession {
 
 	private String jumpInLine(int side) {
 		long[] c = jumpIn[side];
-		return String.format(Locale.ROOT, "their jump-ins %d, countered %d of %d (%.0f%%; a crit taken and not answered in %d, a sprint hit on them falling in %d); "
+		return String.format(Locale.ROOT, "their jump-ins %d, countered by its own crit %d of %d (%.0f%%; its crit after theirs in %d; a crit taken and not answered in %d, "
+				+ "no crit either side in %d, a sprint hit on them falling in %d); "
 				+ "its hits on them rising (T8) %d; its knockback hits on them falling (K2 broken) %d, crits taken "
 				+ "within ten ticks %d; crits taken in all %d; hits on them rising close %d (crits taken after %d), further %d (crits taken after %d)",
-				c[0], c[10], c[9], c[9] == 0 ? 0f : 100f * c[10] / c[9], c[11], c[12], c[1], c[2], c[3], c[4], c[5], c[7], c[6], c[8]);
+				c[0], c[10], c[9], c[9] == 0 ? 0f : 100f * c[10] / c[9], c[13], c[11], c[14], c[12], c[1], c[2], c[3], c[4], c[5], c[7], c[6], c[8]);
 	}
 
 	private String critLine(int side) {
