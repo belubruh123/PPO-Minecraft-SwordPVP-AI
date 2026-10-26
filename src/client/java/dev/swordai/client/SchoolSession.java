@@ -533,8 +533,17 @@ public final class SchoolSession implements AgentSession {
 	 * it got out (C3 jump and hold S, T9 jump reset).
 	 */
 	static final int KIND_COMBO = 2;
-	static final int KINDS = 3;
-	static final String[] KIND_NAMES = {"crit", "jump-in", "combo"};
+	/**
+	 * Punish scenes (26 Oct 17:10): their hit lifted it and it came down in reach (a punish crit chance, B1) but made no crit;
+	 * from PUNISH_BEFORE ticks before their hit, PUNISH_SCENE_TICKS long; won by its own crit with no K2. The user: "just guide
+	 * it to ALWAYS do it"; at 17:04 of its chances in reach it had the sword back on about half and was not sprinting on about
+	 * half of those, and critted on one in seven.
+	 */
+	static final int KIND_PUNISH = 3;
+	static final int KINDS = 4;
+	static final String[] KIND_NAMES = {"crit", "jump-in", "combo", "punish"};
+	static final int PUNISH_BEFORE = 10;
+	static final int PUNISH_SCENE_TICKS = 40;
 	static final int COMBO_BEFORE = 20;
 	/**
 	 * One technique at a time (the user, 26 Oct 10:55: "once they learn crit ... learn other technique one by one ... it is ok
@@ -547,8 +556,8 @@ public final class SchoolSession implements AgentSession {
 	 * docs/TRAINING-SOP.md. Kept in FOCUS_FILE: the focus and the furthest reached.
 	 */
 	static final float FOCUS_BAR = 0.9f;
-	static final int[][] FOCUS_KINDS = {{KIND_CRIT, KIND_JUMPIN}, {KIND_COMBO}};
-	static final String[] FOCUS_NAMES = {"the crits (crit scenes, jump-in counter)", "the combo escape"};
+	static final int[][] FOCUS_KINDS = {{KIND_CRIT, KIND_JUMPIN, KIND_PUNISH}, {KIND_COMBO}};
+	static final String[] FOCUS_NAMES = {"the crits (crit scenes, jump-in counter, punish crit)", "the combo escape"};
 	static final float FOCUS_SHARE = 0.8f;
 	static final int FOCUS_EVENTS = 300;
 	static final int FOCUS_REPLAYS = 200;
@@ -575,7 +584,7 @@ public final class SchoolSession implements AgentSession {
 		double[] state;
 
 		int ticks() {
-			return kind == KIND_CRIT ? SCENE_WINDOW : JUMPIN_SCENE_TICKS;
+			return kind == KIND_CRIT ? SCENE_WINDOW : kind == KIND_PUNISH ? PUNISH_SCENE_TICKS : JUMPIN_SCENE_TICKS;
 		}
 
 		String line() {
@@ -660,7 +669,15 @@ public final class SchoolSession implements AgentSession {
 	private int focus;
 	private int focusReached;
 	/** Rolling outcomes for the focus bars: per kind, the last scene fights won; the full fights' jump-ins and combos. */
-	private final Rolling[] sceneRoll = {new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS)};
+	private final Rolling[] sceneRoll = {new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS),
+			new Rolling(FOCUS_REPLAYS)};
+	/** Its punish crit chances in the full fights (their hit lifted it, it came down in reach): critted or not. */
+	private final Rolling punishRoll = new Rolling(FOCUS_EVENTS);
+	/** A punish chance missed in this fight, to keep as a scene at keepPunishAt: from fight tick punishFrom. */
+	private int punishFrom = -1;
+	private int keepPunishAt;
+	/** The fight tick their hit lifted it. */
+	private int liftAt;
 	private final Rolling jumpInRoll = new Rolling(FOCUS_EVENTS);
 	/**
 	 * The installed AI's jump-ins (sparring) apart: on fresh seeds its jump-ins were countered 40% while the bots' were 76%
@@ -756,7 +773,8 @@ public final class SchoolSession implements AgentSession {
 
 	/** A focus's measures: the full fights' and its scenes'. */
 	private Rolling[] measures(int f) {
-		return f == 0 ? new Rolling[] {jumpInRoll, sceneRoll[KIND_CRIT], jumpInSparRoll} : new Rolling[] {comboRoll, sceneRoll[KIND_COMBO]};
+		return f == 0 ? new Rolling[] {jumpInRoll, sceneRoll[KIND_CRIT], jumpInSparRoll, punishRoll, sceneRoll[KIND_PUNISH]}
+				: new Rolling[] {comboRoll, sceneRoll[KIND_COMBO]};
 	}
 
 	private static boolean allFull(Rolling[] m) {
@@ -814,7 +832,8 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	private Rolling[] rollings() {
-		return new Rolling[] {jumpInRoll, comboRoll, sceneRoll[KIND_CRIT], sceneRoll[KIND_JUMPIN], sceneRoll[KIND_COMBO], jumpInSparRoll};
+		return new Rolling[] {jumpInRoll, comboRoll, sceneRoll[KIND_CRIT], sceneRoll[KIND_JUMPIN], sceneRoll[KIND_COMBO], jumpInSparRoll,
+				punishRoll, sceneRoll[KIND_PUNISH]};
 	}
 
 	private void saveFocus() {
@@ -925,6 +944,10 @@ public final class SchoolSession implements AgentSession {
 			keepScene(Math.max(1, comboFrom - COMBO_BEFORE), KIND_COMBO);
 			comboFrom = -1;
 		}
+		if (punishFrom >= 0 && (fightOver || fightTicks >= keepPunishAt)) {
+			keepScene(Math.max(1, punishFrom - PUNISH_BEFORE), KIND_PUNISH);
+			punishFrom = -1;
+		}
 	}
 
 	/** Keeps the scene from fight tick {@code start} to now. */
@@ -980,8 +1003,8 @@ public final class SchoolSession implements AgentSession {
 			kindFights[k] = 0;
 			kindWon[k] = 0;
 		}
-		line += String.format(Locale.ROOT, " | focus: %s (furthest %s); jump-ins countered in the full fights, the bots' last %s, the installed AI's last %s (bar %d%%); their combos got out of, last %s%s",
-				FOCUS_NAMES[focus], FOCUS_NAMES[focusReached], jumpInRoll.line(), jumpInSparRoll.line(), Math.round(100 * FOCUS_BAR), comboRoll.line(), kindsLine);
+		line += String.format(Locale.ROOT, " | focus: %s (furthest %s); jump-ins countered in the full fights, the bots' last %s, the installed AI's last %s; punish crit chances critted, last %s (bar %d%%); their combos got out of, last %s%s",
+				FOCUS_NAMES[focus], FOCUS_NAMES[focusReached], jumpInRoll.line(), jumpInSparRoll.line(), punishRoll.line(), Math.round(100 * FOCUS_BAR), comboRoll.line(), kindsLine);
 		jumpInScenes = 0;
 		jumpInScenesWon = 0;
 		jumpInScenesMastered = 0;
@@ -1513,6 +1536,7 @@ public final class SchoolSession implements AgentSession {
 		sceneNow = null;
 		critsPending = 0;
 		jumpInFrom = -1;
+		punishFrom = -1;
 		exAt[0] = -1;
 		exAt[1] = -1;
 		sceneCrit = false;
@@ -1823,6 +1847,7 @@ public final class SchoolSession implements AgentSession {
 		if (liftedFor == 0) {
 			endLift();
 			liftKind = reader.events.theyHit;
+			liftAt = fightTicks;
 		} else if (liftedFor < 0) {
 			endLift();
 		}
@@ -2738,7 +2763,8 @@ public final class SchoolSession implements AgentSession {
 			sceneFights++;
 			sceneNet += fightDealt - fightTaken;
 			sceneNetBefore += sceneNow.net;
-			boolean sceneWon = sceneNow.kind == KIND_JUMPIN ? !sceneK2 && (!sceneHit || sceneAnswer)
+			boolean sceneWon = sceneNow.kind == KIND_PUNISH ? !sceneK2 && sceneOwnCrit
+					: sceneNow.kind == KIND_JUMPIN ? !sceneK2 && (!sceneHit || sceneAnswer)
 					: sceneNow.kind == KIND_COMBO ? sceneRowMost < 2 : fightDealt > fightTaken;
 			if (!sceneReview) {
 				sceneRoll[sceneNow.kind].add(sceneWon);
@@ -3004,6 +3030,15 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	private void endLift() {
+		// A punish chance (it came down in reach after their hit) in a full fight: the punish crit's bar, and a scene if missed.
+		if (liftKind > 0 && liftStage >= 1 && mode == Mode.TRAIN && review < 0 && sceneNow == null) {
+			boolean punished = liftStage >= 6;
+			punishRoll.add(punished);
+			if (!punished && !drillFight && punishFrom < 0) {
+				punishFrom = liftAt;
+				keepPunishAt = liftAt + PUNISH_SCENE_TICKS - PUNISH_BEFORE;
+			}
+		}
 		if (liftKind > 0 && liftKind < lifts.length) {
 			lifts[liftKind][0]++;
 			for (int k = 1; k <= liftStage; k++) {
@@ -3060,7 +3095,7 @@ public final class SchoolSession implements AgentSession {
 			exPunish[side] |= exCrit[side] && facts.hitsDealt > 0 && facts.critDealt;
 			exOwnCrit[side] |= facts.hitsDealt > 0 && facts.critDealt;
 			exAnswer[side] |= exHit[side] && facts.hitsDealt > 0 && facts.critDealt;
-			exHit[side] |= facts.hitsTaken > 0;
+			exHit[side] |= facts.hitsTaken > 0 && facts.sprintsTaken == 0;
 			if (++exAt[side] >= JUMPIN_WINDOW) {
 				finishJumpIn(side);
 			}
@@ -3071,7 +3106,7 @@ public final class SchoolSession implements AgentSession {
 			scenePunish |= sceneCrit && facts.hitsDealt > 0 && facts.critDealt;
 			sceneOwnCrit |= facts.hitsDealt > 0 && facts.critDealt;
 			sceneAnswer |= sceneHit && facts.hitsDealt > 0 && facts.critDealt;
-			sceneHit |= facts.hitsTaken > 0;
+			sceneHit |= facts.hitsTaken > 0 && facts.sprintsTaken == 0;
 		}
 		sinceFallingHit = Math.min(sinceFallingHit + 1, 1000);
 		sinceRiserHit[side] = Math.min(sinceRiserHit[side] + 1, 1000);
@@ -3177,7 +3212,7 @@ public final class SchoolSession implements AgentSession {
 
 	private String jumpInLine(int side) {
 		long[] c = jumpIn[side];
-		return String.format(Locale.ROOT, "their jump-ins %d, of those with their hit on it or a K2: punished with its crit %d of %d (%.0f%%; their crit punished in %d; "
+		return String.format(Locale.ROOT, "their jump-ins %d, of those with their crit or plain hit on it or a K2: punished with its crit %d of %d (%.0f%%; their crit punished in %d; "
 				+ "their hit not punished in %d, no hit of theirs (not counted) %d, a sprint hit on them falling in %d); "
 				+ "its hits on them rising (T8) %d; its knockback hits on them falling (K2 broken) %d, crits taken "
 				+ "within ten ticks %d; crits taken in all %d; hits on them rising close %d (crits taken after %d), further %d (crits taken after %d)",
