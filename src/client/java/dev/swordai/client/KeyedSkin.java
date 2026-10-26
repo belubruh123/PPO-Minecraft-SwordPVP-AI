@@ -10,6 +10,8 @@ import net.minecraft.world.entity.player.PlayerModelType;
 import net.minecraft.world.entity.player.PlayerSkin;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -18,8 +20,9 @@ import java.util.UUID;
  * in a fight on a server it is only the one being fought. This only changes what this client
  * renders; the other player's real skin, armour and health are untouched.
  *
- * <p>The player need not look at that figure: with {@link #setTwoPass} the keyed picture is drawn in
- * a pass of its own, for the agent only, and the screen gets the world as it really looks.
+ * <p>The player need not look at that figure: with {@link #setShowReal} the agent's picture is taken
+ * with the key and then {@link ShownSkin} draws the opponent's own skin over the figure, for the
+ * screen only.
  */
 public final class KeyedSkin {
 	private static final PlayerSkin SKIN = PlayerSkin.insecure(
@@ -32,15 +35,17 @@ public final class KeyedSkin {
 	/** Null: every other player. */
 	private static volatile UUID target;
 	/**
-	 * The player is shown the opponent as it really looks: each frame the world is drawn twice, first
-	 * with the colour key for the agent and then without it for the screen.
+	 * The player is shown the opponent as it really looks: once the agent's picture is taken, the
+	 * opponent's own skin is drawn over the keyed figure (see {@link ShownSkin}).
 	 */
-	private static volatile boolean twoPass;
-	/** Set while the second of those two pictures is being drawn. Render thread only. */
+	private static volatile boolean showReal;
+	/** Set while the opponent is looked at again for its own skin. Render thread only. */
 	private static boolean showing;
-	/** While two pictures are drawn per frame: how often the opponent was drawn with the key, and how often without. */
+	/** While the real skin is shown: how often the opponent was drawn with the key, and how often with its own skin. */
 	private static long keyedDraws;
 	private static long plainDraws;
+	/** The players drawn with the key in this frame, for {@link ShownSkin}. Render thread only. */
+	private static final List<Avatar> keyedThisFrame = new ArrayList<>();
 
 	private KeyedSkin() {
 	}
@@ -49,12 +54,12 @@ public final class KeyedSkin {
 		active = value;
 	}
 
-	public static void setTwoPass(boolean value) {
-		if (value && !twoPass) {
+	public static void setShowReal(boolean value) {
+		if (value && !showReal) {
 			keyedDraws = 0;
 			plainDraws = 0;
 		}
-		twoPass = value;
+		showReal = value;
 	}
 
 	/** For the diagnosis when showing the skin goes wrong: draws of the opponent with the key and without, since it was switched on. */
@@ -62,16 +67,26 @@ public final class KeyedSkin {
 		return keyedDraws + " keyed / " + plainDraws + " plain draws of the opponent";
 	}
 
-	/** Whether each frame is to be drawn twice right now. */
-	public static boolean twoPass() {
-		return active && twoPass;
+	/** Whether the opponent's own skin is to be drawn over the key right now. */
+	public static boolean showReal() {
+		return active && showReal;
+	}
+
+	/** Forgets the players keyed so far: a new frame's level is about to be drawn. */
+	static void frameBegins() {
+		keyedThisFrame.clear();
+	}
+
+	/** The players drawn with the key in this frame. */
+	static List<Avatar> keyedThisFrame() {
+		return keyedThisFrame;
 	}
 
 	public static void setShowing(boolean value) {
 		showing = value;
 	}
 
-	/** True while the picture being drawn is the one for the player's eyes, not the agent's. */
+	/** True while the opponent is looked at for the player's eyes, not the agent's. */
 	public static boolean showing() {
 		return showing;
 	}
@@ -99,8 +114,11 @@ public final class KeyedSkin {
 			plainDraws++;
 			return;
 		}
-		if (twoPass) {
+		if (showReal) {
 			keyedDraws++;
+			if (!keyedThisFrame.contains(avatar)) {
+				keyedThisFrame.add(avatar);
+			}
 		}
 		state.skin = SKIN;
 		// Armour is still worn (it changes damage); it just must not hide the colour key.

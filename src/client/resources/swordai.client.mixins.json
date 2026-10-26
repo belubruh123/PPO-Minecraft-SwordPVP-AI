@@ -9,6 +9,7 @@
 		"GameRendererMixin",
 		"KeyMappingAccessor",
 		"KeyMappingMixin",
+		"LevelRendererMixin",
 		"LocalPlayerMixin",
 		"MinecraftMixin",
 		"MouseHandlerMixin",

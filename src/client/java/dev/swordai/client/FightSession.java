@@ -63,7 +63,7 @@ final class FightSession implements AgentSession {
 	/** The installed model's own view of its body, for its fight-time rules over the school's network. */
 	private final BodyState rulesBody = new BodyState();
 	private final StepFacts facts = new StepFacts();
-	/** Notices when the picture has lost the opponent; acted on while the frame is drawn twice. */
+	/** Notices when the picture has lost the opponent; acted on while the opponent's own skin is shown. */
 	private final BlindGuard blind = new BlindGuard();
 	private final long startedMillis = System.currentTimeMillis();
 
@@ -261,7 +261,7 @@ final class FightSession implements AgentSession {
 			opponentId = opp.getUUID();
 			opponentName = opp.getScoreboardName();
 			KeyedSkin.setTarget(opponentId);
-			KeyedSkin.setTwoPass(loaded.cfg.showOpponentSkin);
+			KeyedSkin.setShowReal(loaded.cfg.showOpponentSkin);
 			KeyedSkin.setActive(true);
 			lastOpponentHurt = opp.hurtTime;
 			resetBrain(true);
@@ -349,7 +349,7 @@ final class FightSession implements AgentSession {
 		// ---- numbers for the summary; none of this reaches the network -----------------------
 		facts.clear();
 		observer.fillGeometry(facts, me, opp);
-		if (KeyedSkin.twoPass() && blind.note(facts)) {
+		if (KeyedSkin.showReal() && blind.note(facts)) {
 			SwordAiClient.skinBlindsTheAgent(grabber.grabCounts());
 		}
 		ticks++;

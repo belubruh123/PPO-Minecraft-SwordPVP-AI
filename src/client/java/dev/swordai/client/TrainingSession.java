@@ -93,7 +93,7 @@ public final class TrainingSession extends Trainer {
 	private long resumeAtSequence;
 	private int frameHolds;
 
-	/** Notices when the picture has lost the opponent; acted on while the frame is drawn twice. */
+	/** Notices when the picture has lost the opponent; acted on while the opponent's own skin is shown. */
 	private final BlindGuard blind = new BlindGuard();
 
 	private SelfTest selfTest;
@@ -129,7 +129,7 @@ public final class TrainingSession extends Trainer {
 			WindowGuard.shrink(mc, crop, cfg.speedWindowRows);
 		}
 		// The vision check is made on one picture per frame; the player's own picture comes after it.
-		KeyedSkin.setTwoPass(!selfTestPending && cfg.showOpponentSkin);
+		KeyedSkin.setShowReal(!selfTestPending && cfg.showOpponentSkin);
 		KeyedSkin.setActive(true);
 		grabber.setEnabled(true);
 		IntegratedServer server = mc.getSingleplayerServer();
@@ -143,12 +143,6 @@ public final class TrainingSession extends Trainer {
 	@Override
 	public boolean inControl() {
 		return demo == null && phase != Phase.STOPPED && phase != Phase.PAUSED;
-	}
-
-	/** Also while the user plays and is recorded: the network's pictures are still taken. */
-	@Override
-	public boolean wantsPictures() {
-		return phase != Phase.STOPPED && phase != Phase.PAUSED;
 	}
 
 	/** The user plays and is recorded: their swing waits for the moment the network's would be made; see {@link #beforePlayerMoves}. */
@@ -466,7 +460,7 @@ public final class TrainingSession extends Trainer {
 		}
 
 		step(truth);
-		if (KeyedSkin.twoPass() && blind.note(facts)) {
+		if (KeyedSkin.showReal() && blind.note(facts)) {
 			SwordAiClient.skinBlindsTheAgent(grabber.grabCounts());
 			if (phase == Phase.RUN) {
 				// What it did blind is not a fight to learn from: this one is cut here and the next begins.
@@ -554,7 +548,7 @@ public final class TrainingSession extends Trainer {
 		selfTest = null;
 		selfTestPending = false;
 		if (!fatal && mode != Mode.SELFTEST) {
-			KeyedSkin.setTwoPass(SwordFiles.loadConfig().showOpponentSkin);
+			KeyedSkin.setShowReal(SwordFiles.loadConfig().showOpponentSkin);
 		}
 		if (fatal) {
 			fail("vision self-test failed, so training was not started", null);

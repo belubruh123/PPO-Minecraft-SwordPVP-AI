@@ -85,7 +85,7 @@ final class FightLearnSession extends Trainer {
 	private final String wantedName;
 	private final FrameGrabber grabber = new FrameGrabber();
 	private final Observer observer = new Observer();
-	/** Notices when the picture has lost the opponent; acted on while the frame is drawn twice. */
+	/** Notices when the picture has lost the opponent; acted on while the opponent's own skin is shown. */
 	private final BlindGuard blind = new BlindGuard();
 	private final long startedMillis = System.currentTimeMillis();
 	private final long stepsAtStart;
@@ -415,7 +415,7 @@ final class FightLearnSession extends Trainer {
 			opponentId = opp.getUUID();
 			opponentName = opp.getScoreboardName();
 			KeyedSkin.setTarget(opponentId);
-			KeyedSkin.setTwoPass(cfg.showOpponentSkin);
+			KeyedSkin.setShowReal(cfg.showOpponentSkin);
 			KeyedSkin.setActive(true);
 		}
 		if (opp.isDeadOrDying()) {
@@ -474,7 +474,7 @@ final class FightLearnSession extends Trainer {
 		}
 		step(Truth.INACTIVE);
 		turnTicks++;
-		if (KeyedSkin.twoPass() && blind.note(facts)) {
+		if (KeyedSkin.showReal() && blind.note(facts)) {
 			SwordAiClient.skinBlindsTheAgent(grabber.grabCounts());
 			// What it did blind is not a fight to learn from: it is cut here and taken up again at once.
 			handBack("its sight to come back");

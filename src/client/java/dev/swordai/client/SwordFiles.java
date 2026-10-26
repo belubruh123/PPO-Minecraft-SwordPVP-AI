@@ -360,7 +360,9 @@ final class SwordFiles {
 						if (loaded.botName != null) {
 							defaults.botName = loaded.botName;
 						}
-						defaults.showOpponentSkin = loaded.showOpponentSkin;
+						if (loaded.configVersion >= Config.SKIN_SHOWN_FROM) {
+							defaults.showOpponentSkin = loaded.showOpponentSkin;
+						}
 						if (loaded.configVersion >= Config.PEOPLE_AND_ARENA_FROM) {
 							// Before that, learning from people was on unless it was turned off, and it
 							// did the network harm: a file from then does not say what the user wants now.

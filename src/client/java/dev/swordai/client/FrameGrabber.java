@@ -49,8 +49,8 @@ public final class FrameGrabber {
 	private String failure;
 
 	/**
-	 * While each frame is drawn twice (see {@link KeyedSkin#setTwoPass}): a copy of the agent's picture,
-	 * made the moment it is complete. The game then draws the player's picture over the original, and
+	 * While the opponent's own skin is shown (see {@link KeyedSkin#setShowReal}): a copy of the agent's
+	 * picture, made the moment it is complete. The game then draws the real skin over the original, and
 	 * a read-back that a graphics driver carries out later than it was asked for would hand the agent
 	 * that one. The copy is nobody else's, so it cannot change under the read-back.
 	 */
@@ -123,7 +123,7 @@ public final class FrameGrabber {
 			final float pitch = camera.xRot();
 			final Vec3 eye = camera.position();
 			final float partial = camera.getPartialTickTime();
-			GpuTexture source = KeyedSkin.twoPass() ? ownCopy(texture, width, height) : texture;
+			GpuTexture source = KeyedSkin.showReal() ? ownCopy(texture, width, height) : texture;
 			if (source == texture) {
 				directGrabs++;
 			} else {

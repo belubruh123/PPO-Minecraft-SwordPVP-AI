@@ -309,12 +309,6 @@ public class SwordAiClient implements ClientModInitializer {
 		return s != null && s.inControl();
 	}
 
-	/** Whether the network's pictures are being taken: while it plays, and while the user plays and is recorded. */
-	public static boolean picturesWanted() {
-		AgentSession s = session;
-		return s != null && s.wantsPictures();
-	}
-
 	/** The user plays and is recorded ({@code /swordai demo}); see {@link DemoPlan}. */
 	static boolean personPlays() {
 		AgentSession s = session;
@@ -353,20 +347,48 @@ public class SwordAiClient implements ClientModInitializer {
 
 	/** Once per rendered frame, when the world is drawn and the hand and HUD are not yet. */
 	public static void worldDrawn() {
+		// With the real skin shown the picture was taken as soon as the level was drawn; see levelDrawn.
+		if (takenAtLevel) {
+			takenAtLevel = false;
+			return;
+		}
 		AgentSession s = session;
-		// Of two pictures per frame only the first, the keyed one, is the agent's.
-		if (s != null && !s.stopped() && !KeyedSkin.showing()) {
+		if (s != null && !s.stopped()) {
 			s.worldDrawn();
 		}
 	}
 
+	/** This frame's picture was taken when the level was drawn, before the real skin went over the key. */
+	private static boolean takenAtLevel;
+
 	/**
-	 * Drawing the agent's picture in a pass of its own went wrong. It is not tried again: the game
-	 * goes back to one picture per frame, the keyed one, which is what the agent needs.
+	 * The level is drawn, its depth still in place, and nothing else yet. With the opponent's own skin
+	 * shown, this is where the agent's picture is taken, with the key; then the real skin is drawn over
+	 * the keyed figure for the player (see {@link ShownSkin}).
+	 */
+	public static void levelDrawn() {
+		takenAtLevel = KeyedSkin.showReal();
+		if (!takenAtLevel) {
+			return;
+		}
+		AgentSession s = session;
+		if (s != null && !s.stopped()) {
+			s.worldDrawn();
+		}
+		try {
+			ShownSkin.drawOver(Minecraft.getInstance());
+		} catch (RuntimeException e) {
+			keyedPassFailed(e);
+		}
+	}
+
+	/**
+	 * Drawing the opponent's own skin over the key went wrong. It is not tried again: the player sees
+	 * the keyed figure, which is what the agent needs.
 	 */
 	public static void keyedPassFailed(RuntimeException error) {
-		KeyedSkin.setTwoPass(false);
-		dev.swordai.SwordAi.LOGGER.error("SwordAI could not draw the opponent's own skin in a second pass; showing the colour key again", error);
+		KeyedSkin.setShowReal(false);
+		dev.swordai.SwordAi.LOGGER.error("SwordAI could not draw the opponent's own skin over the colour key; showing the colour key again", error);
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.gui != null) {
 			mc.gui.getChat().addMessage(net.minecraft.network.chat.Component.literal(
@@ -383,7 +405,7 @@ public class SwordAiClient implements ClientModInitializer {
 	 */
 	static void skinBlindsTheAgent(String grabs) {
 		String diagnosis = KeyedSkin.drawCounts() + "; " + grabs;
-		KeyedSkin.setTwoPass(false);
+		KeyedSkin.setShowReal(false);
 		try {
 			dev.swordai.core.config.Config cfg = SwordFiles.loadConfig();
 			cfg.showOpponentSkin = false;

@@ -1,12 +1,10 @@
 package dev.swordai.client.mixin;
 
-import dev.swordai.client.KeyedSkin;
 import dev.swordai.client.SwordAiClient;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.renderer.GameRenderer;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -19,35 +17,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(GameRenderer.class)
 public abstract class GameRendererMixin {
-	@Shadow
-	public abstract void renderLevel(DeltaTracker deltaTracker);
-
 	/**
-	 * When the player is to see the opponent as it really looks, the frame is drawn twice. This is the
-	 * first time, just before the game's own: the world with the colour key, which the frame grabber
-	 * takes (see below) and nobody else sees, since the game's own drawing of the level starts by
-	 * clearing the picture. The game draws the level several times in a row itself, for its panorama
-	 * screenshots, so a second time is nothing it is not built for.
+	 * The level is drawn, its depth still in place, and nothing of the hand yet: with the opponent's own
+	 * skin shown, the agent's picture is taken here and the real skin drawn over the key.
 	 */
-	@Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/GameRenderer;renderLevel(Lnet/minecraft/client/DeltaTracker;)V"))
-	private void swordai$keyedPassFirst(DeltaTracker deltaTracker, boolean renderLevel, CallbackInfo ci) {
-		if (!KeyedSkin.twoPass()) {
-			return;
-		}
-		// Paused, nobody needs the keyed picture; the player still gets the real one.
-		if (SwordAiClient.picturesWanted()) {
-			try {
-				this.renderLevel(deltaTracker);
-			} catch (RuntimeException e) {
-				SwordAiClient.keyedPassFailed(e);
-			}
-		}
-		KeyedSkin.setShowing(true);
-	}
-
-	@Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/GameRenderer;renderLevel(Lnet/minecraft/client/DeltaTracker;)V", shift = At.Shift.AFTER))
-	private void swordai$shownPassDone(DeltaTracker deltaTracker, boolean renderLevel, CallbackInfo ci) {
-		KeyedSkin.setShowing(false);
+	@Inject(method = "renderLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/LevelRenderer;renderLevel(Lcom/mojang/blaze3d/resource/GraphicsResourceAllocator;Lnet/minecraft/client/DeltaTracker;ZLnet/minecraft/client/Camera;Lorg/joml/Matrix4f;Lorg/joml/Matrix4f;Lorg/joml/Matrix4f;Lcom/mojang/blaze3d/buffers/GpuBufferSlice;Lorg/joml/Vector4f;Z)V", shift = At.Shift.AFTER))
+	private void swordai$levelDrawn(DeltaTracker deltaTracker, CallbackInfo ci) {
+		SwordAiClient.levelDrawn();
 	}
 
 	@Inject(

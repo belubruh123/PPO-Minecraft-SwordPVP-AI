@@ -181,6 +181,8 @@ public final class SchoolSession implements AgentSession {
 	private Phase phase = Phase.WAIT_ARENA;
 	private final FrameGrabber grabber = new FrameGrabber();
 	private final Observer observer = new Observer();
+	/** {@code /swordai debug}: save the next frame the network uses, as it sees it. */
+	private boolean debugRequested;
 	private final BlindGuard blind = new BlindGuard();
 	private SelfTest selfTest;
 	private boolean selfTestPending = true;
@@ -1274,7 +1276,7 @@ public final class SchoolSession implements AgentSession {
 		if (fast) {
 			WindowGuard.shrink(mc, crop, cfg.speedWindowRows);
 		}
-		KeyedSkin.setTwoPass(false);
+		KeyedSkin.setShowReal(false);
 		KeyedSkin.setActive(true);
 		grabber.setEnabled(true);
 		IntegratedServer server = mc.getSingleplayerServer();
@@ -1329,7 +1331,8 @@ public final class SchoolSession implements AgentSession {
 
 	@Override
 	public boolean requestDebugDump() {
-		return false;
+		debugRequested = true;
+		return true;
 	}
 
 	@Override
@@ -1425,7 +1428,7 @@ public final class SchoolSession implements AgentSession {
 					if (fatal) {
 						fail("vision self-test failed, so the school was not started", null);
 					} else {
-						KeyedSkin.setTwoPass(cfg.showOpponentSkin);
+						KeyedSkin.setShowReal(cfg.showOpponentSkin);
 						beginFight(truth);
 					}
 				}
@@ -1800,8 +1803,16 @@ public final class SchoolSession implements AgentSession {
 		} else {
 			frozenTicks = 0;
 		}
+		if (debugRequested) {
+			debugRequested = false;
+			try {
+				say("Saved what it sees to " + DebugDump.dump(grabber, observer.frame));
+			} catch (IOException | RuntimeException e) {
+				say("Could not save the debug images: " + e);
+			}
+		}
 		step(truth, bot);
-		if (KeyedSkin.twoPass() && blind.note(facts)) {
+		if (KeyedSkin.showReal() && blind.note(facts)) {
 			SwordAiClient.skinBlindsTheAgent(grabber.grabCounts());
 		}
 	}

@@ -13,11 +13,6 @@ interface AgentSession {
 	/** True while the network, not the player, is playing the player's character. */
 	boolean inControl();
 
-	/** Whether the network's pictures are being taken: while it plays, and while the user plays and is recorded. */
-	default boolean wantsPictures() {
-		return inControl();
-	}
-
 	/** The user plays and is recorded ({@code /swordai demo}): their clicks of the attack key are held for the session. */
 	default boolean takesClicks() {
 		return false;

@@ -539,13 +539,12 @@ final class Commands {
 			cfg.showOpponentSkin = on;
 			SwordFiles.saveConfig(cfg);
 			// It only changes what is drawn for the player, so it can be switched while the AI plays.
-			KeyedSkin.setTwoPass(on);
+			KeyedSkin.setShowReal(on);
 			if (on) {
-				say(source, "You now see the opponent with its own skin, armour and name tag. The AI still gets its blue and green picture: it is drawn first, out of sight, and then the world is drawn again for you.");
-				say(source, "That is two pictures per frame, so expect about half the frames a second, and the AI's picture is a little older for it. For long training runs /swordai skin off is the better setting.");
+				say(source, "You now see the opponent with its own skin, armour and name tag. The AI still gets its blue and green picture: it is taken first, and then only the opponent is drawn again over it for you, so it costs next to no frames.");
 				say(source, "It is watched: should the AI stop seeing the opponent with this on, it is switched off again within a couple of seconds, and says so.");
 			} else {
-				say(source, "Back to one picture per frame: you see the blue and green figure the AI sees.");
+				say(source, "You now see the blue and green figure the AI sees.");
 			}
 			return 1;
 		} catch (IOException | RuntimeException e) {

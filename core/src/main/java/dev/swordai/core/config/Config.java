@@ -17,6 +17,12 @@ public final class Config {
 	 * before it knows nothing of: such a file's values for them are not carried over.
 	 */
 	public static final int PEOPLE_AND_ARENA_FROM = 38;
+	/**
+	 * From this version on the opponent's own skin is shown by default, as it no longer costs frames
+	 * (26 Oct): a file written before it has it off only because that was the default then. The version
+	 * itself is not raised for it, as that would rewrite the files of this version and their settings.
+	 */
+	public static final int SKIN_SHOWN_FROM = 63;
 	/** The arena's floor has to reach at least this far from its middle for the fights that start far apart to fit. */
 	public static final int MIN_ARENA_RADIUS = 20;
 
@@ -94,11 +100,11 @@ public final class Config {
 	public String botName = "SwordBot";
 	/**
 	 * While the AI plays on the screen: show the opponent with its own skin, armour and name tag
-	 * instead of the blue and green figure. The AI still gets the blue and green picture; it is drawn
-	 * first, in a pass of its own, and then the world is drawn again for the player. That is two
-	 * pictures per frame, so about half the frames a second. {@code /swordai skin} sets it.
+	 * instead of the blue and green figure. The AI still gets the blue and green picture: it is taken
+	 * first, and then only the opponent is drawn again over it, for the player. {@code /swordai skin}
+	 * sets it.
 	 */
-	public boolean showOpponentSkin = false;
+	public boolean showOpponentSkin = true;
 	/** Training without the screen: the name of the fake player that is the AI's own body. */
 	public String agentName = "SwordAgent";
 	/** Trainer threads; 0 picks a value from the CPU count. */
