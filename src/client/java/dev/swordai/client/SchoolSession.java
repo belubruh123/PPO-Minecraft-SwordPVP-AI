@@ -2738,6 +2738,8 @@ public final class SchoolSession implements AgentSession {
 				jumpInScenesMastered += sceneWon && sceneNow.wins + 1 >= SCENE_MASTERED ? 1 : 0;
 			}
 			sceneWins += sceneWon ? 1 : 0;
+			flushSceneHits(sceneWon);
+			sceneSerial++;
 			if (!learner.toldTheTeachers()) {
 				sceneDecided++;
 				sceneDecidedWon += sceneWon ? 1 : 0;
@@ -2764,8 +2766,10 @@ public final class SchoolSession implements AgentSession {
 					scenesMasteredAll++;
 				}
 			}
-			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school scene %s (lost %.1f there the first time): dealt %.1f, taken %.1f, ticks %d%s",
-					sceneNow.spar ? "installed-model" : Specialists.NAMES[fightBot], -sceneNow.net, fightDealt, fightTaken, fightTicks, result));
+			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school scene %s (lost %.1f there the first time): dealt %.1f, taken %.1f, ticks %d%s; %s scene%s, %s, %s, %08x",
+					sceneNow.spar ? "installed-model" : Specialists.NAMES[fightBot], -sceneNow.net, fightDealt, fightTaken, fightTicks, result,
+					KIND_NAMES[sceneNow.kind], sceneReview ? " (mastered, tested again)" : "", sceneWon ? "won" : "lost",
+					learner.toldTheTeachers() ? "the teacher's choices" : "the decider's", sceneKey(sceneNow)));
 		} else if (sparFight) {
 			sparFights++;
 			sparDealt += fightDealt;
@@ -2833,7 +2837,7 @@ public final class SchoolSession implements AgentSession {
 	private final int[] sinceSwing = {999, 999};
 
 	private void logHits(int side, boolean swung, boolean botFalling) {
-		if (mode != Mode.CHECK) {
+		if (mode != Mode.CHECK && sceneNow == null) {
 			return;
 		}
 		sinceSwing[side] = swung ? 0 : Math.min(sinceSwing[side] + 1, 999);
@@ -2852,7 +2856,7 @@ public final class SchoolSession implements AgentSession {
 		String situation = step.teacherTechnique >= 0 ? Technique.values()[step.teacherTechnique].name() : "-";
 		hitRows.append(String.format(Locale.ROOT,
 				"%d,%s,%s,%d,%.1f,%.1f,%d,%d,%d,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%.2f,%d,%d,%d,%s%n",
-				(checkFights - 1) / 2, side == 0 ? "A" : "B", bot, fightTicks, facts.damageDealt, facts.damageTaken, facts.hitsDealt,
+				mode == Mode.CHECK ? (checkFights - 1) / 2 : sceneSerial, side == 0 ? "A" : "B", bot, fightTicks, facts.damageDealt, facts.damageTaken, facts.hitsDealt,
 				facts.critDealt ? 1 : 0, facts.sprintHit ? 1 : 0, facts.hitCharge, facts.punishCrit ? 1 : 0, facts.uppercut ? 1 : 0,
 				facts.hitsTaken, facts.critsTaken, facts.sprintsTaken, facts.onGround ? 1 : 0, facts.falling ? 1 : 0,
 				mc.player.isSprinting() ? 1 : 0, action[ActionSpace.SPRINT] == 1 ? 1 : 0, mc.player.getAttackStrengthScale(0f), facts.reachDist,
@@ -2860,6 +2864,44 @@ public final class SchoolSession implements AgentSession {
 				action[ActionSpace.STRAFE] == 1 ? -1 : action[ActionSpace.STRAFE] == 2 ? 1 : 0, action[ActionSpace.JUMP] == 1 ? 1 : 0, sinceSwing[side], rowDealt[side], rowTaken[side], reader.duel.them.falling() || botFalling ? 1 : 0,
 				reader.duel.them.rising() ? 1 : 0, facts.oppCharge, facts.knockedUp ? 1 : 0, facts.walkedInOnCooldown ? 1 : 0, ruledNow,
 				situation));
+	}
+
+	/**
+	 * The hits of the scene fights in training (the user, 26 Oct 13:20: why the crit scenes against the bots are not won
+	 * more, and which mastered ones are lost again): the hit log's columns after the scene's kind, whether it was won, a
+	 * mastered one tested again, the decider's own choices or the teacher's, and the scene's key (the same scene in every
+	 * replay). tools/scene-hits-report.py reads it.
+	 */
+	static final String SCENE_HIT_LOG = "scene-hits.csv";
+	private int sceneSerial;
+
+	/** The same in every replay of a scene: its opponent, style and state. */
+	private static int sceneKey(Scene sc) {
+		return 31 * (31 * sc.bot + Long.hashCode(sc.styleSeed)) + java.util.Arrays.hashCode(sc.state);
+	}
+
+	private void flushSceneHits(boolean won) {
+		if (hitRows.length() == 0) {
+			return;
+		}
+		String lead = String.format(Locale.ROOT, "%s,%d,%d,%d,%08x,", KIND_NAMES[sceneNow.kind], won ? 1 : 0, sceneReview ? 1 : 0,
+				learner.toldTheTeachers() ? 0 : 1, sceneKey(sceneNow));
+		StringBuilder rows = new StringBuilder();
+		for (String row : hitRows.toString().split("\R")) {
+			if (!row.isEmpty()) {
+				rows.append(lead).append(row).append(System.lineSeparator());
+			}
+		}
+		hitRows.setLength(0);
+		Path file = SwordFiles.schoolDir().resolve(SCENE_HIT_LOG);
+		try {
+			if (!Files.exists(file)) {
+				Files.writeString(file, "kind,won,review,decider,scene," + HIT_HEADER + System.lineSeparator());
+			}
+			Files.writeString(file, rows, java.nio.file.StandardOpenOption.APPEND);
+		} catch (IOException e) {
+			SwordAi.LOGGER.warn("school: the scene hit log could not be written: {}", e.getMessage());
+		}
 	}
 
 	private void flushHits() {
