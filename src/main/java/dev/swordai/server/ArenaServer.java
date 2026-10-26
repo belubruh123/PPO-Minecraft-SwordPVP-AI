@@ -69,6 +69,7 @@ public final class ArenaServer {
 	private static volatile String sparStatus = "";
 	private static volatile String sparDetail = "";
 	private static ArenaServer active;
+	private final SceneRecorder scenes = new SceneRecorder();
 	/**
 	 * The arena the last run left standing. The next run that starts near it uses it again, so that
 	 * stopping and starting does not take the whole thing down and put it up each time.
@@ -555,6 +556,13 @@ public final class ArenaServer {
 		} else {
 			s.placeBotRandomly(ax, az, yaw);
 		}
+		if (plan.scene != null) {
+			// A scene: both fighters exactly where, how fast and how ready they were at that moment of an earlier fight.
+			SceneRecorder.apply(s.arena.level, agent, plan.scene, 0);
+			SceneRecorder.apply(s.arena.level, s.bot, plan.scene, SceneRecorder.BODY);
+			s.botLastPos = null;
+			s.agentLastPos = null;
+		}
 		if (!Float.isNaN(plan.startYaw)) {
 			// A lost fight set up again: where it starts, to be seen to be the same every time.
 			SwordAi.LOGGER.info(String.format(java.util.Locale.ROOT, "lost fight again from seed %x: agent %.2f %.2f facing %.1f, opponent %.2f %.2f",
@@ -1001,6 +1009,9 @@ public final class ArenaServer {
 	private void publish() {
 		ServerPlayer b = bot;
 		ServerPlayer agent = agent();
+		if (b != null && agent != null && pilot == null) {
+			scenes.note(server.getTickCount(), agent, b);
+		}
 		truth = new Truth(
 				true,
 				b != null,
@@ -1024,6 +1035,12 @@ public final class ArenaServer {
 	}
 
 	// ---- combat hooks ---------------------------------------------------------------------------
+
+	/** Both fighters on server tick {@code tick} (Truth#tick), or null: see SceneRecorder. */
+	public static double[] sceneAt(long tick) {
+		ArenaServer s = active;
+		return s == null ? null : s.scenes.at(tick);
+	}
 
 	/** Called at the start of every server-side player attack. */
 	public static void onAttack(Player attacker, float charge, boolean sprinting, boolean crit, boolean rising, boolean sweep) {

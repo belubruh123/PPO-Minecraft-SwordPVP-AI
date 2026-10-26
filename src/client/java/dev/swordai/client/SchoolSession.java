@@ -27,6 +27,7 @@ import dev.swordai.core.vision.ViewGeometry;
 import dev.swordai.server.ArenaServer;
 import dev.swordai.server.CombatLog;
 import dev.swordai.server.EpisodePlan;
+import dev.swordai.server.SceneRecorder;
 import dev.swordai.server.Truth;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
@@ -476,10 +477,156 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	/** " B1 T1 T1a ... let-go": the techniques whose teacher has a pull now (the rest of the keys copied); for the dashboard. */
+	/**
+	 * Scene replay (the user, 26 Oct 08:50: "just give it the 60-120 frames that it actually needs to perform the action to
+	 * train ... just tp the teacher to exact location where this scene will be taken"). Every SCENE_WINDOW ticks of a training
+	 * fight in which it took SCENE_LOST or more damage more than it dealt is kept as a scene: both fighters as they were at the
+	 * window's start (ArenaServer's SceneRecorder), with the opponent that fought it. SCENE_SHARE of the training fights then
+	 * start from a kept scene, both put back exactly, against the same opponent, for SCENE_WINDOW ticks: the lost moments
+	 * fought again and again, without the walking in around them. Kept in SCENE_FILE (the newest SCENES_KEPT).
+	 */
+	static final float SCENE_SHARE = 0.5f; // run 21
+	static final int SCENE_WINDOW = 100;
+	static final float SCENE_LOST = 14f;
+	static final int SCENES_KEPT = 400;
+	static final String SCENE_FILE = "scenes.txt";
+
+	private static final class Scene {
+		int bot;
+		long styleSeed;
+		boolean varied;
+		boolean spar;
+		int agentLag;
+		int botLag;
+		float net;
+		double[] state;
+
+		String line() {
+			StringBuilder b = new StringBuilder(String.format(Locale.ROOT, "%d %d %d %d %d %d %.1f", bot, styleSeed, varied ? 1 : 0, spar ? 1 : 0,
+					agentLag, botLag, net));
+			for (double v : state) {
+				b.append(' ').append(v);
+			}
+			return b.toString();
+		}
+
+		static Scene parse(String line) {
+			String[] f = line.trim().split(" ");
+			Scene sc = new Scene();
+			sc.bot = Integer.parseInt(f[0]);
+			sc.styleSeed = Long.parseLong(f[1]);
+			sc.varied = f[2].equals("1");
+			sc.spar = f[3].equals("1");
+			sc.agentLag = Integer.parseInt(f[4]);
+			sc.botLag = Integer.parseInt(f[5]);
+			sc.net = Float.parseFloat(f[6]);
+			sc.state = new double[f.length - 7];
+			for (int i = 0; i < sc.state.length; i++) {
+				sc.state[i] = Double.parseDouble(f[7 + i]);
+			}
+			return sc;
+		}
+	}
+
+	private final List<Scene> scenes = new ArrayList<>();
+	/** The scene this fight starts from, or null. */
+	private Scene sceneNow;
+	private final long[] histTick = new long[256];
+	private final float[] histNet = new float[256];
+	private int harvestQuiet;
+	private long fightStyleSeed;
+	private boolean fightVaried;
+	private int sparBotLag;
+	private int sceneFights;
+	private int scenesHarvested;
+	private float sceneNet;
+	private float sceneNetBefore;
+
+	/** A specialist's style from its own seed, so that a scene can bring the same opponent back. */
+	private static dev.swordai.core.pvp.Style styleOf(int bot, long styleSeed, boolean varied) {
+		Random r = new Random(styleSeed);
+		return bot == Specialists.MIXER ? Specialists.mixer(r) : varied ? Specialists.varied(bot, r) : Specialists.draw(bot, r);
+	}
+
+	private void loadScenes() {
+		Path file = SwordFiles.schoolDir().resolve(SCENE_FILE);
+		if (!Files.exists(file)) {
+			return;
+		}
+		try {
+			List<String> lines = Files.readAllLines(file);
+			for (String line : lines.subList(Math.max(0, lines.size() - SCENES_KEPT), lines.size())) {
+				if (!line.isBlank()) {
+					scenes.add(Scene.parse(line));
+				}
+			}
+		} catch (IOException | RuntimeException e) {
+			SwordAi.LOGGER.warn("school: the kept scenes could not be read: {}", e.getMessage());
+		}
+	}
+
+	/** One training tick of a fight: keeps the window just past as a scene where it lost the trade. */
+	private void harvest(long tick, float net) {
+		int k = fightTicks % histTick.length;
+		histTick[k] = tick;
+		histNet[k] = net;
+		if (harvestQuiet > 0) {
+			harvestQuiet--;
+			return;
+		}
+		if (fightTicks < SCENE_WINDOW || fightTicks % 10 != 0) {
+			return;
+		}
+		float sum = 0f;
+		for (int i = 0; i < SCENE_WINDOW; i++) {
+			sum += histNet[(fightTicks - i + histTick.length) % histTick.length];
+		}
+		if (sum > -SCENE_LOST) {
+			return;
+		}
+		double[] state = ArenaServer.sceneAt(histTick[(fightTicks - SCENE_WINDOW + 1) % histTick.length]);
+		if (state == null) {
+			return;
+		}
+		Scene sc = new Scene();
+		sc.bot = fightBot;
+		sc.styleSeed = fightStyleSeed;
+		sc.varied = fightVaried;
+		sc.spar = sparFight;
+		sc.agentLag = fightLag;
+		sc.botLag = sparBotLag;
+		sc.net = sum;
+		sc.state = state;
+		scenes.add(sc);
+		if (scenes.size() > SCENES_KEPT) {
+			scenes.remove(0);
+		}
+		scenesHarvested++;
+		harvestQuiet = SCENE_WINDOW / 2;
+		try {
+			Files.writeString(SwordFiles.schoolDir().resolve(SCENE_FILE), sc.line() + System.lineSeparator(),
+					java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+		} catch (IOException e) {
+			SwordAi.LOGGER.warn("school: a scene could not be kept: {}", e.getMessage());
+		}
+	}
+
+	/** The scenes since the last update: kept, fought again, and how those went against how they went the first time. */
+	private String sceneLine() {
+		String line = String.format(Locale.ROOT, " kept %d (%d new), fought again %d%s", scenes.size(), scenesHarvested, sceneFights,
+				sceneFights == 0 ? "" : String.format(Locale.ROOT, ": net %.1f a scene (the first time %.1f)", sceneNet / sceneFights,
+						sceneNetBefore / sceneFights));
+		scenesHarvested = 0;
+		sceneFights = 0;
+		sceneNet = 0f;
+		sceneNetBefore = 0f;
+		return line;
+	}
+
 	/** The sparring fights against the installed model since the last update: how many, won-lost, net damage a fight. */
 	private String sparLine() {
 		if (sparring == null) {
-			return " off";
+			return " off | scenes:" + sceneLine();
 		}
 		String line = sparFights == 0 ? " none yet" : String.format(Locale.ROOT, " %d fights, knockouts %d-%d, dealt %.0f taken %.0f, net %.1f a fight",
 				sparFights, sparWon, sparLost, sparDealt, sparTaken, (sparDealt - sparTaken) / sparFights);
@@ -488,7 +635,7 @@ public final class SchoolSession implements AgentSession {
 		sparLost = 0;
 		sparDealt = 0f;
 		sparTaken = 0f;
-		return line;
+		return line + " | scenes:" + sceneLine();
 	}
 
 	private String taughtNowLine() {
@@ -647,6 +794,9 @@ public final class SchoolSession implements AgentSession {
 			SwordAi.LOGGER.info("school: copying targets from the frozen best fighter {} (learning without forgetting)", anchor.getFileName());
 		}
 		loadBasics();
+		if (mode == Mode.TRAIN) {
+			loadScenes();
+		}
 		if (Files.exists(SwordFiles.schoolStages())) {
 			stages.load(SwordFiles.schoolStages());
 			stages.fadeFromNow();
@@ -964,6 +1114,8 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	private void beginFight(Truth truth) {
+		sceneNow = null;
+		harvestQuiet = 0;
 		IntegratedServer server = mc.getSingleplayerServer();
 		if (server == null) {
 			stop("left the world");
@@ -990,9 +1142,11 @@ public final class SchoolSession implements AgentSession {
 		} else {
 			installedPlays = false;
 			fightBot = stages.drawBot(rng);
-			// Half of the specialists do other things as well, at random (see Specialists.varied).
-			fightStyle = fightBot == Specialists.MIXER ? Specialists.mixer(rng)
-					: rng.nextFloat() < VARIED_SHARE ? Specialists.varied(fightBot, rng) : Specialists.draw(fightBot, rng);
+			// Half of the specialists do other things as well, at random (see Specialists.varied); drawn from a seed of its own,
+			// so that a scene of this fight can bring the same opponent back.
+			fightStyleSeed = rng.nextLong();
+			fightVaried = rng.nextFloat() < VARIED_SHARE;
+			fightStyle = styleOf(fightBot, fightStyleSeed, fightVaried);
 			seed = rng.nextLong();
 		}
 		review = mode == Mode.CHECK ? checkReview : drawBasic();
@@ -1020,13 +1174,26 @@ public final class SchoolSession implements AgentSession {
 			reviewHop = truth.hopId();
 		} else {
 			boolean drill = mode == Mode.TRAIN && rng.nextFloat() < DRILL_SHARE;
+			sceneNow = mode == Mode.TRAIN && !drill && !scenes.isEmpty() && rng.nextFloat() < SCENE_SHARE ? scenes.get(rng.nextInt(scenes.size())) : null;
+			if (sceneNow != null) {
+				fightBot = sceneNow.bot;
+				fightStyleSeed = sceneNow.styleSeed;
+				fightVaried = sceneNow.varied;
+				fightStyle = styleOf(fightBot, fightStyleSeed, fightVaried);
+				agentLag = sceneNow.agentLag;
+			}
 			plan = EpisodePlan.school(fightStyle, drill ? DRILL_NEAR : NEAREST, drill ? DRILL_FAR : FARTHEST);
-			sparFight = !drill && sparring != null && (mode == Mode.TRAIN ? rng.nextFloat() < SPAR_SHARE : sparCheck);
+			sparFight = sceneNow != null ? sceneNow.spar && sparring != null
+					: !drill && sparring != null && (mode == Mode.TRAIN ? rng.nextFloat() < SPAR_SHARE : sparCheck);
 			if (sparFight) {
 				// The installed model plays the bot (ArenaServer's rival): no scripted style.
 				plan.style = null;
 				plan.bot.movement = dev.swordai.core.curriculum.BotProfile.SELF;
-				plan.botLag = Math.min(8, agentLag + SPAR_LAG_EXTRA);
+				plan.botLag = sceneNow != null ? sceneNow.botLag : Math.min(8, agentLag + SPAR_LAG_EXTRA);
+			}
+			sparBotLag = plan.botLag;
+			if (sceneNow != null) {
+				plan.scene = sceneNow.state;
 			}
 			if (drill) {
 				plan.drillLift = true;
@@ -1034,7 +1201,7 @@ public final class SchoolSession implements AgentSession {
 			}
 		}
 		drillFight = plan.drillLift;
-		drillTicker = plan.drillLift ? plan.drillAgentTicker : -1;
+		drillTicker = plan.drillLift ? plan.drillAgentTicker : sceneNow != null ? SceneRecorder.agentTicker(sceneNow.state) : -1;
 		drillFights += plan.drillLift ? 1 : 0;
 		plan.seed = seed;
 		plan.seedYaw = mode == Mode.CHECK;
@@ -1237,7 +1404,10 @@ public final class SchoolSession implements AgentSession {
 			boolean ko = facts.koDealt || facts.koTaken;
 			boolean timeUp = review >= 0 ? fightTicks >= Math.min(basics[review].bot.attacks ? FIGHT_TICKS : REVIEW_TICKS, basics[review].episodeTicks)
 					|| reviewRewards.lostTooLong(basics[review])
-					: fightTicks >= FIGHT_TICKS;
+					: fightTicks >= (sceneNow != null ? SCENE_WINDOW : FIGHT_TICKS);
+			if (mode == Mode.TRAIN && review < 0 && sceneNow == null && !drillFight) {
+				harvest(truth.tick(), facts.damageDealt - facts.damageTaken);
+			}
 			boolean full = mode == Mode.TRAIN && learner.rolloutRoom() <= 1;
 			if (mode == Mode.TRAIN && review >= 0) {
 				// A review: the old stage's own rewards, on the facts it scores (see Trainer).
@@ -2113,6 +2283,12 @@ public final class SchoolSession implements AgentSession {
 			reviewFights[review]++;
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school review %s: dealt %.1f, taken %.1f, ticks %d%s", basics[review].name,
 					fightDealt, fightTaken, fightTicks, result));
+		} else if (sceneNow != null) {
+			sceneFights++;
+			sceneNet += fightDealt - fightTaken;
+			sceneNetBefore += sceneNow.net;
+			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school scene %s (lost %.1f there the first time): dealt %.1f, taken %.1f, ticks %d%s",
+					sceneNow.spar ? "installed-model" : Specialists.NAMES[fightBot], -sceneNow.net, fightDealt, fightTaken, fightTicks, result));
 		} else if (sparFight) {
 			sparFights++;
 			sparDealt += fightDealt;
@@ -2202,8 +2378,9 @@ public final class SchoolSession implements AgentSession {
 				(checkFights - 1) / 2, side == 0 ? "A" : "B", bot, fightTicks, facts.damageDealt, facts.damageTaken, facts.hitsDealt,
 				facts.critDealt ? 1 : 0, facts.sprintHit ? 1 : 0, facts.hitCharge, facts.punishCrit ? 1 : 0, facts.uppercut ? 1 : 0,
 				facts.hitsTaken, facts.critsTaken, facts.sprintsTaken, facts.onGround ? 1 : 0, facts.falling ? 1 : 0,
-				facts.serverSprinting ? 1 : 0, facts.sprintKey ? 1 : 0, facts.charge, facts.reachDist, facts.forwardAxis, facts.strafeAxis,
-				facts.jumpKey ? 1 : 0, sinceSwing[side], rowDealt[side], rowTaken[side], reader.duel.them.falling() || botFalling ? 1 : 0,
+				mc.player.isSprinting() ? 1 : 0, action[ActionSpace.SPRINT] == 1 ? 1 : 0, mc.player.getAttackStrengthScale(0f), facts.reachDist,
+				action[ActionSpace.FORWARD] == 1 ? 1 : action[ActionSpace.FORWARD] == 2 ? -1 : 0,
+				action[ActionSpace.STRAFE] == 1 ? -1 : action[ActionSpace.STRAFE] == 2 ? 1 : 0, action[ActionSpace.JUMP] == 1 ? 1 : 0, sinceSwing[side], rowDealt[side], rowTaken[side], reader.duel.them.falling() || botFalling ? 1 : 0,
 				reader.duel.them.rising() ? 1 : 0, facts.oppCharge, facts.knockedUp ? 1 : 0, facts.walkedInOnCooldown ? 1 : 0, ruledNow,
 				situation));
 	}

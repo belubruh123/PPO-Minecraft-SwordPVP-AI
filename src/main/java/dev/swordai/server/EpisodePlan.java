@@ -68,6 +68,8 @@ public final class EpisodePlan {
 	 * agent's sword {@link #drillAgentTicker} ticks into coming back, so the bot's sprint hit lifts the agent first.
 	 */
 	public boolean drillLift;
+	/** A moment of an earlier fight to start from (SceneRecorder#at): both fighters put back exactly as they were. */
+	public double[] scene;
 	public int drillAgentTicker;
 	/** The heading the agent was given at the start, as the server set it; kept with a fight it lost. */
 	public volatile float usedYaw = Float.NaN;

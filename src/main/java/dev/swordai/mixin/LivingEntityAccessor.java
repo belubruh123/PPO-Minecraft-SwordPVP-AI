@@ -9,4 +9,8 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface LivingEntityAccessor {
 	@Accessor("attackStrengthTicker")
 	void swordai$setAttackStrengthTicker(int ticks);
+
+	/** The same clock read, for a scene to be set up again (SceneRecorder). */
+	@Accessor("attackStrengthTicker")
+	int swordai$getAttackStrengthTicker();
 }
