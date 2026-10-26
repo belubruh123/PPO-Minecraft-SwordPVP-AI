@@ -3131,13 +3131,15 @@ public final class SchoolSession implements AgentSession {
 		c[13] += countered && exPunish[side] ? 1 : 0;
 		c[14] += !exCrit[side] && !exOwnCrit[side] ? 1 : 0;
 		exAt[side] = -1;
+		// The counter (its own crit) pays in the scenes too (26 Oct 16:10): the jump-in scenes are where it is drilled.
+		if (side == 0 && mode == Mode.TRAIN && review < 0 && countered) {
+			shaping += JUMPIN_COUNTERED;
+		}
 		if (side == 0 && mode == Mode.TRAIN && review < 0 && sceneNow == null) {
 			trainJumpIns++;
 			trainJumpInsCountered += countered ? 1 : 0;
 			(sparFight ? jumpInSparRoll : jumpInRoll).add(countered);
-			if (countered) {
-				shaping += JUMPIN_COUNTERED;
-			} else if (!drillFight && jumpInFrom < 0) {
+			if (!countered && !drillFight && jumpInFrom < 0) {
 				jumpInFrom = exFrom[side];
 				keepJumpInAt = exFrom[side] + JUMPIN_SCENE_TICKS - JUMPIN_BEFORE;
 			}

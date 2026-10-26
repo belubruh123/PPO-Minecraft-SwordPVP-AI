@@ -243,6 +243,35 @@ class PvpPlayerTest {
 		throw new AssertionError("no hit\n" + b.trace());
 	}
 
+	// ---- B1 against a jump-in (the teacher, Style.punishJumpIns) -------------------------------------
+
+	/**
+	 * Against jump-in critters the teacher's answer holds the swing while they come in and crits back once their hit lifts
+	 * it: fewer swings at a jumper in the air and more punish crits than hitting them while they rise (T8).
+	 */
+	@Test
+	void aJumpInIsLetLandAndPunishCritted() {
+		int[] airSwings = new int[2];
+		int[] crits = new int[2];
+		for (int punish = 0; punish < 2; punish++) {
+			for (long seed = 0; seed < 20; seed++) {
+				Style s = with(Technique.B1, 1f).set(Technique.T8, 1f);
+				s.onlyWhenItWorks = true;
+				s.punishJumpIns = punish == 1;
+				Bout b = new Bout(s, Specialists.draw(Specialists.JUMP_IN_CRITTER, new java.util.Random(seed)), 5.0, seed);
+				b.run(400);
+				for (Bout.Tick t : b.ticks) {
+					airSwings[punish] += t.keys[0].attack && !t.body[1].onGround ? 1 : 0;
+					crits[punish] += t.events[0].iHit == Events.CRIT ? 1 : 0;
+				}
+			}
+		}
+		System.out.println("against jump-in critters, 20 x 400 ticks: swings at a jumper in the air T8 " + airSwings[0] + ", B1 " + airSwings[1]
+				+ "; its crits T8 " + crits[0] + ", B1 " + crits[1]);
+		assertTrue(airSwings[1] < airSwings[0], "swings at a jumper in the air: T8 " + airSwings[0] + ", B1 " + airSwings[1]);
+		assertTrue(crits[1] > crits[0], "its crits: T8 " + crits[0] + ", B1 " + crits[1]);
+	}
+
 	// ---- T11b: hops ------------------------------------------------------------------------------
 
 	@Test

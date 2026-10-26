@@ -70,6 +70,14 @@ public final class Style {
 	 */
 	public boolean resetsInCombosOnly = false;
 	/**
+	 * A jump-in is answered by the punish crit (B1, "let it land, punish crit"): the swing held and the sprint let go while
+	 * they come in, their hit taken, the crit on the way down; not the hit on them while they rise (T8). The teacher's
+	 * (26 Oct 16:10). The user: a rising or falling jumper "will still land a crit because knock back wont get them
+	 * instantly out of reach so it must be a punish crit"; in the jump-in scenes it lost, it had swung 3.5 ticks before their
+	 * crit and its sword was 0.26 back; in those it won, 15 ticks and 0.69.
+	 */
+	public boolean punishJumpIns = false;
+	/**
 	 * Hit selecting (part 0, and the deflection T4): the share of the times it has the other in reach with
 	 * the other's sword back that it waits for the other's swing, instead of swinging first.
 	 */
@@ -120,6 +128,7 @@ public final class Style {
 		s.adapts = adapts;
 		s.onlyWhenItWorks = onlyWhenItWorks;
 		s.resetsInCombosOnly = resetsInCombosOnly;
+		s.punishJumpIns = punishJumpIns;
 		s.hitSelect = hitSelect;
 		System.arraycopy(believe, 0, s.believe, 0, believe.length);
 		s.heldOut = heldOut;

@@ -29,7 +29,10 @@ public final class PvpPlayer {
 		NONE(Technique.BASE),
 		/** Part 0: a crit made from a jump of its own, opening an exchange (the jump-in critter's whole game). */
 		OPEN_CRIT(Technique.BASE),
-		B1(Technique.B1), T1(Technique.T1), T1A(Technique.T1A), T1B(Technique.T1B), T1C(Technique.T1C), T2(Technique.T2),
+		B1(Technique.B1),
+		/** B1 against a jump-in ({@link Style#punishJumpIns}): the swing held and the sprint let go until their hit lifts it. */
+		B1_WAIT(Technique.B1),
+		T1(Technique.T1), T1A(Technique.T1A), T1B(Technique.T1B), T1C(Technique.T1C), T2(Technique.T2),
 		T4(Technique.T4), T5(Technique.T5), T6(Technique.T6), T7(Technique.T7), T8(Technique.T8), T9C(Technique.T9C),
 		T10(Technique.T10), T11A(Technique.T11A), T11B(Technique.T11B), T11C(Technique.T11C),
 		C1(Technique.C1), C2(Technique.C2), C3(Technique.C3), C4(Technique.C4), C6(Technique.C6), C7(Technique.C7), K3(Technique.K3);
@@ -620,8 +623,12 @@ public final class PvpPlayer {
 			jumpFor = Technique.T9B;
 			return;
 		}
-		// They jump at me: hit them while they rise (T8).
-		if (sinceTheyTookOff == 0 && d.theyClose > 0.05 && d.flat < 6.5 && roll(Technique.T8)) {
+		// They jump at me: for the teacher, let it land and punish crit (B1); else hit them while they rise (T8).
+		if (style.punishJumpIns && sinceTheyTookOff == 0 && d.theyClose > 0.05 && d.flat < 6.5 && roll(Technique.B1)) {
+			begin(Plan.B1_WAIT);
+			return;
+		}
+		if (!style.punishJumpIns && sinceTheyTookOff == 0 && d.theyClose > 0.05 && d.flat < 6.5 && roll(Technique.T8)) {
 			begin(Plan.T8);
 			return;
 		}
@@ -722,6 +729,16 @@ public final class PvpPlayer {
 			}
 			case T1A -> {
 				return jumpedCrit(d, k, RUNNING_JUMP_FROM + 0.1f, false);
+			}
+			case B1_WAIT -> {
+				// They come in: no swing (the sword stays back for the punish crit) and the sprint let go (a crit needs not
+				// sprinting; letting go of W ends it); in reach it stands. Their hit ends it (hitTaken), and B1 takes over.
+				k.taught = Keys.KEY_SPRINT | Keys.KEY_ATTACK | Keys.KEY_MOVE;
+				k.forward = !me.sprinting && d.reach > Duel.REACH ? 1 : 0;
+				if (them.onGround && planT > 2) {
+					return ABORT;
+				}
+				return planT < 30 ? RUN : ABORT;
 			}
 			case B1 -> {
 				// Hit standing, thrown up: no swing back now, the sprint let go, the swing kept for the way down. A crit needs
