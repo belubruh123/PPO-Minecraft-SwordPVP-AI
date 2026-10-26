@@ -55,6 +55,7 @@ Report:
 - techniques by `tech-review.py`.
 
 ## 7. Redeploys: only at checkpoints
+This is rule 1.4 (one run trains one focus for a whole day; do not cut a method off) spelled out, because it was broken on 26 Oct. Do not judge a run, or change it, on the numbers of an hour.
 - A redeploy stops training and restarts it, and every change it brings changes what the running numbers mean. So **changes are batched and deployed once, at a checkpoint** (every ~2 hours, just before the fresh-seed checks), never in between.
 - Between checkpoints, a change waits committed in the repo. A quick fix of something just changed is not a reason to redeploy.
 - The only exception is a broken run: training stopped, a crash, or a measure that cannot be read.
