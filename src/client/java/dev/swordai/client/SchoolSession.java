@@ -883,8 +883,11 @@ public final class SchoolSession implements AgentSession {
 		try {
 			List<String> lines = Files.readAllLines(file);
 			for (String line : lines.subList(Math.max(0, lines.size() - SCENES_KEPT), lines.size())) {
+				// Every kept scene comes back; SCENES_ACTIVE only holds back new ones (keepScene). Until 26 Oct 15:40 the
+				// load stopped at SCENES_ACTIVE of a kind and the save after it dropped the rest: the mastered scenes lost
+				// again in review (57 jump-in scenes at the 15:31 restart, after the counter became the punish crit).
 				Scene sc = line.isBlank() ? null : Scene.parse(line);
-				if (sc != null && (into != scenes || countKind(sc.kind) < SCENES_ACTIVE)) {
+				if (sc != null) {
 					into.add(sc);
 				}
 			}
