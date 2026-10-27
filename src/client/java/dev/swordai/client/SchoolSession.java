@@ -373,6 +373,8 @@ public final class SchoolSession implements AgentSession {
 	 * improve"; the game counted 0 or 1 of about 80 an update, the installed model 1-2% in the checks.
 	 */
 	private final int[][] lifts = new int[4][12];
+	/** Lifts told the punish crit, and how far each got (0 all, then in reach ... crit as liftStage): [0] full fights, [1] punish drill. */
+	private final int[][] toldStages = new int[2][7];
 	private int liftKind = -1;
 	private int liftStage;
 	private boolean liftAimedNow;
@@ -2271,7 +2273,11 @@ public final class SchoolSession implements AgentSession {
 				// Lifted by their hit and coming down near them: W and the sprint are the network's (RULES_LET_GO_IN_LIFT).
 				ruled &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
 			}
-			if (dev.swordai.core.school.SchoolStages.PUNISH_TOLD_YIELD && liftedFor >= 0 && !me.onGround() && learner.told() == Technique.B1) {
+			// Told the punish crit in a lift, the keys are the network's: in the punish drill always (it learns them there; with the
+			// rules' keys the drill taught nothing), elsewhere only with PUNISH_TOLD_YIELD (from 23:06 to 00:10 on 27 Oct everywhere,
+			// when an untrained network critted 4% of its told lifts to the rules' 23%).
+			boolean drillKeys = sceneNow != null && sceneNow.kind == KIND_PUNISH || dev.swordai.core.school.SchoolStages.PUNISH_TOLD_YIELD;
+			if (drillKeys && liftedFor >= 0 && !me.onGround() && learner.told() == Technique.B1) {
 				ruled &= ~dev.swordai.core.school.SchoolStages.PUNISH_KEYS;
 			}
 			if (RULES_LET_GO_AT_CRIT && liftedFor >= 0 && facts.falling && !me.onGround() && facts.reachDist <= LET_GO_AT_CRIT_REACH
@@ -3109,6 +3115,12 @@ public final class SchoolSession implements AgentSession {
 			lifts[liftKind][9] += liftTold && liftStage >= 6 ? 1 : 0;
 			lifts[liftKind][10] += liftToldByDecider ? 1 : 0;
 			lifts[liftKind][11] += liftTold && liftStage >= 3 ? 1 : 0;
+			if (liftTold) {
+				int[] t = toldStages[sceneNow != null && sceneNow.kind == KIND_PUNISH ? 1 : 0];
+				for (int k = 0; k <= Math.min(6, liftStage); k++) {
+					t[k]++;
+				}
+			}
 		}
 		liftKind = -1;
 		liftStage = 0;
@@ -3127,6 +3139,12 @@ public final class SchoolSession implements AgentSession {
 					+ "told B1 %d (by the decider %d), not sprinting when told %d, critted when told %d",
 					k == 1 ? "" : ";", names[k], c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8], c[10], c[11], c[9]));
 			java.util.Arrays.fill(c, 0);
+		}
+		for (int w = 0; w < 2; w++) {
+			int[] t = toldStages[w];
+			b.append(String.format(Locale.ROOT, "; told B1 in %s: lifts %d, in reach %d, sword back %d, not sprinting %d, aimed %d, swung %d, crit %d",
+					w == 0 ? "the full fights" : "the punish drill", t[0], t[1], t[2], t[3], t[4], t[5], t[6]));
+			java.util.Arrays.fill(t, 0);
 		}
 		return b.toString();
 	}

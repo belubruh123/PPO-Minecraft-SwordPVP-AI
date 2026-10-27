@@ -167,7 +167,7 @@ public final class SchoolStages {
 	 * punish crit takes the keys. Giving them up in every lift whatever was chosen (SchoolSession#RULES_LET_GO_IN_LIFT,
 	 * RULES_LET_GO_AT_CRIT) cost damage (26 Oct).
 	 */
-	public static final boolean PUNISH_TOLD_YIELD = true;
+	public static final boolean PUNISH_TOLD_YIELD = false; // on 23:06-00:10 27 Oct in every fight: told B1, critted 4% (23% with the rules' keys), punish scenes won 6%; now only in the punish drill (SchoolSession), until the network beats the rules there
 	public static final int PUNISH_KEYS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.FORWARD,
 			dev.swordai.core.rl.ActionSpace.SPRINT, dev.swordai.core.rl.ActionSpace.ATTACK);
 
