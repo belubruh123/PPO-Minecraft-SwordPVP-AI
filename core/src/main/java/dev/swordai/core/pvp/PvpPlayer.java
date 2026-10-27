@@ -492,6 +492,10 @@ public final class PvpPlayer {
 			return;
 		}
 		end();
+		if (style.punishFirst && lifted && punishable(d, e)) {
+			begin(Plan.B1);
+			return;
+		}
 		if (e.theyHit == Events.CRIT && doubleCrits() && roll(Technique.C1)) {
 			// C1: a double crit is coming; no punish crit, a sprint hit when it comes up again.
 			begin(Plan.C1);

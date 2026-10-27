@@ -116,6 +116,8 @@ public final class Teacher {
 	}
 
 	private final PvpPlayer player = new PvpPlayer();
+	/** The next fight is a punish crit drill: every lift that can be punished is (see Style#punishFirst). */
+	public boolean punishFirst;
 	private final Keys keys = new Keys();
 	private final boolean[] teaches = new boolean[Technique.COUNT];
 
@@ -130,6 +132,7 @@ public final class Teacher {
 			teaches[t.ordinal()] = true;
 		}
 		Style s = style(family);
+		s.punishFirst = punishFirst && teaches[Technique.B1.ordinal()];
 		// It swings when the network can: no sooner than the game's limit on the network's swing.
 		s.swingCharge = Math.max(s.swingCharge, swingCharge);
 		player.start(s, seed);

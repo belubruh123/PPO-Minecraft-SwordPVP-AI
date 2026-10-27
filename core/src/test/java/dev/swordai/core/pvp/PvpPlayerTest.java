@@ -272,6 +272,56 @@ class PvpPlayerTest {
 		assertTrue(crits[1] > crits[0], "its crits: T8 " + crits[0] + ", B1 " + crits[1]);
 	}
 
+	/**
+	 * The punish crit drill (the user's method, 27 Oct: the decision model's output forced to the punish crit on its cases):
+	 * with punishFirst every lift that can be punished is answered by B1, not the jump reset, against the bots that sprint-hit
+	 * and trade; without it the jump reset takes nearly all of them (in the game 69 of 2172 lifts after a sprint hit were B1).
+	 */
+	@Test
+	void thePunishDrillAnswersLiftsWithThePunishCrit() {
+		int[] b1Lifts = new int[2];
+		int[] lifts = new int[2];
+		int[] punishCrits = new int[2];
+		int[] bots = {Specialists.JUMP_RESETTER, Specialists.STUN_ESCAPER, Specialists.STRAIGHT_SPRINTER, Specialists.RHYTHM_COMBOER};
+		for (int first = 0; first < 2; first++) {
+			for (int bot : bots) {
+				for (long seed = 0; seed < 10; seed++) {
+					Style s = with(Technique.B1, 1f).set(Technique.T9, 1f);
+					s.onlyWhenItWorks = true;
+					s.resetsInCombosOnly = false;
+					s.punishFirst = first == 1;
+					// Hit with the sword back, as in the punish scenes (kept only from chances where it was): it waits for their swing.
+					s.hitSelect = 1f;
+					Bout b = new Bout(s, Specialists.draw(bot, new java.util.Random(seed)), 3.0, seed);
+					b.run(400);
+					int liftAt = -100;
+					for (int i = 1; i < b.ticks.size(); i++) {
+						Bout.Tick t = b.ticks.get(i);
+						Bout.Tick before = b.ticks.get(i - 1);
+						if (t.events[0].theyHit != Events.NONE && before.body[0].onGround) {
+							lifts[first]++;
+							liftAt = i;
+							int until = Math.min(b.ticks.size(), i + 4);
+							for (int j = i; j < until; j++) {
+								if (b.ticks.get(j).keys[0].technique == Technique.B1) {
+									b1Lifts[first]++;
+									break;
+								}
+							}
+						}
+						if (t.events[0].iHit == Events.CRIT && i - liftAt <= 18 && !before.body[0].onGround) {
+							punishCrits[first]++;
+						}
+					}
+				}
+			}
+		}
+		System.out.println("punish drill, 4 sprint-hitting bots x 10 x 400 ticks: lifts answered by B1 " + b1Lifts[0] + "/" + lifts[0]
+				+ " -> " + b1Lifts[1] + "/" + lifts[1] + "; punish crits " + punishCrits[0] + " -> " + punishCrits[1]);
+		assertTrue(b1Lifts[1] > 3 * Math.max(1, b1Lifts[0]), "B1 on lifts: " + b1Lifts[0] + " -> " + b1Lifts[1]);
+		assertTrue(punishCrits[1] > punishCrits[0], "punish crits: " + punishCrits[0] + " -> " + punishCrits[1]);
+	}
+
 	// ---- T11b: hops ------------------------------------------------------------------------------
 
 	@Test

@@ -35,6 +35,21 @@ open(p, "w").write(" ".join(v))
 print("punish measure starts again")
 PYEOF
 fi
+# RESET_FIELDS="i j": once the client has stopped, these fields of focus.txt (0 focus, 1 furthest, then the rolling measures
+# in the order of SchoolSession#rollings) start again: for a change of what a measure counts (27 Oct: 9 = punish scenes, now
+# the forced punish crit drill).
+if [ -n "$RESET_FIELDS" ]; then
+  RESET_FIELDS="$RESET_FIELDS" python - <<'PYEOF'
+import os
+p = "D:/swordai/run/swordai/school/focus.txt"
+v = open(p).read().split()
+for i in map(int, os.environ["RESET_FIELDS"].split()):
+    if i < len(v):
+        v[i] = "-"
+open(p, "w").write(" ".join(v))
+print("focus fields reset:", os.environ["RESET_FIELDS"])
+PYEOF
+fi
 # GOTO_STAGE=N: once the client has saved and stopped, the school goes to stage N (0 = T-A ... 4 = T-E) from its start.
 if [ -n "$GOTO_STAGE" ]; then
   sed -i "s/^stage=.*/stage=$GOTO_STAGE/; s/^stageSteps=.*/stageSteps=0/" /d/swordai/run/swordai/school/stages.properties

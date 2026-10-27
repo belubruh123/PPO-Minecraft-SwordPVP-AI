@@ -372,11 +372,14 @@ public final class SchoolSession implements AgentSession {
 	 * there, a crit), and how many the teacher took as a punish crit (B1). The user, 24 Oct 15:50: "punish crit didn't
 	 * improve"; the game counted 0 or 1 of about 80 an update, the installed model 1-2% in the checks.
 	 */
-	private final int[][] lifts = new int[4][8];
+	private final int[][] lifts = new int[4][11];
 	private int liftKind = -1;
 	private int liftStage;
 	private boolean liftAimedNow;
 	private boolean liftTaught;
+	/** The network was told the punish crit (B1) in this lift: by the decision model's own choice, or the teacher's. */
+	private boolean liftTold;
+	private boolean liftToldByDecider;
 	/** The technique reward owed to the next step, and what it paid since the last update; the pull shares it uses. */
 	private float shaping;
 	private float shapingPaid;
@@ -686,6 +689,12 @@ public final class SchoolSession implements AgentSession {
 			new Rolling(FOCUS_REPLAYS)};
 	/** Its punish crit chances in the full fights (their hit lifted it, it came down in reach): critted or not. */
 	private final Rolling punishRoll = new Rolling(FOCUS_EVENTS);
+	/**
+	 * The punish crit's bar (the user's method, 27 Oct): of the lifts in the full fights in which the network was told the
+	 * punish crit and came down in reach, how many it critted. Told it, it must land it; when to be told is the decision
+	 * model's to learn. punishRoll counts every chance whatever was chosen, mostly the jump reset's.
+	 */
+	private final Rolling toldB1Roll = new Rolling(FOCUS_EVENTS);
 	/** A punish chance missed in this fight, to keep as a scene at keepPunishAt: from fight tick punishFrom. */
 	private int punishFrom = -1;
 	private int keepPunishAt;
@@ -786,7 +795,7 @@ public final class SchoolSession implements AgentSession {
 
 	/** A focus's measures: the full fights' and its scenes'. */
 	private Rolling[] measures(int f) {
-		return f == 0 ? new Rolling[] {jumpInRoll, sceneRoll[KIND_CRIT], jumpInSparRoll, punishRoll, sceneRoll[KIND_PUNISH]}
+		return f == 0 ? new Rolling[] {jumpInRoll, sceneRoll[KIND_CRIT], jumpInSparRoll, toldB1Roll, sceneRoll[KIND_PUNISH]}
 				: new Rolling[] {comboRoll, sceneRoll[KIND_COMBO]};
 	}
 
@@ -846,7 +855,7 @@ public final class SchoolSession implements AgentSession {
 
 	private Rolling[] rollings() {
 		return new Rolling[] {jumpInRoll, comboRoll, sceneRoll[KIND_CRIT], sceneRoll[KIND_JUMPIN], sceneRoll[KIND_COMBO], jumpInSparRoll,
-				punishRoll, sceneRoll[KIND_PUNISH]};
+				punishRoll, sceneRoll[KIND_PUNISH], toldB1Roll};
 	}
 
 	private void saveFocus() {
@@ -1016,8 +1025,9 @@ public final class SchoolSession implements AgentSession {
 			kindFights[k] = 0;
 			kindWon[k] = 0;
 		}
-		line += String.format(Locale.ROOT, " | focus: %s (furthest %s); jump-ins countered in the full fights, the bots' last %s, the installed AI's last %s; punish crit chances critted, last %s (bar %d%%); their combos got out of, last %s%s",
-				FOCUS_NAMES[focus], FOCUS_NAMES[focusReached], jumpInRoll.line(), jumpInSparRoll.line(), punishRoll.line(), Math.round(100 * FOCUS_BAR), comboRoll.line(), kindsLine);
+		line += String.format(Locale.ROOT, " | focus: %s (furthest %s); jump-ins countered in the full fights, the bots' last %s, the installed AI's last %s; punish crit chances critted (whatever was chosen), last %s; told the punish crit and landed it, last %s (bar %d%%); their combos got out of, last %s%s",
+				FOCUS_NAMES[focus], FOCUS_NAMES[focusReached], jumpInRoll.line(), jumpInSparRoll.line(), punishRoll.line(), toldB1Roll.line(),
+				Math.round(100 * FOCUS_BAR), comboRoll.line(), kindsLine);
 		jumpInScenes = 0;
 		jumpInScenesWon = 0;
 		jumpInScenesMastered = 0;
@@ -1696,10 +1706,14 @@ public final class SchoolSession implements AgentSession {
 		mc.player.getInventory().setSelectedSlot(0);
 		// One teacher against every bot: every technique of the families reached so far.
 		teacher.ordinaryFight = !OVERLAY;
+		// A punish scene is the punish crit's drill (the user's method, 27 Oct): the teacher punishes every lift it can, and the
+		// network is always told so (the decision model's output forced to B1), so that it learns to land it whenever told.
+		boolean punishDrill = sceneNow != null && sceneNow.kind == KIND_PUNISH;
+		teacher.punishFirst = punishDrill;
 		teacher.start(checkTaught != null ? checkTaught : stages.taught(), cfg.swingMinCharge, seed ^ 0x7EAC4L);
 		teacher.seenLag(agentLag);
 		fightLag = agentLag;
-		learner.teacherForcing = sceneNow != null ? 1f - SCENE_DECIDER_SHARE : TEACHER_FORCING;
+		learner.teacherForcing = punishDrill ? 1f : sceneNow != null ? 1f - SCENE_DECIDER_SHARE : TEACHER_FORCING;
 		learner.resetIntent();
 		shaping = 0f;
 		lastMomentTechnique = -1;
@@ -1709,6 +1723,8 @@ public final class SchoolSession implements AgentSession {
 		liftKind = -1;
 		liftStage = 0;
 		liftTaught = false;
+		liftTold = false;
+		liftToldByDecider = false;
 		reader.reset();
 		perf.reset();
 		perfB.reset();
@@ -1986,6 +2002,10 @@ public final class SchoolSession implements AgentSession {
 		}
 		teacher.tick(reader.duel, reader.events, onOpponent());
 		liftTaught |= liftedFor >= 0 && teacher.technique() == Technique.B1;
+		if (liftedFor >= 0 && learner.told() == Technique.B1) {
+			liftTold = true;
+			liftToldByDecider |= !learner.toldTheTeachers();
+		}
 		// No technique moments against an old stage's bot that does not hit: the installed model (which learned these stages)
 		// teaches there. Against one that hits (sprint-hit, combo escape) the file's answers are taught as in a fight: the
 		// installed model never backed out of a combo of its own (a rule held S for it), and in the combo escape reviews it got
@@ -3063,6 +3083,11 @@ public final class SchoolSession implements AgentSession {
 		// A punish chance (it came down in reach after their hit) in a full fight: the punish crit's bar, and a scene if missed.
 		// A chance once it came down in reach with the sword back (stage 2): with the sword not back there is no crit to make.
 		// Counted from stage 1 (in reach) 17:09-18:10, when 45% of those had the sword down from their trade.
+		// Told the punish crit and came down in reach: landed or not (counted from stage 1, as a swing on the way up after
+		// being told is the commonest way to miss it).
+		if (liftTold && liftKind > 0 && liftStage >= 1 && mode == Mode.TRAIN && review < 0 && sceneNow == null) {
+			toldB1Roll.add(liftStage >= 6);
+		}
 		if (liftKind > 0 && liftStage >= 2 && mode == Mode.TRAIN && review < 0 && sceneNow == null) {
 			boolean punished = liftStage >= 6;
 			punishRoll.add(punished);
@@ -3077,10 +3102,15 @@ public final class SchoolSession implements AgentSession {
 				lifts[liftKind][k]++;
 			}
 			lifts[liftKind][7] += liftTaught ? 1 : 0;
+			lifts[liftKind][8] += liftTold ? 1 : 0;
+			lifts[liftKind][9] += liftTold && liftStage >= 6 ? 1 : 0;
+			lifts[liftKind][10] += liftToldByDecider ? 1 : 0;
 		}
 		liftKind = -1;
 		liftStage = 0;
 		liftTaught = false;
+		liftTold = false;
+		liftToldByDecider = false;
 	}
 
 	/** "after sprint hits 40: in reach 6, sword back 3, not sprinting 1, aimed 1, swung 1, crit 0, teacher B1 0; after crits ...". */
@@ -3089,8 +3119,9 @@ public final class SchoolSession implements AgentSession {
 		String[] names = {"", "sprint hits", "crits", "plain hits"};
 		for (int k = 1; k < lifts.length; k++) {
 			int[] c = lifts[k];
-			b.append(String.format(Locale.ROOT, "%s after %s %d: in reach %d, sword back %d, not sprinting %d, aimed %d, swung %d, crit %d, teacher B1 %d",
-					k == 1 ? "" : ";", names[k], c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]));
+			b.append(String.format(Locale.ROOT, "%s after %s %d: in reach %d, sword back %d, not sprinting %d, aimed %d, swung %d, crit %d, teacher B1 %d, "
+					+ "told B1 %d (by the decider %d), critted when told %d",
+					k == 1 ? "" : ";", names[k], c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8], c[10], c[9]));
 			java.util.Arrays.fill(c, 0);
 		}
 		return b.toString();

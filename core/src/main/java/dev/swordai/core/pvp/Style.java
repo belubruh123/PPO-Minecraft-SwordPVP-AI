@@ -78,6 +78,13 @@ public final class Style {
 	 */
 	public boolean punishJumpIns = false;
 	/**
+	 * Every hit that throws it up, of any kind, is answered by the punish crit (B1) when one can come, before the jump reset
+	 * or any other answer: the drill of the user's method (27 Oct), where the decision model's output is forced to the punish
+	 * crit on the punish crit's own cases so that the network learns to land it whenever it is told to. In the full fights the
+	 * jump reset still comes first and the decision model learns when to punish instead.
+	 */
+	public boolean punishFirst = false;
+	/**
 	 * Hit selecting (part 0, and the deflection T4): the share of the times it has the other in reach with
 	 * the other's sword back that it waits for the other's swing, instead of swinging first.
 	 */
@@ -129,6 +136,7 @@ public final class Style {
 		s.onlyWhenItWorks = onlyWhenItWorks;
 		s.resetsInCombosOnly = resetsInCombosOnly;
 		s.punishJumpIns = punishJumpIns;
+		s.punishFirst = punishFirst;
 		s.hitSelect = hitSelect;
 		System.arraycopy(believe, 0, s.believe, 0, believe.length);
 		s.heldOut = heldOut;
