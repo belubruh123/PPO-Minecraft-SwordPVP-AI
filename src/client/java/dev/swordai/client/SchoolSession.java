@@ -2344,6 +2344,7 @@ public final class SchoolSession implements AgentSession {
 		if (liftAimedNow && clicked) {
 			liftStage = Math.max(liftStage, 5);
 		}
+		traceDrillLift(me, truth, action, ruled);
 		System.arraycopy(action, 0, lastAction, 0, ActionSpace.HEADS);
 		hasLastAction = true;
 		showBar(truth);
@@ -3090,7 +3091,47 @@ public final class SchoolSession implements AgentSession {
 		return b.length() == 0 ? " none" : b.toString();
 	}
 
+	/**
+	 * The punish drill's lifts told B1, tick by tick: where it is, and its keys against the teacher's (school/punish-traces.txt).
+	 * 27-28 Oct the drill critted 1 of 28 lifts in reach; the counts say where a lift stopped, not what it pressed.
+	 */
+	private final StringBuilder liftTrace = new StringBuilder();
+	static final String PUNISH_TRACE_FILE = "punish-traces.txt";
+
+	private void traceDrillLift(LocalPlayer me, Truth truth, int[] action, int ruled) {
+		boolean drill = sceneNow != null && sceneNow.kind == KIND_PUNISH || drillFight;
+		if (!drill || liftedFor < 0 || !liftTold || mode != Mode.TRAIN) {
+			return;
+		}
+		dev.swordai.core.pvp.Keys t = teacher.keys();
+		liftTrace.append(String.format(Locale.ROOT, "%2d reach %.2f %s charge %.2f %s | net %s%s%s%s | teacher %s%s%s%s %s | ruled %s%n",
+				liftedFor, facts.reachDist, me.onGround() ? "ground " : facts.falling ? "falling" : "rising ", me.getAttackStrengthScale(0f),
+				truth.agentSprinting() ? "sprinting" : "walking  ", action[ActionSpace.FORWARD] == 1 ? "W" : action[ActionSpace.FORWARD] == 2 ? "S" : "-",
+				action[ActionSpace.SPRINT] == 1 ? "R" : "-", action[ActionSpace.JUMP] == 1 ? "J" : "-", action[ActionSpace.ATTACK] == 1 ? "A" : "-",
+				t.forward > 0 ? "W" : t.forward < 0 ? "S" : "-", t.sprint ? "R" : "-", t.jump ? "J" : "-", t.attack ? "A" : "-", t.technique.id,
+				Integer.toBinaryString(ruled)));
+	}
+
+	private void writeLiftTrace() {
+		if (liftTrace.length() == 0) {
+			return;
+		}
+		try {
+			Path f = SwordFiles.schoolDir().resolve(PUNISH_TRACE_FILE);
+			if (Files.exists(f) && Files.size(f) > 4_000_000) {
+				Files.move(f, SwordFiles.schoolDir().resolve(PUNISH_TRACE_FILE + ".old"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+			}
+			String head = String.format(Locale.ROOT, "lift %s, %s, reached stage %d (1 in reach, 2 sword back, 3 not sprinting, 4 aimed, 5 swung, 6 crit)%n",
+					liftKind == 1 ? "sprint hit" : liftKind == 2 ? "crit" : "plain hit", drillFight ? "drill fight" : "punish scene", liftStage);
+			Files.writeString(f, head + liftTrace + System.lineSeparator(), java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+		} catch (IOException e) {
+			SwordAi.LOGGER.warn("school: the punish trace could not be written: {}", e.getMessage());
+		}
+		liftTrace.setLength(0);
+	}
+
 	private void endLift() {
+		writeLiftTrace();
 		// A punish chance (it came down in reach after their hit) in a full fight: the punish crit's bar, and a scene if missed.
 		// A chance once it came down in reach with the sword back (stage 2): with the sword not back there is no crit to make.
 		// Counted from stage 1 (in reach) 17:09-18:10, when 45% of those had the sword down from their trade.
