@@ -32,6 +32,12 @@ public final class PvpPlayer {
 		B1(Technique.B1),
 		/** B1 against a jump-in ({@link Style#punishJumpIns}): the swing held and the sprint let go until their hit lifts it. */
 		B1_WAIT(Technique.B1),
+		/**
+		 * The punish crit drill ({@link Style#punishFirst}): from the start, the swing held and the sprint let go while they come
+		 * in, so that the sword is back when their hit lifts it; then B1. In the drill scenes a quarter of its lifts came with the
+		 * sword under half back, swung within five ticks before their hit, and half its answers were swings on the way up.
+		 */
+		B1_HOLD(Technique.B1),
 		T1(Technique.T1), T1A(Technique.T1A), T1B(Technique.T1B), T1C(Technique.T1C), T2(Technique.T2),
 		T4(Technique.T4), T5(Technique.T5), T6(Technique.T6), T7(Technique.T7), T8(Technique.T8), T9C(Technique.T9C),
 		T10(Technique.T10), T11A(Technique.T11A), T11B(Technique.T11B), T11C(Technique.T11C),
@@ -222,6 +228,9 @@ public final class PvpPlayer {
 	 * At 0.8 a punish crit came about once in four minutes of fighting, too seldom to be learned (24 Oct).
 	 */
 	static final float PUNISH_CHARGE = 0.5f;
+	/** The punish crit drill holds the swing for their hit (B1_HOLD) from this near, for at most this long. */
+	static final double PUNISH_HOLD_REACH = 5.0;
+	static final int PUNISH_HOLD_TICKS = 40;
 
 	/** The double crit "only works if the opponent tries to punish-crit you" (T1): for one that goes by the file, only then. */
 	private boolean punishes() {
@@ -493,6 +502,12 @@ public final class PvpPlayer {
 		}
 		end();
 		if (style.punishFirst && lifted && punishable(d, e)) {
+			// A sprint hit is jump-reset as it lands, so that it comes down in reach: the jump reset "gets crits", "a free crit
+			// as you fall" (the file, part 3 and T9c). Without it nearly every sprint hit's lift came down out of reach in the
+			// sim (763 of 769), 69% in the game. Then the crit on the way down.
+			if (e.theyHit == Events.SPRINT) {
+				timedJump(Technique.T9);
+			}
 			begin(Plan.B1);
 			return;
 		}
@@ -614,6 +629,10 @@ public final class PvpPlayer {
 		Body me = d.me;
 		Body them = d.them;
 		if (pending != Plan.NONE) {
+			return;
+		}
+		if (style.punishFirst && d.reach < PUNISH_HOLD_REACH) {
+			begin(Plan.B1_HOLD);
 			return;
 		}
 		// Their swing began, the sword is back and they are near: the deflection (T4).
@@ -743,6 +762,13 @@ public final class PvpPlayer {
 					return ABORT;
 				}
 				return planT < 30 ? RUN : ABORT;
+			}
+			case B1_HOLD -> {
+				// Waiting for their hit with the sword back: no swing, no sprint; in to the edge of reach at a walk. Their hit ends it
+				// (hitTaken), and B1 takes over.
+				k.taught = Keys.KEY_SPRINT | Keys.KEY_ATTACK | Keys.KEY_MOVE;
+				k.forward = !me.sprinting && d.reach > Duel.REACH ? 1 : 0;
+				return planT < PUNISH_HOLD_TICKS ? RUN : ABORT;
 			}
 			case B1 -> {
 				// Hit standing, thrown up: no swing back now, the sprint let go, the swing kept for the way down. A crit needs

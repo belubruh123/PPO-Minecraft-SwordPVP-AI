@@ -2276,8 +2276,10 @@ public final class SchoolSession implements AgentSession {
 			// Told the punish crit in a lift, the keys are the network's: in the punish drill always (it learns them there; with the
 			// rules' keys the drill taught nothing), elsewhere only with PUNISH_TOLD_YIELD (from 23:06 to 00:10 on 27 Oct everywhere,
 			// when an untrained network critted 4% of its told lifts to the rules' 23%).
-			boolean drillKeys = sceneNow != null && sceneNow.kind == KIND_PUNISH || dev.swordai.core.school.SchoolStages.PUNISH_TOLD_YIELD;
-			if (drillKeys && liftedFor >= 0 && !me.onGround() && learner.told() == Technique.B1) {
+			// In the drill from the start of the scene (B1_HOLD, the swing held for their hit), elsewhere for the lift.
+			boolean drill = sceneNow != null && sceneNow.kind == KIND_PUNISH;
+			boolean drillKeys = drill || dev.swordai.core.school.SchoolStages.PUNISH_TOLD_YIELD;
+			if (drillKeys && (drill || liftedFor >= 0 && !me.onGround()) && learner.told() == Technique.B1) {
 				ruled &= ~dev.swordai.core.school.SchoolStages.PUNISH_KEYS;
 			}
 			if (RULES_LET_GO_AT_CRIT && liftedFor >= 0 && facts.falling && !me.onGround() && facts.reachDist <= LET_GO_AT_CRIT_REACH

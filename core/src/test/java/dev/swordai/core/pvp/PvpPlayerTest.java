@@ -290,8 +290,7 @@ class PvpPlayerTest {
 					s.onlyWhenItWorks = true;
 					s.resetsInCombosOnly = false;
 					s.punishFirst = first == 1;
-					// Hit with the sword back, as in the punish scenes (kept only from chances where it was): it waits for their swing.
-					s.hitSelect = 1f;
+					// The drill holds the swing for their hit itself (B1_HOLD), so the sword is back when it is lifted.
 					Bout b = new Bout(s, Specialists.draw(bot, new java.util.Random(seed)), 3.0, seed);
 					b.run(400);
 					int liftAt = -100;
