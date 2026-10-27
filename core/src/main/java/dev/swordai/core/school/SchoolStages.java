@@ -170,6 +170,16 @@ public final class SchoolStages {
 	public static final boolean PUNISH_TOLD_YIELD = false; // on 23:06-00:10 27 Oct in every fight: told B1, critted 4% (23% with the rules' keys), punish scenes won 6%; now only in the punish drill (SchoolSession), until the network beats the rules there
 	public static final int PUNISH_KEYS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.FORWARD,
 			dev.swordai.core.rl.ActionSpace.SPRINT, dev.swordai.core.rl.ActionSpace.ATTACK);
+	/**
+	 * The punish crit's swing learned in every told lift of the full fights, where a rule presses it (SchoolSession): a key a
+	 * rule presses gets no lesson (SchoolPpo#teach skips the locked heads), so with PUNISH_TOLD_YIELD off the network's own
+	 * swing in a lift was taught only in the rare punish drill, where on 28 Oct it never swung at the crit moment (the teacher's
+	 * swing on 4 ticks, falling, charged, reach 2.8; school/punish-traces.txt). The rule's swing is still the one pressed;
+	 * the network's swing key only copies the punish crit teacher's (held on the way up, swung on the way down), so nothing
+	 * changes in the fight until the keys are handed over.
+	 */
+	public static final boolean PUNISH_SHADOW = true;
+	public static final int PUNISH_SHADOW_KEYS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.ATTACK);
 
 	/**
 	 * Run 11 (EXPERIMENTS.md): learned from the fight, not from the teacher. A technique's keys are copied only on moments that

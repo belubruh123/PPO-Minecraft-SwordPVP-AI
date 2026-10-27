@@ -34,6 +34,8 @@ public final class SchoolRollout {
 	public final boolean[] intentAgrees;
 	public final byte[][] action;
 	public final int[] headMask;
+	/** Heads a rule pressed (locked in {@link #headMask}) that the teacher still teaches: SchoolStages#PUNISH_SHADOW. */
+	public final int[] shadowHeads;
 	public final float[] logp;
 	public final float[] value;
 	public final float[] reward;
@@ -78,6 +80,7 @@ public final class SchoolRollout {
 		intentAgrees = new boolean[capacity];
 		action = new byte[capacity][ActionSpace.HEADS];
 		headMask = new int[capacity];
+		shadowHeads = new int[capacity];
 		logp = new float[capacity];
 		value = new float[capacity];
 		reward = new float[capacity];
@@ -119,6 +122,7 @@ public final class SchoolRollout {
 			action[i][h] = (byte) s.action[h];
 		}
 		headMask[i] = s.headMask;
+		shadowHeads[i] = s.shadowHeads & ~s.headMask;
 		logp[i] = s.logp;
 		value[i] = s.value;
 		reward[i] = rew;
@@ -143,6 +147,7 @@ public final class SchoolRollout {
 		public int choice = -1;
 		public final int[] action = new int[ActionSpace.HEADS];
 		public int headMask;
+		public int shadowHeads;
 		public float logp;
 		public float value;
 		public final float[] teacher = new float[ActionSpace.TOTAL_LOGITS];

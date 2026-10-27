@@ -84,15 +84,22 @@ public final class SchoolPpo implements AutoCloseable {
 		public float oldBodyCe;
 		public float techAgree;
 		public int techSteps;
+		/** The punish crit's swing under the rules (SchoolStages#PUNISH_SHADOW): how often the network's likelier choice was the teacher's, where it swung and where it held. */
+		public float shadowSwingAgree;
+		public int shadowSwings;
+		public float shadowHoldAgree;
+		public int shadowHolds;
 		public long millis;
 
 		@Override
 		public String toString() {
 			return String.format(java.util.Locale.ROOT,
 					"%d steps, %d epochs, policy %.4f, value %.4f, kl %.4f, clipped %.2f, explained %.2f, lr %.1e, entropy W/S %.2f jump %.2f swing %.2f, "
-							+ "teacher: technique ce %.3f agree %.0f%% on %d, installed ce %.3f (body %.3f), %d ms",
+							+ "teacher: technique ce %.3f agree %.0f%% on %d, installed ce %.3f (body %.3f), "
+							+ "punish crit swing under the rules: swung %.0f%% of %d, held %.0f%% of %d, %d ms",
 					samples, epochs, policyLoss, valueLoss, kl, clipFraction, explained, actorLr, entropy[ActionSpace.FORWARD],
-					entropy[ActionSpace.JUMP], entropy[ActionSpace.ATTACK], techCe, 100f * techAgree, techSteps, oldCe, oldBodyCe, millis);
+					entropy[ActionSpace.JUMP], entropy[ActionSpace.ATTACK], techCe, 100f * techAgree, techSteps, oldCe, oldBodyCe,
+					100f * shadowSwingAgree, shadowSwings, 100f * shadowHoldAgree, shadowHolds, millis);
 		}
 	}
 
@@ -143,6 +150,10 @@ public final class SchoolPpo implements AutoCloseable {
 		double oldBodyCe;
 		int techAgree;
 		int techSteps;
+		int shadowSwingAgree;
+		int shadowSwings;
+		int shadowHoldAgree;
+		int shadowHolds;
 		int oldSteps;
 		int oldBodySteps;
 
@@ -158,6 +169,10 @@ public final class SchoolPpo implements AutoCloseable {
 			oldBodyCe = 0;
 			techAgree = 0;
 			techSteps = 0;
+			shadowSwingAgree = 0;
+			shadowSwings = 0;
+			shadowHoldAgree = 0;
+			shadowHolds = 0;
 			oldSteps = 0;
 			oldBodySteps = 0;
 		}
@@ -210,8 +225,11 @@ public final class SchoolPpo implements AutoCloseable {
 			if (tech == 0 && !old) {
 				return;
 			}
+			int shadow = r.shadowHeads[i];
 			for (int h = 0; h < ActionSpace.HEADS; h++) {
-				if (!ActionSpace.unlocked(mask, h)) {
+				// A head a rule pressed is taught only where the teacher's lesson goes on under the rule (SchoolStages#PUNISH_SHADOW).
+				boolean shadowed = (shadow & (1 << h)) != 0;
+				if (!ActionSpace.unlocked(mask, h) && !shadowed) {
 					continue;
 				}
 				boolean byTech = (tech & (1 << h)) != 0;
@@ -238,7 +256,7 @@ public final class SchoolPpo implements AutoCloseable {
 						&& (which != dev.swordai.core.pvp.Technique.BASE.ordinal() || r.letGoPull[i] > 0f)) {
 					pull = 0f;
 				}
-				if (!byTech && !installedHere) {
+				if (!byTech && !installedHere || shadowed && !byTech) {
 					continue;
 				}
 				// Told another technique than the teacher's (the chooser's, in training a step in a few): only the camera is taught.
@@ -247,6 +265,10 @@ public final class SchoolPpo implements AutoCloseable {
 				}
 				int off = ActionSpace.OFFSETS[h];
 				int size = ActionSpace.SIZES[h];
+				if (shadowed) {
+					// Policy#evaluate left a locked head out.
+					Policy.softmax(aw.logits, off, size, probs);
+				}
 				Teacher.aim(stored, probs, off, size, q);
 				double ce = 0;
 				int best = 0;
@@ -263,7 +285,15 @@ public final class SchoolPpo implements AutoCloseable {
 						aw.dLogits[off + k] += (byTech ? pull * Teacher.pressWeight(stored, h, r.vec[i], which) : pull) * (p - t);
 					}
 				}
-				if (byTech) {
+				if (shadowed) {
+					if (stored[off + 1] >= Teacher.ANY) {
+						shadowSwings++;
+						shadowSwingAgree += best == 1 ? 1 : 0;
+					} else {
+						shadowHolds++;
+						shadowHoldAgree += best == 0 ? 1 : 0;
+					}
+				} else if (byTech) {
 					techCe += ce;
 					techSteps++;
 					techAgree += stored[off + best] >= Teacher.ANY ? 1 : 0;
@@ -331,6 +361,10 @@ public final class SchoolPpo implements AutoCloseable {
 		double oldBodyCe = 0;
 		long techAgree = 0;
 		long techSteps = 0;
+		long shadowSwingAgree = 0;
+		long shadowSwings = 0;
+		long shadowHoldAgree = 0;
+		long shadowHolds = 0;
 		long oldSteps = 0;
 		long oldBodySteps = 0;
 		long seen = 0;
@@ -364,6 +398,10 @@ public final class SchoolPpo implements AutoCloseable {
 					oldBodyCe += w.oldBodyCe;
 					techAgree += w.techAgree;
 					techSteps += w.techSteps;
+					shadowSwingAgree += w.shadowSwingAgree;
+					shadowSwings += w.shadowSwings;
+					shadowHoldAgree += w.shadowHoldAgree;
+					shadowHolds += w.shadowHolds;
 					oldSteps += w.oldSteps;
 					oldBodySteps += w.oldBodySteps;
 				}
@@ -395,6 +433,10 @@ public final class SchoolPpo implements AutoCloseable {
 		st.techCe = techSteps == 0 ? 0f : (float) (techCe / techSteps);
 		st.techAgree = techSteps == 0 ? 0f : (float) techAgree / techSteps;
 		st.techSteps = (int) (techSteps / Math.max(1, st.epochs));
+		st.shadowSwingAgree = shadowSwings == 0 ? 0f : (float) shadowSwingAgree / shadowSwings;
+		st.shadowSwings = (int) (shadowSwings / Math.max(1, st.epochs));
+		st.shadowHoldAgree = shadowHolds == 0 ? 0f : (float) shadowHoldAgree / shadowHolds;
+		st.shadowHolds = (int) (shadowHolds / Math.max(1, st.epochs));
 		st.oldCe = oldSteps == 0 ? 0f : (float) (oldCe / oldSteps);
 		st.oldBodyCe = oldBodySteps == 0 ? 0f : (float) (oldBodyCe / oldBodySteps);
 		st.actorLr = actorLr;

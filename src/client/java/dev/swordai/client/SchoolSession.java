@@ -2307,6 +2307,11 @@ public final class SchoolSession implements AgentSession {
 			}
 			ruleTicks++;
 		}
+		// Told the punish crit in a lift, its teacher's swing is taught though a rule presses it (SchoolStages#PUNISH_SHADOW).
+		step.shadowHeads = dev.swordai.core.school.SchoolStages.PUNISH_SHADOW && mode == Mode.TRAIN && liftedFor >= 0 && !me.onGround()
+				&& learner.told() == Technique.B1 && step.teacherTechnique == Technique.B1.ordinal()
+				&& (step.teacherHeads & ActionSpace.mask(ActionSpace.ATTACK)) != 0
+				? ruled & dev.swordai.core.school.SchoolStages.PUNISH_SHADOW_KEYS : 0;
 		learner.act(step, keys, ruled, mode == Mode.TRAIN, cfg.playTemperature, action);
 		if (mode == Mode.CHECK) {
 			fairJump.apply(action, me.onGround(), clock.ticksSinceHitTaken, clock.takenStreak.hits());

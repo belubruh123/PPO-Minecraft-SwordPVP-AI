@@ -80,6 +80,65 @@ class SchoolLearnerTest {
 		back.close();
 	}
 
+	/**
+	 * The punish crit's swing under a rule (SchoolStages#PUNISH_SHADOW): where the rule presses the swing key (locked, held
+	 * here), the punish crit teacher's "swing" is learned on it only when the step marks it shadowed.
+	 */
+	@Test
+	void aSwingTheRulePressesIsLearnedOnlyWhereShadowed() {
+		float[] gain = new float[2];
+		int locked = ActionSpace.ALL_HEADS & ~ActionSpace.mask(ActionSpace.ATTACK);
+		for (int shadowed = 0; shadowed < 2; shadowed++) {
+			SchoolLearner l = new SchoolLearner(4L, 600, 0.99f, 0.95f, 2);
+			Random rng = new Random(8);
+			SchoolRollout.Step s = new SchoolRollout.Step();
+			int[] act = new int[ActionSpace.HEADS];
+			float before = swingChance(l, rng);
+			SchoolPpo.Stats last = null;
+			for (int u = 0; u < 4; u++) {
+				for (int t = 0; t < 512; t++) {
+					fillSwing(rng, s, shadowed == 1);
+					act[ActionSpace.ATTACK] = 0;
+					l.act(s, locked, ActionSpace.mask(ActionSpace.ATTACK), true, 1f, act);
+					fillSwing(rng, s, shadowed == 1);
+					l.complete(rng.nextFloat() - 0.5f, t % 100 == 99, false, s.obs);
+				}
+				SchoolPpo.Settings set = new SchoolPpo.Settings();
+				java.util.Arrays.fill(set.techPulls, 1f);
+				last = l.update(set, 1e-3f);
+				assertTrue(Float.isFinite(last.policyLoss), last.toString());
+			}
+			assertEquals(shadowed == 1, last.shadowSwings > 0, last.toString());
+			gain[shadowed] = swingChance(l, rng) - before;
+			l.close();
+		}
+		assertTrue(gain[1] > 0.2f && gain[1] > gain[0] + 0.15f, "swing chance gained " + gain[0] + " unshadowed, " + gain[1] + " shadowed");
+	}
+
+	private static void fillSwing(Random rng, SchoolRollout.Step s, boolean shadowed) {
+		fill(rng, s);
+		s.teacherHeads = 1 << ActionSpace.ATTACK;
+		s.teacherTechnique = Technique.B1.ordinal();
+		int off = ActionSpace.OFFSETS[ActionSpace.ATTACK];
+		s.teacher[off] = 0.05f;
+		s.teacher[off + 1] = 0.95f;
+		s.shadowHeads = shadowed ? ActionSpace.mask(ActionSpace.ATTACK) : 0;
+	}
+
+	private static float swingChance(SchoolLearner l, Random rng) {
+		SchoolRollout.Step s = new SchoolRollout.Step();
+		float sum = 0f;
+		int[] act = new int[ActionSpace.HEADS];
+		for (int i = 0; i < 50; i++) {
+			fill(rng, s);
+			l.act(s, ActionSpace.ALL_HEADS, false, 1f, act);
+			float[] logits = l.lastLogits();
+			int off = ActionSpace.OFFSETS[ActionSpace.ATTACK];
+			sum += (float) (1.0 / (1.0 + Math.exp(logits[off] - logits[off + 1])));
+		}
+		return sum / 50;
+	}
+
 	private static float jumpChance(SchoolLearner l, Random rng) {
 		SchoolRollout.Step s = new SchoolRollout.Step();
 		float sum = 0f;
