@@ -372,7 +372,7 @@ public final class SchoolSession implements AgentSession {
 	 * there, a crit), and how many the teacher took as a punish crit (B1). The user, 24 Oct 15:50: "punish crit didn't
 	 * improve"; the game counted 0 or 1 of about 80 an update, the installed model 1-2% in the checks.
 	 */
-	private final int[][] lifts = new int[4][11];
+	private final int[][] lifts = new int[4][12];
 	private int liftKind = -1;
 	private int liftStage;
 	private boolean liftAimedNow;
@@ -2271,6 +2271,9 @@ public final class SchoolSession implements AgentSession {
 				// Lifted by their hit and coming down near them: W and the sprint are the network's (RULES_LET_GO_IN_LIFT).
 				ruled &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
 			}
+			if (dev.swordai.core.school.SchoolStages.PUNISH_TOLD_YIELD && liftedFor >= 0 && !me.onGround() && learner.told() == Technique.B1) {
+				ruled &= ~dev.swordai.core.school.SchoolStages.PUNISH_KEYS;
+			}
 			if (RULES_LET_GO_AT_CRIT && liftedFor >= 0 && facts.falling && !me.onGround() && facts.reachDist <= LET_GO_AT_CRIT_REACH
 					&& charge >= LET_GO_AT_CRIT_CHARGE) {
 				// The punish crit's own ticks: W and the sprint are the network's (RULES_LET_GO_AT_CRIT).
@@ -3105,6 +3108,7 @@ public final class SchoolSession implements AgentSession {
 			lifts[liftKind][8] += liftTold ? 1 : 0;
 			lifts[liftKind][9] += liftTold && liftStage >= 6 ? 1 : 0;
 			lifts[liftKind][10] += liftToldByDecider ? 1 : 0;
+			lifts[liftKind][11] += liftTold && liftStage >= 3 ? 1 : 0;
 		}
 		liftKind = -1;
 		liftStage = 0;
@@ -3120,8 +3124,8 @@ public final class SchoolSession implements AgentSession {
 		for (int k = 1; k < lifts.length; k++) {
 			int[] c = lifts[k];
 			b.append(String.format(Locale.ROOT, "%s after %s %d: in reach %d, sword back %d, not sprinting %d, aimed %d, swung %d, crit %d, teacher B1 %d, "
-					+ "told B1 %d (by the decider %d), critted when told %d",
-					k == 1 ? "" : ";", names[k], c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8], c[10], c[9]));
+					+ "told B1 %d (by the decider %d), not sprinting when told %d, critted when told %d",
+					k == 1 ? "" : ";", names[k], c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8], c[10], c[11], c[9]));
 			java.util.Arrays.fill(c, 0);
 		}
 		return b.toString();

@@ -386,6 +386,7 @@ final class FightSession implements AgentSession {
 					&& me.getAttackStrengthScale(0f) > 0.5f
 					|| SchoolSession.RULES_LET_GO_AT_CRIT && liftedFor >= 0 && !me.onGround() && me.getY() < me.yo
 					&& reachNow <= SchoolSession.LET_GO_AT_CRIT_REACH && me.getAttackStrengthScale(0f) >= SchoolSession.LET_GO_AT_CRIT_CHARGE);
+			school.inLift(liftedFor >= 0 && !me.onGround());
 			action = school.decide(observer.frame, body, reader.memory());
 			AgentController.apply(mc, action, school.yawRate(), school.pitchRate());
 			chargeAtClick = me.getAttackStrengthScale(0f);

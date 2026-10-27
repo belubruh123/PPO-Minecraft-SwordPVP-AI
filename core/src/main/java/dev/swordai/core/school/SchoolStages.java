@@ -159,6 +159,17 @@ public final class SchoolStages {
 	 * (their third hit in a row 52% to the installed model's 32%; run 6: 33%).
 	 */
 	public static final int YIELD_AFTER_HIT = 20;
+	/**
+	 * When the network is told the punish crit (the decision model chose it, or the punish drill forced it), the installed
+	 * model's rules give it W, the sprint and the swing for the lift (PUNISH_KEYS), in training, checks and real fights: a crit
+	 * needs the sprint let go and the swing kept for the way down, and the rules hold W and the sprint in every lift
+	 * (RULES_YIELD is off). The user's method, 27 Oct: aggressive play keeps the rules' pressure; only the decision for the
+	 * punish crit takes the keys. Giving them up in every lift whatever was chosen (SchoolSession#RULES_LET_GO_IN_LIFT,
+	 * RULES_LET_GO_AT_CRIT) cost damage (26 Oct).
+	 */
+	public static final boolean PUNISH_TOLD_YIELD = true;
+	public static final int PUNISH_KEYS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.FORWARD,
+			dev.swordai.core.rl.ActionSpace.SPRINT, dev.swordai.core.rl.ActionSpace.ATTACK);
 
 	/**
 	 * Run 11 (EXPERIMENTS.md): learned from the fight, not from the teacher. A technique's keys are copied only on moments that

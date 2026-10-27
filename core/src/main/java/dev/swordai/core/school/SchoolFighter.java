@@ -91,6 +91,13 @@ public final class SchoolFighter {
 		rulesLetGo = on;
 	}
 
+	private boolean inLift;
+
+	/** Thrown up by their hit and not down yet: told the punish crit there, the rules leave it its keys (SchoolStages#PUNISH_TOLD_YIELD). */
+	public void inLift(boolean on) {
+		inLift = on;
+	}
+
 	/** No swing this tick: a sprint hit would land on one falling by the time it gets there (the golden rule, K2). */
 	public void holdSwing(boolean hold) {
 		swingHeld = hold;
@@ -150,6 +157,9 @@ public final class SchoolFighter {
 		int ruled = rules != null ? rules.ruledHeads() & keys : 0;
 		if (rulesLetGo) {
 			ruled &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
+		}
+		if (SchoolStages.PUNISH_TOLD_YIELD && inLift && learner.told() == dev.swordai.core.pvp.Technique.B1) {
+			ruled &= ~SchoolStages.PUNISH_KEYS;
 		}
 		// The rules give way to a technique it learned while the decider has chosen it (SchoolStages#RULES_YIELD).
 		if (ruled != 0 && SchoolStages.RULES_YIELD && sinceHitTaken > SchoolStages.YIELD_AFTER_HIT
