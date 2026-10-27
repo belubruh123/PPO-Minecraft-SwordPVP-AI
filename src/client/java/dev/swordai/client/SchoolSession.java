@@ -156,7 +156,7 @@ public final class SchoolSession implements AgentSession {
 	 * down: the punish crit's chance (B1, "their hit knocks you up; you crit them on the way down") in every such fight, where
 	 * a fight had about one in four minutes. The rest of the fight goes on as any. The user, 25 Oct: learn it in a few tries.
 	 */
-	static final float DRILL_SHARE = 0f; // 0.25 in runs 15-16b: punish crits in the checks never rose (4% vs 10%); off in run 17
+	static final float DRILL_SHARE = 0.15f; // 0.25 in runs 15-16b: punish crits in the checks never rose (4% vs 10%); off in run 17. On again 28 Oct 03:30 as the punish drill of the user's method (told B1, its own keys, the teacher's jump reset): the punish scenes gave 12-14 chances in reach in 25 minutes
 	static final float DRILL_NEAR = 2.2f;
 	static final float DRILL_FAR = 2.8f;
 	/** This fight is a drill: the agent's sword is set this many ticks into coming back on its first tick; -1 otherwise. */
@@ -1710,7 +1710,7 @@ public final class SchoolSession implements AgentSession {
 		teacher.ordinaryFight = !OVERLAY;
 		// A punish scene is the punish crit's drill (the user's method, 27 Oct): the teacher punishes every lift it can, and the
 		// network is always told so (the decision model's output forced to B1), so that it learns to land it whenever told.
-		boolean punishDrill = sceneNow != null && sceneNow.kind == KIND_PUNISH;
+		boolean punishDrill = sceneNow != null && sceneNow.kind == KIND_PUNISH || drillFight;
 		teacher.punishFirst = punishDrill;
 		teacher.start(checkTaught != null ? checkTaught : stages.taught(), cfg.swingMinCharge, seed ^ 0x7EAC4L);
 		teacher.seenLag(agentLag);
@@ -2277,7 +2277,7 @@ public final class SchoolSession implements AgentSession {
 			// rules' keys the drill taught nothing), elsewhere only with PUNISH_TOLD_YIELD (from 23:06 to 00:10 on 27 Oct everywhere,
 			// when an untrained network critted 4% of its told lifts to the rules' 23%).
 			// In the drill from the start of the scene (B1_HOLD, the swing held for their hit), elsewhere for the lift.
-			boolean drill = sceneNow != null && sceneNow.kind == KIND_PUNISH;
+			boolean drill = sceneNow != null && sceneNow.kind == KIND_PUNISH || drillFight;
 			boolean drillKeys = drill || dev.swordai.core.school.SchoolStages.PUNISH_TOLD_YIELD;
 			if (drillKeys && (drill || liftedFor >= 0 && !me.onGround()) && learner.told() == Technique.B1) {
 				ruled &= ~dev.swordai.core.school.SchoolStages.PUNISH_KEYS;
@@ -3096,10 +3096,10 @@ public final class SchoolSession implements AgentSession {
 		// Counted from stage 1 (in reach) 17:09-18:10, when 45% of those had the sword down from their trade.
 		// Told the punish crit and came down in reach: landed or not (counted from stage 1, as a swing on the way up after
 		// being told is the commonest way to miss it).
-		if (liftTold && liftKind > 0 && liftStage >= 1 && mode == Mode.TRAIN && review < 0 && sceneNow == null) {
+		if (liftTold && liftKind > 0 && liftStage >= 1 && mode == Mode.TRAIN && review < 0 && sceneNow == null && !drillFight) {
 			toldB1Roll.add(liftStage >= 6);
 		}
-		if (liftKind > 0 && liftStage >= 2 && mode == Mode.TRAIN && review < 0 && sceneNow == null) {
+		if (liftKind > 0 && liftStage >= 2 && mode == Mode.TRAIN && review < 0 && sceneNow == null && !drillFight) {
 			boolean punished = liftStage >= 6;
 			punishRoll.add(punished);
 			if (!punished && !drillFight && punishFrom < 0) {
@@ -3118,7 +3118,7 @@ public final class SchoolSession implements AgentSession {
 			lifts[liftKind][10] += liftToldByDecider ? 1 : 0;
 			lifts[liftKind][11] += liftTold && liftStage >= 3 ? 1 : 0;
 			if (liftTold) {
-				int[] t = toldStages[sceneNow != null && sceneNow.kind == KIND_PUNISH ? 1 : 0];
+				int[] t = toldStages[sceneNow != null && sceneNow.kind == KIND_PUNISH || drillFight ? 1 : 0];
 				for (int k = 0; k <= Math.min(6, liftStage); k++) {
 					t[k]++;
 				}
