@@ -145,7 +145,10 @@ public final class SchoolStages {
 	 * The techniques the run of EXPERIMENTS.md teaches, one family at a time (25 Oct, the one-week goal): each at its mastery
 	 * share up to RUN_PULL_CAP, its pull weighted by the outcome (SchoolPpo.TEACH_AWR_MOST). 0: none.
 	 */
-	public static final float RUN_PULL_CAP = 0f; // 1 in runs 7-11 (the crit family); 0 in run 12 (run 6's recipe); 1 in runs 13-14 (B1 alone); 0 in run 15 to 22:05, then 1 (T7) to run 16b; 0 in run 17
+	public static final float RUN_PULL_CAP = 1f; // 1 in runs 7-11 (the crit family); 0 in run 12 (run 6's recipe); 1 in runs 13-14 (B1 alone); 0 in run 15 to 22:05, then 1 (T7) to run 16b; 0 in run 17;
+	// 1 (B1 alone) from 28 Oct 06:40: with JUMP_IN_PULL_CAP 0 the punish crit's pull was 0, so its teacher's keys were yielded
+	// (SchoolSession NO_PULL_YIELDS) and taught nowhere, the punish drill of 27-28 Oct included: the user's method (the drill
+	// forced to B1 teaches it to land it when told) had no lesson in it. Its keys are taught only where it is told B1.
 	/**
 	 * The installed model's fight-time rules give way to a technique being learned, on its keys (run 10 of EXPERIMENTS.md).
 	 * Its StepBack ("after a hit of its own that has not sent the opponent away it steps back": W and the sprint off) took the
@@ -210,8 +213,9 @@ public final class SchoolStages {
 		// Runs 7-11: the crit family (the punish crit, the double crits, the standing crit); runs 13-14 the punish crit alone:
 		// every run teaching the whole family lost, the crit tries spreading jumps into the fight. From 25 Oct 22:05 the
 		// three-block hit (T7, "full-sprint hit before they are close enough to hit back"): the five opponents it loses to most
-		// win at the edge of reach, hitting first as it walks into a ready sword (the investigation of 21:30).
-		for (Technique t : new Technique[] {Technique.T7}) {
+		// win at the edge of reach, hitting first as it walks into a ready sword (the investigation of 21:30). From 28 Oct 06:40
+		// the punish crit alone again (RUN_PULL_CAP).
+		for (Technique t : new Technique[] {Technique.B1}) {
 			RUN_TAUGHT[t.ordinal()] = true;
 		}
 	}
