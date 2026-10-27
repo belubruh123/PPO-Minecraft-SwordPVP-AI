@@ -228,7 +228,13 @@ public final class PvpPlayer {
 	 * At 0.8 a punish crit came about once in four minutes of fighting, too seldom to be learned (24 Oct).
 	 */
 	static final float PUNISH_CHARGE = 0.5f;
-	/** The punish crit drill holds the swing for their hit (B1_HOLD) from this near, for at most this long. */
+	/**
+	 * The punish crit drill holds the swing for their hit (B1_HOLD) from this near, for at most this long. Off since 28 Oct
+	 * 02:25: in its hour (01:27-02:20) the drill's sword was back on 27 of 65 falls in reach and it critted 3, while the
+	 * paired check at 02:16 went -7.2 (se 3.6) with 315 swings to the installed model's 364 (equal in the checks before):
+	 * the held swing spread into the fight, as "don't swing" did from K2 on 25 Oct.
+	 */
+	static final boolean PUNISH_HOLD = false;
 	static final double PUNISH_HOLD_REACH = 5.0;
 	static final int PUNISH_HOLD_TICKS = 40;
 
@@ -631,7 +637,7 @@ public final class PvpPlayer {
 		if (pending != Plan.NONE) {
 			return;
 		}
-		if (style.punishFirst && d.reach < PUNISH_HOLD_REACH) {
+		if (style.punishFirst && PUNISH_HOLD && d.reach < PUNISH_HOLD_REACH) {
 			begin(Plan.B1_HOLD);
 			return;
 		}
