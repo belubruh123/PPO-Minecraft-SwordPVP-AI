@@ -156,7 +156,7 @@ public final class SchoolSession implements AgentSession {
 	 * down: the punish crit's chance (B1, "their hit knocks you up; you crit them on the way down") in every such fight, where
 	 * a fight had about one in four minutes. The rest of the fight goes on as any. The user, 25 Oct: learn it in a few tries.
 	 */
-	static final float DRILL_SHARE = 0.15f; // 0.25 in runs 15-16b: punish crits in the checks never rose (4% vs 10%); off in run 17. On again 28 Oct 03:30 as the punish drill of the user's method (told B1, its own keys, the teacher's jump reset): the punish scenes gave 12-14 chances in reach in 25 minutes
+	static final float DRILL_SHARE = 0f; // 0.25 in runs 15-16b: punish crits in the checks never rose (4% vs 10%); off in run 17. 0.15 on 28 Oct 03:28-04:30 as the punish drill of the user's method (told B1, its own keys, the teacher's jump reset): the drill critted 1 of 61 lifts in reach, and the 04:17 check went -4.5 (4.3) with 304 swings to the installed model's 354 (331 vs 328 at 03:15): off
 	static final float DRILL_NEAR = 2.2f;
 	static final float DRILL_FAR = 2.8f;
 	/** This fight is a drill: the agent's sword is set this many ticks into coming back on its first tick; -1 otherwise. */
