@@ -233,8 +233,9 @@ public final class SchoolStages {
 		// every run teaching the whole family lost, the crit tries spreading jumps into the fight. From 25 Oct 22:05 the
 		// three-block hit (T7, "full-sprint hit before they are close enough to hit back"): the five opponents it loses to most
 		// win at the edge of reach, hitting first as it walks into a ready sword (the investigation of 21:30). From 28 Oct 06:40
-		// the punish crit alone again (RUN_PULL_CAP); from 29 Oct 03:30 with the jump reset's jump (the combo escape, T9_TAUGHT_HEADS).
-		for (Technique t : new Technique[] {Technique.B1, Technique.T9}) {
+		// the punish crit alone again (RUN_PULL_CAP); 29 Oct 03:27-03:50 with the jump reset's jump too (T9_TAUGHT_HEADS): within 20 minutes
+		// the network jumped at every technique's moments (jump off 0-17% -> 30-54%), swings 160 -> 80, damage dealt 340 -> 195 a minute.
+		for (Technique t : new Technique[] {Technique.B1}) {
 			RUN_TAUGHT[t.ordinal()] = true;
 		}
 	}
