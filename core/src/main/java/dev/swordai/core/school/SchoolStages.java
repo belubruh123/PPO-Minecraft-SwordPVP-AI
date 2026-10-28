@@ -196,6 +196,14 @@ public final class SchoolStages {
 	 */
 	public static final int T9_TAUGHT_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP);
 
+	/**
+	 * With the jump reset taught (RUN_TAUGHT), the file teacher's jump key is taught at every moment of the fights, its jumps and
+	 * (on nearly every tick) its jump held back, at JUMP_PULL (SchoolSession): taught at the jump reset's moments alone (29 Oct
+	 * 03:27-03:50) the jump spread into every technique within 20 minutes, nothing teaching the jump held back anywhere else.
+	 */
+	public static final boolean JUMP_EVERYWHERE = true;
+	public static final float JUMP_PULL = 1f;
+
 	/** The keys a technique's teacher teaches: B1 its swing, T9 its jump, the rest all theirs. */
 	public static int taughtHeads(int technique) {
 		return technique == Technique.B1.ordinal() ? B1_TAUGHT_HEADS : technique == Technique.T9.ordinal() ? T9_TAUGHT_HEADS
@@ -235,7 +243,7 @@ public final class SchoolStages {
 		// win at the edge of reach, hitting first as it walks into a ready sword (the investigation of 21:30). From 28 Oct 06:40
 		// the punish crit alone again (RUN_PULL_CAP); 29 Oct 03:27-03:50 with the jump reset's jump too (T9_TAUGHT_HEADS): within 20 minutes
 		// the network jumped at every technique's moments (jump off 0-17% -> 30-54%), swings 160 -> 80, damage dealt 340 -> 195 a minute.
-		for (Technique t : new Technique[] {Technique.B1}) {
+		for (Technique t : new Technique[] {Technique.B1, Technique.T9}) {
 			RUN_TAUGHT[t.ordinal()] = true;
 		}
 	}

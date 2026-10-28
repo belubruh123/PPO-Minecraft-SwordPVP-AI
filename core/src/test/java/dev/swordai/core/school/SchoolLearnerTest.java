@@ -115,6 +115,46 @@ class SchoolLearnerTest {
 		assertTrue(gain[1] > 0.2f && gain[1] > gain[0] + 0.15f, "swing chance gained " + gain[0] + " unshadowed, " + gain[1] + " shadowed");
 	}
 
+	/**
+	 * The jump at every moment (SchoolStages#JUMP_EVERYWHERE): on the ordinary fight's steps (no technique pull) the teacher's
+	 * "no jump" is learned only with the step's own jump pull.
+	 */
+	@Test
+	void theJumpHeldBackIsLearnedWithItsOwnPull() {
+		float[] change = new float[2];
+		for (int own = 0; own < 2; own++) {
+			SchoolLearner l = new SchoolLearner(4L, 600, 0.99f, 0.95f, 2);
+			Random rng = new Random(8);
+			SchoolRollout.Step s = new SchoolRollout.Step();
+			int[] act = new int[ActionSpace.HEADS];
+			float before = jumpChance(l, rng);
+			for (int u = 0; u < 4; u++) {
+				for (int t = 0; t < 512; t++) {
+					fillNoJump(rng, s, own == 1);
+					l.act(s, ActionSpace.ALL_HEADS, true, 1f, act);
+					fillNoJump(rng, s, own == 1);
+					l.complete(rng.nextFloat() - 0.5f, t % 100 == 99, false, s.obs);
+				}
+				SchoolPpo.Settings set = new SchoolPpo.Settings();
+				java.util.Arrays.fill(set.techPulls, 0f);
+				assertTrue(Float.isFinite(l.update(set, 1e-3f).policyLoss));
+			}
+			change[own] = jumpChance(l, rng) - before;
+			l.close();
+		}
+		assertTrue(change[1] < -0.2f && change[1] < change[0] - 0.15f, "jump chance changed " + change[0] + " without its pull, " + change[1] + " with it");
+	}
+
+	private static void fillNoJump(Random rng, SchoolRollout.Step s, boolean own) {
+		fill(rng, s);
+		s.teacherHeads = 1 << ActionSpace.JUMP;
+		s.teacherTechnique = Technique.BASE.ordinal();
+		int off = ActionSpace.OFFSETS[ActionSpace.JUMP];
+		s.teacher[off] = 1f;
+		s.teacher[off + 1] = 0f;
+		s.jumpPull = own ? 1f : 0f;
+	}
+
 	private static void fillSwing(Random rng, SchoolRollout.Step s, boolean shadowed) {
 		fill(rng, s);
 		s.teacherHeads = 1 << ActionSpace.ATTACK;

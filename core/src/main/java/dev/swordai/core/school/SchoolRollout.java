@@ -52,6 +52,8 @@ public final class SchoolRollout {
 	public final float[] teacherWeight;
 	/** The sprint let-go teacher's own pull on the W/S and sprint keys of the step (0: none); see SchoolPpo#teach. */
 	public final float[] letGoPull;
+	/** The file teacher's jump key taught at every moment, its own pull (0: none); see SchoolPpo#teach. */
+	public final float[] jumpPull;
 	/** The technique teacher that spoke (a {@link Technique} ordinal), or -1: for the logs. */
 	public final int[] teacherTechnique;
 	/** 1 when the step's policy loss counts, 0 when the step was one where nothing could be decided. */
@@ -91,6 +93,7 @@ public final class SchoolRollout {
 		teacherHeads = new int[capacity];
 		teacherWeight = new float[capacity];
 		letGoPull = new float[capacity];
+		jumpPull = new float[capacity];
 		teacherTechnique = new int[capacity];
 		policyWeight = new float[capacity];
 		botTechnique = new int[capacity];
@@ -131,6 +134,7 @@ public final class SchoolRollout {
 		teacherHeads[i] = s.teacherHeads;
 		teacherWeight[i] = s.teacherWeight;
 		letGoPull[i] = s.letGoPull;
+		jumpPull[i] = s.jumpPull;
 		teacherTechnique[i] = s.teacherTechnique;
 		policyWeight[i] = s.policyWeight;
 		botTechnique[i] = s.botTechnique;
@@ -154,6 +158,7 @@ public final class SchoolRollout {
 		public int teacherHeads;
 		public float teacherWeight;
 		public float letGoPull;
+		public float jumpPull;
 		public int teacherTechnique = -1;
 		public float policyWeight = 1f;
 		public int botTechnique = -1;

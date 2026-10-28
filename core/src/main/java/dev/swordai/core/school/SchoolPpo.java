@@ -238,7 +238,9 @@ public final class SchoolPpo implements AutoCloseable {
 				boolean camera = h == ActionSpace.YAW || h == ActionSpace.PITCH;
 				// Between techniques (no teacher, or the ordinary fight's: the basics teacher holds the swing there) every key
 				// the basics teacher does not hold.
-				boolean between = tech == 0 || which == dev.swordai.core.pvp.Technique.BASE.ordinal();
+				// (The jump taught at every moment, SchoolStages#JUMP_EVERYWHERE, leaves the rest of the step as it was.)
+				int techOther = r.jumpPull[i] > 0f ? tech & ~(1 << ActionSpace.JUMP) : tech;
+				boolean between = techOther == 0 || which == dev.swordai.core.pvp.Technique.BASE.ordinal();
 				boolean installedHere = old && (camera || set.installedBody && between && !byTech);
 				float pull = byTech ? (which >= 0 ? set.techPulls[which] : 0f)
 						: installedHere ? (camera || set.oldBodyPull < 0f ? set.oldPull : set.oldBodyPull) : 0f;
@@ -250,9 +252,14 @@ public final class SchoolPpo implements AutoCloseable {
 				if (byTech && r.letGoPull[i] > 0f && (h == ActionSpace.FORWARD || h == ActionSpace.SPRINT)) {
 					pull = r.letGoPull[i] * (float) Math.min(TEACH_AWR_MOST, Math.exp(adv / TEACH_AWR_BETA));
 				}
+				// The file teacher's jump key at every moment, at its own pull and by the outcome (SchoolStages#JUMP_EVERYWHERE).
+				boolean everyJump = byTech && h == ActionSpace.JUMP && r.jumpPull[i] > 0f;
+				if (everyJump) {
+					pull = r.jumpPull[i] * (float) Math.min(TEACH_AWR_MOST, Math.exp(adv / TEACH_AWR_BETA));
+				}
 				// Learned from the fight (SchoolStages#FROM_THE_FIGHT): a technique's keys only where the moment went better than expected.
 				boolean b1Swing = SchoolStages.B1_SWING_ALWAYS && h == ActionSpace.ATTACK && which == dev.swordai.core.pvp.Technique.B1.ordinal();
-				if (SchoolStages.FROM_THE_FIGHT && byTech && !camera && adv <= 0f && !b1Swing
+				if (SchoolStages.FROM_THE_FIGHT && byTech && !camera && adv <= 0f && !b1Swing && !everyJump
 						&& (which != dev.swordai.core.pvp.Technique.BASE.ordinal() || r.letGoPull[i] > 0f)) {
 					pull = 0f;
 				}

@@ -2075,6 +2075,7 @@ public final class SchoolSession implements AgentSession {
 		}
 		step.teacherWeight = 0f;
 		step.letGoPull = 0f;
+		step.jumpPull = 0f;
 		// A teacher with no pull leaves its keys to the installed model (NO_PULL_YIELDS): its target would replace the installed
 		// model's on those keys and teach nothing. The technique's moment is still judged on its own keys (perf, below).
 		float[] pulls = stages.techPulls();
@@ -2220,6 +2221,19 @@ public final class SchoolSession implements AgentSession {
 				step.teacherTechnique = Technique.B1.ordinal();
 			}
 			sprintLetGo++;
+		}
+		// The jump at every moment as the file's teacher presses it, held back as much as pressed (SchoolStages#JUMP_EVERYWHERE).
+		if (dev.swordai.core.school.SchoolStages.JUMP_EVERYWHERE && mode == Mode.TRAIN && review < 0
+				&& dev.swordai.core.school.SchoolStages.runTaught(Technique.T9.ordinal())) {
+			int jo = ActionSpace.OFFSETS[ActionSpace.JUMP];
+			boolean jump = teacher.keys().jump;
+			step.teacher[jo] = jump ? 0f : 1f;
+			step.teacher[jo + 1] = jump ? 1f : 0f;
+			step.teacherHeads |= 1 << ActionSpace.JUMP;
+			step.jumpPull = dev.swordai.core.school.SchoolStages.JUMP_PULL;
+			if (step.teacherTechnique < 0) {
+				step.teacherTechnique = Technique.BASE.ordinal();
+			}
 		}
 		// The punish crit's aim: coming down onto them after their hit's lift, the camera turned onto their body. Of the falls
 		// in reach with the sword back and no sprint, the crosshair was on them on 0 to 2 of 3 to 7 an update (24 Oct 20:15),
