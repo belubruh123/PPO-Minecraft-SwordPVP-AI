@@ -2019,9 +2019,9 @@ public final class SchoolSession implements AgentSession {
 		// out of 1 of 33 combos, S held 0-11% (24 Oct 23:00).
 		step.teacherHeads = review >= 0 && !basics[review].bot.attacks ? 0 : teacher.target(step.teacher);
 		step.teacherTechnique = step.teacherHeads != 0 ? teacher.technique().ordinal() : -1;
-		// The punish crit's lesson is its swing alone (SchoolStages#B1_TAUGHT_HEADS).
-		if (step.teacherTechnique == Technique.B1.ordinal()) {
-			step.teacherHeads &= dev.swordai.core.school.SchoolStages.B1_TAUGHT_HEADS;
+		// The punish crit's lesson is its swing alone, the jump reset's its jump (SchoolStages#taughtHeads).
+		if (step.teacherTechnique >= 0) {
+			step.teacherHeads &= dev.swordai.core.school.SchoolStages.taughtHeads(step.teacherTechnique);
 		}
 		// A technique's swing a rule kept the network from: the sword not back enough for the gate, or the whiff guard.
 		int ao = ActionSpace.OFFSETS[ActionSpace.ATTACK];

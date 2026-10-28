@@ -189,6 +189,18 @@ public final class SchoolStages {
 	 * the way up and pressed on the way down is the part the drill showed failing (school/punish-traces.txt).
 	 */
 	public static final int B1_TAUGHT_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.ATTACK);
+	/**
+	 * The jump reset's lesson is its jump alone (29 Oct 03:30), as the punish crit's is its swing: at its moments the network
+	 * pressed no jump 99-100% of the time (its pull was 0 like every technique's but the run's), and the combo escape is the
+	 * SOP's next focus; its W/S and sprint stay the installed model's so that nothing but the jump can spread.
+	 */
+	public static final int T9_TAUGHT_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP);
+
+	/** The keys a technique's teacher teaches: B1 its swing, T9 its jump, the rest all theirs. */
+	public static int taughtHeads(int technique) {
+		return technique == Technique.B1.ordinal() ? B1_TAUGHT_HEADS : technique == Technique.T9.ordinal() ? T9_TAUGHT_HEADS
+				: dev.swordai.core.rl.ActionSpace.ALL_HEADS;
+	}
 	public static final int PUNISH_SHADOW_KEYS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.ATTACK);
 
 	/**
@@ -221,8 +233,8 @@ public final class SchoolStages {
 		// every run teaching the whole family lost, the crit tries spreading jumps into the fight. From 25 Oct 22:05 the
 		// three-block hit (T7, "full-sprint hit before they are close enough to hit back"): the five opponents it loses to most
 		// win at the edge of reach, hitting first as it walks into a ready sword (the investigation of 21:30). From 28 Oct 06:40
-		// the punish crit alone again (RUN_PULL_CAP).
-		for (Technique t : new Technique[] {Technique.B1}) {
+		// the punish crit alone again (RUN_PULL_CAP); from 29 Oct 03:30 with the jump reset's jump (the combo escape, T9_TAUGHT_HEADS).
+		for (Technique t : new Technique[] {Technique.B1, Technique.T9}) {
 			RUN_TAUGHT[t.ordinal()] = true;
 		}
 	}
