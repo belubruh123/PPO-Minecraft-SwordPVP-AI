@@ -102,7 +102,7 @@ public final class SchoolSession implements AgentSession {
 	 * thrown up from the ground by their hit, the crit before it lands. Any crit within the window was paid before, 4 or 5
 	 * an update against the game's 0 or 1. A crit that is not a punish crit pays this.
 	 */
-	static final float OTHER_CRIT = 0.2f;
+	static final float OTHER_CRIT = 0f; // 0.2 until 29 Oct 07:10: see CRIT_SWING_IN_LIFTS_ONLY
 	/**
 	 * The technique reward (the user, 24 Oct: "it is quite easy for me to code a PPO bot to do these techniques": its
 	 * reward is the technique). In a fight where the network is told the teacher's technique, every tick of a moment
@@ -145,6 +145,14 @@ public final class SchoolSession implements AgentSession {
 	 * or not, and a swing made there pays this much on top of its damage.
 	 */
 	static final float CRIT_SWING = 0.3f;
+	/**
+	 * The crit swing's pay only in a lift by their hit (the punish crit's chance), and no pay for other crits (OTHER_CRIT 0),
+	 * from 29 Oct 07:10: on fresh seeds (pairs 1700-2431) the school network jumped in at an opponent standing with its sword
+	 * ready 3.4 times as often as the installed model (1.33 a fight to 0.39), was hit first 0.90 a fight and hit first 0.34,
+	 * and its jump-ins netted -3.4 a fight to the installed model's -1.4; damage taken in the air was its largest gap (-1.75).
+	 * Paid on top of their damage, its own jump-ins' crits looked better to it than they were. Now damage alone pays them.
+	 */
+	static final boolean CRIT_SWING_IN_LIFTS_ONLY = true;
 	/** Updates at the start of a new school that teach the critic only (the actor is the installed one's, the critic new). */
 	static final int CRITIC_WARMUP = 3;
 	/** The bot is put between these distances, in view. */
@@ -1958,7 +1966,7 @@ public final class SchoolSession implements AgentSession {
 				if (clicked && !clickOnTarget) {
 					reward -= AIR_SWING;
 				}
-				if (clicked && critChanceAtClick) {
+				if (clicked && critChanceAtClick && (!CRIT_SWING_IN_LIFTS_ONLY || liftedFor >= 0)) {
 					reward += CRIT_SWING;
 					critSwings++;
 				}
