@@ -182,6 +182,13 @@ public final class SchoolStages {
 	 * changes in the fight until the keys are handed over.
 	 */
 	public static final boolean PUNISH_SHADOW = true;
+	/**
+	 * The punish crit's lesson is its swing alone (28 Oct 19:25): with its pull on (RUN_TAUGHT) its W, sprint and the lift's
+	 * aim spread into the fight within 15 minutes, twice (06:26-06:41, 18:58-19:20): sprint left off at T4 moments 59% -> 89%,
+	 * T5 47% -> 87%, T7 37% -> 74%; turned to find them 0 -> 9; damage a minute about 330/340 -> 288/371. The swing held on
+	 * the way up and pressed on the way down is the part the drill showed failing (school/punish-traces.txt).
+	 */
+	public static final int B1_TAUGHT_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.ATTACK);
 	public static final int PUNISH_SHADOW_KEYS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.ATTACK);
 
 	/**

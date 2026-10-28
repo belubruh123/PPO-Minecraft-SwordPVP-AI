@@ -459,6 +459,11 @@ public final class SchoolSession implements AgentSession {
 	 * from 25-44 a minute to 11-19 and the damage dealt from 303-327 to 234-298, as "don't swing" spread from K2 at 08:22.
 	 * With this on, those plans teach W, sprint, jump and the crit's own swing; when to hold is the damage's.
 	 */
+	/**
+	 * The camera turned to them on the way down in a lift (the aim teacher, below): it runs only with the punish crit's pull,
+	 * which was 0 until 28 Oct 06:26; on with it (06:26-06:41, 18:58-19:20) the turns to find them went from 0 to 9 an update.
+	 */
+	static final boolean LIFT_AIM = false;
 	static final boolean CRIT_HOLD_UNTAUGHT = true; // run 8 (25 Oct 14:41)
 	/**
 	 * Run 10 (EXPERIMENTS.md): the crit's held swing taught again in the air, so only the walk-in's wait for the sword (on the
@@ -2014,6 +2019,10 @@ public final class SchoolSession implements AgentSession {
 		// out of 1 of 33 combos, S held 0-11% (24 Oct 23:00).
 		step.teacherHeads = review >= 0 && !basics[review].bot.attacks ? 0 : teacher.target(step.teacher);
 		step.teacherTechnique = step.teacherHeads != 0 ? teacher.technique().ordinal() : -1;
+		// The punish crit's lesson is its swing alone (SchoolStages#B1_TAUGHT_HEADS).
+		if (step.teacherTechnique == Technique.B1.ordinal()) {
+			step.teacherHeads &= dev.swordai.core.school.SchoolStages.B1_TAUGHT_HEADS;
+		}
 		// A technique's swing a rule kept the network from: the sword not back enough for the gate, or the whiff guard.
 		int ao = ActionSpace.OFFSETS[ActionSpace.ATTACK];
 		if (mode == Mode.TRAIN && step.teacherTechnique >= 0 && (step.teacherHeads & (1 << ActionSpace.ATTACK)) != 0
@@ -2221,7 +2230,7 @@ public final class SchoolSession implements AgentSession {
 		boolean critFall = step.teacherTechnique == Technique.T1.ordinal() || step.teacherTechnique == Technique.T1A.ordinal()
 				|| step.teacherTechnique == Technique.T1B.ordinal() || step.teacherTechnique == Technique.T1C.ordinal()
 				|| step.teacherTechnique == Technique.T2.ordinal() || step.teacherTechnique == Technique.C6.ordinal();
-		if (mode == Mode.TRAIN && OVERLAY && (liftedFor >= 0 || critFall) && facts.falling && !me.onGround() && facts.reachDist <= 3.5f
+		if (LIFT_AIM && mode == Mode.TRAIN && OVERLAY && (liftedFor >= 0 || critFall) && facts.falling && !me.onGround() && facts.reachDist <= 3.5f
 				&& pulled(pulls, step.teacherTechnique >= 0 && step.teacherTechnique != base ? step.teacherTechnique : Technique.B1.ordinal())
 				&& charge > 0.5f && step.teacherTechnique != Technique.K2.ordinal()) {
 			double dx = bot.getX() - me.getX();
