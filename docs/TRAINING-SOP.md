@@ -47,6 +47,15 @@ Every training run keeps all of these going at the same time:
 - Back up the profile first (`install-school.sh` does this).
 - Record it in `run/best-*/BEST.txt` and in `EXPERIMENTS.md`.
 - Keep every trained network and its scenes. Never throw learned data away.
+- **Always know the best so far** (the user, 28 Oct, so nothing is lost to a lost memory):
+  - `run/best-candidates/CANDIDATES.txt` names the installed model and the best candidate, with their check scores.
+  - Every candidate that beats the installed model on a check is copied into `run/best-candidates/` the same hour.
+  - Update the file after every check, screen and install.
+
+## 5b. Lessons that cost hours (28 Oct)
+- **Before working on a technique, check that its teacher pull is above 0** (`SchoolStages.techPulls()`). With `PULL_CAP`/`JUMP_IN_PULL_CAP` at 0, only `RUN_TAUGHT` techniques are taught at all. The punish drill of 27-28 Oct taught nothing for that reason.
+- **Teach a technique's deciding key, not its whole body.** The punish crit's W and sprint lesson spread into the whole fight within 15 minutes: no sprint at T4/T5/T7, damage down. Its swing alone did not spread.
+- **Every review starts by checking training is alive.** The client log's last line must be under 5 minutes old. A Claude app update killed training for 12 hours on 28 Oct.
 
 ## 6. Every ten minutes (the standing review)
 Report:
