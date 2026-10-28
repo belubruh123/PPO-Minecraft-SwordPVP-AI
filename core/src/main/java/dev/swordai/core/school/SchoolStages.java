@@ -243,7 +243,9 @@ public final class SchoolStages {
 		// win at the edge of reach, hitting first as it walks into a ready sword (the investigation of 21:30). From 28 Oct 06:40
 		// the punish crit alone again (RUN_PULL_CAP); 29 Oct 03:27-03:50 with the jump reset's jump too (T9_TAUGHT_HEADS): within 20 minutes
 		// the network jumped at every technique's moments (jump off 0-17% -> 30-54%), swings 160 -> 80, damage dealt 340 -> 195 a minute.
-		for (Technique t : new Technique[] {Technique.B1, Technique.T9}) {
+		// 06:27-06:50 with the jump at every moment (JUMP_EVERYWHERE): the jump reset learned (jump off 100 -> 28%), combos got out of
+		// 50 -> 59%, but damage a minute ~347/334 -> 279/400 and turns to find them 0 -> 19: off again.
+		for (Technique t : new Technique[] {Technique.B1}) {
 			RUN_TAUGHT[t.ordinal()] = true;
 		}
 	}
