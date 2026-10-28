@@ -558,8 +558,9 @@ public final class ArenaServer {
 		}
 		if (plan.scene != null) {
 			// A scene: both fighters exactly where, how fast and how ready they were at that moment of an earlier fight.
-			SceneRecorder.apply(s.arena.level, agent, plan.scene, 0);
-			SceneRecorder.apply(s.arena.level, s.bot, plan.scene, SceneRecorder.BODY);
+			double[] scene = placed(plan.scene, s.arena);
+			SceneRecorder.apply(s.arena.level, agent, scene, 0);
+			SceneRecorder.apply(s.arena.level, s.bot, scene, SceneRecorder.BODY);
 			s.botLastPos = null;
 			s.agentLastPos = null;
 		}
@@ -1039,7 +1040,37 @@ public final class ArenaServer {
 	/** Both fighters on server tick {@code tick} (Truth#tick), or null: see SceneRecorder. */
 	public static double[] sceneAt(long tick) {
 		ArenaServer s = active;
-		return s == null ? null : s.scenes.at(tick);
+		double[] scene = s == null ? null : s.scenes.at(tick);
+		if (scene != null) {
+			// Kept from the arena's middle and floor, not the world's: the next arena may stand somewhere else.
+			for (int o = 0; o <= SceneRecorder.BODY; o += SceneRecorder.BODY) {
+				scene[o] -= s.arena.centerX;
+				scene[o + 1] -= s.arena.floorY;
+				scene[o + 2] -= s.arena.centerZ;
+			}
+		}
+		return scene;
+	}
+
+	/**
+	 * A scene's fighters put in this arena. Scenes are kept from the arena's middle (sceneAt); those kept before 28 Oct are
+	 * in the world's coordinates of whichever arena they were fought in (their height is the floor's, about 200, not a few
+	 * blocks), and an arena put up again after the game was killed stands somewhere else: on 28 Oct the user saw the fighters
+	 * sent into the gap between this arena's wall and an old one's. Those are moved so that the two fighters' middle is this
+	 * arena's; every fighter is kept inside the walls.
+	 */
+	static double[] placed(double[] scene, Arena arena) {
+		double[] s = scene.clone();
+		int b = SceneRecorder.BODY;
+		boolean world = Math.abs(s[1]) > 50 || Math.abs(s[b + 1]) > 50;
+		double shiftX = world ? arena.centerX - (s[0] + s[b]) / 2 : arena.centerX;
+		double shiftZ = world ? arena.centerZ - (s[2] + s[b + 2]) / 2 : arena.centerZ;
+		for (int o = 0; o <= b; o += b) {
+			s[o] = arena.clampX(s[o] + shiftX);
+			s[o + 1] = world ? s[o + 1] : s[o + 1] + arena.floorY;
+			s[o + 2] = arena.clampZ(s[o + 2] + shiftZ);
+		}
+		return s;
 	}
 
 	/** Called at the start of every server-side player attack. */
