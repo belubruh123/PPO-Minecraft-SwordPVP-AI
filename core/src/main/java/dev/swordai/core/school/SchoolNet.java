@@ -90,6 +90,12 @@ public final class SchoolNet {
 	private final Dense arAttack;
 	private final Dense intentIn;
 	private final Dense intentHeads;
+	/**
+	 * The option layers (SchoolStages#GATED): for each technique, a linear map from the top to the logits of its gated keys,
+	 * added only while the network is told that technique. Its lesson's pull goes into them alone (Workspace#dOption).
+	 */
+	private final Param optionW;
+	private final Param optionB;
 
 	public SchoolNet(long seed) {
 		Random rng = new Random(seed);
@@ -120,6 +126,8 @@ public final class SchoolNet {
 		// Last, so a network saved before them loads with them new (and at zero: it plays as it did).
 		intentIn = new Dense(params, "new.intent", INTENT, NEW, rng, 0f);
 		intentHeads = new Dense(params, "intent.heads", INTENT, ActionSpace.TOTAL_LOGITS, rng, 0f);
+		optionW = params.add("option.w", Technique.COUNT * TOP * ActionSpace.TOTAL_LOGITS);
+		optionB = params.add("option.b", Technique.COUNT * ActionSpace.TOTAL_LOGITS);
 		// Rows of the old tower's trunk from the memory, and rows of the heads from the new tower: zero.
 		zeroRows(oldTrunk, 3 * BRANCH, CAT);
 		zeroRows(heads, OLD, TOP);
@@ -203,6 +211,10 @@ public final class SchoolNet {
 		final float[] dF2 = new float[f2.length];
 		final float[] dMem = new float[MEM_UNITS];
 		public final float[] dLogits = new float[ActionSpace.TOTAL_LOGITS];
+		/** A gated lesson's pull on the logits: into the told technique's option layer alone, cleared by {@link #backward}. */
+		public final float[] dOption = new float[ActionSpace.TOTAL_LOGITS];
+		/** The technique whose option layer the last forward added (-1: none). */
+		int option = -1;
 		public final float[][] grads = params.newGrads();
 		final float[] probs = new float[ActionSpace.TOTAL_LOGITS];
 		final int[] act = new int[ActionSpace.HEADS];
@@ -273,7 +285,39 @@ public final class SchoolNet {
 		for (int i = 0; i < ActionSpace.TOTAL_LOGITS; i++) {
 			ws.base[i] += ws.intentLogits[i];
 		}
+		ws.option = optionOf(ws.pred);
+		if (ws.option >= 0) {
+			int gated = SchoolStages.gatedHeads(ws.option);
+			float[] w = optionW.w;
+			int wt = ws.option * TOP * ActionSpace.TOTAL_LOGITS;
+			int bt = ws.option * ActionSpace.TOTAL_LOGITS;
+			for (int h = 0; h < ActionSpace.HEADS; h++) {
+				if ((gated & (1 << h)) == 0) {
+					continue;
+				}
+				for (int o = ActionSpace.OFFSETS[h]; o < ActionSpace.OFFSETS[h] + ActionSpace.SIZES[h]; o++) {
+					float y = optionB.w[bt + o];
+					for (int i = 0; i < TOP; i++) {
+						y += ws.top[i] * w[wt + i * ActionSpace.TOTAL_LOGITS + o];
+					}
+					ws.base[o] += y;
+				}
+			}
+		}
 		System.arraycopy(ws.base, 0, ws.logits, 0, ActionSpace.TOTAL_LOGITS);
+	}
+
+	/** The technique the side input tells (its one-hot), if it has gated keys; else -1. */
+	static int optionOf(float[] side) {
+		int best = -1;
+		float most = 0.5f;
+		for (int t = 0; t < Technique.COUNT; t++) {
+			if (side[Predictor.OUT + t] >= most) {
+				most = side[Predictor.OUT + t];
+				best = t;
+			}
+		}
+		return best >= 0 && SchoolStages.gatedHeads(best) != 0 ? best : -1;
 	}
 
 	/**
@@ -401,6 +445,31 @@ public final class SchoolNet {
 		arAttack.backward(ws.arAttackIn, 0, ws.dLogits, ATTACK_AT, null, 0, ws.grads);
 		heads.backward(ws.top, 0, ws.dLogits, 0, ws.dTop, 0, ws.grads);
 		intentHeads.backward(ws.pred, Predictor.OUT, ws.dLogits, 0, null, 0, ws.grads);
+		if (ws.option >= 0) {
+			// Its weights learn from the policy's gradient and the gated lesson's; the layers under it from the policy's alone.
+			int gated = SchoolStages.gatedHeads(ws.option);
+			float[] w = optionW.w;
+			float[] gw = ws.grads[optionW.id];
+			float[] gb = ws.grads[optionB.id];
+			int wt = ws.option * TOP * ActionSpace.TOTAL_LOGITS;
+			int bt = ws.option * ActionSpace.TOTAL_LOGITS;
+			for (int h = 0; h < ActionSpace.HEADS; h++) {
+				if ((gated & (1 << h)) == 0) {
+					continue;
+				}
+				for (int o = ActionSpace.OFFSETS[h]; o < ActionSpace.OFFSETS[h] + ActionSpace.SIZES[h]; o++) {
+					float d = ws.dLogits[o] + ws.dOption[o];
+					float policy = ws.dLogits[o];
+					gb[bt + o] += d;
+					for (int i = 0; i < TOP; i++) {
+						int k = wt + i * ActionSpace.TOTAL_LOGITS + o;
+						gw[k] += ws.top[i] * d;
+						ws.dTop[i] += w[k] * policy;
+					}
+				}
+			}
+		}
+		Arrays.fill(ws.dOption, 0f);
 		for (int b = newBlocks.length - 1; b >= 0; b--) {
 			newBlocks[b].backward(ws.dTop, OLD, ws.newCaches[b], ws.grads);
 		}
