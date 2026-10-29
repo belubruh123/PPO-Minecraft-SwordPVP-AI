@@ -272,13 +272,6 @@ public final class SchoolPpo implements AutoCloseable {
 				}
 				int off = ActionSpace.OFFSETS[h];
 				int size = ActionSpace.SIZES[h];
-				// A key gated under the told technique is taught into its option layer alone; a gated key of another technique
-				// than the told one, not at all (SchoolStages#GATED).
-				boolean gatedHere = aw.option >= 0 && (SchoolStages.gatedHeads(aw.option) & (1 << h)) != 0;
-				if (!gatedHere && byTech && which >= 0 && (SchoolStages.gatedHeads(which) & (1 << h)) != 0) {
-					continue;
-				}
-				float[] into = gatedHere ? aw.dOption : aw.dLogits;
 				if (shadowed) {
 					// Policy#evaluate left a locked head out.
 					Policy.softmax(aw.logits, off, size, probs);
@@ -296,7 +289,7 @@ public final class SchoolPpo implements AutoCloseable {
 						best = k;
 					}
 					if (pull > 0f) {
-						into[off + k] += (byTech ? pull * Teacher.pressWeight(stored, h, r.vec[i], which) : pull) * (p - t);
+						aw.dLogits[off + k] += (byTech ? pull * Teacher.pressWeight(stored, h, r.vec[i], which) : pull) * (p - t);
 					}
 				}
 				if (shadowed) {
