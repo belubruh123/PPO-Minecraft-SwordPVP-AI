@@ -204,10 +204,18 @@ public final class SchoolStages {
 	public static final boolean JUMP_EVERYWHERE = true;
 	public static final float JUMP_PULL = 1f;
 
-	/** The keys a technique's teacher teaches: B1 its swing, T9 its jump, the rest all theirs. */
+	/**
+	 * The combo escape's lesson is its S alone (29 Oct 21:10): in their combo (their second hit in a row) the file holds S (C3,
+	 * "jump + hold S vs stun"); at its moments the network held no S 95-100% of the time, and their third hit came after 37-48%
+	 * of their combos in the hourly checks to the rules fighter's 32-42%, 53-57% in the mirror screens. The jump (T9 and C3's
+	 * own) spread into the fight twice on 29 Oct and is not taught.
+	 */
+	public static final int C3_TAUGHT_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.FORWARD);
+
+	/** The keys a technique's teacher teaches: B1 its swing, T9 its jump, C3 its S, the rest all theirs. */
 	public static int taughtHeads(int technique) {
 		return technique == Technique.B1.ordinal() ? B1_TAUGHT_HEADS : technique == Technique.T9.ordinal() ? T9_TAUGHT_HEADS
-				: dev.swordai.core.rl.ActionSpace.ALL_HEADS;
+				: technique == Technique.C3.ordinal() ? C3_TAUGHT_HEADS : dev.swordai.core.rl.ActionSpace.ALL_HEADS;
 	}
 	public static final int PUNISH_SHADOW_KEYS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.ATTACK);
 
@@ -245,7 +253,8 @@ public final class SchoolStages {
 		// the network jumped at every technique's moments (jump off 0-17% -> 30-54%), swings 160 -> 80, damage dealt 340 -> 195 a minute.
 		// 06:27-06:50 with the jump at every moment (JUMP_EVERYWHERE): the jump reset learned (jump off 100 -> 28%), combos got out of
 		// 50 -> 59%, but damage a minute ~347/334 -> 279/400 and turns to find them 0 -> 19: off again.
-		for (Technique t : new Technique[] {Technique.B1}) {
+		// From 29 Oct 21:10 with the combo escape's S (C3, C3_TAUGHT_HEADS): their combos' third hit is its largest gap left.
+		for (Technique t : new Technique[] {Technique.B1, Technique.C3}) {
 			RUN_TAUGHT[t.ordinal()] = true;
 		}
 	}
