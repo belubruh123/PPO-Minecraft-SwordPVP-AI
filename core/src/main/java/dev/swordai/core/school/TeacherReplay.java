@@ -251,6 +251,13 @@ public final class TeacherReplay {
 					if ((heads[i] & (1 << h)) == 0) {
 						continue;
 					}
+					// A key gated under the told technique is learned into its option layer alone; a gated key of another
+					// technique than the told one, not at all (SchoolStages#GATED).
+					boolean gatedHere = ws.option >= 0 && (SchoolStages.gatedHeads(ws.option) & (1 << h)) != 0;
+					if (!gatedHere && t >= 0 && (SchoolStages.gatedHeads(t) & (1 << h)) != 0) {
+						continue;
+					}
+					float[] into = gatedHere ? ws.dOption : ws.dLogits;
 					int off = ActionSpace.OFFSETS[h];
 					int size = ActionSpace.SIZES[h];
 					float wh = shadow ? w : w * Teacher.pressWeight(target[i], h, vec[i], t);
@@ -260,7 +267,7 @@ public final class TeacherReplay {
 					for (int k = 0; k < size; k++) {
 						float p = probs[off + k];
 						float q = aimed[off + k];
-						ws.dLogits[off + k] = wh * (p - q);
+						into[off + k] = wh * (p - q);
 						if (q > 0f) {
 							ce -= q * Math.log(Math.max(p, 1e-9f));
 						}

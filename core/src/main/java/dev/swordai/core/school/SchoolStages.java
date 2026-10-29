@@ -212,10 +212,36 @@ public final class SchoolStages {
 	 */
 	public static final int C3_TAUGHT_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.FORWARD);
 
-	/** The keys a technique's teacher teaches: B1 its swing, T9 its jump, C3 its S, the rest all theirs. */
+	/**
+	 * Gated lessons (30 Oct): a technique's movement keys taught into its own option layer ({@link SchoolNet}, "option"), which
+	 * adds to their logits only while the network is told that technique; nothing of the lesson reaches the shared layers, so
+	 * at every other moment the network plays exactly as before. Every movement-key lesson taught into the whole network
+	 * spread into the fight within 15-25 minutes: B1's W and sprint (28 Oct), T9's jump twice and C3's S (29 Oct). When the
+	 * technique is done is the decider's (the user's method, 27 Oct); how, its option layer's.
+	 */
+	public static final boolean GATED = true;
+	/**
+	 * The punish crit's W and sprint (in reach for the fall, the sprint let go for the crit). Run 25 (30 Oct 01:11-02:05) gated
+	 * the jump reset's jump and the combo escape's S too: both learned (T9 32 -> 99%, C3 23 -> 97%) and nothing spread, but the
+	 * hourly check fell to -10.2 (3.7), swings 273 vs 342, backing out with S 12% vs 3% without fewer third hits; the punish
+	 * crit was the part ahead of the rules fighter (24% vs 18%). Run 26: the punish crit alone.
+	 */
+	public static final int B1_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.FORWARD,
+			dev.swordai.core.rl.ActionSpace.SPRINT);
+
+	/** The keys of technique {@code technique} taught into its option layer alone (0: none, or GATED off). */
+	public static int gatedHeads(int technique) {
+		if (!GATED) {
+			return 0;
+		}
+		return technique == Technique.B1.ordinal() ? B1_GATED_HEADS : 0;
+	}
+
+	/** The keys a technique's teacher teaches: B1 its swing, T9 its jump, C3 its S, the rest all theirs; and the gated ones. */
 	public static int taughtHeads(int technique) {
-		return technique == Technique.B1.ordinal() ? B1_TAUGHT_HEADS : technique == Technique.T9.ordinal() ? T9_TAUGHT_HEADS
+		int whole = technique == Technique.B1.ordinal() ? B1_TAUGHT_HEADS : technique == Technique.T9.ordinal() ? T9_TAUGHT_HEADS
 				: technique == Technique.C3.ordinal() ? C3_TAUGHT_HEADS : dev.swordai.core.rl.ActionSpace.ALL_HEADS;
+		return whole | gatedHeads(technique);
 	}
 	public static final int PUNISH_SHADOW_KEYS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.ATTACK);
 
@@ -255,6 +281,8 @@ public final class SchoolStages {
 		// 50 -> 59%, but damage a minute ~347/334 -> 279/400 and turns to find them 0 -> 19: off again.
 		// 29 Oct 20:53-21:20 with the combo escape's S too (C3, C3_TAUGHT_HEADS): the S spread into every technique within 25
 		// minutes (W/S off at T4 36 -> 75%, T7 8 -> 59%), swings ~140 -> 44-96 an update, damage dealt ~340 -> 155 a minute: off.
+		// 30 Oct 01:11-02:05 (run 25) the three again, their movement keys gated: -10.2 in the hourly check. From 03:30 (run 26)
+		// the punish crit alone, its W and sprint gated (B1_GATED_HEADS).
 		for (Technique t : new Technique[] {Technique.B1}) {
 			RUN_TAUGHT[t.ordinal()] = true;
 		}
