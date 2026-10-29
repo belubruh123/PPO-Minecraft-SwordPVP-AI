@@ -593,7 +593,8 @@ public final class Fighter {
 			action[ActionSpace.ATTACK] = 0;
 			ruled |= ActionSpace.mask(ActionSpace.ATTACK);
 		} else if (punish != CritTrade.NONE) {
-			action[ActionSpace.FORWARD] = punish == CritTrade.LET_GO ? 0 : 1;
+			// The sprint ended with S, not by letting go of W: W pressed again within the double-tap time restarts it (CritTrade#LET_GO).
+			action[ActionSpace.FORWARD] = punish == CritTrade.LET_GO ? 2 : 1;
 			action[ActionSpace.SPRINT] = 0;
 			action[ActionSpace.ATTACK] = answer ? 1 : 0;
 			ruled |= move | ActionSpace.mask(ActionSpace.ATTACK);

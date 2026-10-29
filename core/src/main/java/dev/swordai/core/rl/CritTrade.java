@@ -58,7 +58,11 @@ public final class CritTrade {
 
 	/** What {@link #punish} has the keys do. */
 	public static final int NONE = 0;
-	/** No swing; W and the sprint key let go of, which ends the sprint (in the air it cannot start again without the sprint key). */
+	/**
+	 * No swing; S held and the sprint key up, which ends the sprint (an S-tap). Not W let go of: W pressed again within the
+	 * double-tap time starts the sprint again, in the air too (30 Oct: of 829 lifts with W let go and pressed again 149 were
+	 * still sprinting, of 981 with W held none); S clears the double tap.
+	 */
 	public static final int LET_GO = 1;
 	/** No swing; W held with the sprint key up: drifting back in on the opponent against the knockback. */
 	public static final int WALK = 2;

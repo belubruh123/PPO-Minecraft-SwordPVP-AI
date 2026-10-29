@@ -2210,9 +2210,10 @@ public final class SchoolSession implements AgentSession {
 			int f = ActionSpace.OFFSETS[ActionSpace.FORWARD];
 			boolean back = (step.teacherHeads & (1 << ActionSpace.FORWARD)) != 0 && step.teacher[f + 2] > Math.max(step.teacher[f], step.teacher[f + 1]);
 			if (!back) {
-				step.teacher[f] = 1f;
+				// S, not W let go of: W pressed again within the double-tap time starts the sprint again (CritTrade#LET_GO).
+				step.teacher[f] = 0f;
 				step.teacher[f + 1] = 0f;
-				step.teacher[f + 2] = 0f;
+				step.teacher[f + 2] = 1f;
 			}
 			int sp = ActionSpace.OFFSETS[ActionSpace.SPRINT];
 			step.teacher[sp] = 1f;

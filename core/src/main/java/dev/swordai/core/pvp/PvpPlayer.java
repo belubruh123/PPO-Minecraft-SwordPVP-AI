@@ -777,10 +777,12 @@ public final class PvpPlayer {
 				return planT < PUNISH_HOLD_TICKS ? RUN : ABORT;
 			}
 			case B1 -> {
-				// Hit standing, thrown up: no swing back now, the sprint let go, the swing kept for the way down. A crit needs
-				// not sprinting, and letting go of W is what ends a sprint (part 8): no W while it still sprints.
+				// Hit standing, thrown up: no swing back now, the sprint ended, the swing kept for the way down. A crit needs
+				// not sprinting. Letting go of W ends a sprint (part 8), but W pressed again within the double-tap time (7 ticks,
+				// in the air too) starts it again: 30 Oct, of 829 lifts with W let go and pressed again 149 were still sprinting,
+				// of 981 with W held none. So S while it sprints (an S-tap: S clears the double tap), then W held to the swing.
 				k.taught = Keys.KEY_SPRINT | Keys.KEY_ATTACK | Keys.KEY_MOVE;
-				k.forward = d.reach > 1.8 && !me.sprinting ? 1 : 0;
+				k.forward = me.sprinting ? -1 : 1;
 				if (me.falling() && canSwing(d) && !me.sprinting) {
 					k.attack = true;
 					return RUN;
