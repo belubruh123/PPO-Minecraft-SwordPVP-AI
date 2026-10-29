@@ -253,8 +253,9 @@ public final class SchoolStages {
 		// the network jumped at every technique's moments (jump off 0-17% -> 30-54%), swings 160 -> 80, damage dealt 340 -> 195 a minute.
 		// 06:27-06:50 with the jump at every moment (JUMP_EVERYWHERE): the jump reset learned (jump off 100 -> 28%), combos got out of
 		// 50 -> 59%, but damage a minute ~347/334 -> 279/400 and turns to find them 0 -> 19: off again.
-		// From 29 Oct 21:10 with the combo escape's S (C3, C3_TAUGHT_HEADS): their combos' third hit is its largest gap left.
-		for (Technique t : new Technique[] {Technique.B1, Technique.C3}) {
+		// 29 Oct 20:53-21:20 with the combo escape's S too (C3, C3_TAUGHT_HEADS): the S spread into every technique within 25
+		// minutes (W/S off at T4 36 -> 75%, T7 8 -> 59%), swings ~140 -> 44-96 an update, damage dealt ~340 -> 155 a minute: off.
+		for (Technique t : new Technique[] {Technique.B1}) {
 			RUN_TAUGHT[t.ordinal()] = true;
 		}
 	}
