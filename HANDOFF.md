@@ -149,6 +149,12 @@ cd /d/swordai && bash tools/school-redeploy.sh > /d/swordai/run/redeploy.log 2>&
 START_NET=/d/swordai/run/swordai/school/run28-revert-start.bin bash tools/school-redeploy.sh > /d/swordai/run/redeploy.log 2>&1
 ```
 - Afterwards, check that the log says `cycle restarted HH:MM` and that `run/school-client.log` is moving again.
+- **The game and the loop must outlive your shell.** On 30 Oct 22:34 a redeploy started from an assistant's shell restarted training, and everything died 9 seconds later when that shell's command ended (its child processes were killed). Training was down for 20 minutes.
+  - Start it detached, for example:
+    `powershell -Command "Start-Process -WindowStyle Minimized -FilePath 'C:\Program Files\Git\bin\bash.exe' -ArgumentList '-lc','cd /d/swordai && bash tools/school-redeploy.sh > run/redeploy.log 2>&1'"`
+  - **Three minutes later, check that `run/school-client.log` is still being written.**
+  - If it died again, do not keep retrying. Tell the user to run `bash tools/school-redeploy.sh` themselves in their own Git Bash window and leave that window open.
+- **Only one assistant may operate this at a time.** Two running reviews and redeploys at once will fight.
 - **Before every redeploy that changes behaviour, save a revert point:**
   `cp -p run/swordai/school/checkpoint.bin run/swordai/school/runNN-revert-start.bin`
 
