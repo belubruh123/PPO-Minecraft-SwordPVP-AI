@@ -205,7 +205,7 @@ public final class PvpPlayer {
 	 * no punish crit taught there; after their plain hits, where it was taught, one in ten came down in reach.
 	 */
 	private boolean punishable(Duel d, Events e) {
-		return !style.onlyWhenItWorks || d.me.charge >= PUNISH_CHARGE && landingReach(d, e) <= Duel.REACH + 0.3;
+		return !style.onlyWhenItWorks || d.me.charge >= PUNISH_CHARGE && d.reach <= 2.6 && landingReach(d, e) <= Duel.REACH + 0.3;
 	}
 
 	/**
@@ -214,7 +214,9 @@ public final class PvpPlayer {
 	 * hits 33-47% came down in reach (30 Oct, every hour), the knockback carrying it out while the punish crit was told.
 	 * The fall: its rise (the knockback's, 0.4, if not read yet) under gravity and drag. It: carried by its speed (the
 	 * knockback's away from them, 0.4 or 0.9 for a sprint hit, if not read yet), the air's drag 0.91 a tick. They: on at their
-	 * own speed.
+	 * own speed. Alone (21:20-21:50) it chose B1 on 42% of the lifts after their hits (29% before) and B1 critted when told on
+	 * 5 of 238 (22 of 221 before): them going on at their speed is too kind, after a hit they slow or back off. So it only
+	 * takes lifts away from the reach at their hit (2.6).
 	 */
 	static double landingReach(Duel d, Events e) {
 		Body me = d.me;
