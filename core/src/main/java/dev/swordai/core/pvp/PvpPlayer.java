@@ -205,53 +205,8 @@ public final class PvpPlayer {
 	 * no punish crit taught there; after their plain hits, where it was taught, one in ten came down in reach.
 	 */
 	private boolean punishable(Duel d, Events e) {
-		return !style.onlyWhenItWorks || d.me.charge >= PUNISH_CHARGE && d.reach <= 2.6 && landingReach(d, e) <= Duel.REACH + 0.3;
+		return !style.onlyWhenItWorks || d.me.charge >= PUNISH_CHARGE && d.reach <= 2.6;
 	}
-
-	/**
-	 * Where the lift of their hit comes down, as reach to them (the user, 30 Oct: the punish crit chosen only when the sword
-	 * is charged and the landing will be in reach). Until then it was the reach at their hit (2.6): of the lifts after their
-	 * hits 33-47% came down in reach (30 Oct, every hour), the knockback carrying it out while the punish crit was told.
-	 * The fall: its rise (the knockback's, 0.4, if not read yet) under gravity and drag. It: carried by its speed (the
-	 * knockback's away from them, 0.4 or 0.9 for a sprint hit, if not read yet), the air's drag 0.91 a tick. They: on at their
-	 * own speed. Alone (21:20-21:50) it chose B1 on 42% of the lifts after their hits (29% before) and B1 critted when told on
-	 * 5 of 238 (22 of 221 before): them going on at their speed is too kind, after a hit they slow or back off. So it only
-	 * takes lifts away from the reach at their hit (2.6).
-	 */
-	static double landingReach(Duel d, Events e) {
-		Body me = d.me;
-		Body them = d.them;
-		double vy = me.vy > 0.05 ? me.vy : KNOCK_UP;
-		int t = 0;
-		double h = 0;
-		do {
-			h += vy;
-			vy = (vy - 0.08) * 0.98;
-			t++;
-		} while (h > 0 && t < 30);
-		double vx = me.vx;
-		double vz = me.vz;
-		if (Math.hypot(vx, vz) < 0.15) {
-			double ax = me.x - them.x;
-			double az = me.z - them.z;
-			double len = Math.max(1e-6, Math.hypot(ax, az));
-			double kb = e.theyHit == Events.SPRINT ? KNOCK_SPRINT : KNOCK;
-			vx = ax / len * kb;
-			vz = az / len * kb;
-		}
-		double carried = (1 - Math.pow(AIR_DRAG, t)) / (1 - AIR_DRAG);
-		double mx = me.x + vx * carried;
-		double mz = me.z + vz * carried;
-		double tx = them.x + them.vx * t;
-		double tz = them.z + them.vz * t;
-		return Math.hypot(tx - mx, tz - mz) - Body.HALF_WIDTH;
-	}
-
-	/** A hit's knockback: up, away, away for a sprint hit; and what the air leaves of a speed each tick. */
-	static final double KNOCK_UP = 0.4;
-	static final double KNOCK = 0.4;
-	static final double KNOCK_SPRINT = 0.9;
-	static final double AIR_DRAG = 0.91;
 
 	/**
 	 * A jump for a crit waits until the sword is a third back, for one that goes by the file: the sword takes about as long to
