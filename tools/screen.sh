@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # screen.sh PAIRS NET:TEMP ... (env FROM=first pair, MIRROR=1 for the mirror check): pause the loop; check each NET (TEMP = a file in temps/ for the school side's play-temperature,
 # or "1" for none) on scripted bots from pair 0; resume the loop. Results in run/school-checks.log, parts in screen-<n>-part.log.
-S=/c/Users/jerem/AppData/Local/Temp/claude/D--swordai/a22e256c-5a71-40c7-b784-e1011c2e02b3/scratchpad
+S="${SWORDAI_TOOLS:-/d/swordai/tools}"
 C=school; C="${C}cycle"
 SCH=/d/swordai/run/swordai/school
 P="$1"; shift

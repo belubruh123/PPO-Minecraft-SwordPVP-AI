@@ -3,7 +3,7 @@
 # 06:41: an update killed training for 12 hours) cannot kill what it starts. Training is meant to run unless
 # school-cycle.stop exists (a redeploy in progress, or stopped on purpose). If the client log has not been written for
 # 10 minutes it restarts the client in school mode; if the hourly check loop is gone it starts that again.
-S="/c/Users/jerem/AppData/Local/Temp/claude/D--swordai/a22e256c-5a71-40c7-b784-e1011c2e02b3/scratchpad"
+S="${SWORDAI_TOOLS:-/d/swordai/tools}"
 L=/d/swordai/run/school-client.log
 LOG=/d/swordai/run/watchdog.log
 LOCK=/d/swordai/run/watchdog.lock

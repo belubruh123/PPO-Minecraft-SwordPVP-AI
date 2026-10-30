@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # net-check.sh NET LABEL: one paired check with the school side = NET (a kept network), no training, against the installed model;
 # against the installed model; then training resumes on the network it had.
-S="/c/Users/jerem/AppData/Local/Temp/claude/D--swordai/a22e256c-5a71-40c7-b784-e1011c2e02b3/scratchpad"
+S="${SWORDAI_TOOLS:-/d/swordai/tools}"
 NET="$1"; LABEL="$2"; [ -f "$NET" ] || { echo "no network $NET"; exit 1; }
 L=/d/swordai/run/school-client.log
 OUT=/d/swordai/run/school-checks.log

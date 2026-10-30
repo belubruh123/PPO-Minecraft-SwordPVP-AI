@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # school-redeploy.sh: stop the hourly loop and the client, run the school's core tests, rebuild, restart training and the loop.
-S="/c/Users/jerem/AppData/Local/Temp/claude/D--swordai/a22e256c-5a71-40c7-b784-e1011c2e02b3/scratchpad"
+S="${SWORDAI_TOOLS:-/d/swordai/tools}"
 touch /d/swordai/run/school-cycle.stop
 printf 'swordai stop\r\n' > /d/swordai/run/swordai/inbox.txt
 sleep 8
