@@ -170,7 +170,7 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 | Training | **Run 29** since 04:25 (`f446ae8`), live, loops 1, java 1 |
 | Revert point | `run/swordai/school/run29-revert-start.bin` |
 | Installed | `run23-1418`, unchanged |
-| Git | `main`, about 11 commits ahead of origin, not pushed (the user has not asked) |
+| Git | `main`, a dozen commits ahead of origin, not pushed (the user has not asked) |
 
 **Runs so far:**
 
@@ -203,7 +203,7 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 4. **Next run, one change only.** My order:
    - **Why A swings less into the timer.** Compare A and B fight by fight from the `school pair N A/B fight-timer` lines before changing anything else. If rhythm is the cause, a fixed swing rhythm the timer can read is the thing to fix.
    - **The sword-charge loss in the punish funnel.** 632 in reach to 154 charged. Work out from logged lifts when it swung before the lift. Anything that predicts a behaviour must be calibrated from logged data first (run 28).
-   - **`attack-then-s` and `stun-escaper`:** about 19 of A's weakest pairs. A deals half its normal damage, so look at reach and chasing with `hits-report.py`.
+   - **`attack-then-s` and `stun-escaper`:** A deals half its normal damage there, so look at reach and chasing with `tools/hits-report.py`.
 5. **Do not re-try:** the sprint let-go for punish crits, copying the teacher's C3/T9, whole-network movement lessons, or "let the decider learn from outcomes". That last one is already on (`Chooser.OUTCOME`), and its own picks do worse than the teacher's (−0.07 vs +0.08). The 1.00 in that log line only means `AWR` is off.
 
 ---
