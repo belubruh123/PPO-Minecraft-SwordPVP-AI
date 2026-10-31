@@ -58,8 +58,11 @@
 
 - **Do NOT launch redeploy or start scripts from transient shells without holding the Job Object.**
   On Windows, when an assistant shell command terminates, Windows terminates child processes in that job.
-- When starting or restarting training, use `keep-school-alive.sh` or run the process detached / persistent.
-- Training is currently running in a background daemon with `java.exe` PID active and `schoolcycle.sh` looping.
+- When starting or restarting training, use `run/keep-school-alive.sh` or run the process detached / persistent.
+- `run/keep-school-alive.sh` is **not a watchdog**: it starts training once and restarts nothing after a crash or a reboot. Nothing restarts training on its own until the user installs `tools/install-watchdog.ps1`, so the liveness check in every review still matters. On 31 Oct the bluescreen cost 2.5 hours.
+- `start-school.cmd` (the game's launch file) is only in Claude's scratchpad, and `tools/school-restart.sh`, `run/keep-school-alive.sh` and the watchdog all depend on it there. Do not copy it into `tools/` or anywhere else in the repo: the repo is public, and the launch line has not been reviewed for what it carries.
+- Training is currently running: `java.exe` is active and `tools/schoolcycle.sh` is looping, detached from any assistant's shell.
+- The full procedures (the review steps, tests, install, revert) are in the 30 Oct handoff: `git show claude-handoff-2026-10-30:HANDOFF.md`.
 - To check if training is running:
   ```bash
   tail -20 /d/swordai/run/school-client.log
