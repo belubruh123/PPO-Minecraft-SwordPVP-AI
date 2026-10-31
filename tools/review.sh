@@ -1,11 +1,22 @@
 #!/usr/bin/env bash
-# review.sh [SINCE HH:MM]: the ten-minute review in a few lines.
-cd /d/swordai
-L=run/school-client.log
-echo "$(date +%H:%M:%S) check running: $(tail -40 $L | grep -ac 'school pair')"
-grep -a "school update" $L | tail -6 | tr '|' '\n' | grep -oE "school update [0-9]+|\(body [0-9.]+\)|with the crosshair on them \([0-9]+%\)|a third after [0-9]+ \([0-9]+%\)|turned to find them on [0-9]+|K2 broken [0-9]+ |sparring the installed model: [0-9]+ fights, knockouts [0-9]+-[0-9]+|net [-0-9.]+ a fight$" | paste -sd' ' | sed 's/school update/\nupd/g; s/with the crosshair on them/aim/g; s/turned to find them on/lost view/g; s/sparring the installed model:/spar/g' | cut -c1-200
-SINCE=${1:-$(date -d '-10 min' +%H:%M)}
-grep -a "school fight " $L | awk -F'[][]' -v s="$SINCE" '$2>=s' | grep -oE "dealt [0-9.]+, taken [0-9.]+, ticks [0-9]+" | awk -v s="$SINCE" '{d+=$2; t+=$4; k+=$6; n++} END {if (k) printf "since %s: %d fights, dealt %.0f taken %.0f a minute (net %+.0f)\n", s, n, d/(k/1200), t/(k/1200), (d-t)/(k/1200)}'
-timeout 60 C:/Python38/python.exe tools/tech-review.py 8 2>&1 | awk '{print $1, $2, $NF}' | paste -sd' ' | cut -c1-700
-C:/Python38/python.exe /c/Users/jerem/AppData/Local/Temp/claude/D--swordai/a22e256c-5a71-40c7-b784-e1011c2e02b3/scratchpad/scenesum.py
-grep -a "school fight " $L | awk -F'[][]' -v s="$SINCE" '$2>=s' | awk '{spar=($0 ~ /sparring/); bot=$0; sub(/.*school fight /,"",bot); sub(/[ :(].*/,"",bot); crit=(bot ~ /critter|crit-breaker/); if (match($0,/dealt [0-9.]+, taken [0-9.]+, ticks [0-9]+/)) { y=substr($0,RSTART,RLENGTH); gsub(/,/,"",y); split(y,b," "); kind = spar ? "installed" : crit ? "crit bots" : "other bots"; d[kind]+=b[2]; tk[kind]+=b[4]; k[kind]+=b[6]; n[kind]++ } } END { for (x in n) printf "  %-10s %3d fights net %+4.0f a minute (%.0f/%.0f)\n", x, n[x], (d[x]-tk[x])/(k[x]/1200), d[x]/(k[x]/1200), tk[x]/(k[x]/1200) }'
+# review.sh: everything the 30-minute review reads, in one short printout. Read only. Run with: bash tools/review.sh
+cd /d/swordai/run || exit 1
+date
+ls -la --time-style=+%H:%M:%S school-client.log | awk '{print "log last written",$6}'
+echo "loops $(ps -ef | grep -c '[s]choolcycle')  java $(tasklist 2>/dev/null | grep -c -i java.exe)  (want 1 and 1)"
+echo "pair lines $(tail -40 school-client.log | grep -c 'school pair')  (above 0: a paired check is playing, no redeploy)"
+U=$(grep -E "school update" school-client.log | tail -8)
+L=$(echo "$U" | tail -1)
+echo "$L" | cut -c1-90
+echo "$U" | grep -oE "swings: [0-9]+ swings, [0-9]+ with the crosshair on them \([0-9]+%\), [0-9]+ hits landed \([0-9]+%\)" | sed 's/ with the crosshair on them//' | tail -4
+echo "$L" | grep -oE "aim on [0-9]+, turned to find them on [0-9]+ \(off the screen [0-9]+\)"
+echo "$L" | grep -oE "K2 broken [0-9]+ \(" | head -1
+echo "$L" | grep -oE "a third after [0-9]+ \([0-9]+%\)" | head -1
+echo "$L" | grep -oE "punish crit chances critted[^,|]*, last [0-9]+% of [0-9]+|told the punish crit and landed it, last [0-9]+% of [0-9]+"
+grep -E "damage a minute" school-client.log | grep -v CHAT | tail -2 | grep -oE "damage a minute [0-9]+ dealt, [0-9]+ taken" | paste -sd' '
+echo "--- techniques"
+C:/Python38/python.exe D:/swordai/tools/tech-review.py 8 2>&1 | cut -c1-100 | grep -E "RULE|80%\+|^B1|^K2|^C4|^T4 "
+echo "--- last check or screen"
+grep -E "^=== " school-checks.log | tail -1 | cut -c1-110
+awk '/^=== 1[0-2]-[0-9]+ /{b=""} {b=b"\n"$0} END{print b}' school-checks.log | grep -E "^ALL|^fight-timer|A swings|B swings|A jumping|B jumping" | cut -c1-130
+ls -t swordai/school/checked-*.bin | head -1
