@@ -93,9 +93,11 @@
 | `run27-0744` | +2.3 | +7.2 | Not installed. |
 | `run27-2031` | +6.8 | +7.4 | Not installed (mirror below +9.9). |
 | `run27b-0923` (31 Oct) | **+4.3 (2.1)** | - | Fresh pairs 6100–6232. Not installed (scripted just below ~+4.7 bar, mirror skipped). |
+| `run27b-1824` (31 Oct) | +3.3 | - | Not installed (scripted below the bar, mirror skipped). |
+| `run27b-2045` (31 Oct) | +6.2 (2.4) | +0.1 (4.2) | Pairs 6500–6632, 6700–6831. Not installed (mirror far below +9.9). |
 
-**Pairs used so far:** `0–6232`.
-**Next fresh pairs start at:** **`6300`** (e.g. `FROM=6300` scripted 133 pairs, `FROM=6500 MIRROR=1` 132 pairs).
+**Pairs used so far:** `0–6831`.
+**Next fresh pairs start at:** **`6900`** (e.g. `FROM=6900` scripted 133 pairs, `FROM=7100 MIRROR=1` 132 pairs).
 
 ---
 
