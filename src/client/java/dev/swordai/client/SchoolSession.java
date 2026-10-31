@@ -313,7 +313,7 @@ public final class SchoolSession implements AgentSession {
 	 */
 	// 0 from 25 Oct 03:25 (control run; was 0.25); 0.2 from 09:00, the user: "Review every skill while learning that so it won't
 	// forgot stuff".
-	static final float REVIEW_SHARE = 0.15f; // 0.1 until 26 Oct 09:40 // run 7 (EXPERIMENTS.md): the first technique family, the crits, with the basics reviewed in between (the user, 13:25: "letting it review in between")
+	static final float REVIEW_SHARE = 0.19f; // 0.15 until 1 Nov (run 29: the timer three times as often, the other reviews as often as before), 0.1 until 26 Oct 09:40 // run 7 (EXPERIMENTS.md): the first technique family, the crits, with the basics reviewed in between (the user, 13:25: "letting it review in between")
 	/** The share of the specialists' training fights in which the specialist does other things too (Specialists.varied). */
 	static final float VARIED_SHARE = 0.5f;
 	/**
@@ -333,8 +333,11 @@ public final class SchoolSession implements AgentSession {
 	static final float MIN_SWINGS_ON = 0.8f;
 	/** The old stage each basic is: its number in the observation, as the installed model learned it. */
 	static final int[] BASIC_OLD = {0, 1, 2, 3, 4, 4, 5, 6, 2, 8, 8, 8};
-	/** After the basics, how often each is reviewed: tracking, vertical aim, the moving jumper and combo escape twice. */
-	static final float[] REVIEW_WEIGHT = {1f, 2f, 2f, 1f, 1f, 2f, 1f, 2f, 2f, 3f, 3f, 2f};
+	/**
+	 * After the basics, how often each is reviewed: tracking, vertical aim, the moving jumper and combo escape twice. The
+	 * timer nine times (run 29): the one bot the network has trailed the installed model on in every period since 27 Oct.
+	 */
+	static final float[] REVIEW_WEIGHT = {1f, 2f, 2f, 1f, 1f, 2f, 1f, 2f, 2f, 9f, 3f, 2f};
 	/** The fight basics (see fightBasic): the one that times its crit on its rhythm, the one that always jumps in, the spacer. */
 	static final int TIMER = 9;
 	static final int JUMP_IN = 10;

@@ -38,7 +38,7 @@
 - Restored line so far: 18 hourly checks, mean about +2.0, latest 22:34 +3.1 (5.1).
 - Nothing restarts training after a crash unless the user ran `tools/install-watchdog.ps1`. If `java.exe` or the loop is gone on return, start training with `tools/school-redeploy.sh`.
 - On return: liveness first, read every check since 22:34, then screen the best one above ~+6 from `FROM=7300` (mirror `FROM=7500`).
-- Next idea when evidence asks for a change: the decision model learning from outcomes ("weighed by the outcome" is flat at 1.00). Punish crit is still not ahead of B, and the 1 Nov goal is not met.
+- Correction 1 Nov: "weighed by the outcome 1.00" is only the AWR switch being off (Chooser.AWR); the decider already learns from outcomes (Chooser.OUTCOME on) and its own picks do worse than the teacher's (-0.07 vs +0.08). Not an untried idea. Punish crit is still not ahead of B, and the 1 Nov goal is not met.
 
 ---
 
