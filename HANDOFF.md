@@ -60,6 +60,7 @@
   On Windows, when an assistant shell command terminates, Windows terminates child processes in that job.
 - When starting or restarting training, use `run/keep-school-alive.sh` or run the process detached / persistent.
 - `run/keep-school-alive.sh` is **not a watchdog**: it starts training once and restarts nothing after a crash or a reboot. Nothing restarts training on its own until the user installs `tools/install-watchdog.ps1`, so the liveness check in every review still matters. On 31 Oct the bluescreen cost 2.5 hours.
+- `run/keep-school-alive.sh` starts the game inside the loop's own process tree, so anything that stops the loop stops the game too. On 31 Oct 18:49 a screen paused the loop, the client died with it, and `net-check.sh` reported "stop did not take". Use `tools/school-redeploy.sh` to start training, then screens work. After any screen, check that `java.exe` is running and the log is moving.
 - `run/start-school.cmd` is the game's launch file (the user's OK, 31 Oct). `tools/school-restart.sh`, `run/keep-school-alive.sh` and the watchdog all use it there. `run/` is git-ignored: never move it into `tools/` or anywhere else in the repo. The repo is public, and the launch line has not been reviewed for what it carries.
 - The restart and redeploy scripts now kill only the dev client (`fabric\.dli\.` in its command line), not every Fabric `java.exe`, so they cannot close the user's own game.
 - Training is currently running: `java.exe` is active and `tools/schoolcycle.sh` is looping, detached from any assistant's shell.
