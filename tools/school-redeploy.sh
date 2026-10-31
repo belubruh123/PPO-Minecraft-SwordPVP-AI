@@ -4,7 +4,7 @@ S="${SWORDAI_TOOLS:-/d/swordai/tools}"
 touch /d/swordai/run/school-cycle.stop
 printf 'swordai stop\r\n' > /d/swordai/run/swordai/inbox.txt
 sleep 8
-powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { (\$_.Name -in 'cmd.exe','java.exe','bash.exe') -and \$_.CommandLine -match 'start-school\.cmd|net\.fabricmc|schoolcycle\.sh' } | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force -ErrorAction SilentlyContinue }"
+powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { (\$_.Name -in 'cmd.exe','java.exe','bash.exe') -and \$_.CommandLine -match 'start-school\.cmd|fabric\.dli\.|schoolcycle\.sh' } | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force -ErrorAction SilentlyContinue }"
 # CLEAR_SCENES=1: once the client has stopped, the kept scenes (scenes.txt, scenes-mastered.txt) are put aside and it starts with none.
 if [ -n "$CLEAR_SCENES" ]; then
   for f in scenes.txt scenes-mastered.txt; do [ -f /d/swordai/run/swordai/school/$f ] && mv /d/swordai/run/swordai/school/$f /d/swordai/run/swordai/school/$f.old-$(date +%H%M); done
