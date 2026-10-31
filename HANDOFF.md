@@ -31,6 +31,17 @@
 
 ---
 
+## 0b. State at 31 Oct 23:00 (Claude out of usage until 1 Nov 04:00)
+
+- Training is the restored run 27 line, unchanged. No experiment was left running on purpose: nobody can watch it or revert it overnight.
+- Hourly checks run on their own and land in `run/school-checks.log`. Nothing installs itself. `run23-1418` stays installed.
+- Restored line so far: 18 hourly checks, mean about +2.0, latest 22:34 +3.1 (5.1).
+- Nothing restarts training after a crash unless the user ran `tools/install-watchdog.ps1`. If `java.exe` or the loop is gone on return, start training with `tools/school-redeploy.sh`.
+- On return: liveness first, read every check since 22:34, then screen the best one above ~+6 from `FROM=6900` (mirror `FROM=7100`).
+- Next idea when evidence asks for a change: the decision model learning from outcomes ("weighed by the outcome" is flat at 1.00). Punish crit is still not ahead of B, and the 1 Nov goal is not met.
+
+---
+
 ## 1. Absolute rules (Unchanged from Claude's handoff)
 
 1. **The GitHub repo is PUBLIC.** Never commit or push anything under `run/`, backups, logs, transcripts, profile copies, or anything with a login, token or session. Never print or repeat the user's `/login` line.
