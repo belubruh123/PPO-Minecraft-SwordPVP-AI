@@ -37,7 +37,7 @@
 - Hourly checks run on their own and land in `run/school-checks.log`. Nothing installs itself. `run23-1418` stays installed.
 - Restored line so far: 18 hourly checks, mean about +2.0, latest 22:34 +3.1 (5.1).
 - Nothing restarts training after a crash unless the user ran `tools/install-watchdog.ps1`. If `java.exe` or the loop is gone on return, start training with `tools/school-redeploy.sh`.
-- On return: liveness first, read every check since 22:34, then screen the best one above ~+6 from `FROM=6900` (mirror `FROM=7100`).
+- On return: liveness first, read every check since 22:34, then screen the best one above ~+6 from `FROM=7100` (mirror `FROM=7300`).
 - Next idea when evidence asks for a change: the decision model learning from outcomes ("weighed by the outcome" is flat at 1.00). Punish crit is still not ahead of B, and the 1 Nov goal is not met.
 
 ---
@@ -106,9 +106,10 @@
 | `run27b-0923` (31 Oct) | **+4.3 (2.1)** | - | Fresh pairs 6100–6232. Not installed (scripted just below ~+4.7 bar, mirror skipped). |
 | `run27b-1824` (31 Oct) | +3.3 | - | Not installed (scripted below the bar, mirror skipped). |
 | `run27b-2045` (31 Oct) | +6.2 (2.4) | +0.1 (4.2) | Pairs 6500–6632, 6700–6831. Not installed (mirror far below +9.9). |
+| `run27b-2319` (31 Oct) | +3.1 (2.4) | - | Pairs 6900–7032. Not installed (scripted below the bar, mirror skipped). |
 
-**Pairs used so far:** `0–6831`.
-**Next fresh pairs start at:** **`6900`** (e.g. `FROM=6900` scripted 133 pairs, `FROM=7100 MIRROR=1` 132 pairs).
+**Pairs used so far:** `0–7032`.
+**Next fresh pairs start at:** **`7100`** (e.g. `FROM=7100` scripted 133 pairs, `FROM=7300 MIRROR=1` 132 pairs).
 
 ---
 
