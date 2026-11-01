@@ -98,6 +98,8 @@ final class FightSession implements AgentSession {
 	/** The round, tick by tick, for afterwards; see {@link RoundRecorder}. */
 	private final RoundRecorder rounds = new RoundRecorder();
 	private boolean debugRequested;
+	/** Whether the installed model's fight-time rules press keys over the network: not with the file {@link SchoolSession#NO_RULES_FILE} in the school folder (run 30). */
+	private final boolean rulesOn;
 	private String lastError;
 	private String connection = "";
 
@@ -130,6 +132,7 @@ final class FightSession implements AgentSession {
 		this.wantedName = opponentName;
 		this.loaded = LoadedFighter.load();
 		this.fighter = loaded.fighter;
+		this.rulesOn = SchoolSession.RULE_OVERLAY && !Files.exists(SwordFiles.schoolDir().resolve(SchoolSession.NO_RULES_FILE));
 		if (!mc.hasSingleplayerServer()) {
 			// A tick in hand on someone's server, so that a swing is never an early one as the server counts it.
 			fighter.swingNoEarlierThan(loaded.cfg.swingMinChargeOnline, loaded.cfg.swingExtraTicksOnline);
@@ -153,7 +156,7 @@ final class FightSession implements AgentSession {
 			school = new SchoolFighter(l, loaded.cfg.aimResponse,
 					mc.hasSingleplayerServer() ? loaded.cfg.swingMinCharge : loaded.cfg.swingMinChargeOnline, loaded.cfg.playTemperature);
 			school.whiffGuard(loaded.cfg.whiffGuard);
-			if (SchoolSession.RULE_OVERLAY) {
+			if (rulesOn) {
 				school.rulesFrom(fighter);
 				rulesBody.patchedUp = loaded.patchedUp;
 			}
@@ -173,7 +176,7 @@ final class FightSession implements AgentSession {
 
 	String skillLine() {
 		return school != null ? "Playing with the technique school's network (" + schoolLearner.totalSteps + " steps of training)"
-				+ (SchoolSession.RULE_OVERLAY ? ", the installed model's fight-time rules over it." : "; no rule presses anything for it.")
+				+ (rulesOn ? ", the installed model's fight-time rules over it." : "; no rule presses anything for it.")
 				: loaded.skillLine();
 	}
 
@@ -373,7 +376,7 @@ final class FightSession implements AgentSession {
 		if (school != null) {
 			reader.tick(me, opp, clicked, chargeAtClick, sprintAtClick, critAtClick);
 			school.crosshairOnOpponent(onOpponent());
-			if (SchoolSession.RULE_OVERLAY) {
+			if (rulesOn) {
 				observer.fillBody(rulesBody, me, opp, groundY);
 				fighter.crosshairOnOpponent(onOpponent());
 				fighter.decide(observer.frame, rulesBody);
