@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # install-ab.sh [--dry|--off] [SPEC ...]: put the live A/B pool (AbPool) into the user's profile, with a backup first.
-#   Each SPEC is  tag=NETWORK_FILE[,rules][,temps][,weight]  with rules "on" (default) or "off", temps "default" or a file (default: none),
-#   weight a number (default 1). The installed network (swordai/school/checkpoint.bin, with the profile's no-rules and play-temperature
+#   Each SPEC is  tag=NETWORK_FILE[,rules][,temps][,weight][,options]  with NETWORK_FILE a file or @installed (the profile's own network again,
+#   for an arm that differs only in its options), rules "on" (default) or "off", temps "default" or a file (default: none), weight a number
+#   (default 1), options words joined by + (hitout: hit and out over the network; noback: the back-out rule off; both with the rules on). The installed network (swordai/school/checkpoint.bin, with the profile's no-rules and play-temperature
 #   files as they are) is always the arm "installed", weight 1. The mod jar (build/libs) replaces the profile's SwordAI jar, because
 #   the pool is in it; the installed network and everything else stay as they are. Each duel the mod then draws one arm at random and
 #   says which in its start line ("[A/B arm tag]"); python tools/duels.py compares the arms from the user's game log.
@@ -39,15 +40,21 @@ INSTALLED_TEMPS=""
 COPIES=()
 for SPEC in "$@"; do
   TAG="${SPEC%%=*}"; REST="${SPEC#*=}"
-  IFS=',' read -r NET RULES TEMPS WEIGHT <<< "$REST"
-  [ -f "$NET" ] || { echo "no network file $NET (for $TAG)"; rm -f "$POOL"; exit 1; }
-  RULES=${RULES:-on}; WEIGHT=${WEIGHT:-1}
+  IFS=',' read -r NET RULES TEMPS WEIGHT OPTS <<< "$REST"
+  if [ "$NET" != "@installed" ]; then
+    [ -f "$NET" ] || { echo "no network file $NET (for $TAG)"; rm -f "$POOL"; exit 1; }
+  fi
+  RULES=${RULES:-on}; WEIGHT=${WEIGHT:-1}; OPTS=${OPTS//+/ }
   case "$RULES" in on|off) ;; *) echo "rules must be on or off in $SPEC"; rm -f "$POOL"; exit 1 ;; esac
   T=""
   if [ "$TEMPS" = default ]; then T=default
   elif [ -n "$TEMPS" ]; then [ -f "$TEMPS" ] || { echo "no temperatures file $TEMPS"; rm -f "$POOL"; exit 1; }; T="$TAG.temps"; COPIES+=("$TEMPS|$T"); fi
-  COPIES+=("$NET|$TAG.bin")
-  echo "$TAG | $TAG.bin | $RULES | $T | $WEIGHT" >> "$POOL"
+  if [ "$NET" = "@installed" ]; then
+    REF="../checkpoint.bin"
+  else
+    REF="$TAG.bin"; COPIES+=("$NET|$TAG.bin")
+  fi
+  echo "$TAG | $REF | $RULES | $T | $WEIGHT | $OPTS" >> "$POOL"
 done
 echo "jar:     $JAR ($(stat -c %s "$JAR") bytes)"
 echo "backup:  $B"

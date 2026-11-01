@@ -169,6 +169,10 @@ final class FightSession implements AgentSession {
 				// Hit and out over the network: the arm of the A/B pool says, else the file in the school folder or the config.
 				fighter.hitAndOut(arm != null ? arm.hitAndOut
 						: loaded.cfg.hitAndOutRule || Files.exists(SwordFiles.schoolDir().resolve(SchoolSession.HIT_AND_OUT_FILE)));
+				if (arm != null && arm.noBack) {
+					// The back-out rule (S for 12 ticks after the second hit of a combo it is taking) off for this arm.
+					fighter.backOutRule(false);
+				}
 			}
 		} else {
 			schoolLearner = null;
@@ -188,6 +192,7 @@ final class FightSession implements AgentSession {
 		return school != null ? "Playing with the technique school's network (" + schoolLearner.totalSteps + " steps of training)"
 				+ (arm != null ? " [A/B arm " + arm.tag + "]" : "")
 				+ (rulesOn && school != null && fighter.hitAndOut() ? " [hit and out]" : "")
+				+ (arm != null && arm.noBack ? " [no back-out]" : "")
 				+ (rulesOn ? ", the installed model's fight-time rules over it." : "; no rule presses anything for it.")
 				: loaded.skillLine();
 	}

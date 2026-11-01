@@ -22,7 +22,7 @@ import java.util.Random;
  * {@code tag | network | rules | temperatures | weight | options}. The network is a path relative to the {@code ab} folder (or absolute;
  * {@code ../checkpoint.bin} is the installed one); rules is {@code on} (the installed model's fight-time rules over the network) or
  * {@code off}; temperatures is empty for none, {@code default} for the school folder's {@code play-temperature}, or a file; weight
- * defaults to 1; options (a sixth field) are words, so far {@code hitout} for hit and out ({@code StepBack#planShort}) over the network. Lines starting with {@code #} are comments. An arm whose network is missing is left out; with no valid arm there
+ * defaults to 1; options (a sixth field) are words, so far {@code hitout} for hit and out ({@code StepBack#planShort}) over the network and {@code noback} for the back-out rule off. Lines starting with {@code #} are comments. An arm whose network is missing is left out; with no valid arm there
  * is no pool and the installed network plays as before.
  */
 public final class AbPool {
@@ -38,14 +38,17 @@ public final class AbPool {
 		public final double weight;
 		/** Hit and out ({@code StepBack#planShort}) over the network, with the rules on. */
 		public final boolean hitAndOut;
+		/** The back-out rule off ({@code Config.backRule}: S for 12 ticks after the second hit of a combo it is taking), with the rules on. */
+		public final boolean noBack;
 
-		Arm(String tag, Path network, boolean rules, Path temperatures, double weight, boolean hitAndOut) {
+		Arm(String tag, Path network, boolean rules, Path temperatures, double weight, boolean hitAndOut, boolean noBack) {
 			this.tag = tag;
 			this.network = network;
 			this.rules = rules;
 			this.temperatures = temperatures;
 			this.weight = weight;
 			this.hitAndOut = hitAndOut;
+			this.noBack = noBack;
 		}
 	}
 
@@ -106,12 +109,14 @@ public final class AbPool {
 				weight = 1.0;
 			}
 			boolean hitAndOut = false;
+			boolean noBack = false;
 			if (f.length > 5) {
 				for (String o : f[5].split("[ ,]+")) {
 					hitAndOut |= o.trim().equalsIgnoreCase("hitout");
+					noBack |= o.trim().equalsIgnoreCase("noback");
 				}
 			}
-			arms.add(new Arm(tag, network, rules, temps, weight, hitAndOut));
+			arms.add(new Arm(tag, network, rules, temps, weight, hitAndOut, noBack));
 		}
 		return arms;
 	}

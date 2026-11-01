@@ -96,5 +96,21 @@ class AbPoolTest {
 		assertTrue(arms.get(1).hitAndOut);
 		assertTrue(arms.get(2).hitAndOut);
 		assertFalse(arms.get(2).rules);
+		assertFalse(arms.get(1).noBack);
+	}
+
+	@Test
+	void theNobackOptionTurnsTheBackOutOff(@TempDir Path school) throws IOException {
+		Files.write(school.resolve("checkpoint.bin"), new byte[] {1});
+		pool(school, "a | ../checkpoint.bin | on | | 1 | noback\n"
+				+ "b | ../checkpoint.bin | on | | 1 | hitout noback\n"
+				+ "c | ../checkpoint.bin | on | | 1 |\n");
+		List<AbPool.Arm> arms = AbPool.read(school);
+		assertEquals(3, arms.size());
+		assertTrue(arms.get(0).noBack);
+		assertFalse(arms.get(0).hitAndOut);
+		assertTrue(arms.get(1).noBack);
+		assertTrue(arms.get(1).hitAndOut);
+		assertFalse(arms.get(2).noBack);
 	}
 }
