@@ -284,6 +284,8 @@ public final class SchoolSession implements AgentSession {
 	private int ruleOffWon;
 	private int ruleOffLost;
 	private int ruleOffFightsAll;
+	/** The same for their swings (as swingCount: swings, on them, hits landed, their second and third hits in a row). */
+	private final long[] ruleOffSwings = new long[5];
 	private boolean sparCheck;
 	static final int SPAR_LAG_EXTRA = 2;
 	private boolean sparFight;
@@ -1132,8 +1134,11 @@ public final class SchoolSession implements AgentSession {
 				: String.format(Locale.ROOT, "%d fights without the rules, dealt %.0f taken %.0f a minute (net %+.0f), knockouts %d-%d", ruleOffFights,
 						ruleOffDealt * 1200f / Math.max(1, ruleOffTicks), ruleOffTaken * 1200f / Math.max(1, ruleOffTicks),
 						(ruleOffDealt - ruleOffTaken) * 1200f / Math.max(1, ruleOffTicks), ruleOffWon, ruleOffLost);
-		String line = String.format(Locale.ROOT, " rules' keys ce %.3f (smoothed), agree %.0f%%; share of full fights without the rules %.0f%%; %s; %d such fights in all",
-				ruledCeEma, 100f * ruledAgreeEma, 100f * ruleOffShare(), fights, ruleOffFightsAll);
+		String swings = ruleOffSwings[0] == 0 ? "" : String.format(Locale.ROOT, ", swings %d, %.0f%% on them, their combos' third hit %d of %d", ruleOffSwings[0],
+				100f * ruleOffSwings[1] / ruleOffSwings[0], ruleOffSwings[4], ruleOffSwings[3]);
+		java.util.Arrays.fill(ruleOffSwings, 0L);
+		String line = String.format(Locale.ROOT, " rules' keys ce %.3f (smoothed), agree %.0f%%; share of full fights without the rules %.0f%%; %s%s; %d such fights in all",
+				ruledCeEma, 100f * ruledAgreeEma, 100f * ruleOffShare(), fights, swings, ruleOffFightsAll);
 		ruleOffFights = 0;
 		ruleOffDealt = 0f;
 		ruleOffTaken = 0f;
@@ -1929,7 +1934,7 @@ public final class SchoolSession implements AgentSession {
 		CombatLog.drain(facts);
 		boolean shownDealt = hasLastAction && clicked && clickOnTarget;
 		if (hasLastAction) {
-			long[] sc = swingCount[installedPlays ? 1 : 0];
+			long[] sc = ruleOff && mode == Mode.TRAIN ? ruleOffSwings : swingCount[installedPlays ? 1 : 0];
 			sc[0] += clicked ? 1 : 0;
 			sc[1] += clicked && clickOnTarget ? 1 : 0;
 			sc[2] += facts.hitsDealt;
@@ -1941,7 +1946,7 @@ public final class SchoolSession implements AgentSession {
 				sc[3] += theirRow == 2 ? 1 : 0;
 				sc[4] += theirRow == 3 ? 1 : 0;
 			}
-			if (mode == Mode.TRAIN && review < 0) {
+			if (mode == Mode.TRAIN && review < 0 && !ruleOff) {
 				trackCombo(facts.hitsDealt > 0, facts.hitsTaken > 0);
 			}
 		}
@@ -2441,21 +2446,27 @@ public final class SchoolSession implements AgentSession {
 			fairJump.apply(action, me.onGround(), clock.ticksSinceHitTaken, clock.takenStreak.hits());
 		}
 		// Judged on the keys: the camera a teacher shows (the punish crit's aim) is taught, not counted for done.
-		if (judgedApart) {
+		// Not in a fight played without the rules (run 30): there it is judged on keys the rules pressed in the checks, and the
+		// technique bars, the crit and jump-in lines would mix two ways of playing. Its swings and damage have their own line.
+		if (ruleOff && mode == Mode.TRAIN) {
+			// nothing counted
+		} else if (judgedApart) {
 			perf.tick(judgedTechnique, judgedHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH)), judgedTarget, action, keys,
 					facts.damageDealt, facts.damageTaken);
 		} else {
 			perf.tick(step.teacherTechnique, step.teacherHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH)), step.teacher, action, keys,
 					facts.damageDealt, facts.damageTaken);
 		}
-		if (mode == Mode.TRAIN) {
+		if (mode == Mode.TRAIN && !ruleOff) {
 			techniqueReward();
 		}
 		ruledNow = ruled;
-		traceCrit(0, action[ActionSpace.ATTACK] == 1);
-		traceJumpIn(0);
-		logHits(0, action[ActionSpace.ATTACK] == 1, truth.botFalling());
-		if (step.teacherHeads != 0) {
+		if (!(ruleOff && mode == Mode.TRAIN)) {
+			traceCrit(0, action[ActionSpace.ATTACK] == 1);
+			traceJumpIn(0);
+			logHits(0, action[ActionSpace.ATTACK] == 1, truth.botFalling());
+		}
+		if (step.teacherHeads != 0 && !ruleOff) {
 			fightTeacherTicks++;
 			int t = step.teacherTechnique;
 			spoke[t]++;
