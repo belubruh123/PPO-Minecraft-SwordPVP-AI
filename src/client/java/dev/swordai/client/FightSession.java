@@ -7,6 +7,7 @@ import dev.swordai.core.env.StepFacts;
 import dev.swordai.core.report.ReportWriter;
 import dev.swordai.core.rl.ActionSpace;
 import dev.swordai.core.rl.Fighter;
+import dev.swordai.core.school.AbPool;
 import dev.swordai.core.school.SchoolFighter;
 import dev.swordai.core.school.SchoolLearner;
 import dev.swordai.core.vision.ViewGeometry;
@@ -100,6 +101,8 @@ final class FightSession implements AgentSession {
 	private boolean debugRequested;
 	/** Whether the installed model's fight-time rules press keys over the network: not with the file {@link SchoolSession#NO_RULES_FILE} in the school folder (run 30). */
 	private final boolean rulesOn;
+	/** The arm of the live A/B pool ({@code swordai/school/ab/pool.txt}, see {@link AbPool}) that plays this duel; null with no pool. */
+	private final AbPool.Arm arm;
 	private String lastError;
 	private String connection = "";
 
@@ -132,19 +135,23 @@ final class FightSession implements AgentSession {
 		this.wantedName = opponentName;
 		this.loaded = LoadedFighter.load();
 		this.fighter = loaded.fighter;
-		this.rulesOn = SchoolSession.RULE_OVERLAY && !Files.exists(SwordFiles.schoolDir().resolve(SchoolSession.NO_RULES_FILE));
+		this.arm = drawArm();
+		this.rulesOn = SchoolSession.RULE_OVERLAY && (arm != null ? arm.rules
+				: !Files.exists(SwordFiles.schoolDir().resolve(SchoolSession.NO_RULES_FILE)));
 		if (!mc.hasSingleplayerServer()) {
 			// A tick in hand on someone's server, so that a swing is never an early one as the server counts it.
 			fighter.swingNoEarlierThan(loaded.cfg.swingMinChargeOnline, loaded.cfg.swingExtraTicksOnline);
 			fighter.rulesNoEarlierThan(loaded.cfg.ruleSwingChargeOnline);
 		}
-		if (Files.exists(SwordFiles.schoolCheckpoint())) {
+		Path network = arm != null ? arm.network : SwordFiles.schoolCheckpoint();
+		if (Files.exists(network)) {
 			SchoolLearner l = new SchoolLearner(System.nanoTime(), 1, 0.99f, 0.95f, 1);
 			try {
-				l.load(SwordFiles.schoolCheckpoint());
-				// The checks' test-time sharpening (SchoolSession.PLAY_TEMPERATURE_FILE), where the school folder has one.
-				Path temps = SwordFiles.schoolDir().resolve(SchoolSession.PLAY_TEMPERATURE_FILE);
-				if (Files.exists(temps)) {
+				l.load(network);
+				// The checks' test-time sharpening (SchoolSession.PLAY_TEMPERATURE_FILE), where the school folder has one; an arm of
+				// the A/B pool names its own (or none).
+				Path temps = arm != null ? arm.temperatures : SwordFiles.schoolDir().resolve(SchoolSession.PLAY_TEMPERATURE_FILE);
+				if (temps != null && Files.exists(temps)) {
 					l.playTemperatures(SchoolSession.readHeadTemperatures(temps));
 				}
 			} catch (IOException | RuntimeException e) {
@@ -176,8 +183,18 @@ final class FightSession implements AgentSession {
 
 	String skillLine() {
 		return school != null ? "Playing with the technique school's network (" + schoolLearner.totalSteps + " steps of training)"
+				+ (arm != null ? " [A/B arm " + arm.tag + "]" : "")
 				+ (rulesOn ? ", the installed model's fight-time rules over it." : "; no rule presses anything for it.")
 				: loaded.skillLine();
+	}
+
+	/** One arm of the live A/B pool for this duel, or null when the school folder has none (or it cannot be read). */
+	private static AbPool.Arm drawArm() {
+		try {
+			return AbPool.draw(AbPool.read(SwordFiles.schoolDir()), new java.util.Random());
+		} catch (RuntimeException e) {
+			return null;
+		}
 	}
 
 	// ---- AgentSession ---------------------------------------------------------------------------
