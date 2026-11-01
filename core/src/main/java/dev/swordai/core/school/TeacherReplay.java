@@ -60,6 +60,7 @@ public final class TeacherReplay {
 	/** The rarest rule of Fighter#rules that had keys on the example (ruledOnly); RULE_NAMES.length for none. */
 	private final int[] ruleOf;
 	private long baseSeen;
+	private long otherSeen;
 
 	public TeacherReplay(int capacity) {
 		this(capacity, false);
@@ -96,6 +97,11 @@ public final class TeacherReplay {
 			if (ruledOnly) {
 				h = r.ruledHeads[i];
 				if (h == 0) {
+					continue;
+				}
+				// Steps no rule had keys on (run 30g: every open body key is a lesson in a fight without the rules) are most of them: one in four is kept,
+				// so that they do not push the rare rules' examples out of the buffer.
+				if (r.ruleBits[i] == 0 && (otherSeen++ % 4) != 0) {
 					continue;
 				}
 				t = Technique.BASE.ordinal();

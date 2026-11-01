@@ -272,7 +272,7 @@ public final class SchoolSession implements AgentSession {
 	 * closer, so that what the damage reward finds is let stand: the network ends about that far from the rules, in the decisions where
 	 * playing otherwise paid.
 	 */
-	static final float RULED_CE_TARGET = 0.15f;
+	static final float RULED_CE_TARGET = 0.25f; // 0.15 until 14:40 (30g: the installed model's own network choices are drawn, so its keys cost about 0.3 at best)
 	static final float RULED_PULL_LEAST = 0.05f;
 	static final float RULED_PULL_MOST = 0.6f;
 	private float ruledPullNow = RULED_PULL;
@@ -2418,8 +2418,12 @@ public final class SchoolSession implements AgentSession {
 						: dev.swordai.core.school.SchoolStages.runTaught(learner.told().ordinal()) ? body : 0;
 				ruled &= ~give;
 			}
-			// A fight played without the rules: the network presses every key itself; the rules' keys are only the target.
-			ruledTaught = ruleOff ? ruledRaw : ruled;
+			// A fight played without the rules: the network presses every key itself; the installed model's keys are only the target. Since run
+			// 30g that is every open body key, not only the ones a rule pressed: the screens' hit log (14:24) has the network alone jumping 79-87%
+			// of the ticks of their combos' hits against the installed model's 94-96%, pressing S 13-18% against 3-4%, and hit in the air 244-376
+			// times against 67, which is the keys no rule presses, where its copying target was the frozen run 6 network's chances (ANCHOR_TO_BEST),
+			// not the installed model's own network.
+			ruledTaught = ruleOff ? keys & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH) : ruled;
 			if (ruleOff) {
 				ruled = 0;
 			}
