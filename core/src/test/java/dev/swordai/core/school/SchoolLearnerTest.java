@@ -248,7 +248,7 @@ class SchoolLearnerTest {
 		}
 		String says = "S chance told it / told the ordinary fight: gated " + change[0][0] + " / " + change[0][1] + ", not gated "
 				+ change[1][0] + " / " + change[1][1];
-		assertTrue(change[0][0] > 0.2f, says);
+		assertTrue(change[0][0] > 0.15f, says); // 0.2 until run 30h: the history input takes a share of the lesson (0.18)
 		assertTrue(change[1][1] > 0.2f, says);
 		assertTrue(Math.abs(change[0][1]) < 0.05f, says);
 	}

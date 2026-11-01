@@ -66,8 +66,19 @@ public final class SchoolNet {
 	/** Where the ticks into it are, and the ticks that count as long. */
 	public static final int INTENT_TICKS = Technique.COUNT;
 	public static final float INTENT_LONG = 20f;
-	/** The side input: the {@link Predictor}'s guess, then the technique being done. */
-	public static final int SIDE = Predictor.OUT + INTENT;
+	/**
+	 * Run 30h: the network's own last keys, the last HIST_TICKS ticks, newest first, HIST_PER numbers a tick: W/S (3, one-hot), A/D (3), the
+	 * sprint key, the jump, the swing. The rules it learns to be (a swing held since the jump-in, S held 12 ticks after a hit, A/D held
+	 * 10 ticks, the punish crit's wait, a jump-in's plan) are state machines with timers; with the last keys alone the network cannot tell
+	 * how long it has been in a state.
+	 */
+	public static final int HIST_TICKS = 10;
+	public static final int HIST_PER = 9;
+	public static final int HIST = HIST_TICKS * HIST_PER;
+	/** Where the history is in the side input. */
+	public static final int HIST_AT = Predictor.OUT + INTENT;
+	/** The side input: the {@link Predictor}'s guess, then the technique being done, then the history of its own keys. */
+	public static final int SIDE = Predictor.OUT + INTENT + HIST;
 
 	public final ParamSet params = new ParamSet();
 	private final Conv2d periConv1;
@@ -90,6 +101,8 @@ public final class SchoolNet {
 	private final Dense arAttack;
 	private final Dense intentIn;
 	private final Dense intentHeads;
+	private final Dense histIn;
+	private final Dense histHeads;
 	/**
 	 * The option layers (SchoolStages#GATED): for each technique, a linear map from the top to the logits of its gated keys,
 	 * added only while the network is told that technique. Its lesson's pull goes into them alone (Workspace#dOption).
@@ -128,6 +141,9 @@ public final class SchoolNet {
 		intentHeads = new Dense(params, "intent.heads", INTENT, ActionSpace.TOTAL_LOGITS, rng, 0f);
 		optionW = params.add("option.w", Technique.COUNT * TOP * ActionSpace.TOTAL_LOGITS);
 		optionB = params.add("option.b", Technique.COUNT * ActionSpace.TOTAL_LOGITS);
+		// Run 30h: after the option layers, so that a network saved before loads with them new, at zero (it plays as it did).
+		histIn = new Dense(params, "new.hist", HIST, NEW, rng, 0f);
+		histHeads = new Dense(params, "hist.heads", HIST, ActionSpace.TOTAL_LOGITS, rng, 0f);
 		// Rows of the old tower's trunk from the memory, and rows of the heads from the new tower: zero.
 		zeroRows(oldTrunk, 3 * BRANCH, CAT);
 		zeroRows(heads, OLD, TOP);
@@ -186,6 +202,8 @@ public final class SchoolNet {
 		final float[] pred = new float[SIDE];
 		final float[] intentPre = new float[NEW];
 		final float[] intentLogits = new float[ActionSpace.TOTAL_LOGITS];
+		final float[] histPre = new float[NEW];
+		final float[] histLogits = new float[ActionSpace.TOTAL_LOGITS];
 		/** The towers before their blocks (kept for the gates) and the top after them. */
 		final float[] oldT = new float[OLD];
 		final float[] newT = new float[NEW];
@@ -269,8 +287,9 @@ public final class SchoolNet {
 		}
 		predIn.forward(ws.pred, 0, ws.predPre, 0);
 		intentIn.forward(ws.pred, Predictor.OUT, ws.intentPre, 0);
+		histIn.forward(ws.pred, HIST_AT, ws.histPre, 0);
 		for (int i = 0; i < NEW; i++) {
-			ws.newT[i] = Math.max(0f, ws.newPre[i] + ws.predPre[i] + ws.intentPre[i]);
+			ws.newT[i] = Math.max(0f, ws.newPre[i] + ws.predPre[i] + ws.intentPre[i] + ws.histPre[i]);
 		}
 		System.arraycopy(ws.oldT, 0, ws.top, 0, OLD);
 		for (int b = 0; b < oldBlocks.length; b++) {
@@ -282,8 +301,9 @@ public final class SchoolNet {
 		}
 		heads.forward(ws.top, 0, ws.base, 0);
 		intentHeads.forward(ws.pred, Predictor.OUT, ws.intentLogits, 0);
+		histHeads.forward(ws.pred, HIST_AT, ws.histLogits, 0);
 		for (int i = 0; i < ActionSpace.TOTAL_LOGITS; i++) {
-			ws.base[i] += ws.intentLogits[i];
+			ws.base[i] += ws.intentLogits[i] + ws.histLogits[i];
 		}
 		ws.option = optionOf(ws.pred);
 		if (ws.option >= 0) {
@@ -445,6 +465,7 @@ public final class SchoolNet {
 		arAttack.backward(ws.arAttackIn, 0, ws.dLogits, ATTACK_AT, null, 0, ws.grads);
 		heads.backward(ws.top, 0, ws.dLogits, 0, ws.dTop, 0, ws.grads);
 		intentHeads.backward(ws.pred, Predictor.OUT, ws.dLogits, 0, null, 0, ws.grads);
+		histHeads.backward(ws.pred, HIST_AT, ws.dLogits, 0, null, 0, ws.grads);
 		if (ws.option >= 0) {
 			// Its weights learn from the policy's gradient and the gated lesson's; the layers under it from the policy's alone.
 			int gated = SchoolStages.gatedHeads(ws.option);
@@ -482,6 +503,7 @@ public final class SchoolNet {
 		gate(ws.dNew, ws.newT);
 		predIn.backward(ws.pred, 0, ws.dNew, 0, null, 0, ws.grads);
 		intentIn.backward(ws.pred, Predictor.OUT, ws.dNew, 0, null, 0, ws.grads);
+		histIn.backward(ws.pred, HIST_AT, ws.dNew, 0, null, 0, ws.grads);
 		newTrunk.backward(ws.cat, 0, ws.dNew, 0, ws.dCat, 0, ws.grads);
 		oldTrunk.backward(ws.cat, 0, ws.dOld, 0, ws.dCatPart, 0, ws.grads);
 		for (int i = 0; i < CAT; i++) {

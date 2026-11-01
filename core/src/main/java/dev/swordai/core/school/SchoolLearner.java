@@ -188,6 +188,7 @@ public final class SchoolLearner implements AutoCloseable {
 		actor.forward(actWs, step.obs.base.peri, step.obs.base.fovea, step.obs.base.vec, step.obs.mem, step.pred);
 		float logp = actor.sample(actWs, headMask, presetMask & ~headMask, false, record ? 1f : temperature, record ? null : playTemperatures,
 				sampleRng, actionOut);
+		mine.push(actionOut);
 		if (!record) {
 			return;
 		}
@@ -346,12 +347,26 @@ public final class SchoolLearner implements AutoCloseable {
 		int chosen = Technique.BASE.ordinal();
 		boolean forced;
 		final float[] before = new float[SchoolNet.INTENT];
+		/** The last keys it pressed (SchoolNet#HIST), newest first. */
+		final float[] hist = new float[SchoolNet.HIST];
+		
+		/** Puts the keys of this tick in front of the history. */
+		void push(int[] action) {
+			System.arraycopy(hist, 0, hist, SchoolNet.HIST_PER, SchoolNet.HIST - SchoolNet.HIST_PER);
+			java.util.Arrays.fill(hist, 0, SchoolNet.HIST_PER, 0f);
+			hist[action[ActionSpace.FORWARD]] = 1f;
+			hist[3 + action[ActionSpace.STRAFE]] = 1f;
+			hist[6] = action[ActionSpace.SPRINT];
+			hist[7] = action[ActionSpace.JUMP];
+			hist[8] = action[ActionSpace.ATTACK];
+		}
 
 		void reset() {
 			last = Technique.BASE.ordinal();
 			ticks = 0;
 			chosen = last;
 			java.util.Arrays.fill(before, 0f);
+			java.util.Arrays.fill(hist, 0f);
 			before[last] = 1f;
 		}
 	}
@@ -400,6 +415,7 @@ public final class SchoolLearner implements AutoCloseable {
 		java.util.Arrays.fill(step.pred, off, off + SchoolNet.INTENT, 0f);
 		step.pred[off + intent] = 1f;
 		step.pred[off + SchoolNet.INTENT_TICKS] = Math.min(1f, st.ticks / SchoolNet.INTENT_LONG);
+		System.arraycopy(st.hist, 0, step.pred, SchoolNet.HIST_AT, SchoolNet.HIST);
 		System.arraycopy(step.pred, off, st.before, 0, SchoolNet.INTENT);
 	}
 
@@ -485,6 +501,7 @@ public final class SchoolLearner implements AutoCloseable {
 		}
 		base.forward(baseWs, step.obs.base.peri, step.obs.base.fovea, step.obs.base.vec, step.obs.mem, step.pred);
 		base.sample(baseWs, headMask, false, temperature, baseRng, actionOut);
+		baseIntent.push(actionOut);
 	}
 
 	/** Same draws for both sides of a pair; see {@code Learner.seedSampling}. */
