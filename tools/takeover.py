@@ -12,7 +12,7 @@ import sys
 path = sys.argv[1] if len(sys.argv) > 1 else 'D:/swordai/run/school-client.log'
 first = sys.argv[2] if len(sys.argv) > 2 else '00:00'
 
-take = re.compile(r"\[(\d\d:\d\d):\d\d\].*school update (\d+), .*take-over: rules' keys ce ([\d.]+) \(smoothed\), agree (\d+)%; "
+take = re.compile(r"\[(\d\d:\d\d):\d\d\].*school update (\d+), .*take-over: rules' keys ce ([\d.]+) \(smoothed\), agree (\d+)%(?:, pull [\d.]+)?; "
                   r"share of full fights without the rules (\d+)%")
 fight = re.compile(r"\[(\d\d:\d\d):\d\d\].*school fight (.+?)(?: \(without the rules\))?: dealt ([\d.]+), taken ([\d.]+), ticks (\d+)(, knockout|, knocked out)?")
 off_mark = ' (without the rules): dealt'

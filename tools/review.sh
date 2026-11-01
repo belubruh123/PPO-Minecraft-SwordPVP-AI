@@ -15,7 +15,7 @@ echo "$L" | grep -oE "a third after [0-9]+ \([0-9]+%\)" | head -1
 echo "$L" | grep -oE "punish crit chances critted[^,|]*, last [0-9]+% of [0-9]+|told the punish crit and landed it, last [0-9]+% of [0-9]+"
 grep -E "damage a minute" school-client.log | grep -v CHAT | tail -2 | grep -oE "damage a minute [0-9]+ dealt, [0-9]+ taken" | paste -sd' '
 echo "--- take-over (run 30): the rules' keys, and the fights with/without the rules since the last redeploy"
-echo "$L" | grep -oE "take-over: rules' keys ce [0-9.]+ \(smoothed\), agree [0-9]+%; share of full fights without the rules [0-9]+%"
+echo "$L" | grep -oE "take-over: rules' keys ce [0-9.]+ \(smoothed\), agree [0-9]+%(, pull [0-9.]+)?; share of full fights without the rules [0-9]+%"
 C:/Python38/python.exe D:/swordai/tools/takeover.py D:/swordai/run/school-client.log 2>&1 | tail -6
 echo "--- techniques"
 C:/Python38/python.exe D:/swordai/tools/tech-review.py 8 2>&1 | cut -c1-100 | grep -E "RULE|80%\+|^B1|^K2|^C4|^T4 "

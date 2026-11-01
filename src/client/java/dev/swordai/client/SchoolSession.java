@@ -265,6 +265,17 @@ public final class SchoolSession implements AgentSession {
 	/** With this file in the school folder a real fight (FightSession) is played without the rules: the network alone. */
 	static final String NO_RULES_FILE = "no-rules";
 	static final float RULED_PULL = 0.3f;
+	/**
+	 * Run 30e: the pull on the rules' keys follows a budget instead of staying at RULED_PULL (the adaptive controller of the body keys' copying,
+	 * SchoolStages#noteBodyCe, Ziegler et al. 2019): after every update it moves by at most BUDGET_STEP towards holding the smoothed cross-entropy
+	 * to the rules' body keys at RULED_CE_TARGET. It tightens while the network is further from the rules than that and loosens once it is
+	 * closer, so that what the damage reward finds is let stand: the network ends about that far from the rules, in the decisions where
+	 * playing otherwise paid.
+	 */
+	static final float RULED_CE_TARGET = 0.15f;
+	static final float RULED_PULL_LEAST = 0.05f;
+	static final float RULED_PULL_MOST = 0.6f;
+	private float ruledPullNow = RULED_PULL;
 	// 0.10 and 0.40 in the first hour of run 30 (08:05-08:26): the baseline screen of 08:16 (the network of 07:54 without the rules,
 	// pairs 0-65) came out -7.9 (3.7) against the installed model while the same network with the rules runs about +3 on those
 	// seeds, so the gap to close is about 11 a fight and the network's own states are what it must learn from.
@@ -1139,8 +1150,8 @@ public final class SchoolSession implements AgentSession {
 		String swings = ruleOffSwings[0] == 0 ? "" : String.format(Locale.ROOT, ", swings %d, %.0f%% on them, their combos' third hit %d of %d", ruleOffSwings[0],
 				100f * ruleOffSwings[1] / ruleOffSwings[0], ruleOffSwings[4], ruleOffSwings[3]);
 		java.util.Arrays.fill(ruleOffSwings, 0L);
-		String line = String.format(Locale.ROOT, " rules' keys ce %.3f (smoothed), agree %.0f%%; share of full fights without the rules %.0f%%; %s%s; %d such fights in all",
-				ruledCeEma, 100f * ruledAgreeEma, 100f * ruleOffShare(), fights, swings, ruleOffFightsAll);
+		String line = String.format(Locale.ROOT, " rules' keys ce %.3f (smoothed), agree %.0f%%, pull %.2f; share of full fights without the rules %.0f%%; %s%s; %d such fights in all",
+				ruledCeEma, 100f * ruledAgreeEma, ruledPullNow, 100f * ruleOffShare(), fights, swings, ruleOffFightsAll);
 		ruleOffFights = 0;
 		ruleOffDealt = 0f;
 		ruleOffTaken = 0f;
@@ -3526,7 +3537,7 @@ public final class SchoolSession implements AgentSession {
 		set.oldPull = stages.oldPull();
 		set.oldBodyPull = stages.bodyPull();
 		set.installedBody = OVERLAY;
-		set.ruledPull = RULED_PULL;
+		set.ruledPull = ruledPullNow;
 		set.criticOnly = warmupLeft > 0;
 		if (warmupLeft > 0) {
 			warmupLeft--;
@@ -3562,6 +3573,8 @@ public final class SchoolSession implements AgentSession {
 		if (stats.ruledSteps > 0) {
 			ruledCeEma = ruledCeEma < 0f ? stats.ruledCe : 0.9f * ruledCeEma + 0.1f * stats.ruledCe;
 			ruledAgreeEma = ruledAgreeEma == 0f ? stats.ruledAgree : 0.9f * ruledAgreeEma + 0.1f * stats.ruledAgree;
+			float budget = Math.max(-1f, Math.min(1f, (ruledCeEma - RULED_CE_TARGET) / RULED_CE_TARGET));
+			ruledPullNow = Math.max(RULED_PULL_LEAST, Math.min(RULED_PULL_MOST, ruledPullNow * (float) Math.exp(dev.swordai.core.school.SchoolStages.BUDGET_STEP * budget)));
 		}
 		long nowMillis = System.currentTimeMillis();
 		long steps = learner.totalSteps;
