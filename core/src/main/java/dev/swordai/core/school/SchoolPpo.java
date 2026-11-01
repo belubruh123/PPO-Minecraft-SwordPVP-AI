@@ -304,8 +304,9 @@ public final class SchoolPpo implements AutoCloseable {
 					pull = 0f;
 				}
 				if (ruledHere) {
-					// A press (the jump, the swing, a sprint ended) weighs as much as it does for a technique teacher: one tick among many of "not now".
-					pull = set.ruledPull * Teacher.pressWeight(stored, h, r.vec[i]);
+					// Not weighed by presses (Teacher.pressWeight) as a technique teacher's keys are: the first updates of run 30b brought the
+					// body keys' ce down fast (jump 0.57 to 0.26 in 6 updates), and a heavier positive would spread the jump (runs 22, 24).
+					pull = set.ruledPull;
 				} else if (!byTech && !installedHere || shadowed && !byTech) {
 					continue;
 				}
