@@ -2,6 +2,8 @@
 # install-school.sh CHECKED_BIN [--dry]: put the school network into the user's profile, with a backup first.
 #   The mod jar (build/libs) replaces the profile's SwordAI jar, and CHECKED_BIN becomes swordai/school/checkpoint.bin:
 #   /swordai fight then plays with the school network. Taking swordai/school/checkpoint.bin out goes back to the old one.
+#   NORULES=1 also puts an empty swordai/school/no-rules next to it: the jar then plays the network alone (FightSession, run 30),
+#   without the installed model's fight-time rules; without NORULES any no-rules file there is taken out.
 #   TEMPS=FILE also puts FILE in as swordai/school/play-temperature (per-head sharpening, jars from 26 Oct 05:48 on); without
 #   TEMPS any play-temperature there is taken out.
 set -e
@@ -33,6 +35,8 @@ cp -p "$JAR" "$P/mods/"
 mkdir -p "$P/swordai/school"
 cp -p "$BIN" "$P/swordai/school/checkpoint.bin"
 rm -f "$P/swordai/school/play-temperature"
+rm -f "$P/swordai/school/no-rules"
+[ -n "$NORULES" ] && touch "$P/swordai/school/no-rules" && echo "no-rules: the network plays alone"
 [ -n "$TEMPS" ] && cp -p "$TEMPS" "$P/swordai/school/play-temperature" && echo "play-temperature: $(tr '\n' ' ' < "$TEMPS")"
 cmp "$JAR" "$P/mods/$(basename "$JAR")" && cmp "$BIN" "$P/swordai/school/checkpoint.bin" && echo "=== installed and verified: $(ls "$P/mods" | grep -i swordai), school/checkpoint.bin"
 ls -la "$B" "$B/mods"
