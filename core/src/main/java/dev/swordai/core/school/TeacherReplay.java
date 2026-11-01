@@ -317,7 +317,8 @@ public final class TeacherReplay {
 					float[] into = gatedHere ? ws.dOption : ws.dLogits;
 					int off = ActionSpace.OFFSETS[h];
 					int size = ActionSpace.SIZES[h];
-					float wh = shadow ? w : w * Teacher.pressWeight(target[i], h, vec[i], t);
+					float wh = ruledOnly ? w * (dev.swordai.core.rl.JumpReset.hitOnThisTick(vec[i]) ? SchoolPpo.HIT_TICK_WEIGHT : 1f)
+							: shadow ? w : w * Teacher.pressWeight(target[i], h, vec[i], t);
 					Policy.softmax(ws.logits, off, size, probs);
 					Teacher.aim(target[i], probs, off, size, aimed);
 					int best = 0;

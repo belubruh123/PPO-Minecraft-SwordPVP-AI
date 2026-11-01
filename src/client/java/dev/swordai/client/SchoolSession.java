@@ -280,7 +280,7 @@ public final class SchoolSession implements AgentSession {
 	// pairs 0-65) came out -7.9 (3.7) against the installed model while the same network with the rules runs about +3 on those
 	// seeds, so the gap to close is about 11 a fight and the network's own states are what it must learn from.
 	static final float RULE_OFF_MIN = 0.25f;
-	static final float RULE_OFF_MAX = 0.50f;
+	static final float RULE_OFF_MAX = 0.70f; // 0.50 until 11:35 (30e)
 	static final float RULE_OFF_CE_START = 0.60f;
 	static final float RULE_OFF_CE_FULL = 0.20f;
 	/** Smoothed cross-entropy to the rules' keys (-1 before the first update that had some) and how often its likeliest key was the rule's. */

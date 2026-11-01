@@ -146,6 +146,13 @@ public final class SchoolPpo implements AutoCloseable {
 
 	/** The installed model's rules, by the bit of {@code Fighter#rules}. */
 	public static final String[] RULE_NAMES = {"answer", "keep", "meet", "reset", "backOut", "stepBack", "jumpIn", "hitAim", "lost", "straight", "dodge", "hold", "holdCrit", "punish"};
+	/**
+	 * Run 30e: the rules' keys on the tick of a hit taken weigh this much more. On that tick the jump reset's W and jump are decided, the tick
+	 * after the S; the pure network read the rules at 95% agreement over all ticks and yet pressed S (33%) or no jump (35%) on that tick where
+	 * the installed model jumps 97% (hit log of the no-rules screens, hits taken from the second hit of a combo): the average over ticks hid
+	 * the one tick that decides the combo. Scalar of the input: JumpReset#hitOnThisTick, 0.975 against 0.95 a tick later.
+	 */
+	public static final float HIT_TICK_WEIGHT = 4f;
 
 	private final SchoolNet actor;
 	private final SchoolCritic critic;
@@ -332,7 +339,8 @@ public final class SchoolPpo implements AutoCloseable {
 				if (ruledHere) {
 					// Not weighed by presses (Teacher.pressWeight) as a technique teacher's keys are: the first updates of run 30b brought the
 					// body keys' ce down fast (jump 0.57 to 0.26 in 6 updates), and a heavier positive would spread the jump (runs 22, 24).
-					pull = set.ruledPull;
+					// The tick of a hit taken is the exception (HIT_TICK_WEIGHT).
+					pull = set.ruledPull * (dev.swordai.core.rl.JumpReset.hitOnThisTick(r.vec[i]) ? HIT_TICK_WEIGHT : 1f);
 				} else if (!byTech && !installedHere || shadowed && !byTech) {
 					continue;
 				}
