@@ -163,9 +163,12 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 ---
 
-## 8. Where things stand (updated 2 Nov 05:15; older notes below)
+## 8. Where things stand (updated 2 Nov 07:15; older notes below)
 
-**STATUS 2 Nov 05:15 (read this first, the rest of section 8 is the history):**
+**STATUS 2 Nov 07:15 (read this first, the rest of section 8 is the history):**
+- **This conversation's 30-minute review job was stopped at 07:15 on the user's word (they went back to an older conversation). Training and the check loop were left running** (client log under 5 minutes old, `loops 1 java 1` in `review.sh`). The next conversation must start its own review job (section 1, step 4) and should read section 0 of `docs/TRAINING-SOP.md` first. Nothing is installed in the user's profile; the question about the live A/B install (arms `installed`, `noback`, `run30h`) is still open.
+- **Checks since 05:15:** 05:16 +1.8 (3.6), 06:05 -3.5 (4.2), 06:54 -1.8 (4.9); eleven hourly checks since 22:05 average -0.6 (the 17 before them on 1 Nov averaged +2.3, a gap of 1.6 standard errors: watch, not proof). The rolling punish crit swings between 21% and 32% over hours (21% at 07:00). Fights since the 22:42 redeploy: rules over the network bots -47 a minute, sparring +54; without the rules bots -80, sparring -103; flat for 8.5 hours.
+
 - **Training:** run 30h lineage (the take-over, `RULED_PULL`, rule-off fights 55-70%, history input), restarted from the clean 18:55 weights at 20:53, redeployed 22:42 (run 31's hit and out switched off). Stage T-E. Nothing has been installed in the user's profile since 29 Oct (jar 07:13, network = run23-1418).
 - **Hourly checks (44-45 pairs, rules over the network, vs the installed rules fighter), 22:05-04:27:** -0.2, -3.2, -5.2, +3.3, +6.3, -3.3, +3.6, -4.6 (mean -0.4; each +-4 to +6, hour-to-hour swings of up to 19 points happen). Level with the installed model, not better. Swings landing A 95-99% vs B 90-93% in every check. 20 checks of 1 Nov averaged +1.5. The pure network (no rules) sits about level too (-0.3 pooled on fresh pairs at 19:50).
 - **Training fights since 22:42:** with the rules bots -52 a minute, sparring +55; without the rules bots -79, sparring -103; flat for 6 hours. Rolling punish crit chances critted 25-30% of 300; no technique is RULE class; long-stuck ones: K3, T11a, T11c, T10, T6a, T9b, T1c, C7.
