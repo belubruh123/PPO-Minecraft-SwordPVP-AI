@@ -1,4 +1,4 @@
-# SwordAI handoff (1 Nov 2026, 08:30), to the next Claude conversation
+# SwordAI handoff (1 Nov 2026, 17:30), to the next Claude conversation
 
 This file replaces every earlier handoff. It stands on its own.
 
@@ -167,7 +167,7 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 | Item | Value |
 |---|---|
-| Training | **Run 30g, the take-over**, live since 14:32 (30: 08:05, 30b 08:26, 30c 09:22, 30d 10:25, 30e 11:38, 30f 12:58, 30g 14:32; commits `19878f4` .. the 30g commit), loops 1, java 1; revert points `run30-revert-start.bin` (08:02) .. `run30g-revert-start.bin` (14:30) |
+| Training | **Run 30h, the take-over**, live since 16:05 (30: 08:05, 30b 08:26, 30c 09:22, 30d 10:25, 30e 11:38, 30f 12:58, 30g 14:32, 30h 16:05), loops 1, java 1; revert points `run/swordai/school/run30-revert-start.bin` (08:02), `run30d-`, `run30e-`, `run30f-`, `run30g-`, `run30h-revert-start.bin` (16:03) |
 | Revert point | `run/swordai/school/run30-revert-start.bin` (the run 27 line at 08:02 on 1 Nov) |
 | Installed | `run23-1418`, unchanged |
 | Git | `main`, many commits ahead of origin, not pushed (the user has not asked) |
@@ -197,6 +197,14 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 - the hourly checks with the rules over the network: +6.0, +1.7, +6.4, +0.4, +4.2 (mean +3.7 against +2.4 the day before); the 11:18 network on fresh pairs 7500-7633: +1.4 (2.7). The with-rules play is level with the installed model (+4.7), not better.
 - **What still differs (hit log by block of `school/hits.csv`; B's own key rates vary from block to block, compare A and B inside one block):** at the hits of their combos the network alone jumps 79-87% of the ticks against B's 94-96%, presses S 13-18% against 3-4%, is on the ground 72-82% against 95%, and is hit in the air 244-376 times against 67. Where no rule presses a key its copying target was the frozen run 6 network (`ANCHOR_TO_BEST`), so it kept run 6's jumpier game. Run 30g (14:32) makes every open body key of a fight without the rules a lesson with the installed model's own choice as the target.
 Changes of 30c (09:22); 30d (10:25) added the rule-first replay of the rules' keys (`TeacherReplay.ruledOnly`); 30e (11:38) the 4x hit-tick weight, a budget on the pull (`RULED_CE_TARGET` 0.15) and the share of fights without the rules up to 0.70. 30c (09:22): the camera is out of the rules' lesson, fights without the rules are left out of the technique bars, crit and jump-in lines (they have their own swing counts), the update line has the ruled ce by head and by rule, `tools/compile-check.sh` (javac against the built classes; run it before a redeploy). Not yet deployed: `FightSession` plays without the rules when `school/no-rules` exists (commit `1f254f8`).
+
+**Where run 30 stands at 17:30 (honest):**
+- With the rules over the network (the deployed configuration): seven hourly checks +6.0, +1.7, +6.4, +0.4, +4.2, -1.8, +0.2 (mean +2.4, exactly the day before); the 11:18 network on fresh pairs +1.4 (2.7). **Not better than the installed model (+4.7 on its two screens).**
+- The network alone (no rules at all, `RULESOFF=1`): about -10 on fresh pairs at the start of the run (estimate; -7.9 on the hourly seeds), now **-2.0 (2.7)** on fresh pairs 7640-7772 (30f -6.1, 30g -5.1, 30h -2.0; -3.1 at play temperature 0.5). **Not yet a candidate** (bar +4.7 scripted and +9.9 mirror, twice, on fresh pairs).
+- What it still lacks against the installed rules fighter (hit log): their combos' third hit (46% vs 35%), the punish crit by the game (3% vs 6-8%), the straight-in hit (T7 34% vs 49%); it jumps more and is hit in the air more; it crits more than B and aims better (swings landing 94-95% vs 91%).
+- Tools: `RULESOFF=1 FROM=7640 bash tools/screen.sh 133 NET:1` (add `:all-0.5` for sharper play) is the measure of the network alone; compare screens on the SAME pairs (B ranges -11 to -21 on the hourly seeds from screen to screen). B's key rates in `school/hits.csv` also vary between blocks: compare A and B inside one block only. `tools/takeover.py`, `tools/compile-check.sh` (always before a redeploy), `tools/hits-report.py` on one block of hits.csv.
+- The structural steps, in order: the rules' keys as a target (30), the rare-rule replay (30d), 4x on the hit tick (30e), scenes without the rules (30f), every open body key copies the installed model's own choice (30g), **the network's own last 10 ticks of keys as input (30h, new tensors `new.hist` and `hist.heads`, older checkpoints load; the jar and the checkpoints are no longer interchangeable with jars before 30h)**.
+- To install a rule-free network, if it ever passes: `NORULES=1 TEMPS=/d/swordai/tools/temps/all-0.5 bash tools/install-school.sh /d/swordai/run/best-candidates/runNN.bin` (the jar plays without the rules when `school/no-rules` exists; the user's Minecraft must not run from that profile; report and ask first).
 
 **Runs so far:**
 
