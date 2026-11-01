@@ -1,4 +1,4 @@
-# SwordAI handoff (1 Nov 2026, 07:30), to the next Claude conversation
+# SwordAI handoff (1 Nov 2026, 08:30), to the next Claude conversation
 
 This file replaces every earlier handoff. It stands on its own.
 
@@ -163,50 +163,61 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 ---
 
-## 8. Where things stand (1 Nov 07:30)
+## 8. Where things stand (1 Nov 08:30)
 
 | Item | Value |
 |---|---|
-| Training | **Run 29** since 04:25 (`f446ae8`), live, loops 1, java 1 |
-| Revert point | `run/swordai/school/run29-revert-start.bin` |
+| Training | **Run 30, the take-over**, live (commits `19878f4`, `60bc7b7`, deployed 08:05 and again after the anchor fix), loops 1, java 1 |
+| Revert point | `run/swordai/school/run30-revert-start.bin` (the run 27 line at 08:02 on 1 Nov) |
 | Installed | `run23-1418`, unchanged |
-| Git | `main`, a dozen commits ahead of origin, not pushed (the user has not asked) |
+| Git | `main`, many commits ahead of origin, not pushed (the user has not asked) |
+
+**The 1 Nov change of method (read this before anything else).** The user said two days of teaching techniques and tuning had not improved the model and asked for a PPO-native method, not supervised teaching or hyperparameter changes. The finding behind run 30, from `run/swordai/school/hits.csv` and the code:
+
+- In every check and training fight the installed model's hand-written `Fighter` rules (answer, crit trade, meet jump, jump reset, back nudge, step back, edge hold, jump-in, aim rule ...) press keys over the network, on about 58% of ticks. On 42% of the ticks where A takes a hit they press W/S, sprint or jump (on 25% yaw, pitch, W/S, sprint and jump together).
+- A key a rule presses is **locked out of the PPO mask**, and `SchoolPpo.teach` skipped locked keys. So the network never got a policy gradient or a lesson on the keys that decide the fights, and everything taught since 26 Oct (T9 jump, C3 S, B1 W/sprint) was fought by the rules over the same keys. Hourly checks stayed at +2.4 to +4.2 for that reason.
+- Against attack-then-s and stun-escaper (A about -19 and -20 a fight, B the same) 94% of the hits taken are in combos with A still sprinting forward on the ground. A and B behave the same there because the rules decide.
+- Also found: `ANCHOR_TO_BEST` makes the copying targets of every untaught key the frozen run 6 network's own chances (not the installed model's keys), so the school network has been a near-copy of run 6 plus a little reinforcement learning.
+
+**Run 30 = three parts** (constants in `SchoolSession`, EXPERIMENTS.md row 30):
+1. `RULED_PULL` 0.3: the rule's key is a sure target on every head the rules press, locked or not (`SchoolRollout.ruledHeads`, `SchoolPpo.teach`, the installed replay, `SchoolLearner.anchorTargets` leaves it alone).
+2. **Fights without the rules**: `RULE_OFF_MIN` 0.10 to `RULE_OFF_MAX` 0.40 of the full fights (scenes, reviews and drills excluded). The network presses every key, is taught the rules' keys and is trained by the damage. The share rises as the smoothed cross-entropy to the rules' keys falls from 0.60 to 0.20. Their damage is kept apart (not in the bars, the lost-case harvest or the damage curve).
+3. `RULESOFF=1 bash tools/screen.sh ...` (file `school/rules-off-check`) plays side A without the rules in a check.
+
+**Watch** (`tools/review.sh` prints them; `C:/Python38/python.exe tools/takeover.py` gives the history since the last redeploy):
+- update line `rules' keys: ce X agree Y%` and the `take-over:` segment: the smoothed ce must fall (first value after the anchor fix: see below), agree must rise;
+- fights without the rules against the overlay fights: net a minute, knockouts (first four bot fights: -47 against -33 a minute, noise);
+- swings landing, damage a minute of the overlay fights (about 300/330 healthy), jump/swing off-on moments: a spread of the lessons into the whole fight would show there first (runs 22 and 24 died of it).
+
+**Revert (git revert the run 30 commits, `START_NET=` the revert point)** if the overlay fights' damage a minute falls under about 250 for an hour, swings landing falls clearly under the installed model's, or the ruled ce has not fallen in 3 hours.
+
+**Baseline for the question that matters (A without the rules against B, same seeds as the hourly checks):** screen of `checked-1101-0754.bin` (the network just before run 30) on pairs 0-65 with `RULESOFF=1`, 08:10-08:18: see the last `NET check` block of `run/school-checks.log` (numbers in EXPERIMENTS.md when read).
 
 **Runs so far:**
 
 | Run | Change | Result |
 |---|---|---|
 | 26 | B1's W and sprint gated by the option layer | Kept |
-| 27 | Crits end the sprint with an S-tap: W re-pressed within 7 ticks restarts the sprint, S clears that | Kept |
-| 28, 28b | Punish crit picked only if the landing is predicted in reach | Reverted (`dd2116a`): uncalibrated, critted-when-told fell under 10% |
-| 27 line restored | Trained 31 Oct 06:11 to 1 Nov 04:25 | 23 checks, mean about +2.4. Five scripted screens +4.3, +3.3, +6.2, +3.1, +3.5, so its real lead is about +4, level with the bar |
-| 29 | Timer basic about 2% to 6% of training fights (`REVIEW_WEIGHT[9]` 3 to 9, `REVIEW_SHARE` 0.15 to 0.19; other reviews unchanged) | Running. Checks +8.6, −10.8, +5.4, mean +1.1 |
+| 27 | Crits end the sprint with an S-tap | Kept |
+| 28, 28b | Punish crit picked only if the landing is predicted in reach | Reverted |
+| 29 | Timer basic 2% to 6% of training fights | Reverted 1 Nov 08:05: five checks +0.7 (fight-timer pooled about -2.5 against -8.2 before, within noise) |
+| 30 | The take-over (above) | Running |
 
-**Why run 29.** Pooled over the five screens (55 pairs a bot), `fight-timer` is the only bot A clearly loses to B: **−8.2 (2.2)**, dealing 276 a minute to B's 326. Hourly rows agree in every period since 27 Oct: −5.7, −6.5, −10.3, −7.7. It is the bot modelled on the friend who beat the AI on 18 Oct: it reads the agent's swing rhythm and times its crit. The first screen, 45 minutes in, was still −8.6 (4.2).
-
-**Weak points, with numbers:**
-- **Punish crit:** the rolling number has moved 26, 29, 28, 23, 20, 22, 24 since 04:18. Fresh screens: A 22% vs B 27% on the last one. Pooled crit funnel over five screens for A: 1461 falling ticks, 632 in reach, **154 charged**, 93 not sprinting. **The sword not being back is the largest loss by far,** and B has the same problem.
-- **Worst bots for both A and B:** `attack-then-s` about −39, `stun-escaper` about −30. A deals about 190 a minute there, half its normal. Both are already common in training, and PPO alone has not solved them.
-- **Mirror:** swings +0.1 to +13.3 with se about 4. The +9.9 bar is the harder one.
+**Weak points, with numbers (unchanged):**
+- **Punish crit:** rolling 20-30% for days; the loss is mostly the sword not being back (632 falling in reach, 154 charged over five screens).
+- **Worst bots for both A and B:** `attack-then-s` about -39, `stun-escaper` about -30 in the checks (the combo chain above).
+- **Mirror:** swings +0.1 to +13.3 with se about 4.
 
 ---
 
 ## 9. What to do next
 
-1. **Judge run 29 at five checks,** around 08:50. Five-check average below +1: revert `f446ae8` and redeploy from `run29-revert-start.bin`.
-2. **Judge it again at about 10 checks,** around 13:00. Pool `fight-timer` from the checks and from screens with `tools/pool-screens.py`:
-   ```bash
-   C:/Python38/python.exe D:/swordai/tools/pool-screens.py D:/swordai/run/school-checks.log run29-0510.bin
-   ```
-   It takes the network names of scripted screens. Revert if the gap has not moved from about −8. Also watch that the rolling punish crit does not settle near 20%, which was part of why run 28b was reverted. Fill in the run 29 row in `EXPERIMENTS.md` either way.
-3. **Until then, change nothing.** Run the reviews and screen checks above about +6.
-4. **Next run, one change only.** My order:
-   - **Why A swings less into the timer.** Compare A and B fight by fight from the `school pair N A/B fight-timer` lines before changing anything else. If rhythm is the cause, a fixed swing rhythm the timer can read is the thing to fix.
-   - **The sword-charge loss in the punish funnel.** 632 in reach to 154 charged. Work out from logged lifts when it swung before the lift. Anything that predicts a behaviour must be calibrated from logged data first (run 28).
-   - **`attack-then-s` and `stun-escaper`:** A deals half its normal damage there, so look at reach and chasing with `tools/hits-report.py`.
-5. **Do not re-try:** the sprint let-go for punish crits, copying the teacher's C3/T9, whole-network movement lessons, or "let the decider learn from outcomes". That last one is already on (`Chooser.OUTCOME`), and its own picks do worse than the teacher's (−0.07 vs +0.08). The 1.00 in that log line only means `AWR` is off.
-
----
+1. **Run the 30-minute review.** It now prints the take-over lines. Judge run 30 at 3 hours (ruled ce, agree, fights without the rules, overlay damage) and with a `RULESOFF=1` screen of the new network at about the same time: `cd /d/swordai && RULESOFF=1 FROM=0 bash tools/screen.sh 66 /d/swordai/run/swordai/school/checked-MMDD-HHMM.bin:1 > run/screen-rulesoff.log 2>&1` (66 pairs take about 7 minutes and pause training; pairs 0-65 are the hourly seeds, fine for this diagnostic, not for picking a network).
+2. **If the ruled ce falls (under 0.3) and the fights without the rules are within about 10 a minute of the overlay's:** let the take-over run, raise `RULE_OFF_MAX` towards 0.7-1.0, then let the pull on the rules' keys follow a budget (the adaptive controller of `SchoolStages.noteBodyCe`, hold the ruled ce at about 0.10-0.15) so reinforcement learning can move the keys past the rules. This is where the new gain would come from: the network finally acts on the keys that decide hits.
+3. **If the ce does not fall:** the network cannot read the rules' conditions from its inputs (they use `obs.vec` plus their own timers). Look at which heads stay high (`SchoolPpo` could log ce per head) before changing the pull.
+4. **To deploy a rule-free network** the user's game needs a switch: `FightSession` calls `school.rulesFrom(fighter)` whenever `SchoolSession.RULE_OVERLAY` is true (a constant). Add a flag file for it only after a rule-free screen beats the overlay one on two fresh screens (the install rule of section 6, with `RULESOFF=1`).
+5. **Other levers noted, not done:** an asynchronous PPO update (the game waits 15 of every 69 seconds for the update and its two replays: +30% data); label smoothing or an entropy floor on the rules' keys if exploration is missing once the pull is a budget; re-try the timer share (run 29) alone later.
+6. **Do not re-try:** the sprint let-go for punish crits, copying the teacher's C3/T9, whole-network movement lessons, or "let the decider learn from outcomes" (already on).
 
 ## 10. Lessons that cost days
 
@@ -217,5 +228,8 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 - Bundling changes makes the result unreadable (run 25).
 - One bad check is not a verdict, and neither is one good one. Set the rule before the result.
 - A "smart" predictor that decides behaviour needs calibration first (run 28).
+
+- **A key locked out of the PPO mask is a decision reinforcement learning cannot improve.** The rules overlay locked the keys that decide most hits for 8 days while the work went into teaching techniques over them (1 Nov). Before teaching anything, ask who presses the key at the moment (the `ruled` column of `hits.csv`).
+- **Check what a copying target really is.** `ANCHOR_TO_BEST` replaced the installed model's keys by the frozen run 6 network's chances in every untaught head, so 'installed ce' measured the distance to run 6 (1 Nov).
 
 Before stopping, write what you did into `EXPERIMENTS.md` and `CANDIDATES.txt`, update §6 and §8 here, and commit.
