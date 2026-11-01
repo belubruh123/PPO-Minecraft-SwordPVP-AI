@@ -61,6 +61,8 @@ public final class SchoolPpo implements AutoCloseable {
 		 * step or not: the network learns what the rules do wherever they speak, which the lock kept from it until run 30.
 		 */
 		public float ruledPull;
+		/** Minibatches of the rules' keys kept (TeacherReplay#ruledOnly, drawn rule first), after the update. */
+		public int ruledBatches = 12;
 		/** Learn the critic only. */
 		public boolean criticOnly;
 		/** After the update, minibatches of the technique teachers' kept examples ({@link TeacherReplay}), and their step. */

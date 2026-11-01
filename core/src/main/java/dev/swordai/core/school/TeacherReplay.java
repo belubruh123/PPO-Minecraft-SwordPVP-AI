@@ -37,6 +37,13 @@ public final class TeacherReplay {
 	 * the other half of the draws stays as it was.
 	 */
 	public boolean stratified;
+	/**
+	 * Run 30c: kept are the steps on which a rule of the installed model pressed (or, in a fight without the rules, would have
+	 * pressed) a body key, with the rule's key as the target, and drawn rule first, so that a rare rule (the swing kept for the
+	 * crit, the S after a hit: tens of head-ticks an update) is practised as often as the common ones (the camera's aim, the walk
+	 * straight in: thousands). Built as a shadow replay.
+	 */
+	public boolean ruledOnly;
 	static final int SHADOW_EVERY = 3;
 	private long shadowSeen;
 	private int size;
@@ -50,6 +57,8 @@ public final class TeacherReplay {
 	private final byte[][] cond;
 	private final int[] heads;
 	private final int[] technique;
+	/** The rarest rule of Fighter#rules that had keys on the example (ruledOnly); RULE_NAMES.length for none. */
+	private final int[] ruleOf;
 	private long baseSeen;
 
 	public TeacherReplay(int capacity) {
@@ -68,6 +77,7 @@ public final class TeacherReplay {
 		cond = new byte[capacity][ActionSpace.HEADS];
 		heads = new int[capacity];
 		technique = new int[capacity];
+		ruleOf = new int[capacity];
 	}
 
 	public int size() {
@@ -83,7 +93,13 @@ public final class TeacherReplay {
 			}
 			int h = r.teacherHeads[i];
 			int t = r.teacherTechnique[i];
-			if (shadow) {
+			if (ruledOnly) {
+				h = r.ruledHeads[i];
+				if (h == 0) {
+					continue;
+				}
+				t = Technique.BASE.ordinal();
+			} else if (shadow) {
 				if (r.teacherWeight[i] <= 0f || (shadowSeen++ % SHADOW_EVERY) != 0) {
 					continue;
 				}
@@ -97,7 +113,9 @@ public final class TeacherReplay {
 			}
 			// Not a key the network could not press there (a swing before its sword was back); a key a rule pressed is one it
 			// learns the installed model's word on (run 30), whether the rule locked it or not.
-			h &= shadow ? r.headMask[i] | r.ruledHeads[i] : r.headMask[i];
+			if (!ruledOnly) {
+				h &= shadow ? r.headMask[i] | r.ruledHeads[i] : r.headMask[i];
+			}
 			// The ordinary fight's no-jump is on most steps: one in six of them is kept, so it does not crowd the techniques out.
 			if (!shadow && (h == 0 || t < 0 || t == Technique.BASE.ordinal() && (baseSeen++ % 6) != 0)) {
 				continue;
@@ -118,7 +136,20 @@ public final class TeacherReplay {
 			}
 			heads[j] = h;
 			technique[j] = t;
+			ruleOf[j] = ruledOnly ? lowestRule(r.ruleBits[i]) : -1;
 		}
+	}
+
+	/** The rules by how rare their keys are, rarest first (bits of Fighter#rules): an example goes to the rarest rule that had keys on it. */
+	private static final int[] RARITY_ORDER = {12, 1, 10, 0, 13, 4, 5, 11, 8, 2, 3, 6, 9, 7};
+
+	private static int lowestRule(int bits) {
+		for (int k : RARITY_ORDER) {
+			if ((bits & (1 << k)) != 0) {
+				return k;
+			}
+		}
+		return SchoolPpo.RULE_NAMES.length;
 	}
 
 	/** The body's keys (not the camera): what {@link #addSelf} keeps of its own steps. */
@@ -226,6 +257,28 @@ public final class TeacherReplay {
 				}
 			}
 		}
+		int[][] byRule = null;
+		int[] ruleKinds = null;
+		int ruleKindCount = 0;
+		if (ruledOnly) {
+			int buckets = SchoolPpo.RULE_NAMES.length + 1;
+			int[] ruleCount = new int[buckets];
+			for (int i = 0; i < size; i++) {
+				ruleCount[ruleOf[i]]++;
+			}
+			byRule = new int[buckets][];
+			ruleKinds = new int[buckets];
+			for (int k = 0; k < buckets; k++) {
+				byRule[k] = new int[ruleCount[k]];
+				if (ruleCount[k] > 0) {
+					ruleKinds[ruleKindCount++] = k;
+				}
+			}
+			int[] ruleAt = new int[buckets];
+			for (int i = 0; i < size; i++) {
+				byRule[ruleOf[i]][ruleAt[ruleOf[i]]++] = i;
+			}
+		}
 		double ce = 0;
 		int headsSeen = 0;
 		int agreed = 0;
@@ -234,7 +287,10 @@ public final class TeacherReplay {
 			int used = 0;
 			for (int n = 0; n < batch; n++) {
 				int i;
-				if (kindCount > 0 && (n & 1) == 1) {
+				if (ruledOnly && ruleKindCount > 0 && (n & 1) == 1) {
+					int[] of = byRule[ruleKinds[rng.nextInt(ruleKindCount)]];
+					i = of[rng.nextInt(of.length)];
+				} else if (kindCount > 0 && (n & 1) == 1) {
 					int[] of = byTechnique[kinds[rng.nextInt(kindCount)]];
 					i = of[rng.nextInt(of.length)];
 				} else {

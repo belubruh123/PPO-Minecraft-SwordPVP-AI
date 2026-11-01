@@ -77,6 +77,9 @@ public final class SchoolLearner implements AutoCloseable {
 	private TeacherReplay shadowReplay;
 	/** Its own best steps (TeacherReplay#addSelf), learned from again after every update with {@link #SELF_PULL}. */
 	private TeacherReplay selfReplay;
+	/** The rules' keys (run 30c): see TeacherReplay#ruledOnly. */
+	private TeacherReplay ruledReplay;
+	private volatile String ruledLine = "no examples yet";
 	static final int SELF_CAPACITY = 4_000;
 	static final int SELF_BATCHES = 12;
 	/**
@@ -279,10 +282,15 @@ public final class SchoolLearner implements AutoCloseable {
 			replay.stratified = true;
 			shadowReplay = new TeacherReplay(16_000, true);
 			selfReplay = new TeacherReplay(SELF_CAPACITY);
+			ruledReplay = new TeacherReplay(6_000, true);
+			ruledReplay.ruledOnly = true;
 			replayWs = actor.newWorkspace();
 		}
 		replay.addFrom(rollout);
 		selfReplay.addSelf(rollout);
+		if (set.ruledPull > 0f) {
+			ruledReplay.addFrom(rollout);
+		}
 		if (set.oldPull > 0f) {
 			shadowReplay.installedBody = set.installedBody;
 			shadowReplay.addFrom(rollout);
@@ -296,6 +304,12 @@ public final class SchoolLearner implements AutoCloseable {
 				shadowLine = shadowReplay.learn(actor, replayWs, pulls, set.shadowBatches, set.replayBatch, set.replayLr, set.maxGradNorm, rng)
 						+ " of " + shadowReplay.size() + " kept";
 			}
+		}
+		if (!set.criticOnly && set.ruledPull > 0f && set.ruledBatches > 0) {
+			float[] ruledPulls = new float[dev.swordai.core.pvp.Technique.COUNT];
+			ruledPulls[dev.swordai.core.pvp.Technique.BASE.ordinal()] = set.ruledPull;
+			ruledLine = ruledReplay.learn(actor, replayWs, ruledPulls, set.ruledBatches, set.replayBatch, set.replayLr, set.maxGradNorm, rng)
+					+ " of " + ruledReplay.size() + " kept";
 		}
 		if (!set.criticOnly && SELF_PULL > 0f) {
 			float[] pulls = new float[dev.swordai.core.pvp.Technique.COUNT];
@@ -390,7 +404,7 @@ public final class SchoolLearner implements AutoCloseable {
 	}
 
 	public String replayLine() {
-		return replayLine + "; installed's examples: " + shadowLine + "; its own best moments again: " + selfLine;
+		return replayLine + "; installed's examples: " + shadowLine + "; its own best moments again: " + selfLine + "; the rules' keys again: " + ruledLine;
 	}
 
 	public float actorLr() {
