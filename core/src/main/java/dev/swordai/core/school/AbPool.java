@@ -19,10 +19,10 @@ import java.util.Random;
  * standard error.
  *
  * <p>The pool is the file {@code swordai/school/ab/pool.txt}, one arm a line, fields separated by {@code |}:
- * {@code tag | network | rules | temperatures | weight}. The network is a path relative to the {@code ab} folder (or absolute;
+ * {@code tag | network | rules | temperatures | weight | options}. The network is a path relative to the {@code ab} folder (or absolute;
  * {@code ../checkpoint.bin} is the installed one); rules is {@code on} (the installed model's fight-time rules over the network) or
  * {@code off}; temperatures is empty for none, {@code default} for the school folder's {@code play-temperature}, or a file; weight
- * defaults to 1. Lines starting with {@code #} are comments. An arm whose network is missing is left out; with no valid arm there
+ * defaults to 1; options (a sixth field) are words, so far {@code hitout} for hit and out ({@code StepBack#planShort}) over the network. Lines starting with {@code #} are comments. An arm whose network is missing is left out; with no valid arm there
  * is no pool and the installed network plays as before.
  */
 public final class AbPool {
@@ -36,13 +36,16 @@ public final class AbPool {
 		/** The per-head play temperatures file, or null for none. */
 		public final Path temperatures;
 		public final double weight;
+		/** Hit and out ({@code StepBack#planShort}) over the network, with the rules on. */
+		public final boolean hitAndOut;
 
-		Arm(String tag, Path network, boolean rules, Path temperatures, double weight) {
+		Arm(String tag, Path network, boolean rules, Path temperatures, double weight, boolean hitAndOut) {
 			this.tag = tag;
 			this.network = network;
 			this.rules = rules;
 			this.temperatures = temperatures;
 			this.weight = weight;
+			this.hitAndOut = hitAndOut;
 		}
 	}
 
@@ -102,7 +105,13 @@ public final class AbPool {
 			if (!(weight > 0.0) || Double.isInfinite(weight)) {
 				weight = 1.0;
 			}
-			arms.add(new Arm(tag, network, rules, temps, weight));
+			boolean hitAndOut = false;
+			if (f.length > 5) {
+				for (String o : f[5].split("[ ,]+")) {
+					hitAndOut |= o.trim().equalsIgnoreCase("hitout");
+				}
+			}
+			arms.add(new Arm(tag, network, rules, temps, weight, hitAndOut));
 		}
 		return arms;
 	}

@@ -264,6 +264,8 @@ public final class SchoolSession implements AgentSession {
 	static final String RULES_OFF_CHECK_FILE = "rules-off-check";
 	/** With this file in the school folder a real fight (FightSession) is played without the rules: the network alone. */
 	static final String NO_RULES_FILE = "no-rules";
+	/** An empty file of this name in the school folder switches hit and out on for a real fight (FightSession), with the rules over the network. */
+	static final String HIT_AND_OUT_FILE = "hit-and-out";
 	static final float RULED_PULL = 0.3f;
 	/**
 	 * Run 30e: the pull on the rules' keys follows a budget instead of staying at RULED_PULL (the adaptive controller of the body keys' copying,
@@ -1838,6 +1840,8 @@ public final class SchoolSession implements AgentSession {
 		idea.clear();
 		if (installed != null) {
 			installed.fighter.reset();
+			// Hit and out (SchoolStages#HIT_AND_OUT): for the side the school trains, not for the installed model that plays against it in a check.
+			installed.fighter.hitAndOut(dev.swordai.core.school.SchoolStages.HIT_AND_OUT && !installedPlays);
 		}
 		hasLastAction = false;
 		clicked = false;

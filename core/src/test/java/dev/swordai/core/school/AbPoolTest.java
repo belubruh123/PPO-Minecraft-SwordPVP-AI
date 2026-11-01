@@ -82,4 +82,19 @@ class AbPoolTest {
 		double shareB = seen.get("b") / 4000.0;
 		assertTrue(shareB > 0.71 && shareB < 0.79, "arm b drawn " + shareB);
 	}
+
+	@Test
+	void theOptionsFieldSwitchesHitAndOutOn(@TempDir Path school) throws IOException {
+		Files.write(school.resolve("checkpoint.bin"), new byte[] {1});
+		Files.write(ab(school).resolve("c.bin"), new byte[] {3});
+		pool(school, "plain | ../checkpoint.bin | on | | 1 |\n"
+				+ "out | c.bin | on | | 1 | hitout\n"
+				+ "both | c.bin | off | | 2 | foo, HITOUT\n");
+		List<AbPool.Arm> arms = AbPool.read(school);
+		assertEquals(3, arms.size());
+		assertFalse(arms.get(0).hitAndOut);
+		assertTrue(arms.get(1).hitAndOut);
+		assertTrue(arms.get(2).hitAndOut);
+		assertFalse(arms.get(2).rules);
+	}
 }

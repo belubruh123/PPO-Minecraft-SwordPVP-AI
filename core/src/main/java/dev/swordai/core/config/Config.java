@@ -691,6 +691,13 @@ public final class Config {
 	 */
 	public boolean stepBackRule = false;
 	/**
+	 * Hit and out (1 Nov 2026; {@code StepBack#planShort}): after a hit of its own, with the opponent in reach and its sword back, S is held
+	 * for four ticks. The user's duels against real players, three days (tools/duel-hits.py): the hits it took in the next two seconds fell
+	 * from 2.0 to 1.3 with three or four of the six ticks after the hit on S, the hits it dealt did not, on each day. Not the old step back
+	 * (above), which walked back until the sword was back and the opponent four blocks away.
+	 */
+	public boolean hitAndOutRule = false;
+	/**
 	 * The chase jump ({@link #chaseRule}) is also the next hit of a combo of its own, at an opponent
 	 * that backs off after being hit; see {@code JumpIn.chaseInCombo}.
 	 */

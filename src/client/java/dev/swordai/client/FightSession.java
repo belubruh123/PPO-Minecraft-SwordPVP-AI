@@ -166,6 +166,9 @@ final class FightSession implements AgentSession {
 			if (rulesOn) {
 				school.rulesFrom(fighter);
 				rulesBody.patchedUp = loaded.patchedUp;
+				// Hit and out over the network: the arm of the A/B pool says, else the file in the school folder or the config.
+				fighter.hitAndOut(arm != null ? arm.hitAndOut
+						: loaded.cfg.hitAndOutRule || Files.exists(SwordFiles.schoolDir().resolve(SchoolSession.HIT_AND_OUT_FILE)));
 			}
 		} else {
 			schoolLearner = null;
@@ -184,6 +187,7 @@ final class FightSession implements AgentSession {
 	String skillLine() {
 		return school != null ? "Playing with the technique school's network (" + schoolLearner.totalSteps + " steps of training)"
 				+ (arm != null ? " [A/B arm " + arm.tag + "]" : "")
+				+ (rulesOn && school != null && fighter.hitAndOut() ? " [hit and out]" : "")
 				+ (rulesOn ? ", the installed model's fight-time rules over it." : "; no rule presses anything for it.")
 				: loaded.skillLine();
 	}

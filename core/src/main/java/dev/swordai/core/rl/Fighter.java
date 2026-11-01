@@ -46,8 +46,10 @@ public final class Fighter {
 	private final JumpReset jumpReset;
 	/** Out of the line of a combo it is taking, to the side; see {@link ComboStrafe}. Null where that is not a rule. */
 	private final ComboStrafe comboStrafe;
-	/** The step back after a hit of its own that has not sent the opponent away; see {@link StepBack}. */
-	private final StepBack stepBack;
+	/** The step back after a hit of its own that has not sent the opponent away; see {@link StepBack}. Made when hit and out is switched on, too. */
+	private StepBack stepBack;
+	/** Hit and out: S held for a few ticks after a hit of its own that the opponent can answer; see {@code StepBack#planShort}. */
+	private boolean hitAndOut;
 	private final boolean meetRule;
 	/** No swing at an opponent coming in through the air with its sword ready; see {@link CritTrade}. Null where that is not a rule. */
 	private final CritTrade critTrade;
@@ -179,6 +181,7 @@ public final class Fighter {
 		this.edgeHoldRule = cfg.edgeHoldRule;
 		this.stepBackRule = cfg.stepBackRule;
 		this.tacticOnEvents = cfg.tacticOnEvents;
+		this.hitAndOut = cfg.hitAndOutRule;
 		this.oppWindow = learner.playsReader() ? new OpponentReader.Window() : null;
 		boolean jumps = ActionSpace.unlocked(headMask, ActionSpace.JUMP) && ActionSpace.unlocked(headMask, ActionSpace.SPRINT);
 		this.jumpIn = jumps && (cfg.chaseRule || cfg.faceRule || cfg.uppercutChance > 0f || cfg.counterCritRule || cfg.edgeCritRule || cfg.clashJumpRule || tactics)
@@ -452,6 +455,13 @@ public final class Fighter {
 		if (!Tactic.stepsBack(tactic, stepBackRule)) {
 			step = 0;
 		}
+		if (hitAndOut && stepBack != null) {
+			// Hit and out: S for a few ticks after a hit of its own that the opponent, in reach with its sword back, can answer.
+			int out = stepBack.planShort(obs.vec);
+			if (step == 0) {
+				step = out;
+			}
+		}
 		// An opponent jumping in at it with its own sword not back: out of the way of that jump; see MeetJump.dodges.
 		boolean dodge = dodgeJump && !meet && reset == 0 && !letGo && swingMinCharge > 0f && ActionSpace.unlocked(keys, ActionSpace.FORWARD)
 				&& (jumpIn == null || jumpIn.kind() == JumpIn.NONE) && MeetJump.dodges(obs.vec, meetWhenComing);
@@ -642,6 +652,21 @@ public final class Fighter {
 
 	public int headMask() {
 		return headMask;
+	}
+
+	/**
+	 * Hit and out on or off for this fighter, whatever the config says ({@code Config.hitAndOutRule}): the school switches it for the
+	 * side it plays for, and a fighter that plays against it (the installed model in a check) keeps it off.
+	 */
+	public void hitAndOut(boolean on) {
+		hitAndOut = on;
+		if (on && stepBack == null && ActionSpace.unlocked(headMask, ActionSpace.FORWARD) && ActionSpace.unlocked(headMask, ActionSpace.SPRINT)) {
+			stepBack = new StepBack();
+		}
+	}
+
+	public boolean hitAndOut() {
+		return hitAndOut;
 	}
 
 	public boolean ideasLearned() {

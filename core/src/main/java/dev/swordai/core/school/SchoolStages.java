@@ -163,6 +163,17 @@ public final class SchoolStages {
 	 */
 	public static final int YIELD_AFTER_HIT = 20;
 	/**
+	 * Hit and out (run 31, 1 Nov 2026; {@code StepBack#planShort}): for the side the school trains, S is held for four ticks after a
+	 * hit of its own that the opponent, in reach with its sword back, can answer. Not for the installed model that plays against it
+	 * in a check. The user's duels against real players, three days (tools/duel-hits.py): the hits it took in the next two seconds
+	 * went 2.02 / 1.92 / 1.55 / 1.31 / 1.28 with 0 / 1 / 2 / 3 / 4 of the six ticks after the hit on S, the hits it dealt did not
+	 * fall, on each day; in the paired checks the scripted bots answer about half of its hits (A and the installed model alike, 47%),
+	 * so the leak is in the screens too. In the overlay the rule presses the keys, and the network learns them from it through the
+	 * rules' lesson (SchoolSession#RULED_PULL), in the fights without the rules from the installed model's own choice.
+	 */
+	public static final boolean HIT_AND_OUT = true;
+
+	/**
 	 * When the network is told the punish crit (the decision model chose it, or the punish drill forced it), the installed
 	 * model's rules give it W, the sprint and the swing for the lift (PUNISH_KEYS), in training, checks and real fights: a crit
 	 * needs the sprint let go and the swing kept for the way down, and the rules hold W and the sprint in every lift

@@ -117,6 +117,7 @@ public final class StepBack {
 		on = false;
 		sinceStep = 1000;
 		airSeen = 0;
+		shortLeft = 0;
 	}
 
 	/** Whether it is stepping back from the hit it last landed. */
@@ -232,6 +233,57 @@ public final class StepBack {
 			return 0;
 		}
 		return d <= OUT ? BACK : d <= STAND_WITHIN ? STAND : 0;
+	}
+
+	/**
+	 * Hit and out (1 Nov 2026, {@code Config.hitAndOutRule}): after a hit of its own, with the opponent still within reach and its sword
+	 * back, S is held for {@link #SHORT_TICKS} ticks, W and the sprint up. Read from the user's duels against real players (profile
+	 * {@code swordai/fights}, three days, 176 duels, tools/duel-hits.py): after its own hit with the opponent's sword ready and the
+	 * opponent in reach, the hits it took in the next two seconds went 2.02 / 1.92 / 1.55 / 1.31 / 1.28 with 0 / 1 / 2 / 3 / 4 of the
+	 * six ticks after the hit on S, and the hits it dealt did not fall (1.54 / 1.43 / 1.52 / 1.64 / 1.67), on each of the three days
+	 * (champion 23 Oct, school 29 Oct and 1 Nov), whether the opponent was in the air or on the ground. It held W in 2 of 3 of those
+	 * hits (the chase of a combo that the opponent answers). The old step back ({@code Config.stepBackRule}, off since 14 October)
+	 * walked back until the sword was back and four blocks away; this is a tap of four ticks, about a block, and it comes in again at
+	 * once. The documented elements: the S-tap that keeps it just out of their reach, the S after the sprint hit of the uppercut (T10),
+	 * and holding S so that they cannot follow (C3, C4).
+	 */
+	public static final int SHORT_TICKS = 4;
+	/** The opponent this near when the hit lands: nearer than where a hit's knockback has already put it out of reach (the data: median 2.0, p90 2.4 when it stays in). */
+	static final float SHORT_IN = 2.8f;
+	/** While holding, only while it is still this near; thrown out of reach, the fighter goes after it again. */
+	static final float SHORT_STILL = 3.6f;
+	/** The opponent's sword this far back or more: it can hit back before ours is. */
+	static final float SHORT_READY = 0.7f;
+	private int shortLeft;
+
+	/**
+	 * One decision of hit and out; to be called on every tick, whether or not what it says is done.
+	 *
+	 * @return {@link #BACK} while S is to be held, else 0, which leaves W and S to the network
+	 */
+	public int planShort(float[] vec) {
+		float fresh = 1f - 0.5f / BodyState.EVENT_FADE_TICKS;
+		if (scalar(vec, ObsSpec.SC_SINCE_HIT_TAKEN) >= fresh) {
+			// Hit: what follows is the answer to that, which has rules of its own.
+			shortLeft = 0;
+			return 0;
+		}
+		boolean seen = vec[ObsSpec.VEC_STATS + ObsSpec.ST_ANY_VISIBLE] >= 0.5f;
+		float d = seen ? JumpIn.distance(vec) : Float.MAX_VALUE;
+		if (scalar(vec, ObsSpec.SC_SINCE_HIT_DEALT) >= fresh) {
+			boolean out = seen && d <= SHORT_IN && scalar(vec, ObsSpec.SC_OPP_CHARGE) >= SHORT_READY;
+			shortLeft = out ? SHORT_TICKS - 1 : 0;
+			return out ? BACK : 0;
+		}
+		if (shortLeft <= 0) {
+			return 0;
+		}
+		shortLeft--;
+		if (!seen || d > SHORT_STILL) {
+			shortLeft = 0;
+			return 0;
+		}
+		return BACK;
 	}
 
 	private static float scalar(float[] vec, int index) {
