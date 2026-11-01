@@ -167,7 +167,7 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 | Item | Value |
 |---|---|
-| Training | **Run 30c, the take-over**, live since 09:22 (30: 08:05, 30b: 08:26, 30c: 09:22; commits `19878f4` .. `1f254f8`), loops 1, java 1 |
+| Training | **Run 30e, the take-over**, live since 11:38 (30: 08:05, 30b 08:26, 30c 09:22, 30d 10:25, 30e 11:38; commits `19878f4` .. `0bc87f6` and the 30e commit), loops 1, java 1 |
 | Revert point | `run/swordai/school/run30-revert-start.bin` (the run 27 line at 08:02 on 1 Nov) |
 | Installed | `run23-1418`, unchanged |
 | Git | `main`, many commits ahead of origin, not pushed (the user has not asked) |
@@ -193,9 +193,10 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 **The question that matters (A without the rules against B, same seeds as the hourly checks, pairs 0-65, `RULESOFF=1`):**
 - before run 30 (`checked-1101-0754.bin`, 08:16): **-7.9 (3.7)**; punish crit by the game 1%, double crit 0 of 8;
-- after 45 minutes of the ruled lesson (`checked-1101-0912.bin`, 09:29): **-2.5 (4.5)**; punish crit 4% (B 9%), double crit 0 of 37 (B 8 of 49), their combos' third hit 48% (B 32%), swings landing 97% (B 90%). The two screens differ by 5.4 with se about 5.8: the direction is right, not proven.
-- the hourly check with the rules over the network at 09:17 (run 30b): +6.0 (4.5): the lesson did not hurt that play.
-Changes of 30c (09:22): the camera is out of the rules' lesson, fights without the rules are left out of the technique bars, crit and jump-in lines (they have their own swing counts), the update line has the ruled ce by head and by rule, `tools/compile-check.sh` (javac against the built classes; run it before a redeploy). Not yet deployed: `FightSession` plays without the rules when `school/no-rules` exists (commit `1f254f8`).
+- 09:29 (45 min of the lesson): **-2.5 (4.5)**; 10:32 (105 min): **-2.6 (3.8)**; 11:30 (30d, the rules' keys ce 0.14): **-2.3 (3.2)**. So the network without the rules closed most of the gap in the first hour and has stayed about 2.4 under the installed model since (pooled of the last three about -2.5, se about 2.2).
+- the hourly checks with the rules over the network: 09:17 +6.0 (4.5), 10:18 +1.7 (4.2), 11:22 +6.4 (4.7): the lesson did not hurt that play (mean +4.7 against +2.4 the day before).
+- **What still differs (hit log of the screens, `tools/hits-report.py` on the screen's rows of `school/hits.csv`):** damage taken from the third hit of an opponent's combo (17 vs 9 a fight), damage taken in the air (6.4 vs 2.3), the double crit chain (T1C -4.9 dealt). At the hits of their combos the installed model jumps 97-98% of the ticks with W held 98-99% (the jump reset), the network without the rules jumps 63-68% and presses S 33-36%: the jump reset's tick and the S after it are mixed up. Run 30e weighs the rules' keys 4x on that tick.
+Changes of 30c (09:22); 30d (10:25) added the rule-first replay of the rules' keys (`TeacherReplay.ruledOnly`); 30e (11:38) the 4x hit-tick weight, a budget on the pull (`RULED_CE_TARGET` 0.15) and the share of fights without the rules up to 0.70. 30c (09:22): the camera is out of the rules' lesson, fights without the rules are left out of the technique bars, crit and jump-in lines (they have their own swing counts), the update line has the ruled ce by head and by rule, `tools/compile-check.sh` (javac against the built classes; run it before a redeploy). Not yet deployed: `FightSession` plays without the rules when `school/no-rules` exists (commit `1f254f8`).
 
 **Runs so far:**
 
