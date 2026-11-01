@@ -304,7 +304,8 @@ public final class SchoolPpo implements AutoCloseable {
 					pull = 0f;
 				}
 				if (ruledHere) {
-					pull = set.ruledPull;
+					// A press (the jump, the swing, a sprint ended) weighs as much as it does for a technique teacher: one tick among many of "not now".
+					pull = set.ruledPull * Teacher.pressWeight(stored, h, r.vec[i]);
 				} else if (!byTech && !installedHere || shadowed && !byTech) {
 					continue;
 				}

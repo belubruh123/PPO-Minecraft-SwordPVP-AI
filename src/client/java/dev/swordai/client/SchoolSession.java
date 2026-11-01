@@ -2404,7 +2404,11 @@ public final class SchoolSession implements AgentSession {
 			}
 			keys &= ~ruled;
 		}
-		step.ruledHeads = mode == Mode.TRAIN && review < 0 ? ruledTaught & ~step.teacherHeads : 0;
+		// The body's keys only (run 30b): the camera is a fine choice among 15 and 11 bins (the aim rule picks one from the camera's
+		// push), and in the first updates of run 30b it was 53% of the rules' head-ticks at cross-entropy 3.4 to 5.1 and 20%
+		// agreement, while the network without the rules already lands 97% of its swings to the installed model's 89%.
+		int bodyKeys = ActionSpace.ALL_HEADS & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
+		step.ruledHeads = mode == Mode.TRAIN && review < 0 ? ruledTaught & bodyKeys & ~step.teacherHeads : 0;
 		if (step.ruledHeads != 0) {
 			// The rule's key, a sure target on each head it pressed (SchoolPpo#teach with Settings#ruledPull).
 			int[] rule = installed.fighter.action();
