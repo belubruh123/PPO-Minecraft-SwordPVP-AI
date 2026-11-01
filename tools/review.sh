@@ -4,6 +4,7 @@ cd /d/swordai/run || exit 1
 date
 ls -la --time-style=+%H:%M:%S school-client.log | awk '{print "log last written",$6}'
 echo "loops $(ps -ef | grep -c '[s]choolcycle')  java $(tasklist 2>/dev/null | grep -c -i java.exe)  (want 1 and 1)"
+echo "user's Minecraft (javaw) $(tasklist 2>/dev/null | grep -c -i javaw.exe)  (above 0: training numbers read about 30% worse, HANDOFF section 1)"
 echo "pair lines $(tail -40 school-client.log | grep -c 'school pair')  (above 0: a paired check is playing, no redeploy)"
 U=$(grep -E "school update" school-client.log | tail -8)
 L=$(echo "$U" | tail -1)
@@ -23,3 +24,5 @@ echo "--- last check or screen"
 grep -E "^=== " school-checks.log | tail -1 | cut -c1-110
 awk '/^=== 1[0-2]-[0-9]+ /{b=""} {b=b"\n"$0} END{print b}' school-checks.log | grep -E "^ALL|^fight-timer|A swings|B swings|A jumping|B jumping" | cut -c1-130
 ls -t swordai/school/checked-*.bin | head -1
+echo "--- live A/B pool in the user's duels (empty until two arms have played)"
+C:/Python38/python.exe D:/swordai/tools/duels.py 2>&1 | sed -n '/^arms of the live/,$p' | cut -c1-130

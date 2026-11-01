@@ -1,4 +1,4 @@
-# SwordAI handoff (2 Nov 2026, 05:15; status block at the top of section 8), to the next Claude conversation
+# SwordAI handoff (2 Nov 2026, 07:25; status block at the top of section 8), to the next Claude conversation
 
 This file replaces every earlier handoff. It stands on its own.
 
@@ -98,14 +98,14 @@ When an hourly check is above about +6:
 ```bash
 cp /d/swordai/run/swordai/school/checked-MMDD-HHMM.bin /d/swordai/run/best-candidates/runNN-HHMM.bin
 # Add a line to run/best-candidates/CANDIDATES.txt, then, in the background:
-cd /d/swordai && FROM=7500 bash tools/screen.sh 133 /d/swordai/run/best-candidates/runNN-HHMM.bin:1 > /d/swordai/run/screen-scripted.log 2>&1
+cd /d/swordai && FROM=8100 bash tools/screen.sh 133 /d/swordai/run/best-candidates/runNN-HHMM.bin:1 > /d/swordai/run/screen-scripted.log 2>&1
 # Only if scripted beats about +4.7:
-cd /d/swordai && FROM=7700 MIRROR=1 bash tools/screen.sh 132 /d/swordai/run/best-candidates/runNN-HHMM.bin:1 > /d/swordai/run/screen-mirror.log 2>&1
+cd /d/swordai && FROM=8300 MIRROR=1 bash tools/screen.sh 132 /d/swordai/run/best-candidates/runNN-HHMM.bin:1 > /d/swordai/run/screen-mirror.log 2>&1
 ```
 
 - Use `/d/...` paths: a `D:` path breaks the `NET:TEMP` split.
 - Each screen pauses training about 15 minutes. Afterwards check `java.exe`, the loop and the log are back.
-- Never reuse pairs. **Used: 0-7432. Next: 7500 scripted, 7700 mirror.** Move these numbers on here and in `CANDIDATES.txt` after every screen.
+- Never reuse pairs. **Used: 0-8032. Next: 8100 scripted, 8300 mirror.** Move these numbers on here and in `CANDIDATES.txt` after every screen.
 
 **Install rule:** beat about **+4.7 scripted and +9.9 mirror** on one fresh screen and again on a second. Then report and ask, and install with:
 
@@ -165,8 +165,11 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 ## 8. Where things stand (updated 2 Nov 07:15; older notes below)
 
-**STATUS 2 Nov 07:15 (read this first, the rest of section 8 is the history):**
-- **This conversation's 30-minute review job was stopped at 07:15 on the user's word (they went back to an older conversation). Training and the check loop were left running** (client log under 5 minutes old, `loops 1 java 1` in `review.sh`). The next conversation must start its own review job (section 1, step 4) and should read section 0 of `docs/TRAINING-SOP.md` first. Nothing is installed in the user's profile; the question about the live A/B install (arms `installed`, `noback`, `run30h`) is still open.
+**STATUS 2 Nov 07:25 (read this first, the rest of section 8 is the history):**
+- **The live A/B pool IS INSTALLED in the user's profile since 2 Nov 07:21** (the user's yes, 2 Nov, their Minecraft closed). The jar of 1 Nov 22:41 replaced the 29 Oct jar; the backup is `DRL AI/swordai/backup-before-ab-20261102-072110`. Each duel draws one of three arms, weights 1:1:1: `installed` (run23-1418, rules on), `noback` (run23-1418, the back-out rule off), `run30h` (`run30h-1855.bin`, rules on). The installed network itself is unchanged, and it is still the baseline of every check.
+- **All three arms carry the run 27 S-tap**: the crit trade rule now ends the sprint with S instead of letting go of W (`Fighter.java:607`). So `installed` is not exactly what played the duels before 2 Nov: compare arms inside the pool, and do not compare `installed` with the 1.24-1.27 of the older logs without saying so. Old networks play unchanged otherwise (`new.hist`, `hist.heads`, `option.*` load at zero; hit and out is off in all arms).
+- **Verdict rule, set before any result (`tools/review.sh` prints the arms, from `python tools/duels.py`):** at about 100 duels an arm, compare the share of hits dealt with `installed`. An arm ahead by more than 2 se is reported to the user as the one to install. An arm behind by more than 2 se comes out of the pool. Otherwise carry on to about 200 duels an arm. No verdict from one evening: the ratio moves +-0.15 between evenings, which is why only the same-hours comparison counts. Check the first duels really say `[A/B arm ...]` in the start line: a pool that fails to load plays the installed network alone, silently. `bash tools/install-ab.sh --off` takes the pool out (the user's Minecraft closed).
+- **The conversation that stopped its review at 07:15 is stopped. The older conversation operates again** (the user, 2 Nov) and its 30-minute review job has been running since 07:19. Training and the check loop were never stopped. Read section 0 of `docs/TRAINING-SOP.md` first if you take over.
 - **Checks since 05:15:** 05:16 +1.8 (3.6), 06:05 -3.5 (4.2), 06:54 -1.8 (4.9); eleven hourly checks since 22:05 average -0.6 (the 17 before them on 1 Nov averaged +2.3, a gap of 1.6 standard errors: watch, not proof). The rolling punish crit swings between 21% and 32% over hours (21% at 07:00). Fights since the 22:42 redeploy: rules over the network bots -47 a minute, sparring +54; without the rules bots -80, sparring -103; flat for 8.5 hours.
 
 - **Training:** run 30h lineage (the take-over, `RULED_PULL`, rule-off fights 55-70%, history input), restarted from the clean 18:55 weights at 20:53, redeployed 22:42 (run 31's hit and out switched off). Stage T-E. Nothing has been installed in the user's profile since 29 Oct (jar 07:13, network = run23-1418).
@@ -175,8 +178,7 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 - **The user's real duels are the real measure** (`python tools/duels.py`, `tools/duel-hits.py`, their `swordai/fights/rounds.csv`): the installed model wins about 79% of duels (76/96 on 1 Nov) and takes 1.24-1.27 hits dealt per hit taken, flat since 23 Oct. **My early claim of "75-0" was wrong** (the log prints a result only for wins). Lost duels differ from won ones by about 3 more jump-in hits and 3 more hits with its sword ready (a hit select, T4, is fine by the file: the AI hits back 51% of the time after such a hit); aim, idle time and strafing do not separate them.
 - **The user's rule of 1 Nov 22:15 (SOP section 0, rule 7):** only the knowledge of `docs/PVP-TECHNIQUES.md`, never the assistant's own PVP ideas; two things the file calls fine are both fine; name every finding by technique ID or call it "not in the document". Run 31's hit and out broke it and was taken out.
 - **Document-based findings so far:** T4 deflections made from under 1.6 blocks stun 50% vs 97% from 2.4+ blocks, 92% at 1 tick delay vs 57% at 3 ticks, 83% at ping under 50 ms vs 68% above (real duels, 3 days). BackNudge (S for 12 ticks after the 2nd hit of a combo) is the file's C3 "common mistake" (holding S only after the stun): in real duels its 8+ tick streaks cost about 1 hit each and deal none.
-- **Live A/B pool (built, committed, NOT installed):** `AbPool`, `FightSession`, `tools/install-ab.sh`, `tools/duels.py`; arms are a network + rules on/off + temperatures + options (`noback` = back-out rule off, `hitout` = my taken-out idea, unused). First session proposed to the user: `installed`, `noback` (same network), `run30h` (`run/best-candidates/run30h-1855.bin`, rules on). Needs the user's yes AND their Minecraft closed; the jar is `build/libs/swordai-0.16.0+1.21.11.jar` from the 22:42 redeploy. The user has not answered since 22:15; reviews keep reporting the pending question.
-- **Pending decisions for the user:** install the A/B pool; whether to keep spending the night on routine reviews (they are the standing order, so yes).
+- **Live A/B pool (installed 2 Nov 07:21, see the top of this section):** `AbPool`, `FightSession`, `tools/install-ab.sh`, `tools/duels.py`; arms are a network + rules on/off + temperatures + options (`noback` = back-out rule off, `hitout` = my taken-out idea, unused). The jar is `build/libs/swordai-0.16.0+1.21.11.jar` from the 22:42 redeploy.
 - **Ideas not done (all must pass SOP section 0):** the T4 measure could require the stun at the user's ping; cap the BackNudge S hold (the file's C3 says hold S before the stun, not after); async PPO update; per-rule ablation arms in the live pool.
 
 ### History (1 Nov 08:30 and later)
@@ -245,6 +247,7 @@ Changes of 30c (09:22); 30d (10:25) added the rule-first replay of the rules' ke
 
 ## 9. What to do next
 
+0. **Read the arms of the live A/B pool after every evening of the user's duels** (rule at the top of section 8). Their duels are the real measure; the scripted screens do not predict them.
 1. **Run the 30-minute review.** It now prints the take-over lines. Judge run 30 at 3 hours (ruled ce, agree, fights without the rules, overlay damage) and with a `RULESOFF=1` screen of the new network at about the same time: `cd /d/swordai && RULESOFF=1 FROM=0 bash tools/screen.sh 66 /d/swordai/run/swordai/school/checked-MMDD-HHMM.bin:1 > run/screen-rulesoff.log 2>&1` (66 pairs take about 7 minutes and pause training; pairs 0-65 are the hourly seeds, fine for this diagnostic, not for picking a network).
 2. **If the ruled ce falls (under 0.3) and the fights without the rules are within about 10 a minute of the overlay's:** let the take-over run, raise `RULE_OFF_MAX` towards 0.7-1.0, then let the pull on the rules' keys follow a budget (the adaptive controller of `SchoolStages.noteBodyCe`, hold the ruled ce at about 0.10-0.15) so reinforcement learning can move the keys past the rules. This is where the new gain would come from: the network finally acts on the keys that decide hits.
 3. **If the ce does not fall:** the network cannot read the rules' conditions from its inputs (they use `obs.vec` plus their own timers). Look at which heads stay high (`SchoolPpo` could log ce per head) before changing the pull.
