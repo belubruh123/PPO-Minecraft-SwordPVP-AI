@@ -54,7 +54,7 @@ The user's game profile, where the installed model lives, is the Minecraft profi
 4. **Never redeploy** during a paired check, within 20 minutes of the last redeploy, or without evidence. Batch changes, about an hour apart at most. Redeploys need no asking (the user, 29 Oct: "if you need any change and deploy just do yourself no need to ask"; 30 Oct: "make those decision your self"). Dead training may be restarted at once.
 5. **Never mention the cycle script's file name in the same Bash command as `school-redeploy.sh`.**
 6. **Never run Gradle during a redeploy.** Never run Gradle client tasks while the dev client runs. Core tests are OK.
-7. **Only techniques from `docs/PVP-TECHNIQUES.md`.** No made-up tricks, no hard-coded one-trick rules.
+7. **Only the knowledge of `docs/PVP-TECHNIQUES.md`. Never your own PVP knowledge** (the user, 1 Nov 2026; `docs/TRAINING-SOP.md` section 0). No made-up tricks, no hard-coded one-trick rules, no judging a behaviour good or bad that the file does not judge: match it to a technique ID, or call it "not in the document" and neutral. Where the file calls two things fine (a hit select T4 and making them miss T6), both are fine. Run 31's hit and out broke this and was taken out.
 8. **One change per run.** Log it in `EXPERIMENTS.md` before deploying, fill in the result after, commit every change. Push only when the user asks.
 9. **Keep every network and all data.** Never delete files in `run/` or `D:/swordai-backups/`.
 10. **Do not restart `playguard6`. Do not change system or security settings. Keep data off `C:`.**

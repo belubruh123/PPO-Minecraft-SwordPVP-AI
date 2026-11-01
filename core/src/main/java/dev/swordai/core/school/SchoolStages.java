@@ -163,7 +163,10 @@ public final class SchoolStages {
 	 */
 	public static final int YIELD_AFTER_HIT = 20;
 	/**
-	 * Hit and out (run 31, 1 Nov 2026; {@code StepBack#planShort}): for the side the school trains, S is held for four ticks after a
+	 * OFF since 1 Nov 22:20: hit and out is not a technique of docs/PVP-TECHNIQUES.md and the user's rule is the document only (docs/TRAINING-SOP.md
+	 * section 0); its first paired check was level (-0.2, se 4.0) and the training fights did not move.
+	 *
+	 * <p>Hit and out (run 31, 1 Nov 2026; {@code StepBack#planShort}): for the side the school trains, S is held for four ticks after a
 	 * hit of its own that the opponent, in reach with its sword back, can answer. Not for the installed model that plays against it
 	 * in a check. The user's duels against real players, three days (tools/duel-hits.py): the hits it took in the next two seconds
 	 * went 2.02 / 1.92 / 1.55 / 1.31 / 1.28 with 0 / 1 / 2 / 3 / 4 of the six ticks after the hit on S, the hits it dealt did not
@@ -171,7 +174,7 @@ public final class SchoolStages {
 	 * so the leak is in the screens too. In the overlay the rule presses the keys, and the network learns them from it through the
 	 * rules' lesson (SchoolSession#RULED_PULL), in the fights without the rules from the installed model's own choice.
 	 */
-	public static final boolean HIT_AND_OUT = true;
+	public static final boolean HIT_AND_OUT = false;
 
 	/**
 	 * When the network is told the punish crit (the decision model chose it, or the punish drill forced it), the installed

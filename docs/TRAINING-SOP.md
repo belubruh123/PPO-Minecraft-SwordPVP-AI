@@ -5,6 +5,14 @@
 - The trained network beats the installed model on **fresh-seed** checks (seeds never used to pick it).
 - Techniques and their counters come only from `docs/PVP-TECHNIQUES.md`.
 
+## 0. PVP knowledge: the document only (the user, 1 Nov 2026)
+**Never use your own PVP knowledge. Always use the knowledge of `docs/PVP-TECHNIQUES.md`** (the tutorial, its counter table in Part 7 and the notes in Part 8). Not for judging a fight, not for a new rule, not for a lesson, not for a reading of the logs.
+1. **Name it by its ID.** Every behaviour, hit or loss that is looked at is matched to a technique or counter of the file (T4, C3, K2, ...). Write the ID next to the number in the note and the commit.
+2. **If the file does not say it, it is not a finding.** Write "not in the document" and report it as neutral. Do not call it a leak, a mistake or a fix. A pattern in the logs is something to look at, not a reason to add a rule.
+3. **Where the file calls two things both fine, both are fine.** Being hit first with the sword ready can be a hit select, the deflection (T4: sprint-hit right after their attack) or making them miss (T6); that is not a leak. Look at what the file says makes it fail ("too late or too close and they hit you through your deflection", "the sprint hit did not stun") and measure that.
+4. **No new tricks from data.** The logs may show where a documented technique fails (timing, spacing, prediction, what the file lists under "fails when"); the fix is the file's own wording. Run 31's "hit and out" (S for 4 ticks after every hit of its own) was an idea of the assistant's from the duel logs, not a technique of the file (the file has the S-tap for spacing, S after the uppercut's sprint hit in T10, and holding S in C2-C4, not this); it was taken out on 1 Nov (EXPERIMENTS.md).
+5. **If unsure what the file says, read the passage and quote its ID**, or ask the user. Do not fill the gap from memory of how Minecraft PvP is played.
+
 ## 1. Learn one technique at a time (the focus)
 1. **Pick the focus.** It is the weakest technique by the game's counts and the hit log (`tools/hits-report.py`). Order so far:
    1. the crits: crit scenes, and the jump-in counter (T8, K2, then B1);
