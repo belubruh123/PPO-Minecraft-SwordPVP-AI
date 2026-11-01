@@ -36,6 +36,12 @@ public final class SchoolRollout {
 	public final int[] headMask;
 	/** Heads a rule pressed (locked in {@link #headMask}) that the teacher still teaches: SchoolStages#PUNISH_SHADOW. */
 	public final int[] shadowHeads;
+	/**
+	 * Heads the installed model's rules pressed on the step (locked in {@link #headMask}), or, in a fight played without the
+	 * rules, would have pressed (open): their key is the target of {@link SchoolPpo.Settings#ruledPull} (run 30: the network
+	 * learns what the rules do, so that it can take the fight over).
+	 */
+	public final int[] ruledHeads;
 	public final float[] logp;
 	public final float[] value;
 	public final float[] reward;
@@ -83,6 +89,7 @@ public final class SchoolRollout {
 		action = new byte[capacity][ActionSpace.HEADS];
 		headMask = new int[capacity];
 		shadowHeads = new int[capacity];
+		ruledHeads = new int[capacity];
 		logp = new float[capacity];
 		value = new float[capacity];
 		reward = new float[capacity];
@@ -126,6 +133,7 @@ public final class SchoolRollout {
 		}
 		headMask[i] = s.headMask;
 		shadowHeads[i] = s.shadowHeads & ~s.headMask;
+		ruledHeads[i] = s.ruledHeads;
 		logp[i] = s.logp;
 		value[i] = s.value;
 		reward[i] = rew;
@@ -152,6 +160,7 @@ public final class SchoolRollout {
 		public final int[] action = new int[ActionSpace.HEADS];
 		public int headMask;
 		public int shadowHeads;
+		public int ruledHeads;
 		public float logp;
 		public float value;
 		public final float[] teacher = new float[ActionSpace.TOTAL_LOGITS];

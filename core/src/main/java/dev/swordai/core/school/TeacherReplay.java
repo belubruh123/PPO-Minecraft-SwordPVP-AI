@@ -95,8 +95,9 @@ public final class TeacherReplay {
 					continue;
 				}
 			}
-			// Not a key the network could not press there (a swing before its sword was back).
-			h &= r.headMask[i];
+			// Not a key the network could not press there (a swing before its sword was back); a key a rule pressed is one it
+			// learns the installed model's word on (run 30), whether the rule locked it or not.
+			h &= shadow ? r.headMask[i] | r.ruledHeads[i] : r.headMask[i];
 			// The ordinary fight's no-jump is on most steps: one in six of them is kept, so it does not crowd the techniques out.
 			if (!shadow && (h == 0 || t < 0 || t == Technique.BASE.ordinal() && (baseSeen++ % 6) != 0)) {
 				continue;

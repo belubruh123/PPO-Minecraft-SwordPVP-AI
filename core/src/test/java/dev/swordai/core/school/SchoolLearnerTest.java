@@ -117,6 +117,51 @@ class SchoolLearnerTest {
 	}
 
 	/**
+	 * A key the installed model's rules press (run 30): locked in the step, so it got no lesson and no policy gradient; with
+	 * the ruled pull the rule's key is the target, and the update counts the cross-entropy to it.
+	 */
+	@Test
+	void aKeyTheRulesPressIsLearnedWithTheRuledPull() {
+		float[] gain = new float[2];
+		int locked = ActionSpace.ALL_HEADS & ~ActionSpace.mask(ActionSpace.JUMP);
+		for (int pulled = 0; pulled < 2; pulled++) {
+			SchoolLearner l = new SchoolLearner(4L, 600, 0.99f, 0.95f, 2);
+			Random rng = new Random(8);
+			SchoolRollout.Step s = new SchoolRollout.Step();
+			int[] act = new int[ActionSpace.HEADS];
+			float before = jumpChance(l, rng);
+			SchoolPpo.Stats last = null;
+			for (int u = 0; u < 4; u++) {
+				for (int t = 0; t < 512; t++) {
+					fillRuledJump(rng, s);
+					act[ActionSpace.JUMP] = 1;
+					l.act(s, locked, ActionSpace.mask(ActionSpace.JUMP), true, 1f, act);
+					fillRuledJump(rng, s);
+					l.complete(rng.nextFloat() - 0.5f, t % 100 == 99, false, s.obs);
+				}
+				SchoolPpo.Settings set = new SchoolPpo.Settings();
+				set.ruledPull = pulled == 1 ? 1f : 0f;
+				last = l.update(set, 1e-3f);
+				assertTrue(Float.isFinite(last.policyLoss), last.toString());
+			}
+			assertEquals(pulled == 1, last.ruledSteps > 0, last.toString());
+			gain[pulled] = jumpChance(l, rng) - before;
+			l.close();
+		}
+		assertTrue(gain[1] > 0.2f && gain[1] > gain[0] + 0.15f, "jump chance gained " + gain[0] + " without the ruled pull, " + gain[1] + " with it");
+	}
+
+	private static void fillRuledJump(Random rng, SchoolRollout.Step s) {
+		fill(rng, s);
+		s.teacherHeads = 0;
+		s.teacherWeight = 0f;
+		s.ruledHeads = ActionSpace.mask(ActionSpace.JUMP);
+		int off = ActionSpace.OFFSETS[ActionSpace.JUMP];
+		s.teacher[off] = 0f;
+		s.teacher[off + 1] = 1f;
+	}
+
+	/**
 	 * The jump at every moment (SchoolStages#JUMP_EVERYWHERE): on the ordinary fight's steps (no technique pull) the teacher's
 	 * "no jump" is learned only with the step's own jump pull.
 	 */

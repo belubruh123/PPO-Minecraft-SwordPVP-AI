@@ -56,6 +56,11 @@ public final class SchoolPpo implements AutoCloseable {
 		public float oldBodyPull = -1f;
 		/** The installed model teaches every key where no technique teacher speaks (the overlay), not the camera only. */
 		public boolean installedBody;
+		/**
+		 * The pull on the heads the installed model's rules press (SchoolRollout#ruledHeads), whether a rule locked them in the
+		 * step or not: the network learns what the rules do wherever they speak, which the lock kept from it until run 30.
+		 */
+		public float ruledPull;
 		/** Learn the critic only. */
 		public boolean criticOnly;
 		/** After the update, minibatches of the technique teachers' kept examples ({@link TeacherReplay}), and their step. */
@@ -82,6 +87,10 @@ public final class SchoolPpo implements AutoCloseable {
 		public float oldCe;
 		/** The same over the body's keys alone (not the camera): how far the body has gone from what it copies. */
 		public float oldBodyCe;
+		/** The keys the rules press (run 30): cross-entropy to the rule's key, how often the likeliest key was the rule's, and the head-ticks. */
+		public float ruledCe;
+		public float ruledAgree;
+		public int ruledSteps;
 		public float techAgree;
 		public int techSteps;
 		/** The punish crit's swing under the rules (SchoolStages#PUNISH_SHADOW): how often the network's likelier choice was the teacher's, where it swung and where it held. */
@@ -96,10 +105,10 @@ public final class SchoolPpo implements AutoCloseable {
 			return String.format(java.util.Locale.ROOT,
 					"%d steps, %d epochs, policy %.4f, value %.4f, kl %.4f, clipped %.2f, explained %.2f, lr %.1e, entropy W/S %.2f jump %.2f swing %.2f, "
 							+ "teacher: technique ce %.3f agree %.0f%% on %d, installed ce %.3f (body %.3f), "
-							+ "punish crit swing under the rules: swung %.0f%% of %d, held %.0f%% of %d, %d ms",
+							+ "punish crit swing under the rules: swung %.0f%% of %d, held %.0f%% of %d, rules' keys: ce %.3f agree %.0f%% on %d, %d ms",
 					samples, epochs, policyLoss, valueLoss, kl, clipFraction, explained, actorLr, entropy[ActionSpace.FORWARD],
 					entropy[ActionSpace.JUMP], entropy[ActionSpace.ATTACK], techCe, 100f * techAgree, techSteps, oldCe, oldBodyCe,
-					100f * shadowSwingAgree, shadowSwings, 100f * shadowHoldAgree, shadowHolds, millis);
+					100f * shadowSwingAgree, shadowSwings, 100f * shadowHoldAgree, shadowHolds, ruledCe, 100f * ruledAgree, ruledSteps, millis);
 		}
 	}
 
@@ -156,6 +165,9 @@ public final class SchoolPpo implements AutoCloseable {
 		int shadowHolds;
 		int oldSteps;
 		int oldBodySteps;
+		double ruledCe;
+		int ruledAgree;
+		int ruledSteps;
 
 		void reset() {
 			policyLoss = 0;
@@ -175,6 +187,9 @@ public final class SchoolPpo implements AutoCloseable {
 			shadowHolds = 0;
 			oldSteps = 0;
 			oldBodySteps = 0;
+			ruledCe = 0;
+			ruledAgree = 0;
+			ruledSteps = 0;
 		}
 
 		void run(SchoolRollout r, int[] order, int from, int to, float advMean, float advStd, Settings set) {
@@ -222,14 +237,18 @@ public final class SchoolPpo implements AutoCloseable {
 			float[] q = aimed;
 			int tech = r.teacherHeads[i];
 			boolean old = r.teacherWeight[i] > 0f;
-			if (tech == 0 && !old) {
+			// The keys the rules press (locked in the step, or open in a fight played without them): the rule's key is the target,
+			// unless a technique teacher speaks on the head.
+			int ruledBits = set.ruledPull > 0f ? r.ruledHeads[i] & ~tech : 0;
+			if (tech == 0 && !old && ruledBits == 0) {
 				return;
 			}
 			int shadow = r.shadowHeads[i];
 			for (int h = 0; h < ActionSpace.HEADS; h++) {
 				// A head a rule pressed is taught only where the teacher's lesson goes on under the rule (SchoolStages#PUNISH_SHADOW).
 				boolean shadowed = (shadow & (1 << h)) != 0;
-				if (!ActionSpace.unlocked(mask, h) && !shadowed) {
+				boolean ruledHere = (ruledBits & (1 << h)) != 0;
+				if (!ActionSpace.unlocked(mask, h) && !shadowed && !ruledHere) {
 					continue;
 				}
 				boolean byTech = (tech & (1 << h)) != 0;
@@ -263,7 +282,9 @@ public final class SchoolPpo implements AutoCloseable {
 						&& (which != dev.swordai.core.pvp.Technique.BASE.ordinal() || r.letGoPull[i] > 0f)) {
 					pull = 0f;
 				}
-				if (!byTech && !installedHere || shadowed && !byTech) {
+				if (ruledHere) {
+					pull = set.ruledPull;
+				} else if (!byTech && !installedHere || shadowed && !byTech) {
 					continue;
 				}
 				// Told another technique than the teacher's (the chooser's, in training a step in a few): only the camera is taught.
@@ -279,7 +300,7 @@ public final class SchoolPpo implements AutoCloseable {
 					continue;
 				}
 				float[] into = gatedHere ? aw.dOption : aw.dLogits;
-				if (shadowed) {
+				if (shadowed || ruledHere && !ActionSpace.unlocked(mask, h)) {
 					// Policy#evaluate left a locked head out.
 					Policy.softmax(aw.logits, off, size, probs);
 				}
@@ -299,7 +320,11 @@ public final class SchoolPpo implements AutoCloseable {
 						into[off + k] += (byTech ? pull * Teacher.pressWeight(stored, h, r.vec[i], which) : pull) * (p - t);
 					}
 				}
-				if (shadowed) {
+				if (ruledHere) {
+					ruledCe += ce;
+					ruledSteps++;
+					ruledAgree += stored[off + best] >= Teacher.ANY ? 1 : 0;
+				} else if (shadowed) {
 					if (stored[off + 1] >= Teacher.ANY) {
 						shadowSwings++;
 						shadowSwingAgree += best == 1 ? 1 : 0;
@@ -381,6 +406,9 @@ public final class SchoolPpo implements AutoCloseable {
 		long shadowHolds = 0;
 		long oldSteps = 0;
 		long oldBodySteps = 0;
+		double ruledCe = 0;
+		long ruledAgree = 0;
+		long ruledSteps = 0;
 		long seen = 0;
 		for (int epoch = 0; epoch < set.epochs; epoch++) {
 			shuffle(order, rng);
@@ -418,6 +446,9 @@ public final class SchoolPpo implements AutoCloseable {
 					shadowHolds += w.shadowHolds;
 					oldSteps += w.oldSteps;
 					oldBodySteps += w.oldBodySteps;
+					ruledCe += w.ruledCe;
+					ruledAgree += w.ruledAgree;
+					ruledSteps += w.ruledSteps;
 				}
 				epochSeen += to - from;
 			}
@@ -453,6 +484,9 @@ public final class SchoolPpo implements AutoCloseable {
 		st.shadowHolds = (int) (shadowHolds / Math.max(1, st.epochs));
 		st.oldCe = oldSteps == 0 ? 0f : (float) (oldCe / oldSteps);
 		st.oldBodyCe = oldBodySteps == 0 ? 0f : (float) (oldBodyCe / oldBodySteps);
+		st.ruledCe = ruledSteps == 0 ? 0f : (float) (ruledCe / ruledSteps);
+		st.ruledAgree = ruledSteps == 0 ? 0f : (float) ruledAgree / ruledSteps;
+		st.ruledSteps = (int) (ruledSteps / Math.max(1, st.epochs));
 		st.actorLr = actorLr;
 		st.millis = (System.nanoTime() - start) / 1_000_000L;
 		return st;

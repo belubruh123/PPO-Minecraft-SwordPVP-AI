@@ -253,6 +253,34 @@ public final class SchoolSession implements AgentSession {
 	 * confirmation runs on seeds its candidate was not picked on. Without it every check starts at pair 0.
 	 */
 	static final String CHECK_FROM_FILE = "check-from";
+	/**
+	 * Run 30 (EXPERIMENTS.md), the take-over. The installed model's rules press the keys that decide most hits taken (42% of the
+	 * ticks of a hit taken: W/S, sprint or jump), and the network is locked out of a key a rule presses: no policy gradient, no
+	 * lesson. So (1) the network is taught what the rules press (RULED_PULL, SchoolPpo#teach) wherever they press it; (2) a share of
+	 * the training fights is played without the rules (the network's own keys on every head, taught the rules' key as the target
+	 * and trained by the damage), the share rising as its cross-entropy to the rules' keys falls; (3) with this file in the
+	 * school folder a check plays side A without the rules, to see how far the network is from taking over.
+	 */
+	static final String RULES_OFF_CHECK_FILE = "rules-off-check";
+	static final float RULED_PULL = 0.3f;
+	static final float RULE_OFF_MIN = 0.10f;
+	static final float RULE_OFF_MAX = 0.40f;
+	static final float RULE_OFF_CE_START = 0.60f;
+	static final float RULE_OFF_CE_FULL = 0.20f;
+	/** Smoothed cross-entropy to the rules' keys (-1 before the first update that had some) and how often its likeliest key was the rule's. */
+	private float ruledCeEma = -1f;
+	private float ruledAgreeEma;
+	/** This fight is played without the installed model's rules (training: the share above; check: the flag file, side A only). */
+	private boolean ruleOff;
+	private boolean rulesOffCheck;
+	/** Fights played without the rules since the last update: how many, damage, ticks, knockouts won and lost; and all of them since the start. */
+	private int ruleOffFights;
+	private float ruleOffDealt;
+	private float ruleOffTaken;
+	private int ruleOffTicks;
+	private int ruleOffWon;
+	private int ruleOffLost;
+	private int ruleOffFightsAll;
 	private boolean sparCheck;
 	static final int SPAR_LAG_EXTRA = 2;
 	private boolean sparFight;
@@ -313,7 +341,7 @@ public final class SchoolSession implements AgentSession {
 	 */
 	// 0 from 25 Oct 03:25 (control run; was 0.25); 0.2 from 09:00, the user: "Review every skill while learning that so it won't
 	// forgot stuff".
-	static final float REVIEW_SHARE = 0.19f; // 0.15 until 1 Nov (run 29: the timer three times as often, the other reviews as often as before), 0.1 until 26 Oct 09:40 // run 7 (EXPERIMENTS.md): the first technique family, the crits, with the basics reviewed in between (the user, 13:25: "letting it review in between")
+	static final float REVIEW_SHARE = 0.15f; // 0.19 on 1 Nov 04:25-08:05 (run 29, reverted: its five checks averaged +0.7), 0.1 until 26 Oct 09:40 // run 7 (EXPERIMENTS.md): the first technique family, the crits, with the basics reviewed in between (the user, 13:25: "letting it review in between")
 	/** The share of the specialists' training fights in which the specialist does other things too (Specialists.varied). */
 	static final float VARIED_SHARE = 0.5f;
 	/**
@@ -335,9 +363,9 @@ public final class SchoolSession implements AgentSession {
 	static final int[] BASIC_OLD = {0, 1, 2, 3, 4, 4, 5, 6, 2, 8, 8, 8};
 	/**
 	 * After the basics, how often each is reviewed: tracking, vertical aim, the moving jumper and combo escape twice. The
-	 * timer nine times (run 29): the one bot the network has trailed the installed model on in every period since 27 Oct.
+	 * timer was 9 on 1 Nov 04:25-08:05 (run 29: the bot the network trails the installed model on; reverted, five checks +0.7).
 	 */
-	static final float[] REVIEW_WEIGHT = {1f, 2f, 2f, 1f, 1f, 2f, 1f, 2f, 2f, 9f, 3f, 2f};
+	static final float[] REVIEW_WEIGHT = {1f, 2f, 2f, 1f, 1f, 2f, 1f, 2f, 2f, 3f, 3f, 2f};
 	/** The fight basics (see fightBasic): the one that times its crit on its rhythm, the one that always jumps in, the spacer. */
 	static final int TIMER = 9;
 	static final int JUMP_IN = 10;
@@ -1083,6 +1111,35 @@ public final class SchoolSession implements AgentSession {
 		}
 	}
 
+	/**
+	 * The share of the full fights played without the rules (run 30): RULE_OFF_MIN from the start, rising to RULE_OFF_MAX as the
+	 * smoothed cross-entropy to the rules' keys falls from RULE_OFF_CE_START to RULE_OFF_CE_FULL.
+	 */
+	private float ruleOffShare() {
+		if (ruledCeEma < 0f) {
+			return RULE_OFF_MIN;
+		}
+		float f = (RULE_OFF_CE_START - ruledCeEma) / (RULE_OFF_CE_START - RULE_OFF_CE_FULL);
+		return RULE_OFF_MIN + (RULE_OFF_MAX - RULE_OFF_MIN) * Math.max(0f, Math.min(1f, f));
+	}
+
+	/** The take-over since the last update: the rules' keys, and the fights played without the rules (their damage kept apart from the rest). */
+	private String takeOverLine() {
+		String fights = ruleOffFights == 0 ? "no fights without the rules"
+				: String.format(Locale.ROOT, "%d fights without the rules, dealt %.0f taken %.0f a minute (net %+.0f), knockouts %d-%d", ruleOffFights,
+						ruleOffDealt * 1200f / Math.max(1, ruleOffTicks), ruleOffTaken * 1200f / Math.max(1, ruleOffTicks),
+						(ruleOffDealt - ruleOffTaken) * 1200f / Math.max(1, ruleOffTicks), ruleOffWon, ruleOffLost);
+		String line = String.format(Locale.ROOT, " rules' keys ce %.3f (smoothed), agree %.0f%%; share of full fights without the rules %.0f%%; %s; %d such fights in all",
+				ruledCeEma, 100f * ruledAgreeEma, 100f * ruleOffShare(), fights, ruleOffFightsAll);
+		ruleOffFights = 0;
+		ruleOffDealt = 0f;
+		ruleOffTaken = 0f;
+		ruleOffTicks = 0;
+		ruleOffWon = 0;
+		ruleOffLost = 0;
+		return line;
+	}
+
 	/** The sparring fights against the installed model since the last update: how many, won-lost, net damage a fight. */
 	private String sparLine() {
 		if (sparring == null) {
@@ -1278,6 +1335,7 @@ public final class SchoolSession implements AgentSession {
 			installed = LoadedFighter.loadFrom(teacherFile, icfg, SwordFiles.installedCopy().resolve("curriculum.properties"));
 			installedBody.patchedUp = installed.patchedUp;
 			sparCheck = mode == Mode.CHECK && Files.exists(SwordFiles.schoolDir().resolve(SPAR_CHECK_FILE));
+			rulesOffCheck = mode == Mode.CHECK && Files.exists(SwordFiles.schoolDir().resolve(RULES_OFF_CHECK_FILE));
 			if (SPAR_SHARE > 0f && mode == Mode.TRAIN || sparCheck) {
 				sparring = LoadedFighter.loadFrom(teacherFile, icfg, SwordFiles.installedCopy().resolve("curriculum.properties"));
 			}
@@ -1712,6 +1770,9 @@ public final class SchoolSession implements AgentSession {
 			}
 		}
 		drillFight = plan.drillLift;
+		// The take-over (RULES_OFF_CHECK_FILE): full fights only, so that the scenes' and the reviews' bars keep their meaning.
+		ruleOff = mode == Mode.CHECK ? rulesOffCheck && !installedPlays
+				: review < 0 && sceneNow == null && !drillFight && rng.nextFloat() < ruleOffShare();
 		drillTicker = plan.drillLift ? plan.drillAgentTicker : sceneNow != null ? SceneRecorder.agentTicker(sceneNow.state) : -1;
 		drillFights += plan.drillLift ? 1 : 0;
 		plan.seed = seed;
@@ -1935,7 +1996,7 @@ public final class SchoolSession implements AgentSession {
 			boolean timeUp = review >= 0 ? fightTicks >= Math.min(basics[review].bot.attacks ? FIGHT_TICKS : REVIEW_TICKS, basics[review].episodeTicks)
 					|| reviewRewards.lostTooLong(basics[review])
 					: fightTicks >= (sceneNow != null ? sceneNow.ticks() : FIGHT_TICKS);
-			if (mode == Mode.TRAIN && review < 0 && sceneNow == null && !drillFight) {
+			if (mode == Mode.TRAIN && review < 0 && sceneNow == null && !drillFight && !ruleOff) {
 				harvest(truth.tick(), facts.damageDealt - facts.damageTaken, facts.critsTaken > 0, ko || timeUp);
 			}
 			boolean full = mode == Mode.TRAIN && learner.rolloutRoom() <= 1;
@@ -2295,7 +2356,9 @@ public final class SchoolSession implements AgentSession {
 		}
 		boolean installedDecided = step.teacherWeight > 0f && installed != null;
 		int ruled = 0;
-		if (RULE_OVERLAY && installed != null && (review < 0 || basics[review].bot.attacks)) {
+		// The heads the rules press on this tick (or would, in a fight played without them): the target of RULED_PULL.
+		int ruledTaught = 0;
+		if (RULE_OVERLAY && installed != null && (review < 0 || basics[review].bot.attacks) && !(ruleOff && mode == Mode.CHECK)) {
 			if (!installedDecided) {
 				observer.fillBody(installedBody, me, bot, truth.floorY());
 				installed.fighter.crosshairOnOpponent(onOpponent());
@@ -2304,6 +2367,7 @@ public final class SchoolSession implements AgentSession {
 			}
 			// Only heads still open: a rule's swing waits for the sword, the crosshair and the golden rule like the network's.
 			ruled = installed.fighter.ruledHeads() & keys;
+			int ruledRaw = ruled;
 			if (RULES_LET_GO_IN_LIFT && liftedFor >= 0 && !me.onGround() && facts.reachDist <= 3.5f && charge > 0.5f) {
 				// Lifted by their hit and coming down near them: W and the sprint are the network's (RULES_LET_GO_IN_LIFT).
 				ruled &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
@@ -2330,7 +2394,25 @@ public final class SchoolSession implements AgentSession {
 						: dev.swordai.core.school.SchoolStages.runTaught(learner.told().ordinal()) ? body : 0;
 				ruled &= ~give;
 			}
+			// A fight played without the rules: the network presses every key itself; the rules' keys are only the target.
+			ruledTaught = ruleOff ? ruledRaw : ruled;
+			if (ruleOff) {
+				ruled = 0;
+			}
 			keys &= ~ruled;
+		}
+		step.ruledHeads = mode == Mode.TRAIN && review < 0 ? ruledTaught & ~step.teacherHeads : 0;
+		if (step.ruledHeads != 0) {
+			// The rule's key, a sure target on each head it pressed (SchoolPpo#teach with Settings#ruledPull).
+			int[] rule = installed.fighter.action();
+			for (int h = 0; h < ActionSpace.HEADS; h++) {
+				if ((step.ruledHeads & (1 << h)) != 0) {
+					int off = ActionSpace.OFFSETS[h];
+					for (int k = 0; k < ActionSpace.SIZES[h]; k++) {
+						step.teacher[off + k] = k == rule[h] ? 1f : 0f;
+					}
+				}
+			}
 		}
 		if (ruled != 0) {
 			// The rule's keys first: the network's jump and swing are chosen knowing them (SchoolNet#sample).
@@ -2832,6 +2914,25 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	private void endFight(boolean won, boolean lost) {
+		if (mode == Mode.TRAIN && ruleOff) {
+			// A fight played without the rules (run 30) has its tally and line apart: it is not one of the full fights the bars,
+			// the lost-case harvest and the damage curve count, as the network is still learning to press the rules' keys itself.
+			ruleOffFights++;
+			ruleOffFightsAll++;
+			ruleOffDealt += fightDealt;
+			ruleOffTaken += fightTaken;
+			ruleOffTicks += fightTicks;
+			ruleOffWon += won ? 1 : 0;
+			ruleOffLost += lost ? 1 : 0;
+			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school fight %s (without the rules): dealt %.1f, taken %.1f, ticks %d%s",
+					sparFight ? "installed-model (sparring)" : Specialists.NAMES[fightBot], fightDealt, fightTaken, fightTicks,
+					won ? ", knockout" : lost ? ", knocked out" : ""));
+			hasLastAction = false;
+			clicked = false;
+			java.util.Arrays.fill(recentCrits, 0);
+			sinceFallingHit = 1000;
+			return;
+		}
 		// Full fights only: a scene starts at a moment it was crit and so loses by design; with them in, the damage curve fell
 		// the moment the scenes came in (26 Oct 09:41) while the full fights had not got worse. The scenes have their own line.
 		if (review < 0 && sceneNow == null && fightBot >= 0 && fightBot < Specialists.KINDS) {
@@ -3404,6 +3505,7 @@ public final class SchoolSession implements AgentSession {
 		set.oldPull = stages.oldPull();
 		set.oldBodyPull = stages.bodyPull();
 		set.installedBody = OVERLAY;
+		set.ruledPull = RULED_PULL;
 		set.criticOnly = warmupLeft > 0;
 		if (warmupLeft > 0) {
 			warmupLeft--;
@@ -3436,6 +3538,10 @@ public final class SchoolSession implements AgentSession {
 		if (stats.oldBodyCe > 0f) {
 			stages.noteBodyCe(stats.oldBodyCe);
 		}
+		if (stats.ruledSteps > 0) {
+			ruledCeEma = ruledCeEma < 0f ? stats.ruledCe : 0.9f * ruledCeEma + 0.1f * stats.ruledCe;
+			ruledAgreeEma = ruledAgreeEma == 0f ? stats.ruledAgree : 0.9f * ruledAgreeEma + 0.1f * stats.ruledAgree;
+		}
 		long nowMillis = System.currentTimeMillis();
 		long steps = learner.totalSteps;
 		float perSecond = (steps - stepsAtLastUpdate) * 1000f / Math.max(1L, nowMillis - millisAtLastUpdate);
@@ -3466,10 +3572,10 @@ public final class SchoolSession implements AgentSession {
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
 				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {} ({} in {} drill fights), other crits {} "
-				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} (the golden rule held the swing on {} ticks, the installed model's rules set keys on {}) | swings: {} | review of the old stages:{} | bots went into:{} | taught now:{} | sparring the installed model:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
+				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} (the golden rule held the swing on {} ticks, the installed model's rules set keys on {}) | swings: {} | review of the old stages:{} | bots went into:{} | taught now:{} | sparring the installed model:{} | take-over:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
 				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits,
-				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2Held, ruleTicks, swingLine(0), reviewLine(), used, taughtNowLine(), sparLine());
+				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2Held, ruleTicks, swingLine(0), reviewLine(), used, taughtNowLine(), sparLine(), takeOverLine());
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		drillPunishCrits = 0;
