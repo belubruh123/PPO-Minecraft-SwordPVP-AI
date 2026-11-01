@@ -167,7 +167,7 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 | Item | Value |
 |---|---|
-| Training | **Run 30, the take-over**, live (commits `19878f4`, `60bc7b7`, deployed 08:05 and again after the anchor fix), loops 1, java 1 |
+| Training | **Run 30c, the take-over**, live since 09:22 (30: 08:05, 30b: 08:26, 30c: 09:22; commits `19878f4` .. `1f254f8`), loops 1, java 1 |
 | Revert point | `run/swordai/school/run30-revert-start.bin` (the run 27 line at 08:02 on 1 Nov) |
 | Installed | `run23-1418`, unchanged |
 | Git | `main`, many commits ahead of origin, not pushed (the user has not asked) |
@@ -191,7 +191,11 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 **Revert (git revert the run 30 commits, `START_NET=` the revert point)** if the overlay fights' damage a minute falls under about 250 for an hour, swings landing falls clearly under the installed model's, or the ruled ce has not fallen in 3 hours.
 
-**Baseline for the question that matters (A without the rules against B, same seeds as the hourly checks):** screen of `checked-1101-0754.bin` (the network just before run 30) on pairs 0-65 with `RULESOFF=1`, 08:10-08:18: see the last `NET check` block of `run/school-checks.log` (numbers in EXPERIMENTS.md when read).
+**The question that matters (A without the rules against B, same seeds as the hourly checks, pairs 0-65, `RULESOFF=1`):**
+- before run 30 (`checked-1101-0754.bin`, 08:16): **-7.9 (3.7)**; punish crit by the game 1%, double crit 0 of 8;
+- after 45 minutes of the ruled lesson (`checked-1101-0912.bin`, 09:29): **-2.5 (4.5)**; punish crit 4% (B 9%), double crit 0 of 37 (B 8 of 49), their combos' third hit 48% (B 32%), swings landing 97% (B 90%). The two screens differ by 5.4 with se about 5.8: the direction is right, not proven.
+- the hourly check with the rules over the network at 09:17 (run 30b): +6.0 (4.5): the lesson did not hurt that play.
+Changes of 30c (09:22): the camera is out of the rules' lesson, fights without the rules are left out of the technique bars, crit and jump-in lines (they have their own swing counts), the update line has the ruled ce by head and by rule, `tools/compile-check.sh` (javac against the built classes; run it before a redeploy). Not yet deployed: `FightSession` plays without the rules when `school/no-rules` exists (commit `1f254f8`).
 
 **Runs so far:**
 
