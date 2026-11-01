@@ -167,7 +167,7 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 | Item | Value |
 |---|---|
-| Training | **Run 30e, the take-over**, live since 11:38 (30: 08:05, 30b 08:26, 30c 09:22, 30d 10:25, 30e 11:38; commits `19878f4` .. `0bc87f6` and the 30e commit), loops 1, java 1 |
+| Training | **Run 30g, the take-over**, live since 14:32 (30: 08:05, 30b 08:26, 30c 09:22, 30d 10:25, 30e 11:38, 30f 12:58, 30g 14:32; commits `19878f4` .. the 30g commit), loops 1, java 1; revert points `run30-revert-start.bin` (08:02) .. `run30g-revert-start.bin` (14:30) |
 | Revert point | `run/swordai/school/run30-revert-start.bin` (the run 27 line at 08:02 on 1 Nov) |
 | Installed | `run23-1418`, unchanged |
 | Git | `main`, many commits ahead of origin, not pushed (the user has not asked) |
@@ -192,10 +192,10 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 **Revert (git revert the run 30 commits, `START_NET=` the revert point)** if the overlay fights' damage a minute falls under about 250 for an hour, swings landing falls clearly under the installed model's, or the ruled ce has not fallen in 3 hours.
 
 **The question that matters (A without the rules against B, same seeds as the hourly checks, pairs 0-65, `RULESOFF=1`):**
-- before run 30 (`checked-1101-0754.bin`, 08:16): **-7.9 (3.7)**; punish crit by the game 1%, double crit 0 of 8;
-- 09:29 (45 min of the lesson): **-2.5 (4.5)**; 10:32 (105 min): **-2.6 (3.8)**; 11:30 (30d, the rules' keys ce 0.14): **-2.3 (3.2)**. So the network without the rules closed most of the gap in the first hour and has stayed about 2.4 under the installed model since (pooled of the last three about -2.5, se about 2.2).
-- the hourly checks with the rules over the network: 09:17 +6.0 (4.5), 10:18 +1.7 (4.2), 11:22 +6.4 (4.7): the lesson did not hurt that play (mean +4.7 against +2.4 the day before).
-- **What still differs (hit log of the screens, `tools/hits-report.py` on the screen's rows of `school/hits.csv`):** damage taken from the third hit of an opponent's combo (17 vs 9 a fight), damage taken in the air (6.4 vs 2.3), the double crit chain (T1C -4.9 dealt). At the hits of their combos the installed model jumps 97-98% of the ticks with W held 98-99% (the jump reset), the network without the rules jumps 63-68% and presses S 33-36%: the jump reset's tick and the S after it are mixed up. Run 30e weighs the rules' keys 4x on that tick.
+- six screens on the hourly seeds: -7.9 (before run 30), -2.5, -2.6, -2.3, -0.7, +5.3 (each se 3-4; B itself ranges -11 to -21 on those seeds, so one screen's noise is about 4).
+- **fresh pairs 7640-7773 (the honest number), the 13:43 network alone: -6.1 (2.3); at play temperature 0.5 (`tools/temps/all-0.5`): -3.1 (2.7).** So the network alone is about 4-6 under the installed rules fighter (my estimate for the start of run 30 on fresh pairs: about -10).
+- the hourly checks with the rules over the network: +6.0, +1.7, +6.4, +0.4, +4.2 (mean +3.7 against +2.4 the day before); the 11:18 network on fresh pairs 7500-7633: +1.4 (2.7). The with-rules play is level with the installed model (+4.7), not better.
+- **What still differs (hit log by block of `school/hits.csv`; B's own key rates vary from block to block, compare A and B inside one block):** at the hits of their combos the network alone jumps 79-87% of the ticks against B's 94-96%, presses S 13-18% against 3-4%, is on the ground 72-82% against 95%, and is hit in the air 244-376 times against 67. Where no rule presses a key its copying target was the frozen run 6 network (`ANCHOR_TO_BEST`), so it kept run 6's jumpier game. Run 30g (14:32) makes every open body key of a fight without the rules a lesson with the installed model's own choice as the target.
 Changes of 30c (09:22); 30d (10:25) added the rule-first replay of the rules' keys (`TeacherReplay.ruledOnly`); 30e (11:38) the 4x hit-tick weight, a budget on the pull (`RULED_CE_TARGET` 0.15) and the share of fights without the rules up to 0.70. 30c (09:22): the camera is out of the rules' lesson, fights without the rules are left out of the technique bars, crit and jump-in lines (they have their own swing counts), the update line has the ruled ce by head and by rule, `tools/compile-check.sh` (javac against the built classes; run it before a redeploy). Not yet deployed: `FightSession` plays without the rules when `school/no-rules` exists (commit `1f254f8`).
 
 **Runs so far:**
