@@ -214,6 +214,7 @@ public final class SchoolLearner implements AutoCloseable {
 		to.headMask = from.headMask;
 		to.shadowHeads = from.shadowHeads;
 		to.ruledHeads = from.ruledHeads;
+		to.ruleBits = from.ruleBits;
 		to.logp = from.logp;
 		to.value = from.value;
 		System.arraycopy(from.teacher, 0, to.teacher, 0, ActionSpace.TOTAL_LOGITS);

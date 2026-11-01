@@ -95,6 +95,21 @@ public final class SchoolPpo implements AutoCloseable {
 		public final float[] ruledCeHead = new float[ActionSpace.HEADS];
 		public final float[] ruledAgreeHead = new float[ActionSpace.HEADS];
 		public final int[] ruledNHead = new int[ActionSpace.HEADS];
+		/** The same per rule of the installed model ({@link #RULE_NAMES}; a head-tick counts for every rule that had keys on it). */
+		public final float[] ruleCe = new float[RULE_NAMES.length];
+		public final float[] ruleAgree = new float[RULE_NAMES.length];
+		public final int[] ruleN = new int[RULE_NAMES.length];
+
+		/** Which rules the network reads: cross-entropy, agreement, head-ticks, for the rules that had some. */
+		public String ruleLine() {
+			StringBuilder b = new StringBuilder();
+			for (int k = 0; k < RULE_NAMES.length; k++) {
+				if (ruleN[k] > 0) {
+					b.append(b.length() == 0 ? "" : "; ").append(RULE_NAMES[k]).append(String.format(java.util.Locale.ROOT, " %.2f %.0f%% on %d", ruleCe[k], 100f * ruleAgree[k], ruleN[k]));
+				}
+			}
+			return b.toString();
+		}
 
 		/** The rules' keys head by head: cross-entropy, agreement, head-ticks, for the heads that had some. */
 		public String ruledHeadsLine() {
@@ -120,12 +135,15 @@ public final class SchoolPpo implements AutoCloseable {
 			return String.format(java.util.Locale.ROOT,
 					"%d steps, %d epochs, policy %.4f, value %.4f, kl %.4f, clipped %.2f, explained %.2f, lr %.1e, entropy W/S %.2f jump %.2f swing %.2f, "
 							+ "teacher: technique ce %.3f agree %.0f%% on %d, installed ce %.3f (body %.3f), "
-							+ "punish crit swing under the rules: swung %.0f%% of %d, held %.0f%% of %d, rules' keys: ce %.3f agree %.0f%% on %d (by head: %s), %d ms",
+							+ "punish crit swing under the rules: swung %.0f%% of %d, held %.0f%% of %d, rules' keys: ce %.3f agree %.0f%% on %d (by head: %s) (by rule: %s), %d ms",
 					samples, epochs, policyLoss, valueLoss, kl, clipFraction, explained, actorLr, entropy[ActionSpace.FORWARD],
 					entropy[ActionSpace.JUMP], entropy[ActionSpace.ATTACK], techCe, 100f * techAgree, techSteps, oldCe, oldBodyCe,
-					100f * shadowSwingAgree, shadowSwings, 100f * shadowHoldAgree, shadowHolds, ruledCe, 100f * ruledAgree, ruledSteps, ruledHeadsLine(), millis);
+					100f * shadowSwingAgree, shadowSwings, 100f * shadowHoldAgree, shadowHolds, ruledCe, 100f * ruledAgree, ruledSteps, ruledHeadsLine(), ruleLine(), millis);
 		}
 	}
+
+	/** The installed model's rules, by the bit of {@code Fighter#rules}. */
+	public static final String[] RULE_NAMES = {"answer", "keep", "meet", "reset", "backOut", "stepBack", "jumpIn", "hitAim", "lost", "straight", "dodge", "hold", "holdCrit", "punish"};
 
 	private final SchoolNet actor;
 	private final SchoolCritic critic;
@@ -186,6 +204,9 @@ public final class SchoolPpo implements AutoCloseable {
 		final double[] ruledCeHead = new double[ActionSpace.HEADS];
 		final int[] ruledAgreeHead = new int[ActionSpace.HEADS];
 		final int[] ruledNHead = new int[ActionSpace.HEADS];
+		final double[] ruleCe = new double[RULE_NAMES.length];
+		final int[] ruleAgree = new int[RULE_NAMES.length];
+		final int[] ruleN = new int[RULE_NAMES.length];
 
 		void reset() {
 			policyLoss = 0;
@@ -211,6 +232,9 @@ public final class SchoolPpo implements AutoCloseable {
 			java.util.Arrays.fill(ruledCeHead, 0);
 			java.util.Arrays.fill(ruledAgreeHead, 0);
 			java.util.Arrays.fill(ruledNHead, 0);
+			java.util.Arrays.fill(ruleCe, 0);
+			java.util.Arrays.fill(ruleAgree, 0);
+			java.util.Arrays.fill(ruleN, 0);
 		}
 
 		void run(SchoolRollout r, int[] order, int from, int to, float advMean, float advStd, Settings set) {
@@ -350,6 +374,13 @@ public final class SchoolPpo implements AutoCloseable {
 					ruledCeHead[h] += ce;
 					ruledNHead[h]++;
 					ruledAgreeHead[h] += stored[off + best] >= Teacher.ANY ? 1 : 0;
+					for (int k = 0; k < RULE_NAMES.length; k++) {
+						if ((r.ruleBits[i] & (1 << k)) != 0) {
+							ruleCe[k] += ce;
+							ruleN[k]++;
+							ruleAgree[k] += stored[off + best] >= Teacher.ANY ? 1 : 0;
+						}
+					}
 				} else if (shadowed) {
 					if (stored[off + 1] >= Teacher.ANY) {
 						shadowSwings++;
@@ -438,6 +469,9 @@ public final class SchoolPpo implements AutoCloseable {
 		double[] ruledCeHeads = new double[ActionSpace.HEADS];
 		long[] ruledAgreeHeads = new long[ActionSpace.HEADS];
 		long[] ruledNHeads = new long[ActionSpace.HEADS];
+		double[] ruleCes = new double[RULE_NAMES.length];
+		long[] ruleAgrees = new long[RULE_NAMES.length];
+		long[] ruleNs = new long[RULE_NAMES.length];
 		long seen = 0;
 		for (int epoch = 0; epoch < set.epochs; epoch++) {
 			shuffle(order, rng);
@@ -483,6 +517,11 @@ public final class SchoolPpo implements AutoCloseable {
 						ruledAgreeHeads[h] += w.ruledAgreeHead[h];
 						ruledNHeads[h] += w.ruledNHead[h];
 					}
+					for (int k = 0; k < RULE_NAMES.length; k++) {
+						ruleCes[k] += w.ruleCe[k];
+						ruleAgrees[k] += w.ruleAgree[k];
+						ruleNs[k] += w.ruleN[k];
+					}
 				}
 				epochSeen += to - from;
 			}
@@ -525,6 +564,11 @@ public final class SchoolPpo implements AutoCloseable {
 			st.ruledCeHead[h] = ruledNHeads[h] == 0 ? 0f : (float) (ruledCeHeads[h] / ruledNHeads[h]);
 			st.ruledAgreeHead[h] = ruledNHeads[h] == 0 ? 0f : (float) ruledAgreeHeads[h] / ruledNHeads[h];
 			st.ruledNHead[h] = (int) (ruledNHeads[h] / Math.max(1, st.epochs));
+		}
+		for (int k = 0; k < RULE_NAMES.length; k++) {
+			st.ruleCe[k] = ruleNs[k] == 0 ? 0f : (float) (ruleCes[k] / ruleNs[k]);
+			st.ruleAgree[k] = ruleNs[k] == 0 ? 0f : (float) ruleAgrees[k] / ruleNs[k];
+			st.ruleN[k] = (int) (ruleNs[k] / Math.max(1, st.epochs));
 		}
 		st.actorLr = actorLr;
 		st.millis = (System.nanoTime() - start) / 1_000_000L;

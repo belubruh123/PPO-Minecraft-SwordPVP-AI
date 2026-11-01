@@ -42,6 +42,8 @@ public final class SchoolRollout {
 	 * learns what the rules do, so that it can take the fight over).
 	 */
 	public final int[] ruledHeads;
+	/** Which of the installed model's rules had keys on the step ({@code Fighter#rules} bits), for the readout of which rule is learned. */
+	public final int[] ruleBits;
 	public final float[] logp;
 	public final float[] value;
 	public final float[] reward;
@@ -90,6 +92,7 @@ public final class SchoolRollout {
 		headMask = new int[capacity];
 		shadowHeads = new int[capacity];
 		ruledHeads = new int[capacity];
+		ruleBits = new int[capacity];
 		logp = new float[capacity];
 		value = new float[capacity];
 		reward = new float[capacity];
@@ -134,6 +137,7 @@ public final class SchoolRollout {
 		headMask[i] = s.headMask;
 		shadowHeads[i] = s.shadowHeads & ~s.headMask;
 		ruledHeads[i] = s.ruledHeads;
+		ruleBits[i] = s.ruleBits;
 		logp[i] = s.logp;
 		value[i] = s.value;
 		reward[i] = rew;
@@ -161,6 +165,7 @@ public final class SchoolRollout {
 		public int headMask;
 		public int shadowHeads;
 		public int ruledHeads;
+		public int ruleBits;
 		public float logp;
 		public float value;
 		public final float[] teacher = new float[ActionSpace.TOTAL_LOGITS];
