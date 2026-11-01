@@ -1,4 +1,4 @@
-# SwordAI handoff (1 Nov 2026, 17:30), to the next Claude conversation
+# SwordAI handoff (2 Nov 2026, 05:15; status block at the top of section 8), to the next Claude conversation
 
 This file replaces every earlier handoff. It stands on its own.
 
@@ -163,7 +163,21 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 ---
 
-## 8. Where things stand (1 Nov 08:30)
+## 8. Where things stand (updated 2 Nov 05:15; older notes below)
+
+**STATUS 2 Nov 05:15 (read this first, the rest of section 8 is the history):**
+- **Training:** run 30h lineage (the take-over, `RULED_PULL`, rule-off fights 55-70%, history input), restarted from the clean 18:55 weights at 20:53, redeployed 22:42 (run 31's hit and out switched off). Stage T-E. Nothing has been installed in the user's profile since 29 Oct (jar 07:13, network = run23-1418).
+- **Hourly checks (44-45 pairs, rules over the network, vs the installed rules fighter), 22:05-04:27:** -0.2, -3.2, -5.2, +3.3, +6.3, -3.3, +3.6, -4.6 (mean -0.4; each +-4 to +6, hour-to-hour swings of up to 19 points happen). Level with the installed model, not better. Swings landing A 95-99% vs B 90-93% in every check. 20 checks of 1 Nov averaged +1.5. The pure network (no rules) sits about level too (-0.3 pooled on fresh pairs at 19:50).
+- **Training fights since 22:42:** with the rules bots -52 a minute, sparring +55; without the rules bots -79, sparring -103; flat for 6 hours. Rolling punish crit chances critted 25-30% of 300; no technique is RULE class; long-stuck ones: K3, T11a, T11c, T10, T6a, T9b, T1c, C7.
+- **The user's real duels are the real measure** (`python tools/duels.py`, `tools/duel-hits.py`, their `swordai/fights/rounds.csv`): the installed model wins about 79% of duels (76/96 on 1 Nov) and takes 1.24-1.27 hits dealt per hit taken, flat since 23 Oct. **My early claim of "75-0" was wrong** (the log prints a result only for wins). Lost duels differ from won ones by about 3 more jump-in hits and 3 more hits with its sword ready (a hit select, T4, is fine by the file: the AI hits back 51% of the time after such a hit); aim, idle time and strafing do not separate them.
+- **The user's rule of 1 Nov 22:15 (SOP section 0, rule 7):** only the knowledge of `docs/PVP-TECHNIQUES.md`, never the assistant's own PVP ideas; two things the file calls fine are both fine; name every finding by technique ID or call it "not in the document". Run 31's hit and out broke it and was taken out.
+- **Document-based findings so far:** T4 deflections made from under 1.6 blocks stun 50% vs 97% from 2.4+ blocks, 92% at 1 tick delay vs 57% at 3 ticks, 83% at ping under 50 ms vs 68% above (real duels, 3 days). BackNudge (S for 12 ticks after the 2nd hit of a combo) is the file's C3 "common mistake" (holding S only after the stun): in real duels its 8+ tick streaks cost about 1 hit each and deal none.
+- **Live A/B pool (built, committed, NOT installed):** `AbPool`, `FightSession`, `tools/install-ab.sh`, `tools/duels.py`; arms are a network + rules on/off + temperatures + options (`noback` = back-out rule off, `hitout` = my taken-out idea, unused). First session proposed to the user: `installed`, `noback` (same network), `run30h` (`run/best-candidates/run30h-1855.bin`, rules on). Needs the user's yes AND their Minecraft closed; the jar is `build/libs/swordai-0.16.0+1.21.11.jar` from the 22:42 redeploy. The user has not answered since 22:15; reviews keep reporting the pending question.
+- **Pending decisions for the user:** install the A/B pool; whether to keep spending the night on routine reviews (they are the standing order, so yes).
+- **Ideas not done (all must pass SOP section 0):** the T4 measure could require the stun at the user's ping; cap the BackNudge S hold (the file's C3 says hold S before the stun, not after); async PPO update; per-rule ablation arms in the live pool.
+
+### History (1 Nov 08:30 and later)
+
 
 | Item | Value |
 |---|---|
