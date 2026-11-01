@@ -263,8 +263,11 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final String RULES_OFF_CHECK_FILE = "rules-off-check";
 	static final float RULED_PULL = 0.3f;
-	static final float RULE_OFF_MIN = 0.10f;
-	static final float RULE_OFF_MAX = 0.40f;
+	// 0.10 and 0.40 in the first hour of run 30 (08:05-08:26): the baseline screen of 08:16 (the network of 07:54 without the rules,
+	// pairs 0-65) came out -7.9 (3.7) against the installed model while the same network with the rules runs about +3 on those
+	// seeds, so the gap to close is about 11 a fight and the network's own states are what it must learn from.
+	static final float RULE_OFF_MIN = 0.25f;
+	static final float RULE_OFF_MAX = 0.50f;
 	static final float RULE_OFF_CE_START = 0.60f;
 	static final float RULE_OFF_CE_FULL = 0.20f;
 	/** Smoothed cross-entropy to the rules' keys (-1 before the first update that had some) and how often its likeliest key was the rule's. */
