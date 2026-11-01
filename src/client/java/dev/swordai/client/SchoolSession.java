@@ -1791,9 +1791,12 @@ public final class SchoolSession implements AgentSession {
 			}
 		}
 		drillFight = plan.drillLift;
-		// The take-over (RULES_OFF_CHECK_FILE): full fights only, so that the scenes' and the reviews' bars keep their meaning.
+		// The take-over (RULES_OFF_CHECK_FILE): the full fights and, since run 30f, the scenes too (the reviews and the drills stay as they were).
+		// The no-rules screens' hit log (1 Nov 12:46): the network without the rules trails the installed model in the combos from the third
+		// hit (13 vs 7 taken a fight) and in the air (15 vs 4), exactly the scenes' contexts, which were all played with the rules, so the
+		// network never practised its own answer there.
 		ruleOff = mode == Mode.CHECK ? rulesOffCheck && !installedPlays
-				: review < 0 && sceneNow == null && !drillFight && rng.nextFloat() < ruleOffShare();
+			: review < 0 && !drillFight && rng.nextFloat() < ruleOffShare();
 		drillTicker = plan.drillLift ? plan.drillAgentTicker : sceneNow != null ? SceneRecorder.agentTicker(sceneNow.state) : -1;
 		drillFights += plan.drillLift ? 1 : 0;
 		plan.seed = seed;
