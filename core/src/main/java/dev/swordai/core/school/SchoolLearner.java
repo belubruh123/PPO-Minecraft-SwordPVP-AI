@@ -454,7 +454,8 @@ public final class SchoolLearner implements AutoCloseable {
 		base.condition(baseWs, anchorAction);
 		Policy.allProbs(baseWs.logits, anchorProbs);
 		for (int h = 0; h < ActionSpace.HEADS; h++) {
-			if ((step.teacherHeads & (1 << h)) == 0) {
+			// A key the installed model's rules press keeps the rule's key as its target (run 30): the base's chances would replace it.
+			if ((step.teacherHeads & (1 << h)) == 0 && (step.ruledHeads & (1 << h)) == 0) {
 				System.arraycopy(anchorProbs, ActionSpace.OFFSETS[h], step.teacher, ActionSpace.OFFSETS[h], ActionSpace.SIZES[h]);
 			}
 		}

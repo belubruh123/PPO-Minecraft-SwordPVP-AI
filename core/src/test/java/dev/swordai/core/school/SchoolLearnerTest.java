@@ -151,6 +151,30 @@ class SchoolLearnerTest {
 		assertTrue(gain[1] > 0.2f && gain[1] > gain[0] + 0.15f, "jump chance gained " + gain[0] + " without the ruled pull, " + gain[1] + " with it");
 	}
 
+	/** With the anchor to the frozen base on, the base's chances replace the targets of the keys nobody teaches, but not a key the rules press. */
+	@Test
+	void theAnchorLeavesTheRulesKeyAlone() {
+		SchoolLearner l = new SchoolLearner(4L, 600, 0.99f, 0.95f, 1);
+		l.keepBase();
+		l.anchorToBase(true);
+		Random rng = new Random(8);
+		SchoolRollout.Step s = new SchoolRollout.Step();
+		int[] act = new int[ActionSpace.HEADS];
+		fillRuledJump(rng, s);
+		s.teacherWeight = 1f;
+		int ws = ActionSpace.OFFSETS[ActionSpace.FORWARD];
+		s.teacher[ws] = 1f;
+		s.teacher[ws + 1] = 0f;
+		s.teacher[ws + 2] = 0f;
+		act[ActionSpace.JUMP] = 1;
+		l.act(s, ActionSpace.ALL_HEADS & ~ActionSpace.mask(ActionSpace.JUMP), ActionSpace.mask(ActionSpace.JUMP), true, 1f, act);
+		int jo = ActionSpace.OFFSETS[ActionSpace.JUMP];
+		assertEquals(0f, s.teacher[jo], 0f);
+		assertEquals(1f, s.teacher[jo + 1], 0f);
+		assertTrue(s.teacher[ws] < 0.999f, "the base's chances replaced the W/S target: " + s.teacher[ws]);
+		l.close();
+	}
+
 	private static void fillRuledJump(Random rng, SchoolRollout.Step s) {
 		fill(rng, s);
 		s.teacherHeads = 0;
