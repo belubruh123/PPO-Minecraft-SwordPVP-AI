@@ -638,7 +638,14 @@ public final class SchoolSession implements AgentSession {
 	 * docs/TRAINING-SOP.md. Kept in FOCUS_FILE: the focus and the furthest reached.
 	 */
 	static final float FOCUS_BAR = 0.9f;
-	static final int[][] FOCUS_KINDS = {{KIND_CRIT, KIND_JUMPIN, KIND_PUNISH}, {KIND_COMBO}};
+	/**
+	 * Run 35 (3 Nov): the combo scenes are fought with the crits' as one of the first focus's kinds (a quarter of its scene
+	 * fights), its bars still the crits'. With the crits short of their bars for a week (punish crit told and landed 27%) the
+	 * combo scenes came only in the fifth of scene fights left over, about one in twenty; the user, 2 Nov: it is "bad at upper
+	 * cutting comboing opponent that controls hit perfectly", and need not rely on the "unstable punish crit". Combo scenes
+	 * won 39% of the last 200; against the uppercutter A's net was below zero in the last four hourly checks.
+	 */
+	static final int[][] FOCUS_KINDS = {{KIND_CRIT, KIND_JUMPIN, KIND_PUNISH, KIND_COMBO}, {KIND_COMBO}};
 	static final String[] FOCUS_NAMES = {"the crits (crit scenes, jump-in counter, punish crit)", "the combo escape"};
 	static final float FOCUS_SHARE = 0.8f;
 	static final int FOCUS_EVENTS = 300;
