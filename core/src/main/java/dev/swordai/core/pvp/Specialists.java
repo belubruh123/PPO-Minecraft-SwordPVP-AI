@@ -54,6 +54,12 @@ public final class Specialists {
 		Style s = new Style().drawHuman(rng);
 		s.bot = bot;
 		s.name = NAMES[bot];
+		// Run 33 (2 Nov): people open an exchange with a jump-in crit. The user: "99% of user starts with jump in crit"; in
+		// their 194 rounds the opponent jumped in before the first hit in at least half, mostly from 0-5 blocks
+		// (tools/jumpins.py). Until then only the jump-in critter, the double critter and four mixers in ten opened so, and
+		// in the checks the bots hit first in 70% of the openings with their sprint hits. The specialists below keep their own.
+		s.critOpen = 0.5f + 0.4f * rng.nextFloat();
+		s.critFrom = 2.5f + 3f * rng.nextFloat();
 		float p = 0.5f + 0.45f * rng.nextFloat();
 		switch (bot) {
 			case PUNISH_CRITTER -> s.set(Technique.B1, p);
@@ -173,9 +179,10 @@ public final class Specialists {
 			// About one in four techniques is one of its favourites; the rest it uses now and then or never.
 			s.p[t.ordinal()] = u < 0.25f ? 0.5f + 0.45f * rng.nextFloat() : u < 0.65f ? 0.25f * rng.nextFloat() : 0f;
 		}
-		s.critOpen = rng.nextFloat() < 0.4f ? 0.5f * rng.nextFloat() : 0f;
+		// The real player opens with a jump-in crit as people do (run 33, see draw).
+		s.critOpen = 0.5f + 0.4f * rng.nextFloat();
 		s.hitSelect = rng.nextFloat() < 0.4f ? s.p(Technique.T4) : 0f;
-		s.critFrom = 1.5f + 3f * rng.nextFloat();
+		s.critFrom = 2.5f + 3f * rng.nextFloat();
 		s.rhythm = rng.nextFloat() < 0.2f;
 	}
 

@@ -351,7 +351,11 @@ class PvpPlayerTest {
 					s.punishFirst = first == 1;
 					// Hit with the sword back, as in the punish scenes (kept only from chances where it was): it waits for their swing.
 					s.hitSelect = 1f;
-					Bout b = new Bout(s, Specialists.draw(bot, new java.util.Random(seed)), 3.0, seed);
+					// Sprint hits only: without the jump-in openings every drawn bot has had since run 33 (their crits are punished
+					// with B1 with or without the drill, which is not what this measures).
+					Style bot0 = Specialists.draw(bot, new java.util.Random(seed));
+					bot0.critOpen = 0f;
+					Bout b = new Bout(s, bot0, 3.0, seed);
 					b.run(400);
 					int liftAt = -100;
 					for (int i = 1; i < b.ticks.size(); i++) {
