@@ -98,18 +98,18 @@ When an hourly check is above about +6:
 ```bash
 cp /d/swordai/run/swordai/school/checked-MMDD-HHMM.bin /d/swordai/run/best-candidates/runNN-HHMM.bin
 # Add a line to run/best-candidates/CANDIDATES.txt, then, in the background:
-cd /d/swordai && FROM=8500 bash tools/screen.sh 133 /d/swordai/run/best-candidates/runNN-HHMM.bin:1 > /d/swordai/run/screen-scripted.log 2>&1
+cd /d/swordai && FROM=8900 bash tools/screen.sh 133 /d/swordai/run/best-candidates/runNN-HHMM.bin:1 > /d/swordai/run/screen-scripted.log 2>&1
 # Only if scripted beats about +4.7:
-cd /d/swordai && FROM=8700 MIRROR=1 bash tools/screen.sh 132 /d/swordai/run/best-candidates/runNN-HHMM.bin:1 > /d/swordai/run/screen-mirror.log 2>&1
+cd /d/swordai && FROM=9100 MIRROR=1 bash tools/screen.sh 132 /d/swordai/run/best-candidates/runNN-HHMM.bin:1 > /d/swordai/run/screen-mirror.log 2>&1
 ```
 
 - Use `/d/...` paths: a `D:` path breaks the `NET:TEMP` split.
 - Each screen pauses training about 15 minutes. Afterwards check `java.exe`, the loop and the log are back.
-- Never reuse pairs. **Used: 0-8431. Next: 8500 scripted, 8700 mirror.** Move these numbers on here and in `CANDIDATES.txt` after every screen.
+- Never reuse pairs. **Used: 0-8831. Next: 8900 scripted, 9100 mirror.** Move these numbers on here and in `CANDIDATES.txt` after every screen.
 
 **What the screens measure:** B, and the opponent in a mirror screen, is the fixed 23 Oct model in `run/swordai/school/installed/`, not the network in the user's profile. The bars are what the profile's network scored against it. A bar goes stale when the code changes: run23-1418 fell from +4.7 / +9.9 to +1.2 / +8.9 when it was re-run on 2 Nov under the S-tap. So screen the installed network on the same pairs as any serious candidate, under the same code, and compare the two. The combined score is the inverse-variance mean of the scripted and mirror screens. If two are level on it, go down the priorities in section 2.
 
-**Install rule:** beat the installed network's combined score, and about **+5.9 scripted and +5.2 mirror** (run30h-0739, one screen each, combined +5.7 (2.2)), on one fresh screen and again on a second. Then report and ask, and install with:
+**Install rule:** beat the installed network's combined score, and about **-0.5 scripted and +7.8 mirror** (run30h-0739 re-screened 2 Nov 23:10 against the bots of runs 32-33, combined +1.7 (2.1); the bars move whenever the bots change), on one fresh screen and again on a second. Then report and ask, and install with:
 
 ```bash
 bash /d/swordai/tools/install-school.sh /d/swordai/run/best-candidates/runNN-HHMM.bin
@@ -131,6 +131,7 @@ Record it in `CANDIDATES.txt`, `run/best-*/BEST.txt`, `EXPERIMENTS.md` and the `
 | `run27b-0224` | +3.5 (2.6) | - | Not installed |
 | `run29-0510` | +3.0 (2.4) | - | Not installed, 45 minutes into run 29 |
 | `run30h-1855` | +1.0 (2.5) | - | Not installed, out of the pool since 2 Nov 10:46 |
+| `run33-2216` | -1.4 (2.3) | +7.6 (4.1) | Not installed: hourly +9.0 was luck; the installed one on the same pairs -0.5, +7.8 |
 
 ---
 
