@@ -45,6 +45,12 @@ public final class Style {
 	public float critOpen = 0f;
 	/** From how far it jumps in for such a crit: eye to hitbox at take-off. */
 	public float critFrom = 2.2f;
+	/**
+	 * Its opening jump-in crit lands 2.5 to 3 blocks from them, so that it is already falling when it comes into their reach and
+	 * is not knocked away (the user, 2 Nov): taken off from {@link PvpPlayer#jumpInFrom}, whenever they are that far, instead of
+	 * from {@link #critFrom}.
+	 */
+	public boolean jumpInLands;
 	/** It swings this far beyond its reach: 0 for none; the swinger that misses ({@link Specialists}) has some. */
 	public float swingEarly = 0f;
 	/** In a combo of its own it hits the moment the other fighter lands (a rhythm), rather than the moment its sword is back. */
@@ -129,6 +135,7 @@ public final class Style {
 		s.strafe = strafe;
 		s.critOpen = critOpen;
 		s.critFrom = critFrom;
+		s.jumpInLands = jumpInLands;
 		s.swingEarly = swingEarly;
 		s.rhythm = rhythm;
 		s.noJumps = noJumps;

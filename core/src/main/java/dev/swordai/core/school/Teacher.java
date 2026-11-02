@@ -166,6 +166,11 @@ public final class Teacher {
 		// It swings first whenever it can: hit selecting as half the times, for a drawn while, would teach the swing as a coin
 		// toss. The deflection (T4) is still shown, whenever they swing first.
 		s.hitSelect = 0f;
+		// Run 34 (3 Nov): it opens with a jump-in crit whenever they are far enough for one that lands 2.5-3 blocks from them,
+		// falling when it comes into their reach (the user, 2 Nov: "99% of user starts with jump in crit", "it should learn to jump
+		// in as the other player as well"). In the 23:59 check A's jump-ins from 4-5 blocks were hit rising in 32%.
+		s.critOpen = 1f;
+		s.jumpInLands = true;
 		return s;
 	}
 

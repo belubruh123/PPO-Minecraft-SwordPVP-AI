@@ -62,6 +62,16 @@ public final class PvpPlayer {
 	/** A crit jump from this far (eye to hitbox) or more is a running jump; the bait crit (T1a) is one from here, landing close. */
 	static final float RUNNING_JUMP_FROM = 2.8f;
 
+	/**
+	 * Where a jump-in that lands 2.5 to 3 blocks from them takes off ({@link Style#jumpInLands}), eye to hitbox: in the toy
+	 * fight a running jump from 6.0 to 7.5 blocks at one who stands comes into reach falling and lands at 2.5 to 2.8; at one
+	 * who walks or sprints in, from 7 to 8 it still comes in falling (OpeningJumpInTest). Their closing speed adds six ticks
+	 * of it, the jump's rise.
+	 */
+	public static float jumpInFrom(Duel d) {
+		return (float) Math.min(7.9, 6.3 + 6 * Math.max(0, d.theyClose));
+	}
+
 	private final Random rng = new Random();
 	private Style style = new Style();
 	private final float[] pNow = new float[Technique.COUNT];
@@ -86,6 +96,7 @@ public final class PvpPlayer {
 	private boolean backRolled;
 	private boolean straightRolled;
 	private boolean delayRolled;
+	private boolean jumpInRolled;
 	/** This fight it keeps to the golden rule (K2): no knockback hit on someone falling. */
 	private boolean k2;
 	/** What it was told the other will do (a teacher knows); below zero: go by what has been seen. */
@@ -145,6 +156,7 @@ public final class PvpPlayer {
 		backRolled = false;
 		straightRolled = false;
 		delayRolled = false;
+		jumpInRolled = false;
 		k2 = rng.nextFloat() < s.p(Technique.K2);
 		tellDouble = -1f;
 		tellReset = -1f;
@@ -395,6 +407,7 @@ public final class PvpPlayer {
 		inReachTicks = d.inReach() ? inReachTicks + 1 : 0;
 		if (d.reach <= Duel.REACH) {
 			outRolled = false;
+			jumpInRolled = false;
 		}
 		if (d.reach > Duel.REACH + 1.5) {
 			approachRolled = false;
@@ -703,6 +716,17 @@ public final class PvpPlayer {
 				return;
 			}
 		}
+		// Far enough for a jump-in that lands 2.5 to 3 blocks out (Style#jumpInLands): the opening crit from there, before the
+		// three-block hit and the bait crit get the moment.
+		float jumpIn = jumpInFrom(d);
+		if (style.jumpInLands && !jumpInRolled && me.onGround && me.swordReady() && d.reach >= jumpIn - 0.3 && d.reach < 8.5) {
+			jumpInRolled = true;
+			if (!style.noJumps && rng.nextFloat() < style.critOpen) {
+				outRolled = true;
+				begin(Plan.OPEN_CRIT);
+				return;
+			}
+		}
 		// Out of reach with the sword back: the bait crit (T1a), the three-block hit (T7), or an opening crit.
 		if (d.reach > Duel.REACH + 0.4 && d.reach < 8.0 && me.swordReady() && !outRolled) {
 			outRolled = true;
@@ -714,7 +738,7 @@ public final class PvpPlayer {
 				begin(Plan.T7);
 				return;
 			}
-			if (!style.noJumps && style.critOpen > 0f && rng.nextFloat() < style.critOpen) {
+			if (!style.jumpInLands && !style.noJumps && style.critOpen > 0f && rng.nextFloat() < style.critOpen) {
 				begin(Plan.OPEN_CRIT);
 				return;
 			}
@@ -754,7 +778,7 @@ public final class PvpPlayer {
 		Body them = d.them;
 		switch (plan) {
 			case OPEN_CRIT -> {
-				return jumpedCrit(d, k, style.critFrom, false);
+				return jumpedCrit(d, k, style.jumpInLands ? jumpInFrom(d) : style.critFrom, false);
 			}
 			case T1A -> {
 				return jumpedCrit(d, k, RUNNING_JUMP_FROM + 0.1f, false);
