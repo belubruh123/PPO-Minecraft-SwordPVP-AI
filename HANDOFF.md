@@ -98,14 +98,14 @@ When an hourly check is above about +6:
 ```bash
 cp /d/swordai/run/swordai/school/checked-MMDD-HHMM.bin /d/swordai/run/best-candidates/runNN-HHMM.bin
 # Add a line to run/best-candidates/CANDIDATES.txt, then, in the background:
-cd /d/swordai && FROM=8100 bash tools/screen.sh 133 /d/swordai/run/best-candidates/runNN-HHMM.bin:1 > /d/swordai/run/screen-scripted.log 2>&1
+cd /d/swordai && FROM=8500 bash tools/screen.sh 133 /d/swordai/run/best-candidates/runNN-HHMM.bin:1 > /d/swordai/run/screen-scripted.log 2>&1
 # Only if scripted beats about +4.7:
-cd /d/swordai && FROM=8300 MIRROR=1 bash tools/screen.sh 132 /d/swordai/run/best-candidates/runNN-HHMM.bin:1 > /d/swordai/run/screen-mirror.log 2>&1
+cd /d/swordai && FROM=8700 MIRROR=1 bash tools/screen.sh 132 /d/swordai/run/best-candidates/runNN-HHMM.bin:1 > /d/swordai/run/screen-mirror.log 2>&1
 ```
 
 - Use `/d/...` paths: a `D:` path breaks the `NET:TEMP` split.
 - Each screen pauses training about 15 minutes. Afterwards check `java.exe`, the loop and the log are back.
-- Never reuse pairs. **Used: 0-8032. Next: 8100 scripted, 8300 mirror.** Move these numbers on here and in `CANDIDATES.txt` after every screen.
+- Never reuse pairs. **Used: 0-8431. Next: 8500 scripted, 8700 mirror.** Move these numbers on here and in `CANDIDATES.txt` after every screen.
 
 **Install rule:** beat about **+4.7 scripted and +9.9 mirror** on one fresh screen and again on a second. Then report and ask, and install with:
 
@@ -127,6 +127,8 @@ Record it in `CANDIDATES.txt`, `run/best-*/BEST.txt`, `EXPERIMENTS.md` and the `
 | `run27b-2319` | +3.1 (2.4) | - | Not installed |
 | `run27b-0224` | +3.5 (2.6) | - | Not installed |
 | `run29-0510` | +3.0 (2.4) | - | Not installed, 45 minutes into run 29 |
+| `run30h-1855` | +1.0 (2.5) | - | Not installed, arm `run30h` of the live A/B pool |
+| `run30h-0739` | +5.9 (2.6) | +5.2 (4.0) | Not installed, mirror below the bar |
 
 ---
 
@@ -169,6 +171,7 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 - **The live A/B pool IS INSTALLED in the user's profile since 2 Nov 07:21** (the user's yes, 2 Nov, their Minecraft closed). The jar of 1 Nov 22:41 replaced the 29 Oct jar; the backup is `DRL AI/swordai/backup-before-ab-20261102-072110`. Each duel draws one of three arms, weights 1:1:1: `installed` (run23-1418, rules on), `noback` (run23-1418, the back-out rule off), `run30h` (`run30h-1855.bin`, rules on). The installed network itself is unchanged, and it is still the baseline of every check.
 - **All three arms carry the run 27 S-tap**: the crit trade rule now ends the sprint with S instead of letting go of W (`Fighter.java:607`). So `installed` is not exactly what played the duels before 2 Nov: compare arms inside the pool, and do not compare `installed` with the 1.24-1.27 of the older logs without saying so. Old networks play unchanged otherwise (`new.hist`, `hist.heads`, `option.*` load at zero; hit and out is off in all arms).
 - **Verdict rule, set before any result (`tools/review.sh` prints the arms, from `python tools/duels.py`):** at about 100 duels an arm, compare the share of hits dealt with `installed`. An arm ahead by more than 2 se is reported to the user as the one to install. An arm behind by more than 2 se comes out of the pool. Otherwise carry on to about 200 duels an arm. No verdict from one evening: the ratio moves +-0.15 between evenings, which is why only the same-hours comparison counts. Check the first duels really say `[A/B arm ...]` in the start line: a pool that fails to load plays the installed network alone, silently. `bash tools/install-ab.sh --off` takes the pool out (the user's Minecraft closed).
+- **2 Nov 08:36: `run30h-0739` (hourly 07:43 +7.8 (3.8)) screened on fresh pairs: scripted +5.9 (2.6), mirror +5.2 (4.0).** Above the scripted bar, under the mirror bar: not installed. Level with the installed model, not better. The pool's `run30h` arm stays `run30h-1855`: the two screens differ by less than two standard errors and no duel has played yet.
 - **The conversation that stopped its review at 07:15 is stopped. The older conversation operates again** (the user, 2 Nov) and its 30-minute review job has been running since 07:19. Training and the check loop were never stopped. Read section 0 of `docs/TRAINING-SOP.md` first if you take over.
 - **Checks since 05:15:** 05:16 +1.8 (3.6), 06:05 -3.5 (4.2), 06:54 -1.8 (4.9); eleven hourly checks since 22:05 average -0.6 (the 17 before them on 1 Nov averaged +2.3, a gap of 1.6 standard errors: watch, not proof). The rolling punish crit swings between 21% and 32% over hours (21% at 07:00). Fights since the 22:42 redeploy: rules over the network bots -47 a minute, sparring +54; without the rules bots -80, sparring -103; flat for 8.5 hours.
 
