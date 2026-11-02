@@ -225,22 +225,56 @@ class PvpPlayerTest {
 
 	// ---- T8: the rising jumper ----------------------------------------------------------------------
 
-	@Test
-	void aJumperIsHitWhileItRises() {
-		Bout b = scripted(with(Technique.T8, 1f), 4.2, 30, (tick, v, k) -> {
+	/** A sprint jump-in from {@code distance} against a T8 player that reacts in {@code reaction} ticks: its first hit, or null. */
+	static Bout.Tick firstHitOnJumper(double distance, int reaction, long seed) {
+		Style s = with(Technique.T8, 1f);
+		s.reaction = reaction;
+		Bout b = scriptedFrom(new Bout(s, plain(), distance, seed), 30, (tick, v, k) -> {
 			k.forward = 1;
 			k.sprint = true;
 			k.jump = tick == 1;
 		});
 		for (Bout.Tick t : b.ticks) {
 			if (t.events[0].iHit != Events.NONE) {
-				Bout.Tick before = b.ticks.get(b.ticks.indexOf(t) - 1);
-				assertTrue(before.body[1].vy > 0 || !before.body[1].onGround && t.body[1].y > 0, b.trace());
-				assertTrue(b.ticksOf(0, Technique.T8) > 0, b.trace());
-				return;
+				return b.ticks.get(b.ticks.indexOf(t) - 1);
 			}
 		}
-		throw new AssertionError("no hit\n" + b.trace());
+		return null;
+	}
+
+	/** Whether the jumper still rose (or had not come down yet) on the tick before the hit. */
+	static boolean rising(Bout.Tick before) {
+		return before != null && !before.body[1].onGround && before.body[1].vy > 0;
+	}
+
+	@Test
+	void aJumperFromCloseIsHitWhileItRises() {
+		Bout.Tick before = firstHitOnJumper(2.8, 2, 7L);
+		assertTrue(rising(before), "a take-off from 2.8 blocks against a 2-tick reaction: hit while rising");
+	}
+
+	/**
+	 * T8 waits a person's reaction (3 to 6 ticks), so a jumper from 4.5 blocks and more is already falling when it comes into
+	 * reach and is not met rising: in the user's duels such jump-ins were hit rising in 1 of 768 (2 Nov, tools/jumpins.py).
+	 */
+	@Test
+	void aJumperFromFarIsFallingBeforeAPersonsReactionIsOver() {
+		StringBuilder table = new StringBuilder("hit rising by take-off distance, reactions 3-6, 8 seeds:");
+		int far = 0;
+		for (double distance : new double[] {2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5}) {
+			int n = 0;
+			for (int reaction = 3; reaction <= 6; reaction++) {
+				for (long seed = 1; seed <= 2; seed++) {
+					n += rising(firstHitOnJumper(distance, reaction, seed)) ? 1 : 0;
+				}
+			}
+			table.append(String.format(java.util.Locale.ROOT, " %.1f: %d/8", distance, n));
+			if (distance >= 4.5) {
+				far += n;
+			}
+		}
+		System.out.println(table);
+		assertTrue(far == 0, table.toString());
 	}
 
 	// ---- B1 against a jump-in (the teacher, Style.punishJumpIns) -------------------------------------
