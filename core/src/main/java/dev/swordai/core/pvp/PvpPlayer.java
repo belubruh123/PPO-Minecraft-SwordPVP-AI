@@ -657,13 +657,8 @@ public final class PvpPlayer {
 			begin(Plan.B1_WAIT);
 			return;
 		}
-		// T8 waits a reaction time, as every other answer of a person does here. Begun on the take-off's own tick (until 2 Nov)
-		// it met jumpers from 4-5 blocks while they still rose, which people do not: in the user's duels the AI's own jump-ins
-		// from 4 blocks and more were hit rising in 1 of 768, from under 3 blocks in 19% (tools/jumpins.py), and in the checks
-		// the school network was hit rising five times as often as the installed model. The user: "the reason it is so scared to
-		// be knock away is your bot timed too perfect" (the take-off from 2.5-3 blocks out of reach: falling once in reach, K1).
 		if (!style.punishJumpIns && sinceTheyTookOff == 0 && d.theyClose > 0.05 && d.flat < 6.5 && roll(Technique.T8)) {
-			later(Plan.T8);
+			begin(Plan.T8);
 			return;
 		}
 		// They come in: out before the stun (C3, C4), make them miss (T6), or jump so they meet me falling (K3).
