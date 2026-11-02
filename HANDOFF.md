@@ -107,6 +107,8 @@ cd /d/swordai && FROM=8700 MIRROR=1 bash tools/screen.sh 132 /d/swordai/run/best
 - Each screen pauses training about 15 minutes. Afterwards check `java.exe`, the loop and the log are back.
 - Never reuse pairs. **Used: 0-8431. Next: 8500 scripted, 8700 mirror.** Move these numbers on here and in `CANDIDATES.txt` after every screen.
 
+**What the screens measure:** B, and the opponent in a mirror screen, is the fixed 23 Oct model in `run/swordai/school/installed/`, not the network in the user's profile. The bars are what the profile's network run23-1418 scored against it: scripted +8.3 and +1.1, mirror +12.0 and +7.8. Both were measured before the S-tap (30 Oct 05:17), and run23-1418 has not been screened since. So the next time a candidate beats the scripted bar and reaches a mirror screen, screen run23-1418 on the same kind of fresh pairs too, so the bar is like for like.
+
 **Install rule:** beat about **+4.7 scripted and +9.9 mirror** on one fresh screen and again on a second. Then report and ask, and install with:
 
 ```bash
