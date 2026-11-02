@@ -150,7 +150,11 @@ public final class Style {
 	public Style drawHuman(Random rng) {
 		reaction = 3 + rng.nextInt(4);
 		timing = 0.5f + 0.45f * rng.nextFloat();
-		lag = (int) Math.round(3 * Math.pow(rng.nextDouble(), 1.5));
+		// Run 32 (2 Nov): two ticks more than the 0-3 of before, for the client's smoothing of a moving player that a person sees
+		// on top of both connections. In the user's duels the first hit on the AI's jump-ins from 4-6 blocks came 7-10 ticks
+		// after the take-off and it hit back in 95% (tools/jumpins.py); the school's bots met them rising, and in the checks the
+		// school network was hit rising five times as often as the installed model. The user: "your bot timed too perfect".
+		lag = 2 + (int) Math.round(3 * Math.pow(rng.nextDouble(), 1.5));
 		ping = (int) Math.round(4 * Math.pow(rng.nextDouble(), 1.5));
 		aimNoise = 1.5f + 4f * rng.nextFloat();
 		turnRate = 25f + 25f * rng.nextFloat();

@@ -40,6 +40,13 @@ public final class ToyFight {
 	public final int[] knockLag = new int[2];
 	/** Knockback on its way to each fighter: the tick it arrives, its direction, and whether it is a sprint hit's. */
 	private final java.util.ArrayDeque<double[]>[] coming = newQueues();
+	/**
+	 * Ticks late each fighter sees the other (both connections and the client's smoothing of a moving player); 0 for at once.
+	 * It aims and decides at what it saw, and its hit lands on where the other really is, as the game's technique bots do.
+	 */
+	public final int[] seenLag = new int[2];
+	/** The other's bodies, newest first, for {@link #seenLag}. */
+	private final java.util.ArrayDeque<Body>[] past = newBodies();
 	public final int[][] hits = new int[2][4];
 	public int tick;
 
@@ -65,6 +72,7 @@ public final class ToyFight {
 			next[i].clear();
 			dealt[i] = 0f;
 			coming[i].clear();
+			past[i].clear();
 			java.util.Arrays.fill(hits[i], 0);
 		}
 		tick = 0;
@@ -75,6 +83,11 @@ public final class ToyFight {
 	@SuppressWarnings("unchecked")
 	private static java.util.ArrayDeque<double[]>[] newQueues() {
 		return new java.util.ArrayDeque[] {new java.util.ArrayDeque<double[]>(), new java.util.ArrayDeque<double[]>()};
+	}
+
+	@SuppressWarnings("unchecked")
+	private static java.util.ArrayDeque<Body>[] newBodies() {
+		return new java.util.ArrayDeque[] {new java.util.ArrayDeque<Body>(), new java.util.ArrayDeque<Body>()};
 	}
 
 	private void look() {
@@ -90,8 +103,14 @@ public final class ToyFight {
 			body[i].charge = Math.min(1f, (ticker[i] + 0.5f) / Body.SWORD_TICKS);
 		}
 		for (int i = 0; i < 2; i++) {
+			Body now = new Body();
+			now.copyFrom(body[1 - i]);
+			past[i].addFirst(now);
+			while (past[i].size() > seenLag[i] + 1) {
+				past[i].removeLast();
+			}
 			view[i].me.copyFrom(body[i]);
-			view[i].them.copyFrom(body[1 - i]);
+			view[i].them.copyFrom(past[i].peekLast());
 			view[i].measure();
 		}
 	}
@@ -196,7 +215,8 @@ public final class ToyFight {
 		next[1 - i].theySwung = true;
 		float charge = Math.min(1f, (ticker[i] + 0.5f) / Body.SWORD_TICKS);
 		ticker[i] = 0;
-		if (Duel.eyeToBox(me, them) > Duel.REACH) {
+		// In reach where it sees them (seenLag); the hit then lands on them where they are.
+		if (Duel.eyeToBox(me, seenLag[i] > 0 ? view[i].them : them) > Duel.REACH) {
 			return;
 		}
 		boolean crit = charge > Body.CHARGED && fall[i] > 0 && !me.onGround && !me.sprinting;

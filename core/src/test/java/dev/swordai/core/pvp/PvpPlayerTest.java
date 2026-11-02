@@ -243,6 +243,65 @@ class PvpPlayerTest {
 		throw new AssertionError("no hit\n" + b.trace());
 	}
 
+	/**
+	 * A sprint jump-in from {@code distance} at {@code style}, which sees it {@code lag} ticks late: the first hit on the jumper
+	 * as ticks since its take-off, negative while it still rose, 0 for none (a hit before the take-off counts as none).
+	 */
+	static int jumperHit(Style style, double distance, int lag, long seed) {
+		Bout b = new Bout(style, plain(), distance, seed);
+		b.fight.seenLag[0] = lag;
+		scriptedFrom(b, 30, (tick, v, k) -> {
+			k.forward = 1;
+			k.sprint = true;
+			k.jump = tick == 1;
+		});
+		for (int i = 1; i < b.ticks.size(); i++) {
+			if (b.ticks.get(i).events[0].iHit != Events.NONE) {
+				Body j = b.ticks.get(i - 1).body[1];
+				if (j.onGround && i <= 2) {
+					return 0;
+				}
+				int since = Math.max(1, i - 1);
+				return !j.onGround && j.vy > 0 ? -since : since;
+			}
+		}
+		return 0;
+	}
+
+	/**
+	 * The seen lag that matches the user's real duels (2 Nov, tools/jumpins.py): the AI's own jump-ins were hit while rising
+	 * in 19% from under 3 blocks, 12% from 3-4, 1 of 768 from 4 and more. Prints the share by distance and lag, for people
+	 * drawn as the school draws them (Specialists, the mixer).
+	 */
+	@Test
+	void jumpInsHitRisingBySeenLag() {
+		double[] distances = {2.6, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5};
+		StringBuilder out = new StringBuilder("hit rising % / median tick of the first hit after the take-off, 40 people each,"
+				+ " by seen lag (rows) and take-off distance:\n      ");
+		for (double d : distances) {
+			out.append(String.format(java.util.Locale.ROOT, "%10.1f", d));
+		}
+		for (int lag = 0; lag <= 7; lag++) {
+			out.append(String.format(java.util.Locale.ROOT, "\nlag %d", lag));
+			for (double d : distances) {
+				int n = 0;
+				java.util.List<Integer> when = new java.util.ArrayList<>();
+				for (long seed = 1; seed <= 40; seed++) {
+					Style s = Specialists.draw(Specialists.MIXER, new java.util.Random(seed));
+					int h = jumperHit(s, d, lag, seed);
+					n += h < 0 ? 1 : 0;
+					if (h != 0) {
+						when.add(Math.abs(h));
+					}
+				}
+				java.util.Collections.sort(when);
+				out.append(String.format(java.util.Locale.ROOT, "%5.0f%% t%-2s", 100.0 * n / 40,
+						when.isEmpty() ? "-" : String.valueOf(when.get(when.size() / 2))));
+			}
+		}
+		System.out.println(out);
+	}
+
 	// ---- B1 against a jump-in (the teacher, Style.punishJumpIns) -------------------------------------
 
 	/**
