@@ -1,4 +1,4 @@
-# SwordAI handoff (2 Nov 2026, 07:25; status block at the top of section 8), to the next Claude conversation
+# SwordAI handoff (2 Nov 2026, 10:50; status block at the top of section 8), to the next Claude conversation
 
 This file replaces every earlier handoff. It stands on its own.
 
@@ -107,9 +107,9 @@ cd /d/swordai && FROM=8700 MIRROR=1 bash tools/screen.sh 132 /d/swordai/run/best
 - Each screen pauses training about 15 minutes. Afterwards check `java.exe`, the loop and the log are back.
 - Never reuse pairs. **Used: 0-8431. Next: 8500 scripted, 8700 mirror.** Move these numbers on here and in `CANDIDATES.txt` after every screen.
 
-**What the screens measure:** B, and the opponent in a mirror screen, is the fixed 23 Oct model in `run/swordai/school/installed/`, not the network in the user's profile. The bars are what the profile's network run23-1418 scored against it: scripted +8.3 and +1.1, mirror +12.0 and +7.8. Both were measured before the S-tap (30 Oct 05:17), and run23-1418 has not been screened since. So the next time a candidate beats the scripted bar and reaches a mirror screen, screen run23-1418 on the same kind of fresh pairs too, so the bar is like for like.
+**What the screens measure:** B, and the opponent in a mirror screen, is the fixed 23 Oct model in `run/swordai/school/installed/`, not the network in the user's profile. The bars are what the profile's network scored against it. A bar goes stale when the code changes: run23-1418 fell from +4.7 / +9.9 to +1.2 / +8.9 when it was re-run on 2 Nov under the S-tap. So screen the installed network on the same pairs as any serious candidate, under the same code, and compare the two. The combined score is the inverse-variance mean of the scripted and mirror screens. If two are level on it, go down the priorities in section 2.
 
-**Install rule:** beat about **+4.7 scripted and +9.9 mirror** on one fresh screen and again on a second. Then report and ask, and install with:
+**Install rule:** beat the installed network's combined score, and about **+5.9 scripted and +5.2 mirror** (run30h-0739, one screen each, combined +5.7 (2.2)), on one fresh screen and again on a second. Then report and ask, and install with:
 
 ```bash
 bash /d/swordai/tools/install-school.sh /d/swordai/run/best-candidates/runNN-HHMM.bin
@@ -119,18 +119,18 @@ Record it in `CANDIDATES.txt`, `run/best-*/BEST.txt`, `EXPERIMENTS.md` and the `
 
 | Network | Scripted | Mirror | Notes |
 |---|---|---|---|
-| `run23-1418` | **+4.7 (1.8)** | **+9.9 (2.7)** | **INSTALLED** since 29 Oct 14:49. The bar. |
-| `run26-0413` | +3.5 | +13.3 | Not installed |
+| `run30h-0739` | **+5.9 (2.6)** | **+5.2 (4.0)** | **INSTALLED since 2 Nov 10:46**, the user's word. Combined +5.7 (2.2), punish crit 44% (48 of 108). |
+| `run23-1418` | +1.2 (2.6) | +8.9 (3.4) | Installed 29 Oct to 2 Nov, now arm `old1418`. 2 Nov re-run on today's code; older screens +8.3, +1.1 and +12.0, +7.8. Combined +4.0 (2.1), punish crit 25% (33 of 130). |
+| `run26-0413` | +4.3 (2.5) | +8.6 (3.6) | Now arm `run26`. 2 Nov re-run; older screens +3.5, +13.3. Combined +5.7 (2.1), punish crit 25% (31 of 124). |
 | `run27-0744` | +2.3 | +7.2 | Not installed |
-| `run27-2031` | +6.8 | +7.4 | Not installed, mirror below the bar |
+| `run27-2031` | +0.2 (2.9) | +5.8 (4.1) | Not installed. 2 Nov re-run; older screens +6.8, +7.4. Combined +2.1 (2.4). |
 | `run27b-0923` | +4.3 (2.1) | - | Not installed |
 | `run27b-1824` | +3.3 (2.6) | - | Not installed |
 | `run27b-2045` | +6.2 (2.4) | +0.1 (4.2) | Not installed |
 | `run27b-2319` | +3.1 (2.4) | - | Not installed |
 | `run27b-0224` | +3.5 (2.6) | - | Not installed |
 | `run29-0510` | +3.0 (2.4) | - | Not installed, 45 minutes into run 29 |
-| `run30h-1855` | +1.0 (2.5) | - | Not installed, arm `run30h` of the live A/B pool |
-| `run30h-0739` | +5.9 (2.6) | +5.2 (4.0) | Not installed, mirror below the bar |
+| `run30h-1855` | +1.0 (2.5) | - | Not installed, out of the pool since 2 Nov 10:46 |
 
 ---
 
@@ -169,11 +169,13 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 ## 8. Where things stand (updated 2 Nov 07:15; older notes below)
 
-**STATUS 2 Nov 07:25 (read this first, the rest of section 8 is the history):**
-- **The live A/B pool IS INSTALLED in the user's profile since 2 Nov 07:21** (the user's yes, 2 Nov, their Minecraft closed). The jar of 1 Nov 22:41 replaced the 29 Oct jar; the backup is `DRL AI/swordai/backup-before-ab-20261102-072110`. Each duel draws one of three arms, weights 1:1:1: `installed` (run23-1418, rules on), `noback` (run23-1418, the back-out rule off), `run30h` (`run30h-1855.bin`, rules on). The installed network itself is unchanged, and it is still the baseline of every check.
-- **All three arms carry the run 27 S-tap**: the crit trade rule now ends the sprint with S instead of letting go of W (`Fighter.java:607`). So `installed` is not exactly what played the duels before 2 Nov: compare arms inside the pool, and do not compare `installed` with the 1.24-1.27 of the older logs without saying so. Old networks play unchanged otherwise (`new.hist`, `hist.heads`, `option.*` load at zero; hit and out is off in all arms).
+**STATUS 2 Nov 10:50 (read this first, the rest of section 8 is the history):**
+- **INSTALLED in the user's profile since 2 Nov 10:46: `run30h-0739`** (the user: "compare your most top 3 candidate ... which one is overall better and like install it"). It replaces run23-1418. Backups: `DRL AI/swordai/backup-before-school-20261102-104605` (run23-1418 and the 07:21 pool), `backup-before-ab-20261102-104609`. To go back: `bash /d/swordai/tools/install-school.sh /d/swordai/run/best-candidates/run23-1418.bin`, then rebuild the pool with `tools/install-ab.sh`, their Minecraft closed.
+- **How it was picked.** Four networks on the same pairs (8100-8232 scripted, 8300-8431 mirror) under the same code; rule written first (`CANDIDATES.txt`): the highest inverse-variance combined score wins. run26-0413 +5.70 (2.05), run30h-0739 +5.69 (2.18), run23-1418 +4.04 (2.07), run27-2031 +2.07 (2.37). **The rule's literal winner by 0.007 was run26-0413; I treated that as a tie, because the record reports one decimal and the rule had no tie-break, and went down the user's priorities in section 2:** swings landing 96-97% level, damage level, punish crit 44% (48 of 108) against 25% (31 of 124), about 3 se. Neither is shown better than run23-1418 on damage: the gap is about 1.7 with noise of about 3. On punish crit it is 44% against 25% (33 of 130), and B in the same screens stayed at 29-30%.
+- **The live A/B pool is rebuilt (10:46), four arms, weights 1:1:1:1, rules on, 0 duels so far:** `installed` (run30h-0739), `noback` (run30h-0739, the back-out rule off), `old1418` (run23-1418), `run26` (run26-0413). The pool of 07:21 never played a duel, so no data was lost. Half of the duels play the new network. `old1418` is there so the real duels can catch a bad swap: if it beats `installed` by the verdict rule below, go back to it.
+- **B stays the fixed 23 Oct model**, in checks and sparring; the install does not change it.
+- **All arms carry the run 27 S-tap**: the crit trade rule now ends the sprint with S instead of letting go of W (`Fighter.java:607`). So `old1418` is not exactly what played the duels before 2 Nov: compare arms inside the pool, and do not compare any arm with the 1.24-1.27 of the older logs without saying so. Old networks play unchanged otherwise (`new.hist`, `hist.heads`, `option.*` load at zero; hit and out is off in all arms).
 - **Verdict rule, set before any result (`tools/review.sh` prints the arms, from `python tools/duels.py`):** at about 100 duels an arm, compare the share of hits dealt with `installed`. An arm ahead by more than 2 se is reported to the user as the one to install. An arm behind by more than 2 se comes out of the pool. Otherwise carry on to about 200 duels an arm. No verdict from one evening: the ratio moves +-0.15 between evenings, which is why only the same-hours comparison counts. Check the first duels really say `[A/B arm ...]` in the start line: a pool that fails to load plays the installed network alone, silently. `bash tools/install-ab.sh --off` takes the pool out (the user's Minecraft closed).
-- **2 Nov 08:36: `run30h-0739` (hourly 07:43 +7.8 (3.8)) screened on fresh pairs: scripted +5.9 (2.6), mirror +5.2 (4.0).** Above the scripted bar, under the mirror bar: not installed. Level with the installed model, not better. The pool's `run30h` arm stays `run30h-1855`: the two screens differ by less than two standard errors and no duel has played yet.
 - **The conversation that stopped its review at 07:15 is stopped. The older conversation operates again** (the user, 2 Nov) and its 30-minute review job has been running since 07:19. Training and the check loop were never stopped. Read section 0 of `docs/TRAINING-SOP.md` first if you take over.
 - **Checks since 05:15:** 05:16 +1.8 (3.6), 06:05 -3.5 (4.2), 06:54 -1.8 (4.9); eleven hourly checks since 22:05 average -0.6 (the 17 before them on 1 Nov averaged +2.3, a gap of 1.6 standard errors: watch, not proof). The rolling punish crit swings between 21% and 32% over hours (21% at 07:00). Fights since the 22:42 redeploy: rules over the network bots -47 a minute, sparring +54; without the rules bots -80, sparring -103; flat for 8.5 hours.
 
@@ -271,6 +273,7 @@ Changes of 30c (09:22); 30d (10:25) added the rule-first replay of the rules' ke
 - A "smart" predictor that decides behaviour needs calibration first (run 28).
 
 - **A key locked out of the PPO mask is a decision reinforcement learning cannot improve.** The rules overlay locked the keys that decide most hits for 8 days while the work went into teaching techniques over them (1 Nov). Before teaching anything, ask who presses the key at the moment (the `ruled` column of `hits.csv`).
+- **A bar is only a bar under the code it was measured on, and B is noisy even on the same pairs.** run23-1418's +4.7 scripted was +1.2 when re-run on 2 Nov, and B alone ranged -13.1 to -19.9 across four screens of pairs 8100-8232. When comparing networks with each other, look at A's own net as well as A−B.
 - **Check what a copying target really is.** `ANCHOR_TO_BEST` replaced the installed model's keys by the frozen run 6 network's chances in every untaught head, so 'installed ce' measured the distance to run 6 (1 Nov).
 
 Before stopping, write what you did into `EXPERIMENTS.md` and `CANDIDATES.txt`, update §6 and §8 here, and commit.
