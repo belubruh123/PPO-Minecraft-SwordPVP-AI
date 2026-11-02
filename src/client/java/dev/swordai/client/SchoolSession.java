@@ -3122,9 +3122,71 @@ public final class SchoolSession implements AgentSession {
 	private final int[] rowTaken = new int[2];
 	private final int[] sinceSwing = {999, 999};
 
+	/**
+	 * Each take-off of a check within 8 blocks of the bot, with what came of it (the user, 2 Nov: does it jump in from outside
+	 * 3 blocks and land at the edge of reach, so that it is falling once in their reach and cannot be knocked away). One row a
+	 * take-off: the distance then and at the landing, the tick of the jump at which it was first hit (rising or falling), the
+	 * tick of its own first hit and whether that was a crit (0: none). Appended to JUMP_LOG with the hit log; tools/jumpins.py
+	 * reads the user's duels the same way.
+	 */
+	static final String JUMP_LOG = "jumps.csv";
+	static final String JUMP_HEADER = "pair,side,bot,tick,takeOff,toward,landed,hitRisingAt,hitFallingAt,ownHitAt,ownCrit";
+	private final StringBuilder jumpRows = new StringBuilder();
+	private final boolean[] jumpWasGround = {true, true};
+	private final int[] jumpSinceTaken = {999, 999};
+	private final float[] jumpLastDist = {99f, 99f};
+	/** The fight tick of the take-off being followed, -1 for none; and what has come of it so far. */
+	private final int[] jumpAt = {-1, -1};
+	private final float[] jumpFrom = new float[2];
+	private final float[] jumpToward = new float[2];
+	private final int[] jumpHitRising = new int[2];
+	private final int[] jumpHitFalling = new int[2];
+	private final int[] jumpOwnHit = new int[2];
+	private final boolean[] jumpOwnCrit = new boolean[2];
+
+	private void trackJump(int side, String bot) {
+		LocalPlayer me = mc.player;
+		boolean ground = facts.onGround;
+		float dist = facts.reachDist;
+		if (jumpAt[side] < 0) {
+			if (jumpWasGround[side] && !ground && me.getY() - me.yo > 0.2 && jumpSinceTaken[side] > 3 && facts.hitsTaken <= 0 && dist < 8f) {
+				jumpAt[side] = fightTicks;
+				jumpFrom[side] = dist;
+				jumpToward[side] = jumpLastDist[side] < 90f ? jumpLastDist[side] - dist : 0f;
+				jumpHitRising[side] = jumpHitFalling[side] = jumpOwnHit[side] = 0;
+				jumpOwnCrit[side] = false;
+			}
+		} else {
+			int since = fightTicks - jumpAt[side];
+			boolean outcome = jumpHitRising[side] > 0 || jumpHitFalling[side] > 0 || jumpOwnHit[side] > 0;
+			if (!outcome && facts.hitsTaken > 0 && !ground) {
+				if (facts.falling) {
+					jumpHitFalling[side] = since;
+				} else {
+					jumpHitRising[side] = since;
+				}
+			} else if (!outcome && facts.hitsDealt > 0) {
+				jumpOwnHit[side] = since;
+				jumpOwnCrit[side] = facts.critDealt;
+			}
+			if (ground || since > 20) {
+				jumpRows.append(String.format(Locale.ROOT, "%d,%s,%s,%d,%.2f,%.2f,%.2f,%d,%d,%d,%d%n",
+						(checkFights - 1) / 2, side == 0 ? "A" : "B", bot, jumpAt[side], jumpFrom[side], jumpToward[side],
+						ground ? dist : -1f, jumpHitRising[side], jumpHitFalling[side], jumpOwnHit[side], jumpOwnCrit[side] ? 1 : 0));
+				jumpAt[side] = -1;
+			}
+		}
+		jumpSinceTaken[side] = facts.hitsTaken > 0 ? 0 : Math.min(jumpSinceTaken[side] + 1, 999);
+		jumpWasGround[side] = ground;
+		jumpLastDist[side] = dist;
+	}
+
 	private void logHits(int side, boolean swung, boolean botFalling) {
 		if (mode != Mode.CHECK && sceneNow == null) {
 			return;
+		}
+		if (mode == Mode.CHECK) {
+			trackJump(side, review >= TIMER ? CHECK_NAMES[review - TIMER] : sparFight ? "installed-model" : Specialists.NAMES[fightBot]);
 		}
 		sinceSwing[side] = swung ? 0 : Math.min(sinceSwing[side] + 1, 999);
 		if (facts.hitsDealt <= 0 && facts.hitsTaken <= 0) {
@@ -3191,6 +3253,22 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	private void flushHits() {
+		// A jump still in the air when the fight ends is dropped; the next fight starts from the ground.
+		jumpAt[0] = jumpAt[1] = -1;
+		jumpWasGround[0] = jumpWasGround[1] = true;
+		jumpLastDist[0] = jumpLastDist[1] = 99f;
+		if (jumpRows.length() > 0) {
+			Path jumps = SwordFiles.schoolDir().resolve(JUMP_LOG);
+			try {
+				if (!Files.exists(jumps)) {
+					Files.writeString(jumps, JUMP_HEADER + System.lineSeparator());
+				}
+				Files.writeString(jumps, jumpRows, java.nio.file.StandardOpenOption.APPEND);
+			} catch (IOException e) {
+				SwordAi.LOGGER.warn("school: the jump log could not be written: {}", e.getMessage());
+			}
+			jumpRows.setLength(0);
+		}
 		if (hitRows.length() == 0) {
 			return;
 		}
