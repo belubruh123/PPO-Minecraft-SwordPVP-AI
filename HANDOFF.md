@@ -172,7 +172,10 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 ## 8. Where things stand (updated 2 Nov 07:15; older notes below)
 
-**STATUS 3 Nov 20:20 (read this first):**
+**STATUS 3 Nov 22:20 (read this first):**
+- **A/B pool now 5 arms (the user's yes, 22:16): installed (run30h-0739), noback, old1418, run26, run35 (run35-0657, better than the installed against the combo bots on fresh pairs, level overall).** Backup DRL AI/swordai/backup-before-ab-20261103-221633. The user wants a clearly better model soon: keep training and screening.
+
+**STATUS 3 Nov 20:20:**
 - **Run 36b (the league) REVERTED at 20:20: A's own check column 6.5, -0.1, 7.3, 4.9, 1.5 (run 35 7.6). The league folder is `school/league-off` (rename it to `league` to try again; the code does nothing without it), its last network `run36b-end-2018.bin`; training restarted from `run36b-revert-1552.bin` = run 35's line.** `SchoolBotPilot` (a school network with the rules in the arena) stays in the code and works; `logCut` logs broken-off fights. Rule-off scenes are logged as `school fight installed-model (sparring) (without the rules)`, so the sparring-without-the-rules row includes them.
 
 **STATUS 3 Nov 15:25:**
