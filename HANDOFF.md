@@ -105,7 +105,7 @@ cd /d/swordai && FROM=9100 MIRROR=1 bash tools/screen.sh 132 /d/swordai/run/best
 
 - Use `/d/...` paths: a `D:` path breaks the `NET:TEMP` split.
 - Each screen pauses training about 15 minutes. Afterwards check `java.exe`, the loop and the log are back.
-- Never reuse pairs. **Used: 0-9231. Next: 9300 scripted, 9500 mirror.** Move these numbers on here and in `CANDIDATES.txt` after every screen.
+- Never reuse pairs. **Used: 0-9631. Next: 9700 scripted, 9900 mirror.** Move these numbers on here and in `CANDIDATES.txt` after every screen.
 
 **What the screens measure:** B, and the opponent in a mirror screen, is the fixed 23 Oct model in `run/swordai/school/installed/`, not the network in the user's profile. The bars are what the profile's network scored against it. A bar goes stale when the code changes: run23-1418 fell from +4.7 / +9.9 to +1.2 / +8.9 when it was re-run on 2 Nov under the S-tap. So screen the installed network on the same pairs as any serious candidate, under the same code, and compare the two. The combined score is the inverse-variance mean of the scripted and mirror screens. If two are level on it, go down the priorities in section 2.
 
@@ -131,6 +131,7 @@ Record it in `CANDIDATES.txt`, `run/best-*/BEST.txt`, `EXPERIMENTS.md` and the `
 | `run27b-0224` | +3.5 (2.6) | - | Not installed |
 | `run29-0510` | +3.0 (2.4) | - | Not installed, 45 minutes into run 29 |
 | `run30h-1855` | +1.0 (2.5) | - | Not installed, out of the pool since 2 Nov 10:46 |
+| `run35-0657` | +2.1 (2.4) | +9.3 (3.4) | Not installed. 3 Nov, pairs 9300/9500; the installed on the same pairs +3.4 (2.2), +7.0 (4.2): combined +4.5 vs +4.2, level. Better against the combo bots (uppercutter -4.1 vs -10.7, attack-then-s +11.2 vs -2.0). |
 | `run34-0303` | +1.6 (2.4) | +8.7 (3.8) | Not installed. 3 Nov, pairs 8900/9100; the installed on the same pairs +2.9 (2.4), +4.0 (3.9): combined +3.6 vs +3.2, level. |
 | `run33-2216` | -1.4 (2.3) | +7.6 (4.1) | Not installed: hourly +9.0 was luck; the installed one on the same pairs -0.5, +7.8 |
 
