@@ -1185,6 +1185,18 @@ public final class SchoolSession implements AgentSession {
 		return line;
 	}
 
+	/**
+	 * A fight broken off before its end, with its opponent (run 36b: of the sparring fights after the league came in, 27% were
+	 * logged as the league's though half were drawn so; a fight broken off is not logged, so a league that stalls the game
+	 * would show as just that).
+	 */
+	private void logCut(String why) {
+		if (fightTicks > 0) {
+			SwordAi.LOGGER.info("school fight cut: {} after {} ticks, against {}", why, fightTicks,
+					sparFight ? sparName() : review >= 0 ? "a review" : Specialists.NAMES[fightBot]);
+		}
+	}
+
 	/** This sparring fight's opponent as the log names it: the installed model, or league-NAME. */
 	private String sparName() {
 		return rivalNow > 0 && rivalNow <= leagueNames.size() ? "league-" + leagueNames.get(rivalNow - 1) + " (sparring)" : "installed-model (sparring)";
@@ -1943,6 +1955,7 @@ public final class SchoolSession implements AgentSession {
 		if (gap > STALL_TICKS) {
 			// The game stood still while the server went on: nothing of this fight says how it fights.
 			stalledCuts++;
+			logCut("the game stood still " + gap + " server ticks");
 			lastRunServerTick = -1;
 			if (mode == Mode.CHECK) {
 				checkFights--;
@@ -1956,6 +1969,7 @@ public final class SchoolSession implements AgentSession {
 			AgentController.release(mc);
 			if (++missingBotTicks > MISSING_BOT_TICKS) {
 				missingBotTicks = 0;
+				logCut("the bot was not there");
 				suspendFight();
 				beginFight(truth);
 			}
@@ -1969,6 +1983,7 @@ public final class SchoolSession implements AgentSession {
 		}
 		if (observer.stale()) {
 			if (++frozenTicks >= FROZEN_FRAME_TICKS) {
+				logCut("the picture froze");
 				suspendFight();
 				frozenTicks = 0;
 				resumeAtSequence = grabber.sequence() + FRAMES_TO_RESUME;
