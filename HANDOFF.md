@@ -172,7 +172,10 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 ## 8. Where things stand (updated 2 Nov 07:15; older notes below)
 
-**STATUS 3 Nov 22:20 (read this first):**
+**STATUS 4 Nov 00:52 (read this first):**
+- **Training restarted from `run35-1301` (the day's best fresh scripted screen, +4.9; hourly A +12.0)**: A's own hourly column had slid to a mean of 4.4 over nine checks since 15:54 (7.6 before). The network at the end is `run35-end-0048.bin`. Judge by A's own column (about 7.6 or above); screen any hourly check above +6 on fresh pairs 10100/10300.
+
+**STATUS 3 Nov 22:20:**
 - **A/B pool now 5 arms (the user's yes, 22:16): installed (run30h-0739), noback, old1418, run26, run35 (run35-0657, better than the installed against the combo bots on fresh pairs, level overall).** Backup DRL AI/swordai/backup-before-ab-20261103-221633. The user wants a clearly better model soon: keep training and screening.
 
 **STATUS 3 Nov 20:20:**
