@@ -172,7 +172,10 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 ## 8. Where things stand (updated 2 Nov 07:15; older notes below)
 
-**STATUS 3 Nov 15:25 (read this first):**
+**STATUS 3 Nov 20:20 (read this first):**
+- **Run 36b (the league) REVERTED at 20:20: A's own check column 6.5, -0.1, 7.3, 4.9, 1.5 (run 35 7.6). The league folder is `school/league-off` (rename it to `league` to try again; the code does nothing without it), its last network `run36b-end-2018.bin`; training restarted from `run36b-revert-1552.bin` = run 35's line.** `SchoolBotPilot` (a school network with the rules in the arena) stays in the code and works; `logCut` logs broken-off fights. Rule-off scenes are logged as `school fight installed-model (sparring) (without the rules)`, so the sparring-without-the-rules row includes them.
+
+**STATUS 3 Nov 15:25:**
 - **Run 35 KEPT (ten checks, A's own column 7.6 as run 34's; run35-0657 level with the installed network on fresh pairs, +4.5 vs +4.2, better against the two combo bots). RUN 36 deployed about 15:25: a league of sparring opponents, half the training's sparring fights against `run/swordai/school/league/*.bin` (run30h-0739, run26-0413, run23-1418, run35-0657, each with the installed model's rules); checks unchanged; revert point `run36-revert-1522.bin`.** **The league did not load (15:25): all four are school networks, which the arena's BotPilot cannot play ("not a SwordAI checkpoint"), so training is run 35's.** Next: a server-side pilot that plays a school network with the old model's rules as FightSession does (SchoolFighter, a Habits memory from the server's players, its own copy of the old model), checked against the screen; then the league works as written. EXPERIMENTS rows 36, 36-live, 36b. **15:55: deployed with `SchoolBotPilot` (run 36b), revert point `run36b-revert-1552.bin`; check the startup line "school: the league" lists four and the league rows of `tools/takeover.py 15:55`.**
 
 **STATUS 3 Nov 05:30:**
