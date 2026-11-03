@@ -172,7 +172,10 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 ## 8. Where things stand (updated 2 Nov 07:15; older notes below)
 
-**STATUS 3 Nov 05:30 (read this first):**
+**STATUS 3 Nov 15:25 (read this first):**
+- **Run 35 KEPT (ten checks, A's own column 7.6 as run 34's; run35-0657 level with the installed network on fresh pairs, +4.5 vs +4.2, better against the two combo bots). RUN 36 deployed about 15:25: a league of sparring opponents, half the training's sparring fights against `run/swordai/school/league/*.bin` (run30h-0739, run26-0413, run23-1418, run35-0657, each with the installed model's rules); checks unchanged; revert point `run36-revert-1522.bin`.** Check the startup log line "school: the league" lists all four (a network that fails to load is skipped with a warning). Judge with EXPERIMENTS row 36; `tools/takeover.py` has league rows.
+
+**STATUS 3 Nov 05:30:**
 - **Run 34 KEPT (checks +4.7, +5.9, +3.6, -4.6; run34-0303 level with the installed network on fresh pairs, +3.6 vs +3.2 combined). RUN 35 deployed about 05:30: the combo scenes are one of the first focus's kinds (a quarter of its scene fights, before about one in twenty); revert point `run35-revert-0520.bin`.** Judge with EXPERIMENTS row 35: combo scenes won (39% before), their combos got out of (57%), the uppercutter row, A-B; the punish crit must not fall.
 
 **STATUS 3 Nov 00:40:**
