@@ -235,7 +235,7 @@ public final class SchoolSession implements AgentSession {
 	 * level with the installed network on fresh pairs; sparring without the rules stayed at about -127 a minute all day.
 	 * Their fights are logged as league-NAME, kept out of the sparring tally and out of the scenes.
 	 */
-	private final List<LoadedFighter> league = new ArrayList<>();
+	private final List<SchoolBotPilot> league = new ArrayList<>();
 	private final List<String> leagueNames = new ArrayList<>();
 	static final String LEAGUE_DIR = "league";
 	static final float LEAGUE_SHARE = 0.5f;
@@ -1394,7 +1394,8 @@ public final class SchoolSession implements AgentSession {
 				try (java.util.stream.Stream<Path> files = Files.list(leagueDir)) {
 					for (Path f : files.filter(p -> p.getFileName().toString().endsWith(".bin")).sorted().toList()) {
 						try {
-							league.add(LoadedFighter.loadFrom(f, icfg, SwordFiles.installedCopy().resolve("curriculum.properties")));
+							league.add(SchoolBotPilot.load(f, teacherFile, icfg, SwordFiles.installedCopy().resolve("curriculum.properties"),
+								SwordFiles.schoolDir().resolve(PLAY_TEMPERATURE_FILE)));
 							leagueNames.add(f.getFileName().toString().replace(".bin", ""));
 						} catch (IOException | RuntimeException e) {
 							SwordAi.LOGGER.warn("school: league network {} could not be loaded: {}", f.getFileName(), e.getMessage());
@@ -1432,15 +1433,14 @@ public final class SchoolSession implements AgentSession {
 		IntegratedServer server = mc.getSingleplayerServer();
 		UUID me = mc.player.getUUID();
 		LoadedFighter spar = sparring;
-		List<LoadedFighter> leagueNow = List.copyOf(league);
+		List<SchoolBotPilot> leagueNow = List.copyOf(league);
 		server.execute(() -> {
 			ArenaServer.start(server, me, cfg);
 			if (spar != null) {
-				dev.swordai.server.BotPilot[] rivals = new dev.swordai.server.BotPilot[1 + leagueNow.size()];
+				dev.swordai.server.SparPilot[] rivals = new dev.swordai.server.SparPilot[1 + leagueNow.size()];
 				rivals[0] = new dev.swordai.server.BotPilot(spar.fighter, spar.frameAgeTicks, spar.patchedUp);
 				for (int i = 0; i < leagueNow.size(); i++) {
-					LoadedFighter f = leagueNow.get(i);
-					rivals[1 + i] = new dev.swordai.server.BotPilot(f.fighter, f.frameAgeTicks, f.patchedUp);
+					rivals[1 + i] = leagueNow.get(i);
 				}
 				ArenaServer.setRivals(rivals);
 			}
@@ -3876,7 +3876,7 @@ public final class SchoolSession implements AgentSession {
 			IntegratedServer server = mc.getSingleplayerServer();
 			LoadedFighter spar = sparring;
 			sparring = null;
-			List<LoadedFighter> leagueNow = List.copyOf(league);
+			List<SchoolBotPilot> leagueNow = List.copyOf(league);
 			league.clear();
 			if (server != null) {
 				// The sparring copy plays on the server thread: closed there, once the arena has stopped.
@@ -3885,13 +3885,13 @@ public final class SchoolSession implements AgentSession {
 					if (spar != null) {
 						spar.close();
 					}
-					leagueNow.forEach(LoadedFighter::close);
+					leagueNow.forEach(SchoolBotPilot::close);
 				});
 			} else {
 				if (spar != null) {
 					spar.close();
 				}
-				leagueNow.forEach(LoadedFighter::close);
+				leagueNow.forEach(SchoolBotPilot::close);
 			}
 		}
 		say("Stopped (" + reason + ").");

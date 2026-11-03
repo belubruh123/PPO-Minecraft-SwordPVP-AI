@@ -4,7 +4,6 @@ import dev.swordai.core.pvp.Body;
 import dev.swordai.core.pvp.Duel;
 import dev.swordai.core.pvp.Events;
 import dev.swordai.core.pvp.Habits;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.player.Player;
 
 /**
@@ -70,7 +69,7 @@ final class DuelReader {
 	 * @param swungLast   its own click on the last tick
 	 * @param chargeAtClick, sprintAtClick, critAtClick how that swing was made
 	 */
-	void tick(LocalPlayer me, Player them, boolean swungLast, float chargeAtClick, boolean sprintAtClick, boolean critAtClick) {
+	void tick(Player me, Player them, boolean swungLast, float chargeAtClick, boolean sprintAtClick, boolean critAtClick) {
 		tick(me, them, swungLast, chargeAtClick, sprintAtClick, critAtClick, false);
 	}
 
@@ -80,7 +79,7 @@ final class DuelReader {
 	 *                      (24 Oct 18:30), so the double crit (T1, T1b, T1c), which follows its own crit, hardly ever began, and
 	 *                      the game's punish crit count missed most of them.
 	 */
-	void tick(LocalPlayer me, Player them, boolean swungLast, float chargeAtClick, boolean sprintAtClick, boolean critAtClick,
+	void tick(Player me, Player them, boolean swungLast, float chargeAtClick, boolean sprintAtClick, boolean critAtClick,
 			boolean critConfirmed) {
 		fill(duel.me, me, meWasOnGround);
 		fill(duel.them, them, themWasOnGround);

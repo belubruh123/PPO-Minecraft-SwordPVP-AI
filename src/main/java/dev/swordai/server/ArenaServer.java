@@ -106,9 +106,9 @@ public final class ArenaServer {
 	 * Self-play: a saved copy of the agent's own network. It plays the bot in the episodes whose plan
 	 * asks for it; in all others the scripted brain does.
 	 */
-	private BotPilot[] rivals = new BotPilot[0];
+	private SparPilot[] rivals = new SparPilot[0];
 	/** The copy that plays the bot in the running episode. */
-	private BotPilot rival;
+	private SparPilot rival;
 	private boolean rivalPlays;
 	/** The outside bot plays the bot in this episode; see {@link #setOutside}. */
 	private boolean outsidePlays;
@@ -609,7 +609,7 @@ public final class ArenaServer {
 	 * Self-play: hands over the copies of the agent that play the bot from the next episode on. The
 	 * first is the newest; the episode's plan says which one it is to be.
 	 */
-	public static void setRivals(BotPilot[] rivals) {
+	public static void setRivals(SparPilot[] rivals) {
 		ArenaServer s = active;
 		if (s != null && s.pilot == null) {
 			s.rivals = rivals;

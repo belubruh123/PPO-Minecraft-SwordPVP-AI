@@ -29,6 +29,10 @@ public interface SparPilot {
 	/** Swings made, swings that reached the opponent, and swings that ended on a block. */
 	String swingSummary();
 
+	/** How many ticks late it sees its opponent, where it plays a self-play rival (ArenaServer's rivals); see ReplicaBody#setLag. */
+	default void setLag(int ticks) {
+	}
+
 	/**
 	 * Whether it learns from the fight. If so, who hit whom is logged for it in {@link CombatLog},
 	 * from its side: it is the agent there and the person is the opponent.
