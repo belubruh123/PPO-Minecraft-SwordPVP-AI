@@ -15,8 +15,11 @@ public final class EpisodePlan {
 	public dev.swordai.core.pvp.Style style;
 	public final int agentMaxPillar;
 	public final float startPitchRangeDeg;
-	/** When the bot is played by a copy of the agent: which of the copies handed over, 0 being the newest. */
-	public final int rivalIndex;
+	/**
+	 * When the bot is played by a copy of the agent: which of the copies handed over, 0 being the newest. The technique
+	 * school sets it per sparring fight (its league, run 36).
+	 */
+	public int rivalIndex;
 	/**
 	 * Ticks of lag for this fight: how late the agent sees the opponent (only where its picture is
 	 * drawn for it), and how late the opponent sees the agent. Set before the plan is handed over.

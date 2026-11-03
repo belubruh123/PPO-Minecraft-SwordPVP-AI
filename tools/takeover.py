@@ -32,7 +32,8 @@ for line in open(path, encoding='utf-8', errors='replace'):
     name = m.group(2)
     spar = name.startswith('installed-model')
     off = off_mark in line
-    key = ('sparring' if spar else 'bots', 'without the rules' if off else 'with the rules')
+    # Run 36: sparring fights against the league's networks are named league-NAME.
+    key = ('league' if name.startswith('league-') else 'sparring' if spar else 'bots', 'without the rules' if off else 'with the rules')
     g = groups.setdefault(key, [0, 0.0, 0.0, 0, 0, 0])
     g[0] += 1
     g[1] += float(m.group(3))

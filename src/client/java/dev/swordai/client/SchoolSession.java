@@ -228,6 +228,20 @@ public final class SchoolSession implements AgentSession {
 	 */
 	private LoadedFighter sparring;
 	/**
+	 * The league (run 36, 3 Nov): networks once installed in the user's game or screened against it, each with the installed
+	 * model's rules as the user's game plays them, from LEAGUE_DIR; they play LEAGUE_SHARE of the training's sparring fights
+	 * (the rest, and every check, the installed model). Past selves as opponents keep a learner from fitting one opponent
+	 * (Vinyals et al. 2019, AlphaStar's league; Bansal et al. 2018). Runs 34 and 35 sparred only the 23 Oct model and came out
+	 * level with the installed network on fresh pairs; sparring without the rules stayed at about -127 a minute all day.
+	 * Their fights are logged as league-NAME, kept out of the sparring tally and out of the scenes.
+	 */
+	private final List<LoadedFighter> league = new ArrayList<>();
+	private final List<String> leagueNames = new ArrayList<>();
+	static final String LEAGUE_DIR = "league";
+	static final float LEAGUE_SHARE = 0.5f;
+	/** This fight's sparring opponent: 0 the installed model, above it a league network. */
+	private int rivalNow;
+	/**
 	 * In a scene fight the acting network is told the decider's own choice in this share (the teacher's in the rest), so
 	 * that the decider learns when to do what (Chooser.OUTCOME) where the focus is: the crits' scenes first, then the combo
 	 * escape's (26 Oct 13:00; the full fights keep the learner's 0.85 of the teacher's).
@@ -1047,7 +1061,8 @@ public final class SchoolSession implements AgentSession {
 
 	/** Keeps the scene from fight tick {@code start} to now. */
 	private void keepScene(int start, int kind) {
-		if (fightTicks - start >= histTick.length - 1 || countKind(kind) >= SCENES_ACTIVE) {
+		// A league fight's scene would be fought again against the installed model, a different opponent from its start on.
+		if (rivalNow > 0 || fightTicks - start >= histTick.length - 1 || countKind(kind) >= SCENES_ACTIVE) {
 			return;
 		}
 		float sum = 0f;
@@ -1168,6 +1183,11 @@ public final class SchoolSession implements AgentSession {
 		ruleOffWon = 0;
 		ruleOffLost = 0;
 		return line;
+	}
+
+	/** This sparring fight's opponent as the log names it: the installed model, or league-NAME. */
+	private String sparName() {
+		return rivalNow > 0 && rivalNow <= leagueNames.size() ? "league-" + leagueNames.get(rivalNow - 1) + " (sparring)" : "installed-model (sparring)";
 	}
 
 	/** The sparring fights against the installed model since the last update: how many, won-lost, net damage a fight. */
@@ -1369,6 +1389,20 @@ public final class SchoolSession implements AgentSession {
 			if (SPAR_SHARE > 0f && mode == Mode.TRAIN || sparCheck) {
 				sparring = LoadedFighter.loadFrom(teacherFile, icfg, SwordFiles.installedCopy().resolve("curriculum.properties"));
 			}
+			Path leagueDir = SwordFiles.schoolDir().resolve(LEAGUE_DIR);
+			if (sparring != null && mode == Mode.TRAIN && Files.isDirectory(leagueDir)) {
+				try (java.util.stream.Stream<Path> files = Files.list(leagueDir)) {
+					for (Path f : files.filter(p -> p.getFileName().toString().endsWith(".bin")).sorted().toList()) {
+						try {
+							league.add(LoadedFighter.loadFrom(f, icfg, SwordFiles.installedCopy().resolve("curriculum.properties")));
+							leagueNames.add(f.getFileName().toString().replace(".bin", ""));
+						} catch (IOException | RuntimeException e) {
+							SwordAi.LOGGER.warn("school: league network {} could not be loaded: {}", f.getFileName(), e.getMessage());
+						}
+					}
+				}
+				SwordAi.LOGGER.info("school: the league, {} of the sparring fights: {}", LEAGUE_SHARE, leagueNames);
+			}
 			// The swing waits for the sword as the installed model's does here (a full hit, a tick before the very end of the
 			// wait; online has its own longer wait): both sides of the check alike, and the school as it would play once
 			// installed. The dev config's 1.0 had the school swing a tick later than the model it is checked against (24 Oct).
@@ -1398,10 +1432,17 @@ public final class SchoolSession implements AgentSession {
 		IntegratedServer server = mc.getSingleplayerServer();
 		UUID me = mc.player.getUUID();
 		LoadedFighter spar = sparring;
+		List<LoadedFighter> leagueNow = List.copyOf(league);
 		server.execute(() -> {
 			ArenaServer.start(server, me, cfg);
 			if (spar != null) {
-				ArenaServer.setRivals(new dev.swordai.server.BotPilot[] {new dev.swordai.server.BotPilot(spar.fighter, spar.frameAgeTicks, spar.patchedUp)});
+				dev.swordai.server.BotPilot[] rivals = new dev.swordai.server.BotPilot[1 + leagueNow.size()];
+				rivals[0] = new dev.swordai.server.BotPilot(spar.fighter, spar.frameAgeTicks, spar.patchedUp);
+				for (int i = 0; i < leagueNow.size(); i++) {
+					LoadedFighter f = leagueNow.get(i);
+					rivals[1 + i] = new dev.swordai.server.BotPilot(f.fighter, f.frameAgeTicks, f.patchedUp);
+				}
+				ArenaServer.setRivals(rivals);
 			}
 		});
 	}
@@ -1719,6 +1760,7 @@ public final class SchoolSession implements AgentSession {
 		int agentLag = 1 + lagDraw.nextInt(4);
 		EpisodePlan plan;
 		sparFight = false;
+		rivalNow = 0;
 		if (review >= 0) {
 			// The old stage's own episode: its bot (standing, strafing, hopping out of view, fighting) at a skill drawn from
 			// the middle of the stage up.
@@ -1784,6 +1826,9 @@ public final class SchoolSession implements AgentSession {
 			plan = EpisodePlan.school(fightStyle, drill ? DRILL_NEAR : NEAREST, drill ? DRILL_FAR : FARTHEST);
 			sparFight = sceneNow != null ? sceneNow.spar && sparring != null
 					: !drill && sparring != null && (mode == Mode.TRAIN ? rng.nextFloat() < SPAR_SHARE : sparCheck);
+			rivalNow = sparFight && sceneNow == null && mode == Mode.TRAIN && !league.isEmpty() && rng.nextFloat() < LEAGUE_SHARE
+					? 1 + rng.nextInt(league.size()) : 0;
+			plan.rivalIndex = rivalNow;
 			if (sparFight) {
 				// The installed model plays the bot (ArenaServer's rival): no scripted style.
 				plan.style = null;
@@ -2975,7 +3020,7 @@ public final class SchoolSession implements AgentSession {
 			ruleOffWon += won ? 1 : 0;
 			ruleOffLost += lost ? 1 : 0;
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school fight %s (without the rules): dealt %.1f, taken %.1f, ticks %d%s",
-					sparFight ? "installed-model (sparring)" : Specialists.NAMES[fightBot], fightDealt, fightTaken, fightTicks,
+					sparFight ? sparName() : Specialists.NAMES[fightBot], fightDealt, fightTaken, fightTicks,
 					won ? ", knockout" : lost ? ", knocked out" : ""));
 			hasLastAction = false;
 			clicked = false;
@@ -3064,12 +3109,14 @@ public final class SchoolSession implements AgentSession {
 					KIND_NAMES[sceneNow.kind], sceneReview ? " (mastered, tested again)" : "", sceneWon ? "won" : "lost",
 					learner.toldTheTeachers() ? "the teacher's choices" : "the decider's", sceneKey(sceneNow)));
 		} else if (sparFight) {
-			sparFights++;
-			sparDealt += fightDealt;
-			sparTaken += fightTaken;
-			sparWon += won ? 1 : 0;
-			sparLost += lost ? 1 : 0;
-			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school fight installed-model (sparring): dealt %.1f, taken %.1f, ticks %d%s", fightDealt,
+			if (rivalNow == 0) {
+				sparFights++;
+				sparDealt += fightDealt;
+				sparTaken += fightTaken;
+				sparWon += won ? 1 : 0;
+				sparLost += lost ? 1 : 0;
+			}
+			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school fight %s: dealt %.1f, taken %.1f, ticks %d%s", sparName(), fightDealt,
 					fightTaken, fightTicks, result));
 		} else {
 			stages.fight(fightBot, fightDealt, fightTaken, fightTicks);
@@ -3829,6 +3876,8 @@ public final class SchoolSession implements AgentSession {
 			IntegratedServer server = mc.getSingleplayerServer();
 			LoadedFighter spar = sparring;
 			sparring = null;
+			List<LoadedFighter> leagueNow = List.copyOf(league);
+			league.clear();
 			if (server != null) {
 				// The sparring copy plays on the server thread: closed there, once the arena has stopped.
 				server.execute(() -> {
@@ -3836,9 +3885,13 @@ public final class SchoolSession implements AgentSession {
 					if (spar != null) {
 						spar.close();
 					}
+					leagueNow.forEach(LoadedFighter::close);
 				});
-			} else if (spar != null) {
-				spar.close();
+			} else {
+				if (spar != null) {
+					spar.close();
+				}
+				leagueNow.forEach(LoadedFighter::close);
 			}
 		}
 		say("Stopped (" + reason + ").");
