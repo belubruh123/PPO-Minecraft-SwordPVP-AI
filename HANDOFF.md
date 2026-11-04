@@ -105,7 +105,7 @@ cd /d/swordai && FROM=9100 MIRROR=1 bash tools/screen.sh 132 /d/swordai/run/best
 
 - Use `/d/...` paths: a `D:` path breaks the `NET:TEMP` split.
 - Each screen pauses training about 15 minutes. Afterwards check `java.exe`, the loop and the log are back.
-- Never reuse pairs. **Used: 0-10834. Next: 10900 scripted, 11100 mirror.** Move these numbers on here and in `CANDIDATES.txt` after every screen.
+- Never reuse pairs. **Used: 0-11034. Next: 11100 scripted, 11300 mirror.** Move these numbers on here and in `CANDIDATES.txt` after every screen.
 
 **What the screens measure:** B, and the opponent in a mirror screen, is the fixed 23 Oct model in `run/swordai/school/installed/`, not the network in the user's profile. The bars are what the profile's network scored against it. A bar goes stale when the code changes: run23-1418 fell from +4.7 / +9.9 to +1.2 / +8.9 when it was re-run on 2 Nov under the S-tap. So screen the installed network on the same pairs as any serious candidate, under the same code, and compare the two. The combined score is the inverse-variance mean of the scripted and mirror screens. If two are level on it, go down the priorities in section 2.
 
@@ -174,7 +174,7 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 **STATUS 4 Nov 10:10 (read this first):**
 - **The computer bluescreened at 10:12; training back 18:45 from the 10:12 checkpoint (8.5 hours lost, six-hour mark of run 37 now about 00:45).**
-- **Run 37 deployed 10:05: half the actor's step** (`SchoolSession.ACTOR_LR` 5e-5, `MAX_ACTOR_LR` 7.5e-5; before, the adaptive rate settled at 1.0-1.5e-4), restarted from `run35r-0136`. Why: the slide after each restart is real on fresh pairs (the 08:21 end screened -2.7 against the peaks' +3.0 and +1.8). The 08:51 line's 45 minutes are `run/swordai/school/training-kept-1004.bin`. Judge and revert criteria: EXPERIMENTS row 37. Screen any hourly check above +6 on fresh pairs 10900/11100.
+- **Run 37 deployed 10:05: half the actor's step** (`SchoolSession.ACTOR_LR` 5e-5, `MAX_ACTOR_LR` 7.5e-5; before, the adaptive rate settled at 1.0-1.5e-4), restarted from `run35r-0136`. Why: the slide after each restart is real on fresh pairs (the 08:21 end screened -2.7 against the peaks' +3.0 and +1.8). The 08:51 line's 45 minutes are `run/swordai/school/training-kept-1004.bin`. Judge and revert criteria: EXPERIMENTS row 37. Screen any hourly check above +6 on fresh pairs 11100/11300.
 
 **STATUS 4 Nov 08:52:**
 - **Training restarted again, from `run35r-0136`** (45 minutes into the 00:51 restart; hourly A +11.2, fresh scripted +3.0 on 10100). After the 00:51 restart A's own column was 11.2, 11.6, 10.3, 9.4 for four hours, then 4.0, 10.3, 4.2, -3.1 (08:25). The network at the end is `run/best-candidates/run35r-end-0848.bin`. Same rule: judge by A's own column (about 7.6 or above); screen any hourly check above +6 on fresh pairs 10700/10900. The line peaks in its first hours after a restart and slides after about five: the fresh screens of its peaks (+3.0, +1.8) are at the installed's level, so a restart keeps it there but has not made a better model.
