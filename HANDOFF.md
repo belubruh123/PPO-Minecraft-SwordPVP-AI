@@ -105,7 +105,7 @@ cd /d/swordai && FROM=9100 MIRROR=1 bash tools/screen.sh 132 /d/swordai/run/best
 
 - Use `/d/...` paths: a `D:` path breaks the `NET:TEMP` split.
 - Each screen pauses training about 15 minutes. Afterwards check `java.exe`, the loop and the log are back.
-- Never reuse pairs. **Used: 0-10435. Next: 10500 scripted, 10700 mirror.** Move these numbers on here and in `CANDIDATES.txt` after every screen.
+- Never reuse pairs. **Used: 0-10634. Next: 10700 scripted, 10900 mirror.** Move these numbers on here and in `CANDIDATES.txt` after every screen.
 
 **What the screens measure:** B, and the opponent in a mirror screen, is the fixed 23 Oct model in `run/swordai/school/installed/`, not the network in the user's profile. The bars are what the profile's network scored against it. A bar goes stale when the code changes: run23-1418 fell from +4.7 / +9.9 to +1.2 / +8.9 when it was re-run on 2 Nov under the S-tap. So screen the installed network on the same pairs as any serious candidate, under the same code, and compare the two. The combined score is the inverse-variance mean of the scripted and mirror screens. If two are level on it, go down the priorities in section 2.
 
@@ -173,7 +173,7 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 ## 8. Where things stand (updated 2 Nov 07:15; older notes below)
 
 **STATUS 4 Nov 08:52 (read this first):**
-- **Training restarted again, from `run35r-0136`** (45 minutes into the 00:51 restart; hourly A +11.2, fresh scripted +3.0 on 10100). After the 00:51 restart A's own column was 11.2, 11.6, 10.3, 9.4 for four hours, then 4.0, 10.3, 4.2, -3.1 (08:25). The network at the end is `run/best-candidates/run35r-end-0848.bin`. Same rule: judge by A's own column (about 7.6 or above); screen any hourly check above +6 on fresh pairs 10500/10700. The line peaks in its first hours after a restart and slides after about five: the fresh screens of its peaks (+3.0, +1.8) are at the installed's level, so a restart keeps it there but has not made a better model.
+- **Training restarted again, from `run35r-0136`** (45 minutes into the 00:51 restart; hourly A +11.2, fresh scripted +3.0 on 10100). After the 00:51 restart A's own column was 11.2, 11.6, 10.3, 9.4 for four hours, then 4.0, 10.3, 4.2, -3.1 (08:25). The network at the end is `run/best-candidates/run35r-end-0848.bin`. Same rule: judge by A's own column (about 7.6 or above); screen any hourly check above +6 on fresh pairs 10700/10900. The line peaks in its first hours after a restart and slides after about five: the fresh screens of its peaks (+3.0, +1.8) are at the installed's level, so a restart keeps it there but has not made a better model.
 
 **STATUS 4 Nov 00:52:**
 - **Training restarted from `run35-1301` (the day's best fresh scripted screen, +4.9; hourly A +12.0)**: A's own hourly column had slid to a mean of 4.4 over nine checks since 15:54 (7.6 before). The network at the end is `run35-end-0048.bin`. Judge by A's own column (about 7.6 or above); screen any hourly check above +6 on fresh pairs 10100/10300.
