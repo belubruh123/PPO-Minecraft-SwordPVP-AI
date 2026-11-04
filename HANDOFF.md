@@ -172,7 +172,10 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 ## 8. Where things stand (updated 2 Nov 07:15; older notes below)
 
-**STATUS 4 Nov 08:52 (read this first):**
+**STATUS 4 Nov 10:10 (read this first):**
+- **Run 37 deployed 10:05: half the actor's step** (`SchoolSession.ACTOR_LR` 5e-5, `MAX_ACTOR_LR` 7.5e-5; before, the adaptive rate settled at 1.0-1.5e-4), restarted from `run35r-0136`. Why: the slide after each restart is real on fresh pairs (the 08:21 end screened -2.7 against the peaks' +3.0 and +1.8). The 08:51 line's 45 minutes are `run/swordai/school/training-kept-1004.bin`. Judge and revert criteria: EXPERIMENTS row 37. Screen any hourly check above +6 on fresh pairs 10900/11100.
+
+**STATUS 4 Nov 08:52:**
 - **Training restarted again, from `run35r-0136`** (45 minutes into the 00:51 restart; hourly A +11.2, fresh scripted +3.0 on 10100). After the 00:51 restart A's own column was 11.2, 11.6, 10.3, 9.4 for four hours, then 4.0, 10.3, 4.2, -3.1 (08:25). The network at the end is `run/best-candidates/run35r-end-0848.bin`. Same rule: judge by A's own column (about 7.6 or above); screen any hourly check above +6 on fresh pairs 10700/10900. The line peaks in its first hours after a restart and slides after about five: the fresh screens of its peaks (+3.0, +1.8) are at the installed's level, so a restart keeps it there but has not made a better model.
 
 **STATUS 4 Nov 00:52:**
