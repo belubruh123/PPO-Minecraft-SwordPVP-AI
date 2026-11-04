@@ -292,6 +292,14 @@ public final class SchoolSession implements AgentSession {
 	static final float RULED_PULL_LEAST = 0.05f;
 	static final float RULED_PULL_MOST = 0.6f;
 	private float ruledPullNow = RULED_PULL;
+	/**
+	 * Run 37 (4 Nov): the actor's step at most half of where the adaptive rate settled (SchoolPpo: 1.0-1.5e-4, kl 0.03-0.05, a
+	 * fifth to a quarter of the samples clipped). After both restarts of run 35's line A's own hourly column peaked for about
+	 * four hours and slid after five (11.2, 11.6, 10.3, 9.4, then 4.0, 10.3, 4.2, -3.1), and on fresh pairs the peaks screened
+	 * +3.0 and +1.8 and the end -2.7: the policy drifts off its best. A smaller step drifts less.
+	 */
+	static final float ACTOR_LR = 5e-5f;
+	static final float MAX_ACTOR_LR = 7.5e-5f;
 	// 0.10 and 0.40 in the first hour of run 30 (08:05-08:26): the baseline screen of 08:16 (the network of 07:54 without the rules,
 	// pairs 0-65) came out -7.9 (3.7) against the installed model while the same network with the rules runs about +3 on those
 	// seeds, so the gap to close is about 11 a fight and the network's own states are what it must learn from.
@@ -3697,6 +3705,8 @@ public final class SchoolSession implements AgentSession {
 		set.installedBody = OVERLAY;
 		set.ruledPull = ruledPullNow;
 		set.criticOnly = warmupLeft > 0;
+		set.actorLr = ACTOR_LR;
+		set.maxActorLr = MAX_ACTOR_LR;
 		if (warmupLeft > 0) {
 			warmupLeft--;
 		}
