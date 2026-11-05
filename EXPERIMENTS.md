@@ -207,3 +207,4 @@ What was learned for sure:
 | 37b-check3 | 5 Nov 15:06 | run 37's line again, 2.4 hours | the third hourly check after run 38's revert | **+0.2 (3.8)**, A **+4.2**, B +4.0, A 413/387 vs B 402/378 | running | |
 | 37b-check4 | 5 Nov 15:55 | run 37's line again, 3.2 hours | the fourth hourly check after run 38's revert | **+0.1 (4.0)**, A **+12.0**, B **+11.9**, A 439/362 vs B 421/348 | running | Both sides high (an easy hour for both). |
 | 37b-check5 | 5 Nov 16:44 | run 37's line again, 4 hours | the fifth hourly check after run 38's revert | **+3.6 (3.2)**, A **+8.0**, B +4.4, A 424/373 vs B 411/384 | running | Since the revert: +5.6, -0.1, +0.2, +0.1, +3.6 (mean +1.9). |
+| 37b-check6 | 5 Nov 17:34 | run 37's line again, 4.9 hours | the sixth hourly check after run 38's revert | **+0.5 (4.2)**, A **+5.3**, B +4.8, A 412/379 vs B 396/367 | running | Since the revert: +5.6, -0.1, +0.2, +0.1, +3.6, +0.5 (mean +1.7). |
