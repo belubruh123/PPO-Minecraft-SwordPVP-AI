@@ -490,6 +490,8 @@ public final class SchoolSession implements AgentSession {
 	private int judgedTechnique;
 	/** Ticks the golden rule (K2_GUARD) held the swing, and ticks the installed model's rules set keys (RULE_OVERLAY). */
 	private int k2Held;
+	/** In the air now on a jump that started at it from close (JUMP_IN_GUARD), not yet hit by it. */
+	private boolean jumpInAir;
 	private int ruleTicks;
 	/** The school's sprint hits on one the server had falling (Truth.botFalling), and that flag as of the step. */
 	private int k2Truth;
@@ -1264,6 +1266,17 @@ public final class SchoolSession implements AgentSession {
 	 * falling (25 Oct 09:11 check).
 	 */
 	static final int K2_MARGIN = 2;
+	/**
+	 * Run 39 (5 Nov 22:50), the golden rule (K2) as the user set it: a jump-in is knocked away only early in its rise, never
+	 * one falling, with a buffer for the lag. Their 198 duels by the tick of the AI's swing after the take-off it saw: up to
+	 * tick 1, 0 crits taken in 66 jumps; tick 2, 1 in 44; tick 3 on, 0.24 to 0.43 a jump and more health lost than with no
+	 * swing at all (the swing shows as a hit 2 ticks later, their knockback later still). So the swing is let through up to
+	 * JUMP_IN_SWING_TICKS, the next tick is the buffer, and later it is held until they land; never in its own combo
+	 * (SchoolFighter.K2_COMBO_TICKS) nor once their hit has landed (the punish crit, B1). The same in the user's fights
+	 * (FightSession) and here, so that what it practises is what it plays. The swing held is the rule's, not taught.
+	 */
+	static final boolean JUMP_IN_GUARD = true;
+	static final int JUMP_IN_SWING_TICKS = 1;
 
 	static {
 		for (Technique t : new Technique[] {Technique.B1, Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2,
@@ -1901,6 +1914,7 @@ public final class SchoolSession implements AgentSession {
 		lastMomentTechnique = -1;
 		fairJump.reset();
 		liftedFor = -1;
+		jumpInAir = false;
 		onGroundBefore = true;
 		liftKind = -1;
 		liftStage = 0;
@@ -2456,10 +2470,18 @@ public final class SchoolSession implements AgentSession {
 		if (inCombo && step.teacherTechnique == Technique.K2.ordinal()) {
 			step.teacherHeads &= ~(1 << ActionSpace.ATTACK);
 		}
-		boolean k2Hold = K2_GUARD && !inCombo && ((me.isSprinting() || reader.duel.me.sprinting)
+		if (them.onGround || clock.ticksSinceHitTaken == 0) {
+			jumpInAir = false;
+		} else if (them.sinceJump == 0 && reader.duel.theyClose > 0.05 && reader.duel.flat < 6.5) {
+			jumpInAir = true;
+		}
+		boolean k2Hold = JUMP_IN_GUARD && !inCombo && jumpInAir && them.sinceJump > JUMP_IN_SWING_TICKS
+				|| K2_GUARD && !inCombo && ((me.isSprinting() || reader.duel.me.sprinting)
 				&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, fightLag + K2_MARGIN) || step.teacherTechnique == Technique.K2.ordinal());
 		if (k2Hold) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
+			// Neither "swing" nor "don't" is taught on a tick the rule holds.
+			step.teacherHeads &= ~(1 << ActionSpace.ATTACK);
 			k2Held++;
 		}
 		boolean installedDecided = step.teacherWeight > 0f && installed != null;

@@ -92,6 +92,8 @@ final class FightSession implements AgentSession {
 	private int deadTicks;
 	private boolean deathCounted;
 	private boolean killCounted;
+	/** In the air now on a jump that started at it from close, not yet hit by it (SchoolSession.JUMP_IN_GUARD). */
+	private boolean jumpInAir;
 	/** How the opponent fights, counted for training; see {@link StyleWatch}. */
 	private final StyleWatch style = new StyleWatch();
 	/** A round against the current opponent is being counted. */
@@ -266,6 +268,22 @@ final class FightSession implements AgentSession {
 		}
 		deadTicks = 0;
 		deathCounted = false;
+		// The user's server does not kill: the one who dies watches the rest as a spectator (5 Nov), so a round lost that
+		// way showed as never closed, and the stats then had rounds lost with more dealt than taken.
+		if (me.isSpectator()) {
+			if (rounds.open()) {
+				deaths++;
+				closeStyle(true);
+				closeRound("lost");
+			}
+			handBack("the next round");
+			return;
+		}
+		if (opponent != null && rounds.open() && spectating(opponentId)) {
+			kills++;
+			closeStyle(false);
+			closeRound("won");
+		}
 
 		// Any menu hands the game back to the player; the chat does not.
 		Screen screen = mc.screen;
@@ -408,8 +426,15 @@ final class FightSession implements AgentSession {
 				fighter.decide(observer.frame, rulesBody);
 			}
 			// The golden rule (K2): what is seen of them is a round trip behind the server by the time a hit gets there.
-			school.holdSwing(SchoolSession.K2_GUARD && me.isSprinting()
-					&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(reader.duel.them, ownPingTicks() + SchoolSession.K2_MARGIN));
+			dev.swordai.core.pvp.Body them = reader.duel.them;
+			if (them.onGround || takenNow) {
+				jumpInAir = false;
+			} else if (them.sinceJump == 0 && reader.duel.theyClose > 0.05 && reader.duel.flat < 6.5) {
+				jumpInAir = true;
+			}
+			school.holdSwing(SchoolSession.JUMP_IN_GUARD && jumpInAir && them.sinceJump > SchoolSession.JUMP_IN_SWING_TICKS
+					|| SchoolSession.K2_GUARD && me.isSprinting()
+					&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, ownPingTicks() + SchoolSession.K2_MARGIN));
 			double reachNow = Math.sqrt(opp.getBoundingBox().distanceToSqr(me.getEyePosition()));
 			school.rulesLetGo(SchoolSession.RULES_LET_GO_IN_LIFT && liftedFor >= 0 && !me.onGround() && reachNow <= 3.5
 					&& me.getAttackStrengthScale(0f) > 0.5f
@@ -535,6 +560,14 @@ final class FightSession implements AgentSession {
 			return (mc.getConnection().getPlayerInfo(mc.player.getUUID()).getLatency() + 49) / 50;
 		}
 		return 0;
+	}
+
+	/** Whether that player is in spectator mode, by the server's player list (where the user's server puts one who dies). */
+	private boolean spectating(java.util.UUID id) {
+		if (id == null || mc.getConnection() == null || mc.getConnection().getPlayerInfo(id) == null) {
+			return false;
+		}
+		return mc.getConnection().getPlayerInfo(id).getGameMode() == net.minecraft.world.level.GameType.SPECTATOR;
 	}
 
 	private int opponentPing() {
