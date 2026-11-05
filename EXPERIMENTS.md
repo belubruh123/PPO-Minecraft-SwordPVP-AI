@@ -205,3 +205,4 @@ What was learned for sure:
 | 37b-check1 | 5 Nov 13:28 | run 37's line again (from run38-revert-0635, 12:39), 50 minutes | the first hourly check after run 38's revert | **+5.6 (3.9)**, A **+8.2**, B +2.6, A 428/375 vs B 394/378, swings landing 97% vs 93%, punish crit 35% (14 of 40) vs 26% (11 of 43); their combos' third hit 27% vs 24% | running | Just under +6, no screen. |
 | 37b-check2 | 5 Nov 14:17 | run 37's line again, 1.6 hours | the second hourly check after run 38's revert | **-0.1 (4.3)**, A **+6.4**, B +6.5, A 419/378 vs B 405/366 | running | |
 | 37b-check3 | 5 Nov 15:06 | run 37's line again, 2.4 hours | the third hourly check after run 38's revert | **+0.2 (3.8)**, A **+4.2**, B +4.0, A 413/387 vs B 402/378 | running | |
+| 37b-check4 | 5 Nov 15:55 | run 37's line again, 3.2 hours | the fourth hourly check after run 38's revert | **+0.1 (4.0)**, A **+12.0**, B **+11.9**, A 439/362 vs B 421/348 | running | Both sides high (an easy hour for both). |
