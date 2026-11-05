@@ -172,7 +172,10 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 ## 8. Where things stand (updated 2 Nov 07:15; older notes below)
 
-**STATUS 5 Nov 12:45 (read this first):**
+**STATUS 5 Nov 21:20 (read this first):**
+- **INSTALLED: run35-0657** (5 Nov 21:19, the user's word: the old installed was from before the jump-in crit teaching; combined fresh +4.5 vs +4.2, better vs the combo bots). Profile backup `backup-before-school-20261105-211922`. A/B pool: installed (run35-0657), noback, old1418, run26, **old0739** (run30h-0739, the one it replaced); backup `backup-before-ab-20261105-211954`. Read `tools/duels.py` after the user's duels. Copies in `run/best-run35/` with BEST.txt.
+
+**STATUS 5 Nov 12:45:**
 - **Run 38 reverted 12:39** (fresh +2.4, +1.9 against run 37's +3.0, +3.1, +2.5): `RULE_OFF_MAX` back to 0.70, training from `run38-revert-0635.bin` (run 37's line, half step). Run 38's end: `run/best-candidates/run38-end-1237.bin`. Every change since 2 Nov screens +2 to +3; the live A/B pool is the measure that can tell. Fresh pairs 12100/12300.
 
 **STATUS 5 Nov 06:40:**
