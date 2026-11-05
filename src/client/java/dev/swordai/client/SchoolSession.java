@@ -307,8 +307,9 @@ public final class SchoolSession implements AgentSession {
 	// Run 38 (5 Nov): 0.25 (0.70 from 1 Nov 11:35, 30e; 0.50 before). Four days with 70% of the full fights and scenes played without
 	// the rules did not move the network alone (fresh scripted screens without the rules: -6.1 on 1 Nov, -5.9 on 5 Nov), while the
 	// play with the rules, the one the checks and the user's game use, got the other 30% and stays at the installed's level (+2.5 to
-	// +3.1): the take-over goes on at its least and the rest of the practice is where the network plays.
-	static final float RULE_OFF_MAX = 0.25f;
+	// +3.1): the take-over goes on at its least and the rest of the practice is where the network plays. Reverted 5 Nov 12:40: the
+	// fresh screens at 3 and 6 hours (+2.4, +1.9) were no better than run 37's (+3.0, +3.1, +2.5); on a tie the take-over stays.
+	static final float RULE_OFF_MAX = 0.70f;
 	static final float RULE_OFF_CE_START = 0.60f;
 	static final float RULE_OFF_CE_FULL = 0.20f;
 	/** Smoothed cross-entropy to the rules' keys (-1 before the first update that had some) and how often its likeliest key was the rule's. */
