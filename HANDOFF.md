@@ -172,6 +172,8 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 ## 8. Where things stand (updated 2 Nov 07:15; older notes below)
 
+**STATUS 5 Nov 22:50 (read this first):** training back on 22:25 (user closed their game), and from 22:47 run 39 (EXPERIMENTS row 39): the user's jump-in rule, SchoolSession.JUMP_IN_GUARD (swing at a jump-in only up to tick 1 after the seen take-off, held from tick 3 until they land), the same in FightSession and training. Same jar: FightSession counts spectator (the user's server on death) as a death/kill. Jar installed 22:47 with install-ab.sh (same 5 arms; backup backup-before-ab-20261105-224744); installed network still run35-0657. Next: the user's next real jump-ins (scratchpad kbswing.py / knockaway.py), A's hourly checks vs run 37's +2 (revert rule in the row).
+
 **STATUS 5 Nov 21:20 (read this first):**
 - **INSTALLED: run35-0657** (5 Nov 21:19, the user's word: the old installed was from before the jump-in crit teaching; combined fresh +4.5 vs +4.2, better vs the combo bots). Profile backup `backup-before-school-20261105-211922`. A/B pool: installed (run35-0657), noback, old1418, run26, **old0739** (run30h-0739, the one it replaced); backup `backup-before-ab-20261105-211954`. Read `tools/duels.py` after the user's duels. Copies in `run/best-run35/` with BEST.txt.
 
