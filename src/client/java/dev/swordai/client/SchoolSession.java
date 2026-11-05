@@ -1276,6 +1276,8 @@ public final class SchoolSession implements AgentSession {
 	 * (FightSession) and here, so that what it practises is what it plays. The swing held is the rule's, not taught.
 	 */
 	static final boolean JUMP_IN_GUARD = true;
+	/** The same rule in training (run 39); its own switch so that training can go back without the user's fights losing it. */
+	static final boolean JUMP_IN_GUARD_TRAINING = true;
 	static final int JUMP_IN_SWING_TICKS = 1;
 
 	static {
@@ -2475,7 +2477,7 @@ public final class SchoolSession implements AgentSession {
 		} else if (them.sinceJump == 0 && reader.duel.theyClose > 0.05 && reader.duel.flat < 6.5) {
 			jumpInAir = true;
 		}
-		boolean k2Hold = JUMP_IN_GUARD && !inCombo && jumpInAir && them.sinceJump > JUMP_IN_SWING_TICKS
+		boolean k2Hold = JUMP_IN_GUARD_TRAINING && !inCombo && jumpInAir && them.sinceJump > JUMP_IN_SWING_TICKS
 				|| K2_GUARD && !inCombo && ((me.isSprinting() || reader.duel.me.sprinting)
 				&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, fightLag + K2_MARGIN) || step.teacherTechnique == Technique.K2.ordinal());
 		if (k2Hold) {
