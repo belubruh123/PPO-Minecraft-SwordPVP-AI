@@ -1280,6 +1280,19 @@ public final class SchoolSession implements AgentSession {
 	static final boolean JUMP_IN_GUARD_TRAINING = true;
 	static final int JUMP_IN_SWING_TICKS = 1;
 
+	/**
+	 * Run 40 (6 Nov 06:45): the hold lasts until they land, through their hit too, and in its own combo: the user asked for the
+	 * punish crit on nearly every jump-in. Run 39's nine checks (hits.csv): after a crit taken its next hit was a crit 46%; of the
+	 * rest 37% came after it had landed and 13% while it still rose, and in 68-76% of those it had swung within 4 ticks before
+	 * their crit, so its sword was not back for the lift's fall. Of 354 sprint hits on them falling outside its combo they hit back
+	 * 68%, crit 28%; 391 of all such hits came right after their hit (the hold had let go there). The document: a jumper falling
+	 * and critting is not knockback-hit (K2), it is let land and punished with a crit (B1). So the only swing let through is one
+	 * that will be a crit: falling, not sprinting, the sword back (critSwingNow).
+	 */
+	static boolean critSwingNow(net.minecraft.world.entity.player.Player me) {
+		return !me.onGround() && me.getDeltaMovement().y < 0 && !me.isSprinting() && me.getAttackStrengthScale(0f) >= 0.9f;
+	}
+
 	static {
 		for (Technique t : new Technique[] {Technique.B1, Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2,
 				Technique.C6, Technique.K3}) {
@@ -2472,12 +2485,12 @@ public final class SchoolSession implements AgentSession {
 		if (inCombo && step.teacherTechnique == Technique.K2.ordinal()) {
 			step.teacherHeads &= ~(1 << ActionSpace.ATTACK);
 		}
-		if (them.onGround || clock.ticksSinceHitTaken == 0) {
+		if (them.onGround) {
 			jumpInAir = false;
 		} else if (them.sinceJump == 0 && reader.duel.theyClose > 0.05 && reader.duel.flat < 6.5) {
 			jumpInAir = true;
 		}
-		boolean k2Hold = JUMP_IN_GUARD_TRAINING && !inCombo && jumpInAir && them.sinceJump > JUMP_IN_SWING_TICKS
+		boolean k2Hold = JUMP_IN_GUARD_TRAINING && jumpInAir && them.sinceJump > JUMP_IN_SWING_TICKS && !critSwingNow(me)
 				|| K2_GUARD && !inCombo && ((me.isSprinting() || reader.duel.me.sprinting)
 				&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, fightLag + K2_MARGIN) || step.teacherTechnique == Technique.K2.ordinal());
 		if (k2Hold) {

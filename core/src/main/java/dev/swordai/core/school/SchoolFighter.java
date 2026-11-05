@@ -66,6 +66,7 @@ public final class SchoolFighter {
 	private boolean crosshairOn;
 	private Fighter rules;
 	private boolean swingHeld;
+	private boolean jumpInHeld;
 	/**
 	 * Within this many ticks of its own hit, an opponent in the air is its combo's (lifted by that hit), not one jumping in:
 	 * the golden rule's guard stays off there. The user, 25 Oct 09:25: the guard made it forget to combo (its hits stunned 16%
@@ -101,6 +102,14 @@ public final class SchoolFighter {
 	/** No swing this tick: a sprint hit would land on one falling by the time it gets there (the golden rule, K2). */
 	public void holdSwing(boolean hold) {
 		swingHeld = hold;
+	}
+
+	/**
+	 * No swing this tick, even within K2_COMBO_TICKS of its own hit: a jump-in's swing held until they land (run 40). Its hit in
+	 * that jump was on them rising, which is no combo of its own: the rest of the jump they come down at it.
+	 */
+	public void holdJumpInSwing(boolean hold) {
+		jumpInHeld = hold;
 	}
 
 	/** Whether the game has the opponent under the crosshair and in reach now. */
@@ -151,7 +160,7 @@ public final class SchoolFighter {
 		if (whiffGuard && !crosshairOn) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 		}
-		if (swingHeld && sinceHitDealt > K2_COMBO_TICKS) {
+		if (swingHeld && sinceHitDealt > K2_COMBO_TICKS || jumpInHeld) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 		}
 		int ruled = rules != null ? rules.ruledHeads() & keys : 0;
