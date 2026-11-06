@@ -157,6 +157,14 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final float COMBO_HIT = 0.2f;
 	static final int COMBO_GAP = 20;
+	/**
+	 * Run 44 (block 5, the user 7 Nov 07:30: "always like 3+ combo"): the third and every later hit of its own combo pays this
+	 * on top of COMBO_HIT (0.4 a hit in all). Of its 2-hit combos 37% went on to a third in run 42's benchmark.
+	 */
+	static final float COMBO_HIT3 = 0.2f;
+	/** Its hits in a row in the reward's count (1 = a first hit), and the 3rd+ hits paid since the last update. */
+	private int rewardRow;
+	private int combo3Paid;
 	/** The fight tick of its last hit dealt with no hit taken since (-1000: none), and the follow-up hits paid since the last update. */
 	private int lastOwnHitAt = -1000;
 	private int comboHitsPaid;
@@ -695,8 +703,20 @@ public final class SchoolSession implements AgentSession {
 	 * half of those, and critted on one in seven.
 	 */
 	static final int KIND_PUNISH = 3;
-	static final int KINDS = 4;
-	static final String[] KIND_NAMES = {"crit", "jump-in", "combo", "punish"};
+	/**
+	 * Own-combo scenes (run 44, block 5, 7 Nov): its own combo that died at one or two hits (they hit back, or no next hit
+	 * within COMBO_GAP), from the tick after its first hit (they are knocked back, its sword empty: the holder's moment, T10,
+	 * T11a-c, T2), OWN_SCENE_TICKS long; won by two more hits of its own in a row (a 3+ combo) before a hit taken. The user,
+	 * 7 Nov 07:30: "it need always like 3+ combo and nearly starting combos at anytime". Against the training bots its 2-hit
+	 * combos went on to 3 as often as against real players (37% vs 38%, tools/combo-bots.py), and real players hit back
+	 * sooner (3 ticks median): the bots are not too perfect, so the moment itself is practised. OWN_SHARE of the focus's
+	 * scene fights are these (about a fifth of the training fights); the other kinds share the rest.
+	 */
+	static final int KIND_OWN = 4;
+	static final int OWN_SCENE_TICKS = 50;
+	static final float OWN_SHARE = 0.4f;
+	static final int KINDS = 5;
+	static final String[] KIND_NAMES = {"crit", "jump-in", "combo", "punish", "own combo"};
 	static final int PUNISH_BEFORE = 10;
 	static final int PUNISH_SCENE_TICKS = 40;
 	static final int COMBO_BEFORE = 20;
@@ -718,7 +738,7 @@ public final class SchoolSession implements AgentSession {
 	 * cutting comboing opponent that controls hit perfectly", and need not rely on the "unstable punish crit". Combo scenes
 	 * won 39% of the last 200; against the uppercutter A's net was below zero in the last four hourly checks.
 	 */
-	static final int[][] FOCUS_KINDS = {{KIND_CRIT, KIND_JUMPIN, KIND_PUNISH, KIND_COMBO}, {KIND_COMBO}};
+	static final int[][] FOCUS_KINDS = {{KIND_CRIT, KIND_JUMPIN, KIND_PUNISH, KIND_COMBO, KIND_OWN}, {KIND_COMBO, KIND_OWN}};
 	static final String[] FOCUS_NAMES = {"the crits (crit scenes, jump-in counter, punish crit)", "the combo escape"};
 	static final float FOCUS_SHARE = 0.8f;
 	static final int FOCUS_EVENTS = 300;
@@ -746,7 +766,7 @@ public final class SchoolSession implements AgentSession {
 		double[] state;
 
 		int ticks() {
-			return kind == KIND_CRIT ? SCENE_WINDOW : kind == KIND_PUNISH ? PUNISH_SCENE_TICKS : JUMPIN_SCENE_TICKS;
+			return kind == KIND_CRIT ? SCENE_WINDOW : kind == KIND_PUNISH ? PUNISH_SCENE_TICKS : kind == KIND_OWN ? OWN_SCENE_TICKS : JUMPIN_SCENE_TICKS;
 		}
 
 		String line() {
@@ -832,7 +852,15 @@ public final class SchoolSession implements AgentSession {
 	private int focusReached;
 	/** Rolling outcomes for the focus bars: per kind, the last scene fights won; the full fights' jump-ins and combos. */
 	private final Rolling[] sceneRoll = {new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS),
-			new Rolling(FOCUS_REPLAYS)};
+			new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS)};
+	/** Own combos (run 44): the first one of this full fight that died short, to keep from ownFrom at keepOwnAt (-1: none). */
+	private int ownFrom = -1;
+	private int keepOwnAt;
+	private int ownRow;
+	private int ownFirstAt;
+	/** In an own-combo scene: its hits in a row since the start, and whether a hit was taken before the second. */
+	private int sceneOwnHits;
+	private boolean sceneOwnBroken;
 	/** Its punish crit chances in the full fights (their hit lifted it, it came down in reach): critted or not. */
 	private final Rolling punishRoll = new Rolling(FOCUS_EVENTS);
 	/**
@@ -1115,6 +1143,31 @@ public final class SchoolSession implements AgentSession {
 		if (punishFrom >= 0 && (fightOver || fightTicks >= keepPunishAt)) {
 			keepScene(Math.max(1, punishFrom - PUNISH_BEFORE), KIND_PUNISH);
 			punishFrom = -1;
+		}
+		if (ownFrom >= 0 && (fightOver || fightTicks >= keepOwnAt)) {
+			keepScene(Math.max(1, ownFrom), KIND_OWN);
+			ownFrom = -2; // one a fight
+		}
+	}
+
+	/**
+	 * Its own combo row in a full training fight (run 44): a combo that ends at one or two hits marks an own-combo scene from
+	 * the tick after its first hit. Called with this tick's hits, before harvest.
+	 */
+	private void trackOwnCombo(boolean dealt, boolean taken) {
+		boolean ends = taken || dealt && fightTicks - lastOwnHitAt > COMBO_GAP || !dealt && ownRow > 0 && fightTicks - lastOwnHitAt > COMBO_GAP;
+		if (ends && ownRow >= 1 && ownRow <= 2 && ownFrom == -1 && ownFirstAt + 1 < fightTicks) {
+			ownFrom = ownFirstAt + 1;
+			keepOwnAt = ownFrom + OWN_SCENE_TICKS;
+		}
+		if (ends) {
+			ownRow = 0;
+		}
+		if (dealt && !taken) {
+			if (ownRow == 0) {
+				ownFirstAt = fightTicks;
+			}
+			ownRow++;
 		}
 	}
 
@@ -1983,7 +2036,22 @@ public final class SchoolSession implements AgentSession {
 							}
 						}
 					}
-					int kind = kinds.get(rng.nextInt(kinds.size()));
+					int kind;
+					// Run 44: the own-combo scenes take OWN_SHARE of the focus's scene fights, the other kinds share the rest.
+					if (focusNow && kinds.contains(KIND_OWN) && (kinds.size() == 1 || rng.nextFloat() < OWN_SHARE)) {
+						kind = KIND_OWN;
+					} else {
+						kinds.remove(Integer.valueOf(KIND_OWN));
+						if (kinds.isEmpty()) {
+							kinds.add(KIND_OWN);
+						}
+						// The punish scenes keep their share of before (a quarter; the user: punish crit about 50% of its
+						// chances), the crit, jump-in and combo-escape scenes give up theirs.
+						if (focusNow && kinds.contains(KIND_PUNISH) && kinds.size() > 1) {
+							kinds.add(KIND_PUNISH);
+						}
+						kind = kinds.get(rng.nextInt(kinds.size()));
+					}
 					List<Scene> ofKind = new ArrayList<>();
 					List<Scene> ofSpar = new ArrayList<>();
 					for (Scene sc : scenes) {
@@ -2105,8 +2173,15 @@ public final class SchoolSession implements AgentSession {
 		sweep = 0;
 		frozenTicks = 0;
 		fightTicks = 0;
-		lastOwnHitAt = -1000;
+		// An own-combo scene starts the tick after its first hit: a hit within COMBO_GAP is that combo's follow-up (COMBO_HIT).
+		lastOwnHitAt = sceneNow != null && sceneNow.kind == KIND_OWN ? -1 : -1000;
+		rewardRow = sceneNow != null && sceneNow.kind == KIND_OWN ? 1 : 0;
 		ownJumpAir = false;
+		ownFrom = -1;
+		ownRow = 0;
+		ownFirstAt = 0;
+		sceneOwnHits = 0;
+		sceneOwnBroken = false;
 		java.util.Arrays.fill(rowDealt, 0);
 		java.util.Arrays.fill(rowTaken, 0);
 		java.util.Arrays.fill(sinceSwing, 999);
@@ -2500,7 +2575,17 @@ public final class SchoolSession implements AgentSession {
 					|| reviewRewards.lostTooLong(basics[review])
 					: fightTicks >= (sceneNow != null ? sceneNow.ticks() : FIGHT_TICKS);
 			if (mode == Mode.TRAIN && review < 0 && sceneNow == null && !drillFight && !ruleOff) {
+				trackOwnCombo(facts.hitsDealt > 0, facts.hitsTaken > 0);
 				harvest(truth.tick(), facts.damageDealt - facts.damageTaken, facts.critsTaken > 0, ko || timeUp);
+			}
+			// An own-combo scene (run 44): two more hits in a row, each within COMBO_GAP of the last (the first of the scene's
+			// start), before a hit taken.
+			if (mode == Mode.TRAIN && sceneNow != null && sceneNow.kind == KIND_OWN && sceneOwnHits < 2 && !sceneOwnBroken) {
+				if (facts.hitsTaken > 0 || fightTicks - Math.max(lastOwnHitAt, 0) > COMBO_GAP) {
+					sceneOwnBroken = true;
+				} else if (facts.hitsDealt > 0) {
+					sceneOwnHits++;
+				}
 			}
 			boolean full = mode == Mode.TRAIN && learner.rolloutRoom() <= 1;
 			if (mode == Mode.TRAIN && review >= 0) {
@@ -2545,10 +2630,15 @@ public final class SchoolSession implements AgentSession {
 				// The combo reward (run 42, COMBO_HIT): a trade (both hit this tick) or a hit taken ends its combo.
 				if (facts.hitsTaken > 0) {
 					lastOwnHitAt = -1000;
+					rewardRow = 0;
 				} else if (facts.hitsDealt > 0) {
 					if (fightTicks - lastOwnHitAt <= COMBO_GAP) {
-						reward += COMBO_HIT;
+						rewardRow = Math.max(rewardRow, 1) + 1;
+						reward += COMBO_HIT + (rewardRow >= 3 ? COMBO_HIT3 : 0f);
 						comboHitsPaid++;
+						combo3Paid += rewardRow >= 3 ? 1 : 0;
+					} else {
+						rewardRow = 1;
 					}
 					lastOwnHitAt = fightTicks;
 				}
@@ -3527,7 +3617,8 @@ public final class SchoolSession implements AgentSession {
 			sceneNetBefore += sceneNow.net;
 			boolean sceneWon = sceneNow.kind == KIND_PUNISH ? !sceneK2 && sceneOwnCrit
 					: sceneNow.kind == KIND_JUMPIN ? !sceneK2 && (!sceneHit || sceneAnswer)
-					: sceneNow.kind == KIND_COMBO ? sceneRowMost < 2 : fightDealt > fightTaken;
+					: sceneNow.kind == KIND_COMBO ? sceneRowMost < 2
+					: sceneNow.kind == KIND_OWN ? sceneOwnHits >= 2 && !sceneOwnBroken : fightDealt > fightTaken;
 			if (!sceneReview) {
 				sceneRoll[sceneNow.kind].add(sceneWon);
 				kindFights[sceneNow.kind]++;
@@ -4214,14 +4305,15 @@ public final class SchoolSession implements AgentSession {
 		pullsNow = stages.techPulls();
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
-				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {} ({} in {} drill fights), other crits {}, combo follow-up hits rewarded {}, hits taken in the air from its own jump {} "
+				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {} ({} in {} drill fights), other crits {}, combo follow-up hits rewarded {} (3rd+ {}), hits taken in the air from its own jump {} "
 				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} (the golden rule held the swing on {} ticks, the installed model's rules set keys on {}) | swings: {} | review of the old stages:{} | bots went into:{} | taught now:{} | sparring the installed model:{} | take-over:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
-				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits, comboHitsPaid, airJumpHits,
+				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits, comboHitsPaid, combo3Paid, airJumpHits,
 				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2Held, ruleTicks, swingLine(0), reviewLine(), used, taughtNowLine(), sparLine(), takeOverLine());
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		comboHitsPaid = 0;
+		combo3Paid = 0;
 		airJumpHits = 0;
 		drillPunishCrits = 0;
 		drillFights = 0;
