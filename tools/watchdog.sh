@@ -33,12 +33,13 @@ fi
 # A benchmark asked for (7 Nov): run/bench-request holds "TAG NET"; started here, outside the Claude app, so a session that
 # ends cannot leave a test network in the place of the training's (tools/bench-run.sh swaps it in and back).
 if [ -f /d/swordai/run/bench-request ] && ! ps -ef | grep -a "bench-run" | grep -qv grep; then
-  read -r BTAG BNET BSUITE < /d/swordai/run/bench-request  # "TAG NET [SUITE]", SUITE e.g. suite-v2 (default: bench-run.sh's)
-  BNET=$(echo "$BNET" | tr -d '\r'); BSUITE=$(echo "$BSUITE" | tr -d '\r')
+  read -r BTAG BNET BSUITE BOPT < /d/swordai/run/bench-request  # "TAG NET [SUITE]", SUITE e.g. suite-v2 (default: bench-run.sh's)
+  BNET=$(echo "$BNET" | tr -d '\r'); BSUITE=$(echo "$BSUITE" | tr -d '\r'); BOPT=$(echo "$BOPT" | tr -d '\r')
+  BENV=; [ "$BOPT" = hitout ] && BENV="HIT_AND_OUT=1"  # a 4th word "hitout": side A with hit and out (bench-run.sh)
   mv /d/swordai/run/bench-request /d/swordai/run/bench-request.taken
   echo "$(date '+%m-%d %H:%M') benchmark asked for: $BTAG $BNET $BSUITE" >> $LOG
   if [ -n "$BSUITE" ]; then
-    detach "/d/swordai/run/bench-$BTAG.out" env SUITE="$S/bench/$BSUITE.txt" bash "$S/bench-run.sh" "$BTAG" "$BNET"
+    detach "/d/swordai/run/bench-$BTAG.out" env SUITE="$S/bench/$BSUITE.txt" $BENV bash "$S/bench-run.sh" "$BTAG" "$BNET"
   else
     detach "/d/swordai/run/bench-$BTAG.out" bash "$S/bench-run.sh" "$BTAG" "$BNET"
   fi

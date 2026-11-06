@@ -34,7 +34,10 @@ looping() { ps -ef | grep -a "$C" | grep -qv grep; }
 since() { tail -n +$start $L | grep -ac "$1"; }
 [ -f $SCH/bench-suite.txt ] && { echo "$SCH/bench-suite.txt is there: another benchmark runs (or one was killed: then remove it)"; exit 1; }
 # Never left behind: with the suite file in the school folder every later check (the hourly loop's too) would be a benchmark.
-trap 'rm -f $SCH/bench-suite.txt' EXIT
+trap 'rm -f $SCH/bench-suite.txt $SCH/bench-hit-and-out' EXIT
+# HIT_AND_OUT=1: side A plays with hit and out over the network (SchoolSession.BENCH_HIT_AND_OUT_FILE), for this run only.
+[ -n "$HIT_AND_OUT" ] && touch $SCH/bench-hit-and-out && echo "hit and out on for this benchmark"
+[ -z "$HIT_AND_OUT" ] && rm -f $SCH/bench-hit-and-out
 
 # 1. The loop paused, and kept from starting: the stop file stays for the whole benchmark (with the loop not running the
 # watchdog would otherwise start it in the middle, and its hourly check would stop the benchmark). A stop file someone else
@@ -70,7 +73,7 @@ if ! cp -p $SCH/checkpoint.bin "$KEEP"; then
 fi
 cp -p "$NET" $SCH/checkpoint.bin
 mkdir -p "$OUTD"
-echo "$H $NET" > "$OUTD/network.txt"
+echo "$H $NET${HIT_AND_OUT:+ hit-and-out}" > "$OUTD/network.txt"
 cp "$SUITE" "$OUTD/suite.txt"
 { echo "# bench-run.sh $(date '+%Y-%m-%d %H:%M:%S')"; echo "tag $TAG"; echo "network $(basename "$NET")"; cat "$SUITE"; } > $SCH/bench-suite.txt
 echo "bench $TAG: $(basename "$NET") on $(basename "$SUITE") from $(date +%H:%M:%S)"
@@ -94,7 +97,7 @@ fi
 sleep 2
 
 # 5. Everything put back: the suite file, the training network, the switches; training and the loop resumed.
-rm -f $SCH/bench-suite.txt
+rm -f $SCH/bench-suite.txt $SCH/bench-hit-and-out
 rm -f $SCH/checkpoint.bin
 cp -p "$KEEP" $SCH/checkpoint.bin
 if cmp -s "$KEEP" $SCH/checkpoint.bin; then echo "training network restored"; else echo "TRAINING NETWORK NOT RESTORED: it is in $KEEP"; fi

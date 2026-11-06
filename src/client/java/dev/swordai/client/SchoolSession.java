@@ -345,6 +345,8 @@ public final class SchoolSession implements AgentSession {
 	static final String NO_RULES_FILE = "no-rules";
 	/** An empty file of this name in the school folder switches hit and out on for a real fight (FightSession), with the rules over the network. */
 	static final String HIT_AND_OUT_FILE = "hit-and-out";
+	/** With this file in the school folder a benchmark plays side A with hit and out over the network (an A/B of the rule, 7 Nov). */
+	static final String BENCH_HIT_AND_OUT_FILE = "bench-hit-and-out";
 	static final float RULED_PULL = 0.3f;
 	/**
 	 * Run 30e: the pull on the rules' keys follows a budget instead of staying at RULED_PULL (the adaptive controller of the body keys' copying,
@@ -2177,7 +2179,10 @@ public final class SchoolSession implements AgentSession {
 		if (installed != null) {
 			installed.fighter.reset();
 			// Hit and out (SchoolStages#HIT_AND_OUT): for the side the school trains, not for the installed model that plays against it in a check.
-			installed.fighter.hitAndOut(dev.swordai.core.school.SchoolStages.HIT_AND_OUT && !installedPlays);
+			// A benchmark can switch it on with BENCH_HIT_AND_OUT_FILE in the school folder (7 Nov: the same network with and without,
+			// the document's T10 "S right after the sprint hit", measured in one benchmark run each).
+			installed.fighter.hitAndOut((dev.swordai.core.school.SchoolStages.HIT_AND_OUT
+					|| mode == Mode.CHECK && benchTag != null && Files.exists(SwordFiles.schoolDir().resolve(BENCH_HIT_AND_OUT_FILE))) && !installedPlays);
 		}
 		hasLastAction = false;
 		clicked = false;
