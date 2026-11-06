@@ -7,10 +7,10 @@ the time), write each block's verdict under it, and commit. Never delete a block
 for check 2 (done: check 1; next: check 3, verdict)". Keep this line current:
 
 For the panel (short, plain words; keep both current):
-**NOW: Block 3 · combo starters and holders · run 42 (combo reward) training**
+**NOW: Block 4 · its own jumps into their reach · run 43 training**
 **INSTALLED: run35-0657 · +4.5 vs B · since 5 Nov 21:19**
 
-**CURRENT STEP (7 Nov 03:50): block 3, run 42 (combo reward) training since 03:47. Block 2 done: benchmark works (A/A TIE +0.77 +- 1.16; run 41 vs the game's model TIE +1.15 +- 1.05, holding a combo worse). Done: refv2 (04:12). Next: run 42's checks (~04:50, 05:40, 06:30); block 3's end (~06:50): follow-up hits a fight (A 1.74 / B 1.75 before), starters/holders %, benchmark run42 vs ref (v2).**
+**CURRENT STEP (7 Nov 07:25): block 3 done (PARTLY MET, run 42 kept). Block 4 started: run 43 (AIR_JUMP_HIT 0.3, hits taken in the air out of its own jumps) redeploying via the watchdog. Checks ~08:20, 09:10, 10:00, then the v2 benchmark (request 'run43v2 NET suite-v2'); verdict ~10:30. Number: air2.py 'air, own jump' share of damage taken, A 31.4% -> under 12%.**
 
 ## Why this plan exists (the user, 6 Nov 06:30-07:10)
 - They want a visible improvement **every ~3 hours**, each block with **one number and a target**, reported at its end.
@@ -107,9 +107,14 @@ The user: all ways the document starts a combo, and all ways it holds one, learn
 - [x] 7 Nov 07:11 measured: see Block reports (PARTLY MET, kept)
 
 ## Block 4: its own jumps inside their reach. After block 3. Method: decided by what is found (must differ in kind if block 3 failed)
-- [ ] who presses jump in those moments: the rules (hits.csv "ruled" bits) or the network; which situation labels
-- [ ] the document's view of those jumps (T1a bait close, T9 jump reset, C3, T11b are allowed: is it their timing that is wrong?)
-- [ ] change, EXPERIMENTS row, redeploy, measure at the block's end (target: under 12% of damage taken)
+- [x] 7 Nov 07:20 who presses those jumps (tools/airjumps.py on the benchmark timelines): the network. Run 42: network jumps
+  24.2% of damage taken, rule J 3.4%, jump reset 0.2%; the game's model 19.1% / 4.0%. Mostly take-offs 4.5+ blocks out,
+  hit 5-9 ticks later. Hourly checks (air2.py): run 42 A 31.4% vs B 5.7%; situation '-' (no technique) 16%
+- [x] 7 Nov 07:20 jumps are allowed (T1a, T9, T11b; the user 2 Nov: land 2.5-3 blocks out): the timing/distance is wrong,
+  so no rule; a cost for being hit in the air out of its own jump lets PPO find the safe ones
+- [x] 7 Nov 07:25 run 43: AIR_JUMP_HIT 0.3 (953a7d5), compile-check OK, redeploy asked for via the watchdog
+- [ ] measure at the block's end (~10:30, three checks + benchmark v2): air2.py under 12% of damage taken (A 31.4% now);
+  airjumps.py network share down from 24%; follow-up combo hits not below 1.9; T9/T11b not collapsing
 
 ## Block 5: the learning itself. After block 4. Method: reward drives the keys it already copies
 - [ ] copy pulls off (or near) on keys where it agrees with the rules 90%+ (update line "rules' keys ... by head"), A/B
