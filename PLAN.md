@@ -8,7 +8,7 @@ for check 2 (done: check 1; next: check 3, verdict)". Keep this line current:
 
 For the panel (short, plain words; keep both current):
 **NOW: Block 1 · waiting for check 3 (~00:05)**
-**INSTALLED: run35-0657 · +4.5 vs B**
+**INSTALLED: run35-0657 · +4.5 vs B · since 5 Nov 21:19**
 
 **CURRENT STEP (6 Nov 23:20): block 1 (run 40), waiting for check 3 (~00:05). Done: analysis, change, check 1 (68%),
 check 2 (47%; both 57%). Next: verdict after check 3, then block 2's first box (what myRow counts).**

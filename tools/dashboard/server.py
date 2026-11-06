@@ -285,6 +285,18 @@ def read_plan():
             'blocks': blocks, 'scoreboard': score, 'reports': reports}
 
 
+PROFILE = 'C:/Users/jerem/AppData/Roaming/ModrinthApp/profiles/DRL AI'
+
+
+def installed_mod():
+    """The SwordAI jar in the user's game profile: its file name and when it was put there."""
+    jars = glob.glob(os.path.join(PROFILE, 'mods', 'swordai-*.jar'))
+    if not jars:
+        return None
+    j = max(jars, key=os.path.getmtime)
+    return {'name': os.path.basename(j), 'time': time.strftime('%d %b %H:%M', time.localtime(os.path.getmtime(j)))}
+
+
 def punish_rolling(log):
     """The training's rolling punish crit (its last 300 chances), from the newest update line."""
     try:
@@ -509,7 +521,7 @@ def build(cache, techniques, stages, prio, hits=None):
         'stages': [s for s in stages if s['name'] != 'T-F'], 'priority': prio,
         'techniques': rows, 'damage': damage[-600:], 'checks': checks[-60:], 'landing': landing, 'critChances': crit_chances, 'punish': punish,
         'models': read_models(cache.run), 'plan': read_plan(), 'experiments': read_experiments(),
-        'punishRolling': punish_rolling(log),
+        'punishRolling': punish_rolling(log), 'mod': installed_mod(),
         'served': time.strftime('%H:%M:%S'),
     }
 

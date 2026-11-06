@@ -63,13 +63,18 @@
   </div>
 
   <div class="card">
+    <h2>Models</h2>
+    <div class="nums" id="models"></div>
+  </div>
+
+  <div class="card">
     <h2>Scores (this run's checks)</h2>
     <div class="nums" id="nums"></div>
   </div>
 
   <div class="card">
     <h2>Each hourly check</h2>
-    <div class="legend"><b class="a">A − B</b> &nbsp;(above 0 = training beats the old model)</div>
+    <div class="legend"><b class="a">Training vs B</b> &nbsp;(above 0 = training beats B)</div>
     <svg id="chartAB" width="100%" height="180"></svg>
     <div class="legend" style="margin-top:10px">Punish crit after their crit: <b class="a">A</b> &nbsp;<b class="bc">B</b></div>
     <svg id="chartP" width="100%" height="150"></svg>
@@ -93,10 +98,10 @@
   <details>
     <summary>What the words mean</summary>
     <dl>
-      <dt>A</dt><dd>The network in training now.</dd>
-      <dt>B</dt><dd>An old fixed model (23 Oct). The ruler A is measured with.</dd>
-      <dt>A − B</dt><dd>Health points a fight A does better than B. ±: chance; small gaps can be luck.</dd>
-      <dt>Your game</dt><dd>The installed model. Training must beat its score to replace it.</dd>
+      <dt>A / training</dt><dd>The network in training now.</dd>
+      <dt>B</dt><dd>An old fixed model (23 Oct) that never changes. Every score is measured against it.</dd>
+      <dt>Score vs B</dt><dd>Health points a fight better than B. +4 = ends each fight 4 points better off than B.</dd>
+      <dt>Your game</dt><dd>The model in your Minecraft. Training must beat its score vs B to replace it.</dd>
       <dt>Check</dt><dd>Every hour A and B play the same 45 fights.</dd>
       <dt>Punish crit</dt><dd>Their hit lifts you, you crit them on the way down.</dd>
       <dt>Run</dt><dd>One change to the training, numbered.</dd>
@@ -132,6 +137,12 @@ function render(d) {
   $('progt').textContent = cur ? cur.done + ' of ' + cur.total + ' steps' : '';
 
   const runs = (d.experiments && d.experiments.runs) || [], run = runs[runs.length - 1];
+  const inst = (plan.installed || '').split(' · ');
+  const steps = d.now && d.now.steps ? (d.now.steps / 1e6).toFixed(1) + 'M steps' : '';
+  $('models').innerHTML = [
+    num('Training now', `<span class="a">run ${esc(run ? run.id : '–')}</span>`, `${steps} · learning since ${esc(run ? run.at.slice(6) + ' (' + run.at.slice(3, 5) + '/' + run.at.slice(0, 2) + ')' : '–')}`),
+    num('In your game', esc(inst[0] || '–'), `${esc(inst[2] || '')} · mod ${esc(d.mod ? d.mod.name.replace('swordai-', '').replace('.jar', '') + ', ' + d.mod.time : '–')}`),
+  ].join('');
   const checks = (d.checks || []).filter((c) => c.kind === 'school network');
   const mine = run ? checks.filter((c) => c.time >= run.at) : [];
   const last = checks[checks.length - 1] || {};
@@ -144,7 +155,8 @@ function render(d) {
   const sw = last.aSwings, swb = last.bSwings;
   const target = ((plan.scoreboard || [])[0] || {}).target || '';
   $('nums').innerHTML = [
-    num('Training vs old model', sg(mean), `${ab.length} checks · your game: ${esc(plan.installed || '–')}`, mean > 0 ? 'ok' : mean < 0 ? 'bad' : ''),
+    num('Score vs B (higher = better)', `<span class="a">${sg(mean)}</span> <span style="font-size:15px;font-weight:500" class="muted">training</span>`,
+      `<b style="font-size:20px;color:var(--fg)">${esc(((plan.installed || '').match(/([+-]\d+(?:\.\d+)?)\s*vs B/) || [0, '–'])[1])}</b> your game's model<br>different test fights: roughly comparable`),
     num('Punish crit after their crit', `<span class="a">${pc(pA) ?? '–'}%</span>`, `B ${pc(pB) ?? '–'}% · was 46% · goal ${esc(target.replace(/^block \d+: /, ''))}`),
     num('Jump-ins punished', `<span class="a">${pc(jA) ?? '–'}%</span>`, `B ${pc(jB) ?? '–'}%`),
     num('Swings that hit', `<span class="a">${sw ? Math.round(100 * sw[2] / sw[0]) : '–'}%</span>`, `B ${swb ? Math.round(100 * swb[2] / swb[0]) : '–'}% · last check`),
