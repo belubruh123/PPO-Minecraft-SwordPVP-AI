@@ -7,10 +7,10 @@ the time), write each block's verdict under it, and commit. Never delete a block
 for check 2 (done: check 1; next: check 3, verdict)". Keep this line current:
 
 For the panel (short, plain words; keep both current):
-**NOW: Block 2 · the benchmark · first comparison (run 41 vs your game's model)**
+**NOW: Block 3 · combo starters and holders · run 42 (combo reward) training**
 **INSTALLED: run35-0657 · +4.5 vs B · since 5 Nov 21:19**
 
-**CURRENT STEP (7 Nov 03:45): block 2 ending, block 3 ready. Waiting: run 41's third check (03:29, ends ~04:05) = run 41's verdict; then the benchmark run41a (queued, suite v1) vs ref1. Run 42 (combo reward, committed 8de2836) deploys after that via run/redeploy-request (on run 41's line, or with COPY_OLD_BODY back on if run 41 is reverted). Then the v2 references.**
+**CURRENT STEP (7 Nov 03:50): block 3, run 42 (combo reward) training since 03:47. Block 2 done: benchmark works (A/A TIE +0.77 +- 1.16; run 41 vs the game's model TIE +1.15 +- 1.05, holding a combo worse). Next: v2 references (refv2a, refv2b: 'TAG NET suite-v2' in run/bench-request) at a quiet time; run 42's checks (~04:50, 05:40, 06:30); block 3's end (~06:50): follow-up hits a fight (A 1.74 / B 1.75 before), starters/holders %, benchmark run42 vs ref (v2).**
 
 ## Why this plan exists (the user, 6 Nov 06:30-07:10)
 - They want a visible improvement **every ~3 hours**, each block with **one number and a target**, reported at its end.
@@ -102,7 +102,7 @@ The user: all ways the document starts a combo, and all ways it holds one, learn
   damage +-6; no separate stun-start term (it would pay hit-and-out). Committed 8de2836, compile-check OK
 - [x] 7 Nov 03:35 nothing to lower: every starter/holder pull is already 0 (SchoolStages.PULL_CAP = 0; "pull 2.00" is a
   share capped to 0). Reviews kept
-- [ ] core tests, compile-check, EXPERIMENTS row, redeploy (not during a check, 20 min after the last)
+- [x] 7 Nov 03:47 core tests, compile-check, EXPERIMENTS row 42, redeployed via the watchdog (first update: 38 follow-up hits paid)
 - [ ] measure at the block's end with the benchmark (docs/BENCHMARK.md): starters/holders %, follow-up combo hits A vs B, A-B; verdict; if flat -> block 4's method differs
 
 ## Block 4: its own jumps inside their reach. After block 3. Method: decided by what is found (must differ in kind if block 3 failed)
