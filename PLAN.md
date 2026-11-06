@@ -7,11 +7,10 @@ the time), write each block's verdict under it, and commit. Never delete a block
 for check 2 (done: check 1; next: check 3, verdict)". Keep this line current:
 
 For the panel (short, plain words; keep both current):
-**NOW: Block 1 · waiting for check 3 (~00:05) · then run 41 and the benchmark**
+**NOW: Block 1 · waiting for check 3 · run 41 ready · benchmark being built**
 **INSTALLED: run35-0657 · +4.5 vs B · since 5 Nov 21:19**
 
-**CURRENT STEP (6 Nov 23:20): block 1 (run 40), waiting for check 3 (~00:05). Done: analysis, change, check 1 (68%),
-check 2 (47%; both 57%). Next: verdict after check 3, then block 2's first box (what myRow counts).**
+**CURRENT STEP (7 Nov 00:00): block 1 (run 40), waiting for check 3. Run 41 is coded and committed (deploys with the benchmark's Java part after check 3). Block 2, the benchmark, is being built by two background agents (Java bench mode; tools/bench.py scorer); review their work, compile-check, commit, redeploy once.**
 
 ## Why this plan exists (the user, 6 Nov 06:30-07:10)
 - They want a visible improvement **every ~3 hours**, each block with **one number and a target**, reported at its end.
