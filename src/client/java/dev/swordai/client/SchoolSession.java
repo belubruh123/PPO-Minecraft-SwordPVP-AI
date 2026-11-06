@@ -161,6 +161,18 @@ public final class SchoolSession implements AgentSession {
 	private int lastOwnHitAt = -1000;
 	private int comboHitsPaid;
 	/**
+	 * Run 43 (block 4, 7 Nov): a hit taken in the air from a jump the network pressed costs this on top of its damage. In run
+	 * 42's benchmark (tools/airjumps.py) 24% of the damage it took came that way (jumps no rule pressed; rule jumps 3%), the
+	 * game's model 19%, the 23 Oct model 6% in the hourly checks; most were take-offs 4.5+ blocks out, hit 5-9 ticks later
+	 * on the way in. Jumping in is not banned (the user, 2 Nov: land 2.5-3 blocks out, not in their reach; the document's
+	 * T1a, T9, T11b jump): only being hit in the air out of one's own jump costs more, so PPO finds when a jump is safe.
+	 * Size: about 1.8 such hits an episode in that benchmark, about -0.5 a fight against the damage reward's +-6.
+	 */
+	static final float AIR_JUMP_HIT = 0.3f;
+	/** In the air from a jump the network pressed on the ground (not a rule's), until it stands again; such hits since the update. */
+	private boolean ownJumpAir;
+	private int airJumpHits;
+	/**
 	 * The crit swing's pay only in a lift by their hit (the punish crit's chance), and no pay for other crits (OTHER_CRIT 0),
 	 * from 29 Oct 07:10: on fresh seeds (pairs 1700-2431) the school network jumped in at an opponent standing with its sword
 	 * ready 3.4 times as often as the installed model (1.33 a fight to 0.39), was hit first 0.90 a fight and hit first 0.34,
@@ -2094,6 +2106,7 @@ public final class SchoolSession implements AgentSession {
 		frozenTicks = 0;
 		fightTicks = 0;
 		lastOwnHitAt = -1000;
+		ownJumpAir = false;
 		java.util.Arrays.fill(rowDealt, 0);
 		java.util.Arrays.fill(rowTaken, 0);
 		java.util.Arrays.fill(sinceSwing, 999);
@@ -2523,6 +2536,11 @@ public final class SchoolSession implements AgentSession {
 				if (clicked && critChanceAtClick && (!CRIT_SWING_IN_LIFTS_ONLY || liftedFor >= 0)) {
 					reward += CRIT_SWING;
 					critSwings++;
+				}
+				// Run 43 (AIR_JUMP_HIT): hit in the air out of its own jump.
+				if (facts.hitsTaken > 0 && !facts.onGround && ownJumpAir) {
+					reward -= AIR_JUMP_HIT;
+					airJumpHits++;
 				}
 				// The combo reward (run 42, COMBO_HIT): a trade (both hit this tick) or a hit taken ends its combo.
 				if (facts.hitsTaken > 0) {
@@ -2956,6 +2974,10 @@ public final class SchoolSession implements AgentSession {
 				&& (step.teacherHeads & ActionSpace.mask(ActionSpace.ATTACK)) != 0
 				? ruled & dev.swordai.core.school.SchoolStages.PUNISH_SHADOW_KEYS : 0;
 		learner.act(step, keys, ruled, mode == Mode.TRAIN, cfg.playTemperature, action);
+		// Run 43: a take-off on the ground by the network (not a rule's jump) marks the air until it stands again.
+		if (me.onGround()) {
+			ownJumpAir = action[ActionSpace.JUMP] == 1 && (ruled & (1 << ActionSpace.JUMP)) == 0;
+		}
 		if (mode == Mode.CHECK) {
 			fairJump.apply(action, me.onGround(), clock.ticksSinceHitTaken, clock.takenStreak.hits());
 		}
@@ -4192,14 +4214,15 @@ public final class SchoolSession implements AgentSession {
 		pullsNow = stages.techPulls();
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
-				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {} ({} in {} drill fights), other crits {}, combo follow-up hits rewarded {} "
+				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {} ({} in {} drill fights), other crits {}, combo follow-up hits rewarded {}, hits taken in the air from its own jump {} "
 				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} (the golden rule held the swing on {} ticks, the installed model's rules set keys on {}) | swings: {} | review of the old stages:{} | bots went into:{} | taught now:{} | sparring the installed model:{} | take-over:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
-				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits, comboHitsPaid,
+				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits, comboHitsPaid, airJumpHits,
 				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2Held, ruleTicks, swingLine(0), reviewLine(), used, taughtNowLine(), sparLine(), takeOverLine());
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		comboHitsPaid = 0;
+		airJumpHits = 0;
 		drillPunishCrits = 0;
 		drillFights = 0;
 		otherCrits = 0;
