@@ -7,10 +7,10 @@ the time), write each block's verdict under it, and commit. Never delete a block
 for check 2 (done: check 1; next: check 3, verdict)". Keep this line current:
 
 For the panel (short, plain words; keep both current):
-**NOW: Block 1 · waiting for check 3 · run 41 ready · benchmark being built**
+**NOW: Block 2 · the benchmark · run 41 starting**
 **INSTALLED: run35-0657 · +4.5 vs B · since 5 Nov 21:19**
 
-**CURRENT STEP (7 Nov 00:00): block 1 (run 40), waiting for check 3. Run 41 is coded and committed (deploys with the benchmark's Java part after check 3). Block 2, the benchmark, is being built by two background agents (Java bench mode; tools/bench.py scorer); review their work, compile-check, commit, redeploy once.**
+**CURRENT STEP (7 Nov 00:10): block 1 done (MISSED, run 40 reverted). Run 41 deploying via the watchdog (run/redeploy-request; never redeploy from the session). Block 2 (benchmark): Java part committed; tools/bench.py being finished by its agent (overlap and bot-part fixes); then commit it, the A/A test (run35-0657 vs itself: write 'aa1 run/best-run35/run35-0657.bin' to run/bench-request, then 'aa2 ...'), panel box.**
 
 ## Why this plan exists (the user, 6 Nov 06:30-07:10)
 - They want a visible improvement **every ~3 hours**, each block with **one number and a target**, reported at its end.
@@ -66,7 +66,7 @@ keys (pull 0.29), and the only sparring partner (school/league is empty). Two be
 - [x] 6 Nov 23:58 SchoolStages.COPY_OLD_BODY = false (body copy and its replay off); camera copy KEPT (aim broke when faded, 24 Oct); rules stay; core tests pass
 - [x] 6 Nov 23:58 school/league/game-run35-0657.bin (half of the sparring from the next start)
 - [x] EXPERIMENTS row 41
-- [ ] redeploy after check 3, together with the benchmark's Java part (one restart); then measure
+- [x] 7 Nov 00:06 redeploy asked of the watchdog (run 41 + the bench mode + run 40's revert, one restart)
 
 ## Block 2: the benchmark. After run 41, a few hours of building. Method: build docs/BENCHMARK.md (the user, 6 Nov 23:50: "redesign the entire benchmark system")
 Skill tests per technique family + head-to-head against the game's model + the bot fights, all in HP per real fight,
