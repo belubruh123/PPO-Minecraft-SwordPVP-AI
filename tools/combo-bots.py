@@ -47,6 +47,7 @@ def kind_of(p, head):
 
 def main():
     stats = collections.defaultdict(lambda: collections.Counter())
+    theirs = collections.defaultdict(lambda: collections.Counter())
     answer = collections.defaultdict(list)
     for p in files(sys.argv[1:]):
         try:
@@ -93,6 +94,27 @@ def main():
             s['combos 2+'] += 1
         if run >= 3:
             s['combos 3+'] += 1
+        # Their combos on it, the same way (which bot's way of holding a combo works in this game).
+        o = theirs[k]
+        o['fights'] += 1
+        orun, olast = 0, -1000
+        for r in rows:
+            if len(r) < 15:
+                continue
+            t, ev = int(r[0]), r[14]
+            if 'DEALT' in ev:
+                orun = 0
+                continue
+            if 'TAKEN' in ev:
+                if t - olast <= GAP and orun >= 1:
+                    orun += 1
+                    o['reached 2'] += orun == 2
+                    o['reached 3'] += orun == 3
+                    o['reached 4'] += orun == 4
+                else:
+                    orun = 1
+                    o['first hits'] += 1
+                olast = t
     print('%-20s %6s %10s %10s %10s %12s %16s' % ('opponent', 'fights', 'starts/f', '2+ a fight', '3+ a fight', '2 -> 3', 'hit back after'))
     order = sorted(stats, key=lambda k: (k != 'real players', k))
     for k in order:
@@ -104,6 +126,13 @@ def main():
         print('%-20s %6d %10.2f %10.2f %10.2f %11.0f%% %8s ticks, <=10: %3.0f%%' % (
             k, s['fights'], s['first hits'] / n, s['reached 2'] / n, s['reached 3'] / n,
             100 * s['reached 3'] / max(1, s['reached 2']), med if med is not None else '-', 100 * quick))
+    print()
+    print('their combos on it: %-12s %6s %10s %10s %10s %8s %8s' % ('opponent', 'fights', 'starts/f', '2+ a fight', '3+ a fight', '2 -> 3', '3 -> 4'))
+    for k in order:
+        o = theirs[k]
+        n = max(1, o['fights'])
+        print('%-32s %6d %10.2f %10.2f %10.2f %7.0f%% %7.0f%%' % (k, o['fights'], o['first hits'] / n, o['reached 2'] / n, o['reached 3'] / n,
+              100 * o['reached 3'] / max(1, o['reached 2']), 100 * o['reached 4'] / max(1, o['reached 3'])))
 
 
 if __name__ == '__main__':
