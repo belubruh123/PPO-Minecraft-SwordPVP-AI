@@ -3,6 +3,12 @@
 **Read this after every compaction or new session, right after HANDOFF.md section 1.** Tick a box when it is done (with
 the time), write each block's verdict under it, and commit. Never delete a block: mark it done, dropped or moved.
 
+**Every report to the user starts with the plan step I am on** (the user, 6 Nov 22:55), e.g. "Plan: block 1, waiting
+for check 2 (done: check 1; next: check 3, verdict)". Keep this line current:
+
+**CURRENT STEP (6 Nov 22:55): block 1 (run 40), waiting for check 2 (~23:40). Done: analysis, change, check 1 (68%).
+Next: check 3 (~00:30), verdict, then block 2's first box (what myRow counts).**
+
 ## Why this plan exists (the user, 6 Nov 06:30-07:10)
 - They want a visible improvement **every ~3 hours**, each block with **one number and a target**, reported at its end.
 - **It is PPO, not supervised.** Every update now teaches four copy targets (technique teacher, installed network, rules'
