@@ -71,8 +71,11 @@ keys (pull 0.29), and the only sparring partner (school/league is empty). Two be
 Skill tests per technique family + head-to-head against the game's model + the bot fights, all in HP per real fight,
 weighted by how often each situation happens in the user's real duels; verdict BETTER/TIE/WORSE with noise; A/A test first.
 - [x] 6 Nov 23:55 design written: docs/BENCHMARK.md
-- [ ] situation detectors + outcome rows per test; a BENCH mode playing a suite with a given network -> bench/<model>-v1.csv
-- [ ] head-to-head through the league slot (SchoolBotPilot with R's network and rules), mirrored seeds
+- [x] 7 Nov 00:20 BENCH mode (a background agent; reviewed, compile-checked, committed 9d325ce): school/bench-suite.txt in a check plays
+  tools/bench/suite-v1.txt with one network on side A, each episode recorded tick by tick to swordai/bench/<tag>/<iiii>-<bot>.txt.gz,
+  DONE at the end; tools/bench-run.sh TAG NET. START IT ONLY via the watchdog: write "TAG NET" to run/bench-request
+  (the runner swaps NET into training's slot; a session that dies mid-run must not leave it there)
+- [x] head-to-head: suite line h2h 20 plays against school/league/game-run35-0657.bin (untested at runtime)
 - [ ] real-fight frequencies per situation from the user's duels (tools/bench-weights.py)
 - [ ] scorer tools/bench.py: per test C, R, diff, noise; total; verdict; bench/latest.json
 - [ ] the panel's "Benchmark: candidate vs your game" box
