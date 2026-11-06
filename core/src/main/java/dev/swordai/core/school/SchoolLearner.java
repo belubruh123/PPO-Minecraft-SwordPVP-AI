@@ -293,7 +293,7 @@ public final class SchoolLearner implements AutoCloseable {
 			ruledReplay.addFrom(rollout);
 		}
 		if (set.oldPull > 0f) {
-			shadowReplay.installedBody = set.installedBody;
+			shadowReplay.installedBody = set.installedBody && SchoolStages.COPY_OLD_BODY;
 			shadowReplay.addFrom(rollout);
 		}
 		if (!set.criticOnly && set.replayBatches > 0) {

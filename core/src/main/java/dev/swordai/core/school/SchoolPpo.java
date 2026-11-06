@@ -314,7 +314,7 @@ public final class SchoolPpo implements AutoCloseable {
 				// (The jump taught at every moment, SchoolStages#JUMP_EVERYWHERE, leaves the rest of the step as it was.)
 				int techOther = r.jumpPull[i] > 0f ? tech & ~(1 << ActionSpace.JUMP) : tech;
 				boolean between = techOther == 0 || which == dev.swordai.core.pvp.Technique.BASE.ordinal();
-				boolean installedHere = old && (camera || set.installedBody && between && !byTech);
+				boolean installedHere = old && (camera || set.installedBody && SchoolStages.COPY_OLD_BODY && between && !byTech);
 				float pull = byTech ? (which >= 0 ? set.techPulls[which] : 0f)
 						: installedHere ? (camera || set.oldBodyPull < 0f ? set.oldPull : set.oldBodyPull) : 0f;
 				// A technique's keys (not the camera, not the ordinary fight's) by how the fight went after them: see TEACH_AWR_MOST.

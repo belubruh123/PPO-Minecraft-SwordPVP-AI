@@ -52,7 +52,7 @@ Measure from the checks' hit log: `C:/Python38/python.exe -I tools/lastchecks.py
   checks and hits.csv live, so it changes with every commit; the watchdog keeps it running
 - [ ] check 3
 - [ ] verdict after check 3: kept if the share is 55%+ and A-B not clearly under +0.6; else revert to run 39 (JUMP_IN_GUARD logic) and say why
-- [ ] after check 3 (user, 23:30: "why not let B be the installed model"): screen the game's model on the SAME pairs as the
+- [ ] DROPPED for the benchmark (it compares with the game's model directly): screen the game's model on the SAME pairs as the
   hourly check, `FROM=0 bash tools/screen.sh 45 /d/swordai/run/best-run35/run35-0657.bin:1` (B stays the ruler: it is also the
   training's copy target and sparring partner, so swapping it would change training). Then the panel shows
   training vs your game = each check's A-B minus that screen's A-B (same fights); add the line INSTALLED_SAME_PAIRS to this file
@@ -62,10 +62,11 @@ Measure from the checks' hit log: `C:/Python38/python.exe -I tools/lastchecks.py
 ## Run 41, between blocks 1 and 2 (user, 6 Nov 23:45: "it learns from the 23 Oct model?"). Method: stop copying a worse model
 The 23 Oct model is B, AND the training's copy target (installed pull 0.05, its replayed moves), the source of the rules'
 keys (pull 0.29), and the only sparring partner (school/league is empty). Two better models were installed since.
-- [ ] find the switches: the installed pull (stage line "installed network's pull"), the installed's replayed examples, oldPull
-- [ ] installed pull 0 and its replay off; the rules stay (hand-written code)
-- [ ] the game's model as sparring partner: run35-0657.bin into run/swordai/school/league/ (LEAGUE_SHARE 0.5 of sparring)
-- [ ] EXPERIMENTS row 41, redeploy after check 3 and the same-pairs screen, measure on the hourly checks + training vs your game
+- [x] 6 Nov 23:58 switches found: body copy = SchoolPpo installedHere (body pull floor 0.05) + TeacherReplay installedBody; camera = OLD_PULL
+- [x] 6 Nov 23:58 SchoolStages.COPY_OLD_BODY = false (body copy and its replay off); camera copy KEPT (aim broke when faded, 24 Oct); rules stay; core tests pass
+- [x] 6 Nov 23:58 school/league/game-run35-0657.bin (half of the sparring from the next start)
+- [x] EXPERIMENTS row 41
+- [ ] redeploy after check 3, together with the benchmark's Java part (one restart); then measure
 
 ## Block 2: the benchmark. After run 41, a few hours of building. Method: build docs/BENCHMARK.md (the user, 6 Nov 23:50: "redesign the entire benchmark system")
 Skill tests per technique family + head-to-head against the game's model + the bot fights, all in HP per real fight,

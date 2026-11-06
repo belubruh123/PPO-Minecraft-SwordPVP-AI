@@ -324,6 +324,14 @@ public final class SchoolStages {
 	// spread into the whole fight (S 166 a minute off the moments to its 79, swings 22 to 40; 09:49 check).
 	public static final float OLD_PULL = 0.5f; // run 6 (EXPERIMENTS.md): the anchor loosened (1.0 in runs 2-5; 2 proposed 09:55)
 	/**
+	 * Run 41 (7 Nov): whether the installed model (the 23 Oct one, B of the checks) still teaches the body's keys between the
+	 * techniques, directly (SchoolPpo, at the body pull's floor of 0.05) and through its replayed examples (TeacherReplay).
+	 * The user, 6 Nov 23:45: two better models have been installed in their game since; learning from the 23 Oct one pulls it
+	 * toward a worse model. Off: its body keys are no longer copied. The camera stays copied (OLD_PULL): when the copying
+	 * faded off every key on 24 Oct, the aim broke in the user's real fights; that is left until the benchmark measures aim.
+	 */
+	public static final boolean COPY_OLD_BODY = false;
+	/**
 	 * About a day on the screen. Since the overlay (24 Oct) the installed model teaches the fighting between the techniques,
 	 * not only the camera: it stays the network's teacher there until the network plays as well as it does.
 	 */
