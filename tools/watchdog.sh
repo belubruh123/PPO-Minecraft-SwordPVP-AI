@@ -7,6 +7,12 @@ S="${SWORDAI_TOOLS:-/d/swordai/tools}"
 L=/d/swordai/run/school-client.log
 LOG=/d/swordai/run/watchdog.log
 LOCK=/d/swordai/run/watchdog.lock
+# The progress panel (tools/dashboard, port 8765, 6 Nov): started again when nothing answers there, so it outlives the app.
+if ! curl -s -m 5 -o /dev/null http://localhost:8765/; then
+  echo "$(date '+%m-%d %H:%M') the panel does not answer: starting it" >> $LOG
+  cd /d/swordai && nohup C:/Python38/python.exe tools/dashboard/server.py > /d/swordai/run/panel.out 2>&1 &
+  disown
+fi
 [ -f /d/swordai/run/school-cycle.stop ] && exit 0
 # A restart of its own still going (it waits up to 10 minutes for the world).
 if [ -f $LOCK ] && [ $(( $(date +%s) - $(stat -c %Y $LOCK) )) -lt 1800 ]; then

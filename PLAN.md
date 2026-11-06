@@ -33,7 +33,7 @@ Measure from the checks' hit log: `C:/Python38/python.exe -I tools/lastchecks.py
 | Sprint hits on them falling (K2 broken) | check line "K2 broken" | 31-61 a check | falls |
 | A - B a fight | hourly check ALL row | run 39 mean +0.6 over nine | not clearly worse |
 
-## Block 1: punish crit on jump-ins (run 40). 06:22 to ~09:30. Method: a rule (hold until they land, only a crit swing)
+## Block 1: punish crit on jump-ins (run 40). 6 Nov 06:22 to check 3 (~7 Nov 00:30; outage 07:13-22:38). Method: a rule (hold until they land, only a crit swing)
 - [x] 06:10 analysis (EXPERIMENTS row 40; tools/punish.py, punish2.py, k2hole.py, air.py)
 - [x] 06:16 change: SchoolSession.critSwingNow, hold until they land, SchoolFighter.holdJumpInSwing (fights)
 - [x] 06:22 redeployed, training run 40
@@ -48,7 +48,7 @@ Measure from the checks' hit log: `C:/Python38/python.exe -I tools/lastchecks.py
 - [ ] if kept: ask the user to install the run-40 jar before they play on 7 Nov (tools/install-ab.sh, same five arms:
   `noback=@installed,on,,1,noback old1418=.../run23-1418.bin run26=.../run26-0413.bin old0739=.../run30h-0739.bin`, --dry first)
 
-## Block 2: combo starters and holders. ~09:30 to 12:30. Method: exact-moment drills + reward on the result
+## Block 2: combo starters and holders. ~7 Nov 00:30 to 03:30. Method: exact-moment drills + reward on the result
 The user: all ways the document starts a combo, and all ways it holds one, learned by reward (copying only a light hint).
 - Starters (doc Part 2, "ways to start a stun"): T4 deflection, T5 reverse deflection, T6/T6a make them miss then stun,
   T7 three-block hit, T8 hit the rising jumper, T9 jump reset (also starts stuns).
@@ -62,12 +62,12 @@ The user: all ways the document starts a combo, and all ways it holds one, learn
   hit taken; small enough not to swamp the damage reward (look at PUNISH_CRIT / OTHER_CRIT sizes)
 - [ ] lower the copy pull for these techniques (the stage's pulls 2.0-3.0 now), keep the reviews
 - [ ] core tests, compile-check, EXPERIMENTS row 41, redeploy (not during a check, 20 min after the last)
-- [ ] measure at ~12:30: starters/holders %, follow-up combo hits A vs B, A-B; verdict; if flat -> block 3's method differs
+- [ ] measure at the block's end (~03:30): starters/holders %, follow-up combo hits A vs B, A-B; verdict; if flat -> block 3's method differs
 
-## Block 3: its own jumps inside their reach. ~12:30 to 15:30. Method: decided by what is found (must differ in kind if block 2 failed)
+## Block 3: its own jumps inside their reach. ~7 Nov 03:30 to 06:30. Method: decided by what is found (must differ in kind if block 2 failed)
 - [ ] who presses jump in those moments: the rules (hits.csv "ruled" bits) or the network; which situation labels
 - [ ] the document's view of those jumps (T1a bait close, T9 jump reset, C3, T11b are allowed: is it their timing that is wrong?)
-- [ ] change, EXPERIMENTS row, redeploy, measure at ~15:30 (target: under 12% of damage taken)
+- [ ] change, EXPERIMENTS row, redeploy, measure at the block's end (~06:30, target: under 12% of damage taken)
 
 ## Block 4: the learning itself. After block 3. Method: reward drives the keys it already copies
 - [ ] copy pulls off (or near) on keys where it agrees with the rules 90%+ (update line "rules' keys ... by head"), A/B

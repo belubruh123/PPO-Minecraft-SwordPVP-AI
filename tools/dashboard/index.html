@@ -3,512 +3,299 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SwordAI school</title>
+<title>SwordAI training</title>
 <style>
   :root {
-    --bg: #f6f6f3; --panel: #ffffff; --fg: #1d1d1b; --muted: #6b6b66; --line: #deded8; --soft: #efefea;
-    --accent: #1f5fa8; --good: #2e7d32; --mid: #9a6400; --bad: #b3261e; --dealt: #1f5fa8; --taken: #c05621; --teacher: #8a8a84;
+    --bg: #f5f5f2; --panel: #ffffff; --fg: #1c1c1a; --muted: #686862; --line: #dcdcd5; --soft: #eeeee8;
+    --accent: #1f5fa8; --b: #8a8a84; --good: #2e7d32; --mid: #9a6400; --bad: #b3261e;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #151514; --panel: #1d1d1b; --fg: #e7e7e2; --muted: #9b9b94; --line: #33332f; --soft: #262623;
-      --accent: #6aa2e0; --good: #6cbf73; --mid: #d6a14a; --bad: #e0675e; --dealt: #6aa2e0; --taken: #e08a50; --teacher: #8d8d86;
+      --bg: #141413; --panel: #1c1c1a; --fg: #e8e8e3; --muted: #9c9c95; --line: #34342f; --soft: #262623;
+      --accent: #6aa2e0; --b: #8d8d86; --good: #6cbf73; --mid: #d6a14a; --bad: #e0675e;
     }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  main { max-width: 1180px; margin: 0 auto; padding: 16px; }
-  h1 { font-size: 18px; margin: 0 0 2px; font-weight: 600; }
-  section, .stat { min-width: 0; }
-  h2 { font-size: 15px; margin: 0 0 8px; font-weight: 600; }
-  .status { color: var(--muted); }
-  .status b { color: var(--fg); font-weight: 600; }
-  .warn { color: var(--mid); }
-  .err { color: var(--bad); }
-  section { background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 12px 14px; margin-top: 14px; }
-  .num, td.n, th.n { font-variant-numeric: tabular-nums; }
-  td.n, th.n { text-align: right; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); gap: 10px 18px; }
-  .stat .k { color: var(--muted); font-size: 12px; }
-  .stat .v { font-size: 16px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-  .bar { position: relative; height: 8px; background: var(--soft); border: 1px solid var(--line); margin-top: 4px; }
-  .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+  h1 { font-size: 20px; margin: 0; font-weight: 650; }
+  h2 { font-size: 16px; margin: 0 0 4px; font-weight: 650; }
+  .lede { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; margin-top: 14px; min-width: 0; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 13px; font-weight: 600; border: 1px solid currentColor; }
+  .ok { color: var(--good); } .warn { color: var(--mid); } .bad { color: var(--bad); } .muted { color: var(--muted); }
+  .step { font-size: 17px; line-height: 1.45; margin: 4px 0 2px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 12px; }
+  .tile { border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; min-width: 0; }
+  .tile .k { font-size: 13px; color: var(--muted); }
+  .tile .v { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .tile .v small { font-size: 14px; font-weight: 500; color: var(--muted); }
+  .tile .d { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+  .a { color: var(--accent); } .bcol { color: var(--b); }
   .scroll { overflow-x: auto; }
-  table { border-collapse: collapse; width: 100%; }
-  th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--line); padding: 5px 8px; white-space: nowrap; }
-  td { border-bottom: 1px solid var(--soft); padding: 5px 8px; vertical-align: middle; white-space: nowrap; }
-  tr.group td { background: var(--soft); color: var(--muted); font-size: 12px; font-weight: 600; padding: 4px 8px; }
-  tr.group td.now { color: var(--fg); }
-  tr.sk { cursor: pointer; }
-  tr.sk:hover td { background: var(--soft); }
-  tr.sel td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
-  .tag { font-size: 11px; border: 1px solid var(--line); padding: 0 4px; margin-left: 6px; color: var(--muted); }
-  .tag.p { border-color: var(--accent); color: var(--accent); }
-  .tag.s { border-color: var(--bad); color: var(--bad); }
-  .meter { position: relative; width: 150px; height: 10px; background: var(--soft); border: 1px solid var(--line); display: inline-block; vertical-align: middle; }
-  .meter i { position: absolute; left: 0; top: 0; bottom: 0; }
-  .meter s { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--muted); opacity: .6; }
-  .pct { display: inline-block; width: 46px; text-align: right; margin-right: 8px; font-variant-numeric: tabular-nums; }
-  .good { color: var(--good); } .mid { color: var(--mid); } .bad { color: var(--bad); } .muted { color: var(--muted); }
-  .chart { width: 100%; height: 230px; display: block; }
-  .readout { color: var(--muted); font-size: 12px; min-height: 18px; font-variant-numeric: tabular-nums; }
-  .legend { font-size: 12px; color: var(--muted); }
-  .legend span { margin-right: 14px; white-space: nowrap; }
-  .legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 5px; }
-  .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
-  @media (max-width: 820px) { .two { grid-template-columns: minmax(0, 1fr); } }
-  @media (max-width: 520px) { main { padding: 10px; } section { padding: 10px; } }
-  .note { color: var(--muted); font-size: 12px; margin-top: 6px; }
-  footer { color: var(--muted); font-size: 12px; margin: 14px 0 30px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12.5px; border-bottom: 1px solid var(--line); padding: 6px 8px; }
+  td { border-bottom: 1px solid var(--soft); padding: 6px 8px; vertical-align: top; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .bar { height: 8px; background: var(--soft); border-radius: 4px; overflow: hidden; min-width: 80px; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  .block { display: grid; grid-template-columns: 1fr; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--soft); }
+  .block:last-child { border-bottom: 0; }
+  .block .t { font-weight: 600; }
+  .block.now .t::before { content: "▶ "; color: var(--accent); }
+  .tech { display: grid; grid-template-columns: 52px minmax(0, 1fr) 110px 70px 70px; gap: 8px; align-items: center; padding: 4px 0; font-size: 14px; }
+  .tech .id { font-weight: 650; }
+  .tech .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tech .pct { text-align: right; font-variant-numeric: tabular-nums; }
+  .group { margin-top: 10px; font-weight: 600; color: var(--muted); font-size: 13px; }
+  dl { display: grid; grid-template-columns: minmax(120px, 210px) 1fr; gap: 6px 14px; margin: 0; font-size: 14px; }
+  dt { font-weight: 650; } dd { margin: 0; color: var(--fg); }
+  svg text { fill: var(--muted); font-size: 11px; }
+  .legend { font-size: 13px; color: var(--muted); }
+  .legend b { font-weight: 650; }
+  @media (max-width: 640px) {
+    .tech { grid-template-columns: 44px minmax(0, 1fr) 60px 56px; }
+    .tech .trend { display: none; }
+    dl { grid-template-columns: 1fr; } dd { margin-bottom: 6px; }
+  }
 </style>
 </head>
 <body>
 <main>
-  <h1>SwordAI technique school</h1>
-  <div class="status" id="status">Loading...</div>
+  <header>
+    <h1>SwordAI training</h1>
+    <span id="state" class="pill muted">loading…</span>
+    <span class="muted" id="served"></span>
+  </header>
 
   <section>
-    <h2>Now</h2>
-    <div class="grid" id="now"></div>
+    <h2>What is being done right now</h2>
+    <p class="lede">Straight from PLAN.md, the plan in 3-hour blocks; each block has one number to move and a target.</p>
+    <div class="step" id="step">–</div>
+    <div class="muted" id="stepTime"></div>
+    <div id="runNow" style="margin-top:8px"></div>
+    <div id="blocks" style="margin-top:8px"></div>
   </section>
 
   <section>
-    <h2>Models compared (fresh seeds)</h2>
-    <div class="note">Each model's lead over the old installed AI a fight: damage dealt minus taken, in the logs' units (one normal hit = 7,
-      a knockout = 77). Checked on seeds never used to pick it. Scripted: against the technique bots. Mirror: head to head against the
-      server's copy of the installed AI. A lead is real when it is about twice its &plusmn; or more.</div>
-    <div class="scroll"><table id="models"></table></div>
+    <h2>Is it getting better?</h2>
+    <p class="lede">From the hourly checks: <b class="a">A</b> (the network in training) and <b class="bcol">B</b> (a fixed old model) fight the same 45 bot fights. See "What the words mean" below.</p>
+    <div class="grid" id="tiles"></div>
+    <h2 style="margin-top:16px">The plan's scoreboard</h2>
+    <div class="scroll"><table id="score"></table></div>
   </section>
 
   <section>
-    <h2>Skills</h2>
-    <div class="note">Done = the moments of the last 40 where it pressed the teacher's keys, on time (the school's own measure). Paid = done
-      and no damage lost over the moment. Keys as taught = ticks where its most likely keys are the teacher's. Lines on the bar: 65% and 85%.
-      Click a row for its chart.</div>
-    <div class="scroll"><table id="skills"></table></div>
+    <h2>Checks over time</h2>
+    <p class="lede">Each dot is one hourly check. Vertical lines mark where a run (one change to the training) started.</p>
+    <div class="legend"><b class="a">A − B</b> per fight, with its noise (the whisker). Above 0 = A did better than B.</div>
+    <svg id="chartAB" width="100%" height="220" role="img" aria-label="A minus B per check"></svg>
+    <div class="legend" style="margin-top:10px">After their crit, its next hit is a crit: <b class="a">A</b> and <b class="bcol">B</b> (%).</div>
+    <svg id="chartPunish" width="100%" height="200" role="img" aria-label="After their crit, next hit a crit, per check"></svg>
   </section>
 
   <section>
-    <h2 id="skillTitle">Skill over training</h2>
-    <div class="legend"><span><i style="background:var(--accent)"></i>done, last 40 moments</span><span><i style="background:var(--muted)"></i>65% and 85%</span></div>
-    <svg class="chart" id="skillChart"></svg>
-    <div class="readout" id="skillReadout"></div>
-  </section>
-
-  <div class="two">
-    <section>
-      <h2>Damage a minute in training</h2>
-      <div class="legend"><span><i style="background:var(--dealt)"></i>dealt</span><span><i style="background:var(--taken)"></i>taken</span><span>average of 5 updates</span></div>
-      <svg class="chart" id="damageChart"></svg>
-      <div class="readout" id="damageReadout"></div>
-    </section>
-    <section>
-      <h2>Paired checks against the installed AI</h2>
-      <div class="legend"><span><i style="background:var(--accent)"></i>school network</span><span><i style="background:var(--teacher)"></i>teacher tests</span><span>A minus B a fight, bars 2 se</span></div>
-      <svg class="chart" id="checkChart"></svg>
-      <div class="readout" id="checkReadout"></div>
-    </section>
-  </div>
-
-  <section>
-    <h2>Paired checks</h2>
-    <div class="note">Same seeds for both sides. A is the school network (or a teacher test), B the installed AI. Above zero, A did better.</div>
-    <div class="scroll"><table id="checks"></table></div>
+    <h2>Techniques (from docs/PVP-TECHNIQUES.md)</h2>
+    <p class="lede">In moments where a technique fits, how often A's keys did it (its last 40 such moments). The change is the last hour against the hour before.</p>
+    <div id="techs"></div>
   </section>
 
   <section>
-    <h2>What the game itself counted (last update)</h2>
-    <div class="two">
-      <div class="scroll"><table id="game"></table></div>
-      <div class="scroll"><table id="extra"></table></div>
-    </div>
+    <h2>What changed (newest last)</h2>
+    <p class="lede">The last rows of EXPERIMENTS.md: every change gets a number (a "run"), and every check of it a row.</p>
+    <div class="scroll"><table id="exp"></table></div>
   </section>
 
-  <footer id="foot">Reads run/school-client*.log and run/school-checks.log. Refreshes every 15 seconds.</footer>
+  <section>
+    <h2>What the words mean</h2>
+    <dl>
+      <dt>A</dt><dd>The network being trained right now, playing with the hand-written rules on top (the same rules the installed model uses).</dd>
+      <dt>B</dt><dd>A fixed model from 23 Oct, with the same rules. It never changes, so it is the yardstick: if A gets better, A − B goes up.</dd>
+      <dt>Check</dt><dd>Every hour A and B each play the same 45 fights against the training bots (same starting situations), on screen in first person.</dd>
+      <dt>A − B</dt><dd>How many health points more A comes out ahead in a fight than B does. +3 means A ends each fight 3 points better off than B would. One check is noisy (about ±4), so only several checks in a row mean something.</dd>
+      <dt>se (noise)</dt><dd>How far a check's number can be off by chance. A difference smaller than about two se can be luck.</dd>
+      <dt>Run</dt><dd>One change to the training, numbered in EXPERIMENTS.md (run 40 = the 40th). Kept or undone by its checks.</dd>
+      <dt>Block</dt><dd>A 3-hour piece of the plan with one number and a target; the next block uses a different kind of method if the number did not move.</dd>
+      <dt>Punish crit (B1)</dt><dd>Their hit lifts you; you crit them on the way down. "After their crit, next hit a crit" counts, of the times it took a crit and hit back next, how often that hit was a crit.</dd>
+      <dt>Jump-in</dt><dd>They jump at you from a few blocks away to crit you on the way down.</dd>
+      <dt>K2, the golden rule</dt><dd>Don't knockback-hit a falling player: with ping the knockback arrives late, they still crit you. "K2 broken" counts A's sprint hits on falling opponents (lower is better).</dd>
+      <dt>Combo starter</dt><dd>A way to stun them so they can't hit back: deflection T4, reverse deflection T5, make them miss T6, three-block hit T7, hit the rising jumper T8, jump reset T9.</dd>
+      <dt>Combo holder</dt><dd>A way to keep hitting once they are stunned: uppercut T10, lunge T11a, hops T11b, hops and lunges T11c, standing crit T2.</dd>
+      <dt>The rules</dt><dd>Hand-written behaviour (from the installed model) that presses some keys on top of the network. Most of A's fighting is still decided by them.</dd>
+      <dt>PPO</dt><dd>The learning method: the network tries things and the fight result (the reward) makes the better moves likelier.</dd>
+      <dt>Copying</dt><dd>Teaching the network to press what a teacher presses. It can only reach the teacher, never pass it; the plan turns it down.</dd>
+      <dt>Swings landing</dt><dd>Of its swings, how many hit.</dd>
+      <dt>Damage a minute</dt><dd>Damage dealt and taken per minute of fighting in training.</dd>
+      <dt>Installed</dt><dd>The model inside your Minecraft (run35-0657 since 5 Nov 21:19).</dd>
+    </dl>
+  </section>
 </main>
 
 <script>
-(function () {
-  'use strict';
-  var data = null;
-  var selected = 'T8';
-  var REFRESH = 15000;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const pct = (x) => (x && x[1] ? Math.round(100 * x[0] / x[1]) : null);
+const fmt = (v, d = 1) => (v == null ? '–' : (v > 0 ? '+' : '') + v.toFixed(d));
 
-  function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
-  }
-  function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
-  function fmtSteps(x) {
-    if (x == null) return '-';
-    if (x >= 1e6) return (x / 1e6).toFixed(2) + 'M';
-    if (x >= 1e3) return Math.round(x / 1e3) + 'k';
-    return String(x);
-  }
-  function cls(r) { return r == null ? 'muted' : r >= 85 ? 'good' : r >= 65 ? 'mid' : 'bad'; }
-  function pct(r) { return r == null ? '-' : Math.round(r) + '%'; }
-  function changeOf(t) {
-    if (t.change == null) return '<span class="muted">-</span>' + (t.few ? '<span class="tag">few chances</span>' : '');
-    var c = t.change, txt = (c > 0 ? '+' : c < 0 ? '−' : '') + Math.abs(c).toFixed(0);
-    return '<span class="' + (c >= 5 ? 'good' : c <= -5 ? 'bad' : 'muted') + '">' + txt + '</span>' + (t.stuck ? '<span class="tag s">stuck</span>' : t.few ? '<span class="tag">few chances</span>' : '');
-  }
-  function ago(sec) {
-    if (sec == null) return '';
-    if (sec < 90) return Math.round(sec) + ' s ago';
-    return Math.round(sec / 60) + ' min ago';
-  }
+const GROUPS = [
+  ['Starting a combo', ['T4', 'T5', 'T6', 'T6a', 'T7', 'T9']],
+  ['Holding a combo', ['T10', 'T11a', 'T11b', 'T11c', 'T2']],
+  ['Crits and the punish crit', ['B1', 'T1', 'T1a', 'T1b', 'T1c', 'C6']],
+  ['Jump-ins and jump resets', ['K2', 'K3', 'T9a', 'T9b', 'T9c']],
+  ['Getting out', ['C1', 'C2', 'C3', 'C4', 'C7']],
+];
 
-  // ---- charts: plain SVG, sized to their box -------------------------------------------------------------------------
-  function svgEl(tag, attrs) {
-    var e = document.createElementNS('http://www.w3.org/2000/svg', tag);
-    for (var k in attrs) e.setAttribute(k, attrs[k]);
-    return e;
-  }
-  function niceTicks(lo, hi, n) {
-    if (hi <= lo) { hi = lo + 1; }
-    var span = hi - lo, step = Math.pow(10, Math.floor(Math.log10(span / n)));
-    var err = span / n / step;
-    if (err >= 7.5) step *= 10; else if (err >= 3.5) step *= 5; else if (err >= 1.5) step *= 2;
-    var out = [];
-    for (var v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6));
-    return out;
-  }
-  // series: [{points: [[x, y, extra]], color, width, dash, dots, whisker}]; opts: {yMin, yMax, refs: [y], readout, fmtY}
-  function chart(svg, series, opts) {
-    while (svg.firstChild) svg.removeChild(svg.firstChild);
-    var W = svg.clientWidth || 600, H = svg.clientHeight || 230;
-    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-    var L = 44, R = 10, T = 10, B = 24;
-    var xs = [], ys = [];
-    series.forEach(function (s) { s.points.forEach(function (p) { xs.push(p[0]); ys.push(p[1]); if (s.whisker) { ys.push(p[1] + p[2]); ys.push(p[1] - p[2]); } }); });
-    var muted = css('--muted'), line = css('--line');
-    if (!xs.length) {
-      var t = svgEl('text', { x: W / 2, y: H / 2, 'text-anchor': 'middle', fill: muted, 'font-size': 12 });
-      t.textContent = 'No data yet';
-      svg.appendChild(t);
-      return;
-    }
-    var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
-    if (x1 === x0) { x0 -= 1; x1 += 1; }
-    var y0 = opts.yMin != null ? Math.min(opts.yMin, Math.min.apply(null, ys)) : Math.min.apply(null, ys);
-    var y1 = opts.yMax != null ? Math.max(opts.yMax, Math.max.apply(null, ys)) : Math.max.apply(null, ys);
-    (opts.refs || []).forEach(function (r) { y0 = Math.min(y0, r); y1 = Math.max(y1, r); });
-    if (y1 === y0) { y0 -= 1; y1 += 1; }
-    var pad = (y1 - y0) * 0.06; if (opts.yMin == null) y0 -= pad; if (opts.yMax == null) y1 += pad;
-    function X(v) { return L + (v - x0) / (x1 - x0) * (W - L - R); }
-    function Y(v) { return T + (1 - (v - y0) / (y1 - y0)) * (H - T - B); }
-    niceTicks(y0, y1, 5).forEach(function (v) {
-      svg.appendChild(svgEl('line', { x1: L, x2: W - R, y1: Y(v), y2: Y(v), stroke: line, 'stroke-width': 1 }));
-      var t = svgEl('text', { x: L - 6, y: Y(v) + 4, 'text-anchor': 'end', fill: muted, 'font-size': 11 });
-      t.textContent = opts.fmtY ? opts.fmtY(v) : v;
-      svg.appendChild(t);
-    });
-    var xt = niceTicks(x0, x1, Math.max(2, Math.floor(W / 110)));
-    var xstep = xt.length > 1 ? xt[1] - xt[0] : 1;
-    xt.forEach(function (v) {
-      var t = svgEl('text', { x: X(v), y: H - 6, 'text-anchor': 'middle', fill: muted, 'font-size': 11 });
-      t.textContent = xstep < 100000 ? Math.round(v / 1000) + 'k' : fmtSteps(v);
-      svg.appendChild(t);
-    });
-    (opts.refs || []).forEach(function (r) {
-      svg.appendChild(svgEl('line', { x1: L, x2: W - R, y1: Y(r), y2: Y(r), stroke: muted, 'stroke-width': 1, 'stroke-dasharray': '4 4', opacity: 0.8 }));
-    });
-    series.forEach(function (s) {
-      if (s.whisker) {
-        s.points.forEach(function (p) {
-          svg.appendChild(svgEl('line', { x1: X(p[0]), x2: X(p[0]), y1: Y(p[1] - p[2]), y2: Y(p[1] + p[2]), stroke: s.color, 'stroke-width': 1 }));
-        });
-      }
-      if (!s.dots && s.points.length > 1) {
-        var d = s.points.map(function (p, i) { return (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1); }).join(' ');
-        svg.appendChild(svgEl('path', { d: d, fill: 'none', stroke: s.color, 'stroke-width': s.width || 1.6, 'stroke-dasharray': s.dash || '' }));
-      }
-      if (s.dots || s.points.length === 1) {
-        s.points.forEach(function (p) {
-          svg.appendChild(svgEl('circle', { cx: X(p[0]), cy: Y(p[1]), r: 3.2, fill: s.hollow ? css('--panel') : s.color, stroke: s.color, 'stroke-width': 1.4 }));
-        });
-      }
-    });
-    // A readout under the chart for the nearest point, instead of floating tooltips.
-    var cursor = svgEl('line', { x1: 0, x2: 0, y1: T, y2: H - B, stroke: muted, 'stroke-width': 1, opacity: 0 });
-    svg.appendChild(cursor);
-    var all = [];
-    series.forEach(function (s) { s.points.forEach(function (p) { all.push({ x: p[0], p: p, s: s }); }); });
-    svg.onmousemove = function (ev) {
-      var rect = svg.getBoundingClientRect();
-      var mx = (ev.clientX - rect.left) * (W / rect.width);
-      var best = null, bd = 1e18;
-      all.forEach(function (a) { var dd = Math.abs(X(a.x) - mx); if (dd < bd) { bd = dd; best = a; } });
-      if (!best) return;
-      cursor.setAttribute('x1', X(best.x)); cursor.setAttribute('x2', X(best.x)); cursor.setAttribute('opacity', 0.5);
-      if (opts.readout) opts.readout(best.x, all.filter(function (a) { return a.x === best.x; }));
-    };
-    svg.onmouseleave = function () { cursor.setAttribute('opacity', 0); };
-  }
+function tile(k, v, d, cls = '') {
+  return `<div class="tile"><div class="k">${esc(k)}</div><div class="v ${cls}">${v}</div><div class="d">${d}</div></div>`;
+}
 
-  function sparkline(points) {
-    if (!points || points.length < 2) return '<span class="muted">-</span>';
-    var p = points.slice(-60), W = 110, H = 22;
-    var x0 = p[0][0], x1 = p[p.length - 1][0] || x0 + 1;
-    function X(v) { return ((v - x0) / Math.max(1, x1 - x0) * (W - 2) + 1).toFixed(1); }
-    function Y(v) { return ((1 - v / 100) * (H - 2) + 1).toFixed(1); }
-    var d = p.map(function (q, i) { return (i ? 'L' : 'M') + X(q[0]) + ' ' + Y(q[1]); }).join(' ');
-    return '<svg width="' + W + '" height="' + H + '" style="vertical-align:middle">' +
-      '<line x1="0" x2="' + W + '" y1="' + Y(65) + '" y2="' + Y(65) + '" stroke="' + css('--line') + '"/>' +
-      '<line x1="0" x2="' + W + '" y1="' + Y(85) + '" y2="' + Y(85) + '" stroke="' + css('--line') + '"/>' +
-      '<path d="' + d + '" fill="none" stroke="' + css('--accent') + '" stroke-width="1.3"/></svg>';
+function runOfChecks(d) {
+  const runs = (d.experiments && d.experiments.runs) || [];
+  const last = runs[runs.length - 1];
+  const checks = (d.checks || []).filter((c) => c.kind === 'school network');
+  if (!last) return { run: null, checks: [] };
+  return { run: last, checks: checks.filter((c) => c.time >= last.at) };
+}
+
+function render(d) {
+  const age = d.logAgeSeconds;
+  const st = $('state');
+  if (age == null || age > 600) { st.textContent = 'STOPPED — no training for ' + (age == null ? '?' : Math.round(age / 60) + ' min'); st.className = 'pill bad'; }
+  else if (d.state === 'paired check running') { st.textContent = 'Hourly check playing'; st.className = 'pill warn'; }
+  else { st.textContent = 'Training running'; st.className = 'pill ok'; }
+  $('served').textContent = 'updated ' + d.served + ' · refreshes every 20 s';
+
+  const plan = d.plan || {};
+  $('step').textContent = plan.step || 'no current step in PLAN.md';
+  $('stepTime').textContent = plan.stepTime ? 'step written ' + plan.stepTime : '';
+  const rc = runOfChecks(d);
+  $('runNow').innerHTML = rc.run ? `<b>Training now: run ${esc(rc.run.id)}</b> <span class="muted">(since ${esc(rc.run.at)})</span> — ${esc(rc.run.change)}…` : '';
+  const curBlock = (plan.blocks || []).find((b) => b.done < b.total);
+  $('blocks').innerHTML = (plan.blocks || []).map((b) => {
+    const w = b.total ? Math.round(100 * b.done / b.total) : 0;
+    return `<div class="block ${b === curBlock ? 'now' : ''}"><div class="t">Block ${b.n}: ${esc(b.title)}</div>
+      <div class="muted">${esc(b.when)} · <b>Method:</b> ${esc(b.method)}</div>
+      <div style="display:flex;gap:10px;align-items:center"><div class="bar" style="width:140px"><i style="width:${w}%"></i></div><span class="muted">${b.done} of ${b.total} steps done</span></div>
+      ${b.next ? `<div class="muted">Next: ${esc(b.next)}</div>` : ''}</div>`;
+  }).join('') + ((plan.reports || []).filter((r) => r.text).map((r) => `<div><b>${esc(r.block)} result:</b> ${esc(r.text)}</div>`).join(''));
+
+  // The tiles: the last check, and this run's checks together.
+  const checks = (d.checks || []).filter((c) => c.kind === 'school network');
+  const c = checks[checks.length - 1] || {};
+  const all = c.all || {};
+  const runAB = rc.checks.map((x) => x.all.aMinusB).filter((v) => v != null);
+  const mean = runAB.length ? runAB.reduce((s, v) => s + v, 0) / runAB.length : null;
+  const sum = (arr, side) => arr.reduce((s, x) => { const v = x.afterCrit && x.afterCrit[side]; return v ? [s[0] + v[0], s[1] + v[1]] : s; }, [0, 0]);
+  const runA = sum(rc.checks, 'A'), runB = sum(rc.checks, 'B');
+  const ac = c.afterCrit || {};
+  const score1 = (plan.scoreboard || [])[0];
+  const swA = c.aSwings, swB = c.bSwings;
+  $('tiles').innerHTML = [
+    tile('A − B, last check (' + esc(c.time || '–') + ')', `${fmt(all.aMinusB)} <small>± ${all.se == null ? '–' : all.se.toFixed(1)}</small>`,
+      `This run's checks together: ${mean == null ? '–' : fmt(mean)} over ${runAB.length}. Above 0 = A better than B.`, all.aMinusB > 0 ? 'ok' : ''),
+    tile('After their crit, next hit a crit', `<span class="a">${pct(ac.A) ?? '–'}%</span> <small>vs B ${pct(ac.B) ?? '–'}%</small>`,
+      `Last check ${ac.A ? ac.A[0] + ' of ' + ac.A[1] : ''}. This run: A ${pct(runA) ?? '–'}% (${runA[0]} of ${runA[1]}), B ${pct(runB) ?? '–'}%. ${score1 ? 'Before: ' + esc(score1.baseline) + '; target ' + esc(score1.target) : ''}`),
+    tile('Jump-ins punished with its crit', `<span class="a">${pct(c.punishedA) ?? '–'}%</span> <small>vs B ${pct(c.punishedB) ?? '–'}%</small>`,
+      'Of the jump-ins where they hit it, how often it crit them back.'),
+    tile('Swings landing', `<span class="a">${swA ? Math.round(100 * swA[2] / swA[0]) : '–'}%</span> <small>vs B ${swB ? Math.round(100 * swB[2] / swB[0]) : '–'}%</small>`,
+      'Of its swings in the last check, how many hit.'),
+    tile('K2 broken (lower is better)', `<span class="a">${c.k2BrokenA ?? '–'}</span> <small>vs B ${c.k2BrokenB ?? '–'}</small>`,
+      'Sprint hits on falling opponents in the last check: they usually crit back.'),
+    tile('Punish crit in training (rolling)', `${d.punishRolling && d.punishRolling.critted != null ? d.punishRolling.critted + '%' : '–'}`,
+      `Its last 300 punish chances in training that it critted; told to and landed: ${d.punishRolling && d.punishRolling.told != null ? d.punishRolling.told + '%' : '–'}.`),
+  ].join('');
+
+  $('score').innerHTML = '<tr><th>Number</th><th>Before</th><th>Target</th><th>How it is measured</th></tr>' +
+    (plan.scoreboard || []).map((s) => `<tr><td>${esc(s.number)}</td><td>${esc(s.baseline)}</td><td>${esc(s.target)}</td><td class="muted">${esc(s.how)}</td></tr>`).join('');
+
+  drawAB(checks.slice(-40), (d.experiments && d.experiments.runs) || []);
+  drawPunish(checks.slice(-40));
+
+  const byId = {}; (d.techniques || []).forEach((t) => { byId[t.id] = t; });
+  const seen = new Set();
+  const row = (t) => {
+    seen.add(t.id);
+    const r = t.rate;
+    const status = t.few ? '<span class="muted">few</span>' : t.stuck ? '<span class="bad">stuck</span>' : (t.change != null && t.change >= 5 ? '<span class="ok">rising</span>' : '<span class="muted">–</span>');
+    return `<div class="tech"><span class="id">${esc(t.id)}</span><span class="title" title="${esc(t.title)}">${esc(t.title)}</span>
+      <div class="bar"><i style="width:${r == null ? 0 : r}%"></i></div><span class="pct">${r == null ? '–' : r.toFixed(0) + '%'}</span>
+      <span class="trend pct">${t.change == null ? '' : fmt(t.change, 0)}</span></div>`;
+  };
+  let html = GROUPS.map(([name, ids]) => `<div class="group">${esc(name)}</div>` + ids.filter((i) => byId[i]).map((i) => row(byId[i])).join('')).join('');
+  const rest = (d.techniques || []).filter((t) => !seen.has(t.id) && !GROUPS.some((g) => g[1].includes(t.id)));
+  if (rest.length) html += '<div class="group">Other</div>' + rest.map(row).join('');
+  $('techs').innerHTML = html;
+
+  const rows = (d.experiments && d.experiments.rows) || [];
+  $('exp').innerHTML = '<tr><th>#</th><th>When</th><th>What</th><th>Result</th></tr>' + rows.map((r) =>
+    `<tr${r.run ? ' style="background:var(--soft)"' : ''}><td><b>${esc(r.id)}</b></td><td class="n">${esc(r.date)}</td><td>${esc(r.change)}</td><td>${esc(r.result)}${r.kept && r.run ? '<div class="muted">' + esc(r.kept) + '</div>' : ''}</td></tr>`).join('');
+}
+
+function axes(svg, w, h, pad, ymin, ymax, ticks, fmtY) {
+  let s = '';
+  for (const t of ticks) {
+    const y = pad.t + (h - pad.t - pad.b) * (1 - (t - ymin) / (ymax - ymin));
+    s += `<line x1="${pad.l}" x2="${w - pad.r}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="${t === 0 ? 1.5 : 1}"/>`;
+    s += `<text x="${pad.l - 6}" y="${y + 4}" text-anchor="end">${fmtY(t)}</text>`;
   }
+  return s;
+}
 
-  // ---- sections ------------------------------------------------------------------------------------------------------
-  function renderStatus() {
-    var n = data.now || {};
-    var age = data.logAgeSeconds;
-    var parts = [];
-    var stale = age != null && age > 240;
-    if (data.state === 'paired check running') parts.push('<b>Paired check running</b>');
-    else if (stale) parts.push('<span class="warn">No new log line for ' + Math.round(age / 60) + ' min: stopped or between runs</span>');
-    else parts.push('<b>Training</b>');
-    if (n.stage) parts.push('stage <b>' + esc(n.stage) + '</b> ' + esc(n.family || ''));
-    parts.push('<span class="num">' + fmtSteps(n.steps) + '</span> steps');
-    if (n.time) parts.push('last update ' + esc(n.time) + (age != null ? ' (log written ' + ago(age) + ')' : ''));
-    $('status').innerHTML = parts.join(' &middot; ');
-  }
-
-  function stat(k, v, extra) {
-    return '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v + '</div>' + (extra || '') + '</div>';
-  }
-
-  function renderNow() {
-    var n = data.now || {};
-    var html = '';
-    var frac = n.minSteps ? Math.min(1, n.stageSteps / n.minSteps) : 0;
-    var stageObj = (data.stages || []).filter(function (s) { return s.name === n.stage; })[0];
-    var rows = data.techniques || [];
-    function rateOf(id) { var r = rows.filter(function (t) { return t.id === id; })[0]; return r ? r.rate : null; }
-    var run = data.run;
-    var taughtNow = n.taughtNow;
-    html += stat('Learning now' + (run ? ' (run ' + esc(run.id) + ', since ' + esc(run.start) + ')' : ''),
-      taughtNow == null ? '<span class="muted">from the next update</span>' :
-      !taughtNow.length || taughtNow[0] === 'none' ? 'no technique: fundamentals only (every key copied from the best fighter)' :
-      taughtNow.map(function (id) {
-        if (id === 'let-go') return 'sprint let-go';
-        var r = rateOf(id); return esc(id) + ' <span class="' + cls(r) + '">' + pct(r) + '</span>';
-      }).join(', '),
-      (run ? '<div class="k">' + esc(run.change) + '</div>' : '') +
-      '<div class="k">every other technique: not taught in this run, its keys copied</div>');
-    html += stat('Opponents now', esc(n.stage || '-') + ' <span class="muted" style="font-size:13px">' + esc(n.family || '') + '</span>',
-      '<div class="k">the bots of this stage (half of the fights), the other stages\' bots in the rest</div>');
-    html += stat('Priority (focused when their family is taught)', (data.priority || []).map(function (id) {
-      var r = rateOf(id); return esc(id) + ' <span class="' + cls(r) + '">' + pct(r) + '</span>';
-    }).join(', '), '<div class="k">T8 hit them rising, K2 no knockback hit on a falling one, B1 punish crit</div>');
-    var lastCheck = (data.checks || []).filter(function (c) { return c.bSwings; }).slice(-1)[0];
-    html += stat('Swings that land (last 10 updates)', data.landing == null ? '<span class="muted">not counted yet</span>' :
-      '<span class="' + cls(data.landing) + '">' + pct(data.landing) + '</span>',
-      '<div class="k">' + (lastCheck ? 'last check: school ' + landed(lastCheck.aSwings) + ', installed ' + landed(lastCheck.bSwings) :
-      'the installed model: from the next check') + '; a miss is a swing with nothing under the crosshair</div>');
-    var pu = data.punish;
-    html += stat('Punish crits landed, by the game (last 10 updates)', pu == null || !pu[1] ? '<span class="muted">no chances yet</span>' :
-      '<span class="' + cls(100 * pu[0] / pu[1]) + '">' + pct(100 * pu[0] / pu[1]) + '</span> of ' + pu[1],
-      '<div class="k">lifted by their hit, a crit landed on them before it is down</div>');
-    var cc = data.critChances;
-    html += stat('In its crit moments (last 10 updates)', cc == null ? '<span class="muted">not counted yet</span>' :
-      (cc[0] ? '<span class="' + cls(100 * cc[2] / cc[0]) + '">' + pct(100 * cc[2] / cc[0]) + '</span> ready to crit' : '0 ticks'),
-      '<div class="k">falling in reach ' + (cc ? cc[0] : 0) + ' ticks: sword back on ' + (cc ? cc[1] : 0) + ', and not sprinting on ' +
-      (cc ? cc[2] : 0) + '; real crits landed ' + (cc ? cc[3] : 0) + '</div>');
-    var dc = n.decider;
-    html += stat('Decider (which technique to do)', dc ? '<span class="' + cls(dc[3]) + '">' + pct(dc[3]) + '</span> of starts right' :
-      '<span class="muted">not learning yet</span>', dc ? '<div class="k">' + pct(dc[1]) + ' right during techniques, ' + dc[5].toFixed(1) +
-      '% false starts, ' + pct(dc[0]) + ' of all ticks</div>' : '');
-    var dmg = data.damage || [];
-    var last = dmg.slice(-10);
-    var dAvg = last.length ? last.reduce(function (a, p) { return a + p[1]; }, 0) / last.length : null;
-    var tAvg = last.length ? last.reduce(function (a, p) { return a + p[2]; }, 0) / last.length : null;
-    html += stat('Damage a minute (last 10 updates)', dAvg == null ? '-' :
-      '<span style="color:var(--dealt)">' + Math.round(dAvg) + '</span> dealt, <span style="color:var(--taken)">' + Math.round(tAvg) + '</span> taken');
-    var all = rows.filter(function (t) { return t.rate != null; });
-    var at85 = all.filter(function (t) { return t.rate >= 85; }).length, at65 = all.filter(function (t) { return t.rate >= 65; }).length;
-    html += stat('Techniques done', at85 + ' at 85%+, ' + at65 + ' at 65%+', '<div class="k">of ' + all.length + ' with enough moments</div>');
-    if (n.installedPull != null) html += stat('Installed AI\'s pull', n.installedPull.toFixed(2), '<div class="k">teaches the fighting between techniques</div>');
-    $('now').innerHTML = html;
-  }
-
-  function renderSkills() {
-    var rows = data.techniques || [];
-    var cur = (data.now || {}).stage;
-    var html = '<thead><tr><th>Technique</th><th>Name</th><th>Done</th><th class="n">Paid</th><th class="n">Keys as taught</th><th class="n">Moments</th><th class="n">Last hour vs hour before</th><th>Trend</th></tr></thead><tbody>';
-    (data.stages || []).forEach(function (s) {
-      var list = rows.filter(function (t) { return t.stage === s.name; });
-      if (!list.length) return;
-      html += '<tr class="group"><td colspan="8" class="' + (s.name === cur ? 'now' : '') + '">' + esc(s.name) + ' ' + esc(s.family) +
-        (s.name === cur ? ' - opponents now' : '') + '</td></tr>';
-      var tn = (data.now || {}).taughtNow;
-      list.forEach(function (t) {
-        var r = t.rate, w = r == null ? 0 : Math.max(0, Math.min(100, r));
-        html += '<tr class="sk' + (t.id === selected ? ' sel' : '') + '" data-id="' + esc(t.id) + '">' +
-          '<td>' + esc(t.id) + (tn == null ? '' : tn.indexOf(t.id) >= 0 ? '<span class="tag p">taught now</span>' : '<span class="tag">copied</span>') + '</td>' +
-          '<td>' + esc(t.title) + '</td>' +
-          '<td><span class="pct ' + cls(r) + '">' + pct(r) + '</span><span class="meter"><i style="width:' + w + '%;background:var(--' +
-          (r == null ? 'line' : r >= 85 ? 'good' : r >= 65 ? 'mid' : 'bad') + ')"></i><s style="left:65%"></s><s style="left:85%"></s></span></td>' +
-          '<td class="n">' + pct(t.paid) + '</td>' +
-          '<td class="n">' + (t.taught == null ? '-' : t.taught + '%') + '</td>' +
-          '<td class="n">' + t.moments + '</td>' +
-          '<td class="n">' + changeOf(t) + '</td>' +
-          '<td>' + sparkline(t.series) + '</td></tr>';
-      });
-    });
-    $('skills').innerHTML = html + '</tbody>';
-    Array.prototype.forEach.call(document.querySelectorAll('tr.sk'), function (tr) {
-      tr.onclick = function () { selected = tr.getAttribute('data-id'); renderSkills(); renderSkillChart(); };
-    });
-  }
-
-  function renderSkillChart() {
-    var t = (data.techniques || []).filter(function (x) { return x.id === selected; })[0];
-    if (!t) { $('skillTitle').textContent = 'Skill over training'; chart($('skillChart'), [], {}); return; }
-    $('skillTitle').textContent = t.id + ' ' + t.title + ': done over training';
-    chart($('skillChart'), [{ points: t.series, color: css('--accent') }], {
-      yMin: 0, yMax: 100, refs: [65, 85], fmtY: function (v) { return v + '%'; },
-      readout: function (x, hits) { $('skillReadout').textContent = fmtSteps(x) + ' steps: ' + hits[0].p[1] + '% done over its last 40 moments'; }
-    });
-    $('skillReadout').textContent = t.series.length ? 'Now ' + pct(t.rate) + ' over ' + t.moments + ' moments.' : 'Not enough moments yet.';
-  }
-
-  function smooth(points, k) {
-    return points.map(function (p, i) {
-      var a = points.slice(Math.max(0, i - k + 1), i + 1);
-      return [p[0], Math.round(a.reduce(function (s, q) { return s + q[1]; }, 0) / a.length), p[2]];
-    });
-  }
-
-  function renderDamage() {
-    var d = data.damage || [];
-    var dealt = smooth(d.map(function (p) { return [p[0], p[1], p[3]]; }), 5);
-    var taken = smooth(d.map(function (p) { return [p[0], p[2], p[3]]; }), 5);
-    chart($('damageChart'), [{ points: dealt, color: css('--dealt') }, { points: taken, color: css('--taken') }], {
-      yMin: 0,
-      readout: function (x, hits) {
-        var raw = d.filter(function (p) { return p[0] === x; })[0];
-        $('damageReadout').textContent = fmtSteps(x) + ' steps (' + (raw ? raw[3] : '') + '): ' + hits.map(function (h, i) {
-          return (h.s.color === css('--dealt') ? 'dealt ' : 'taken ') + h.p[1];
-        }).join(', ') + ' (5-update average)';
-      }
-    });
-  }
-
-  function checkPoints(filter) {
-    return (data.checks || []).filter(filter).filter(function (c) { return c.steps != null; })
-      .map(function (c) { return [c.steps, c.all.aMinusB, 2 * (c.all.se || 0), c]; });
-  }
-
-  function renderCheckChart() {
-    var school = checkPoints(function (c) { return c.kind === 'school network'; });
-    var teacher = checkPoints(function (c) { return c.kind !== 'school network'; });
-    chart($('checkChart'), [
-      { points: teacher, color: css('--teacher'), dots: true, hollow: true, whisker: true },
-      { points: school, color: css('--accent'), dots: true, whisker: true }
-    ], {
-      refs: [0],
-      readout: function (x, hits) {
-        $('checkReadout').textContent = hits.map(function (h) {
-          var c = h.p[3];
-          return c.time + ' ' + c.kind + ' at ' + c.stage + ': ' + (c.all.aMinusB > 0 ? '+' : '') + c.all.aMinusB + ' (se ' + c.all.se + ')';
-        }).join('; ');
-      }
-    });
-  }
-
-  function landed(sw) { return sw && sw[0] ? Math.round(100 * sw[2] / sw[0]) + '%' : '-'; }
-
-  function renderChecks() {
-    var cs = (data.checks || []).slice().reverse();
-    var html = '<thead><tr><th>When</th><th>Side A</th><th>Stage</th><th class="n">Pairs</th><th class="n">A minus B a fight</th>' +
-      '<th class="n">A dealt / taken a min</th><th class="n">B dealt / taken a min</th><th class="n">KOs A / B</th><th class="n">Swings landing A / B</th></tr></thead><tbody>';
-    cs.forEach(function (c) {
-      var a = c.all, diff = a.aMinusB, se = a.se == null ? 0 : a.se, sig = a.se != null && Math.abs(diff) >= 2 * se;
-      html += '<tr><td class="num">' + esc(c.time) + '</td><td>' + esc(c.kind) + '</td><td>' + esc(c.stage) + '</td>' +
-        '<td class="n">' + a.pairs + '</td>' +
-        '<td class="n"><span class="' + (diff >= 0 ? (sig ? 'good' : '') : (sig ? 'bad' : '')) + '">' + (diff > 0 ? '+' : '') + diff.toFixed(1) +
-        '</span> <span class="muted">&plusmn;' + (a.se == null ? '-' : se.toFixed(1)) + '</span></td>' +
-        '<td class="n">' + esc(a.aDt) + '</td><td class="n">' + esc(a.bDt) + '</td><td class="n">' + esc(a.aKo) + ' / ' + esc(a.bKo) + '</td>' +
-        '<td class="n">' + landed(c.aSwings) + ' / ' + landed(c.bSwings) + '</td></tr>';
-    });
-    $('checks').innerHTML = html + '</tbody>';
-  }
-
-  function renderModels() {
-    var ms = data.models || [];
-    function lead(x) {
-      if (!x) return '<span class="muted">-</span>';
-      var sig = x[1] != null && Math.abs(x[0]) >= 2 * x[1];
-      return '<span class="' + (x[0] >= 0 ? (sig ? 'good' : '') : (sig ? 'bad' : '')) + '">' + (x[0] > 0 ? '+' : '') + x[0].toFixed(1) +
-        '</span> <span class="muted">&plusmn;' + x[1].toFixed(1) + ' (' + x[2] + ' pairs)</span>';
-    }
-    function pair(x, unit) {
-      return x ? esc(x[0]) + unit + ' / ' + esc(x[1]) + unit : '<span class="muted">-</span>';
-    }
-    var html = '<thead><tr><th>Model</th><th class="n">Scripted bots</th><th class="n">Mirror</th><th>Status</th>' +
-      '<th class="n">Jump-ins countered (it / installed)</th><th class="n">Crit damage a fight (it / installed)</th><th>What it is</th><th>Note</th></tr></thead><tbody>';
-    ms.forEach(function (m) {
-      html += '<tr><td>' + esc(m.run) + '</td><td class="n">' + lead(m.scripted) + '</td><td class="n">' + lead(m.mirror) + '</td>' +
-        '<td>' + esc(m.status) + '</td><td class="n">' + pair(m.jumpins, '%') + '</td><td class="n">' + pair(m.crit, '') + '</td>' +
-        '<td>' + esc(m.what) + '</td><td>' + esc(m.note || '') + '</td></tr>';
-    });
-    $('models').innerHTML = html + '</tbody>';
-  }
-
-  function renderGame() {
-    var n = data.now || {};
-    var g = n.game || [];
-    var html = '<thead><tr><th>Its own moves, by the game</th><th class="n">Done</th><th class="n">Chances</th><th class="n">Rate</th></tr></thead><tbody>';
-    g.forEach(function (r) {
-      html += '<tr><td>' + esc(r[0]) + (r[1] ? ' <span class="muted">(' + esc(r[1]) + ')</span>' : '') + '</td><td class="n">' + r[2] +
-        '</td><td class="n">' + r[3] + '</td><td class="n">' + (r[3] ? Math.round(100 * r[2] / r[3]) + '%' : '-') + '</td></tr>';
-    });
-    $('game').innerHTML = html + '</tbody>';
-    var j = n.jumpIn, c = n.crit, k = n.keys;
-    var ex = '<thead><tr><th>Since the last update</th><th class="n"></th></tr></thead><tbody>';
-    if (j) {
-      ex += '<tr><td>Their jump-ins</td><td class="n">' + j[0] + '</td></tr>' +
-        '<tr><td>Its hits on them rising (T8)</td><td class="n">' + j[1] + '</td></tr>' +
-        '<tr><td>Its knockback hits on them falling (K2 broken)</td><td class="n">' + j[2] + '</td></tr>' +
-        '<tr><td>Crits taken around those</td><td class="n">' + j[3] + '</td></tr>' +
-        '<tr><td>Crits taken in all</td><td class="n">' + j[4] + '</td></tr>';
-    }
-    if (c) {
-      ex += '<tr><td>Crit moments: falling / in reach / sword back / not sprinting</td><td class="n">' + c[1] + ' / ' + c[2] + ' / ' + c[3] + ' / ' + c[4] + '</td></tr>' +
-        '<tr><td>Crit swings / real crits landed</td><td class="n">' + c[5] + ' / ' + c[8] + '</td></tr>';
-    }
-    if (k) {
-      ex += '<tr><td>Jumps a minute, off / on technique moments</td><td class="n">' + k[0] + ' / ' + k[1] + '</td></tr>' +
-        '<tr><td>Swings a minute, off / on</td><td class="n">' + k[2] + ' / ' + k[3] + '</td></tr>';
-    }
-    $('extra').innerHTML = ex + '</tbody>';
-  }
-
-  function renderAll() {
-    if (!data) return;
-    renderStatus(); renderNow(); renderSkills(); renderSkillChart(); renderDamage(); renderCheckChart(); renderChecks(); renderModels(); renderGame();
-    $('foot').textContent = 'Reads run/school-client*.log and run/school-checks.log. Refreshes every 15 seconds. Last read ' + data.served + '.';
-  }
-
-  function load() {
-    fetch('/api/data', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
-      if (d.error) throw new Error(d.error);
-      data = d;
-      renderAll();
-    }).catch(function (e) {
-      $('status').innerHTML = '<span class="err">Could not read the data (' + esc(e.message) + '). Showing the last read.</span>';
-    });
-  }
-
-  var resizeTimer = null;
-  window.addEventListener('resize', function () {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(function () { if (data) { renderSkillChart(); renderDamage(); renderCheckChart(); } }, 150);
+function drawAB(checks, runs) {
+  const svg = $('chartAB'); const w = svg.clientWidth || 600, h = 220, pad = { l: 36, r: 10, t: 14, b: 26 };
+  if (!checks.length) { svg.innerHTML = ''; return; }
+  const vals = checks.flatMap((c) => [c.all.aMinusB - (c.all.se || 0), c.all.aMinusB + (c.all.se || 0)]);
+  const ymax = Math.max(8, Math.ceil(Math.max(...vals) / 4) * 4), ymin = Math.min(-8, Math.floor(Math.min(...vals) / 4) * 4);
+  const X = (i) => pad.l + (w - pad.l - pad.r) * (checks.length === 1 ? 0.5 : i / (checks.length - 1));
+  const Y = (v) => pad.t + (h - pad.t - pad.b) * (1 - (v - ymin) / (ymax - ymin));
+  const ticks = []; for (let t = ymin; t <= ymax; t += 4) ticks.push(t);
+  let s = axes(svg, w, h, pad, ymin, ymax, ticks, (t) => (t > 0 ? '+' : '') + t);
+  runs.forEach((r) => {
+    const i = checks.findIndex((c) => c.time >= r.at);
+    if (i < 0 || (i === 0 && checks[0].time > r.at && runs.some((q) => q !== r && q.at > r.at && q.at <= checks[0].time))) return;
+    const x = i === 0 ? X(0) - 4 : (X(i - 1) + X(i)) / 2;
+    s += `<line x1="${x}" x2="${x}" y1="${pad.t}" y2="${h - pad.b}" stroke="var(--mid)" stroke-dasharray="3 3"/><text x="${x + 3}" y="${pad.t + 9}">run ${r.id}</text>`;
   });
-  load();
-  setInterval(load, REFRESH);
-})();
+  checks.forEach((c, i) => {
+    const v = c.all.aMinusB, se = c.all.se || 0;
+    s += `<line x1="${X(i)}" x2="${X(i)}" y1="${Y(v - se)}" y2="${Y(v + se)}" stroke="var(--accent)" stroke-opacity=".35" stroke-width="2"/>`;
+    s += `<circle cx="${X(i)}" cy="${Y(v)}" r="3.5" fill="var(--accent)"><title>${c.time}: ${fmt(v)} ± ${se.toFixed(1)}</title></circle>`;
+  });
+  const every = Math.max(1, Math.ceil(checks.length / 8));
+  checks.forEach((c, i) => { if (i % every === 0 || i === checks.length - 1) s += `<text x="${X(i)}" y="${h - 8}" text-anchor="middle">${c.time.slice(6)}</text>`; });
+  svg.innerHTML = s;
+}
+
+function drawPunish(checks) {
+  const svg = $('chartPunish'); const w = svg.clientWidth || 600, h = 200, pad = { l: 36, r: 10, t: 12, b: 26 };
+  const pts = checks.map((c, i) => ({ i, t: c.time, a: pct(c.afterCrit && c.afterCrit.A), b: pct(c.afterCrit && c.afterCrit.B) })).filter((p) => p.a != null);
+  if (!pts.length) { svg.innerHTML = ''; return; }
+  const X = (i) => pad.l + (w - pad.l - pad.r) * (checks.length === 1 ? 0.5 : i / (checks.length - 1));
+  const Y = (v) => pad.t + (h - pad.t - pad.b) * (1 - v / 100);
+  let s = axes(svg, w, h, pad, 0, 100, [0, 25, 50, 75, 100], (t) => t + '%');
+  const line = (key, color) => `<polyline fill="none" stroke="${color}" stroke-width="2" points="${pts.filter((p) => p[key] != null).map((p) => X(p.i) + ',' + Y(p[key])).join(' ')}"/>` +
+    pts.filter((p) => p[key] != null).map((p) => `<circle cx="${X(p.i)}" cy="${Y(p[key])}" r="3" fill="${color}"><title>${p.t}: ${p[key]}%</title></circle>`).join('');
+  s += line('b', 'var(--b)') + line('a', 'var(--accent)');
+  const every = Math.max(1, Math.ceil(checks.length / 8));
+  checks.forEach((c, i) => { if (i % every === 0 || i === checks.length - 1) s += `<text x="${X(i)}" y="${h - 8}" text-anchor="middle">${c.time.slice(6)}</text>`; });
+  svg.innerHTML = s;
+}
+
+let last = null;
+async function load() {
+  try {
+    const r = await fetch('/api/data', { cache: 'no-store' });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    last = d; render(d);
+  } catch (e) {
+    $('state').textContent = 'panel error: ' + e.message; $('state').className = 'pill bad';
+  }
+}
+load();
+setInterval(load, 20000);
+window.addEventListener('resize', () => { if (last) render(last); });
 </script>
 </body>
 </html>

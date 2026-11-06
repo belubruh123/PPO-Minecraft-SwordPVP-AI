@@ -239,6 +239,166 @@ def parse_checks(run):
     return [c for c in checks if 'all' in c and c['all']['aMinusB'] is not None]
 
 
+# ---- the plan, the experiments and the checks' hit log (6 Nov: the page says what is being done and whether it works) --
+
+MONTHS = {m: i + 1 for i, m in enumerate(('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'))}
+
+
+def plain(text):
+    """Markdown cell text as plain text: no bold marks, backticks or links."""
+    if text is None:
+        return None
+    text = re.sub(r'\*\*|`', '', text)
+    return re.sub(r'\[([^\]]*)\]\([^)]*\)', r'\1', text).strip()
+
+
+def md_section(text, head):
+    m = re.search(r'^' + re.escape(head) + r'.*?$(.*?)(?=^## |\Z)', text, re.M | re.S)
+    return m.group(1) if m else ''
+
+
+def read_plan():
+    """PLAN.md: the current step, each block (its method, boxes done, the next box), the scoreboard and the block reports."""
+    try:
+        text = open(os.path.join(REPO, 'PLAN.md'), encoding='utf8', errors='replace').read()
+    except OSError:
+        return None
+    step = re.search(r'\*\*CURRENT STEP \(([^)]*)\):\s*(.*?)\*\*', text, re.S)
+    blocks = []
+    for m in re.finditer(r'^## Block (\d+): (.*?)$(.*?)(?=^## |\Z)', text, re.M | re.S):
+        hm = re.match(r'(.*?)\. (.*?)\. Method: (.*)$', m.group(2))
+        boxes = re.findall(r'^- \[( |x)\] (.*)$', m.group(3), re.M)
+        nxt = next((b[1] for b in boxes if b[0] == ' '), None)
+        blocks.append({'n': int(m.group(1)), 'title': plain(hm.group(1) if hm else m.group(2)), 'when': plain(hm.group(2)) if hm else '',
+                       'method': plain(hm.group(3)) if hm else '', 'done': sum(1 for b in boxes if b[0] == 'x'),
+                       'total': len(boxes), 'next': plain(nxt)})
+    score = []
+    for line in md_section(text, '## The scoreboard').splitlines():
+        cells = [plain(c) for c in line.strip().strip('|').split('|')]
+        if line.startswith('|') and len(cells) >= 4 and not cells[0].startswith('---') and cells[0] != 'Number':
+            score.append({'number': cells[0], 'how': cells[1], 'baseline': cells[2], 'target': cells[3]})
+    reports = [{'block': b, 'text': plain(t)} for b, t in re.findall(r'^- (Block \d+):[ \t]*(.*)$', md_section(text, '## Block reports'), re.M)]
+    return {'stepTime': step.group(1) if step else None, 'step': plain(re.sub(r'\s+', ' ', step.group(2))) if step else None,
+            'blocks': blocks, 'scoreboard': score, 'reports': reports}
+
+
+def punish_rolling(log):
+    """The training's rolling punish crit (its last 300 chances), from the newest update line."""
+    try:
+        with open(log, 'rb') as f:
+            f.seek(0, 2)
+            f.seek(max(0, f.tell() - 400_000))
+            tail = f.read().decode('utf8', 'replace')
+    except OSError:
+        return None
+    a = re.findall(r'punish crit chances critted \(whatever was chosen\), last (\d+)% of (\d+)', tail)
+    b = re.findall(r'told the punish crit and landed it, last (\d+)% of (\d+)', tail)
+    return {'critted': int(a[-1][0]) if a else None, 'told': int(b[-1][0]) if b else None}
+
+
+def check_time(date):
+    """'6 Nov 06:20' (EXPERIMENTS.md) as '11-06 06:20' (the checks log), to place a run on the checks' time line."""
+    m = re.match(r'(\d+) ([A-Z][a-z]{2}) (\d\d:\d\d)', date or '')
+    return '%02d-%02d %s' % (MONTHS[m.group(2)], int(m.group(1)), m.group(3)) if m and m.group(2) in MONTHS else None
+
+
+def read_experiments(n=14):
+    """EXPERIMENTS.md: its last n rows (runs and their checks) and every run's start, for the charts."""
+    path = os.path.join(REPO, 'EXPERIMENTS.md')
+    rows, runs = [], []
+    try:
+        lines = open(path, encoding='utf8', errors='replace').read().splitlines()
+    except OSError:
+        return {'rows': [], 'runs': []}
+    for line in lines:
+        if not line.startswith('| ') or line.startswith('| #') or line.startswith('|---'):
+            continue
+        cells = [c.strip() for c in line.strip().strip('|').split('|')]
+        if len(cells) < 5:
+            continue
+        is_run = bool(re.match(r'^\d+[a-z]?$', cells[0]))
+        row = {'id': cells[0], 'date': cells[1], 'change': plain(cells[3])[:420], 'result': plain(cells[4])[:300],
+               'kept': plain(cells[5])[:200] if len(cells) > 5 else '', 'run': is_run}
+        rows.append(row)
+        if is_run and check_time(cells[1]):
+            runs.append({'id': cells[0], 'at': check_time(cells[1]), 'change': plain(cells[3])[:160]})
+    return {'rows': rows[-n:], 'runs': runs}
+
+
+class HitsCache:
+    """school/hits.csv (every hit of every check): per check, after their crit how often each side's next hit was a crit
+    (tools/punish.py), parsed again only when the file changes. A check is a block of rows whose pair number falls back."""
+
+    def __init__(self, run):
+        self.path = os.path.join(run, 'swordai', 'school', 'hits.csv')
+        self.key = None
+        self.blocks = []
+        self.lock = threading.Lock()
+
+    def get(self, keep=40):
+        try:
+            st = os.stat(self.path)
+        except OSError:
+            return []
+        with self.lock:
+            if self.key == (st.st_mtime, st.st_size):
+                return self.blocks
+            blocks, cur, last = [], None, None
+            with open(self.path, encoding='utf8', errors='replace') as f:
+                head = f.readline().rstrip('\n').split(',')
+                col = {c: i for i, c in enumerate(head)}
+                need = [col[c] for c in ('pair', 'side', 'bot', 'tick', 'hitsDealt', 'crit', 'hitsTaken', 'critsTaken')]
+                for line in f:
+                    p = line.split(',')
+                    if len(p) <= max(need):
+                        continue
+                    pair = int(p[need[0]]) if p[need[0]].isdigit() else 0
+                    if last is None or pair < last - 5:
+                        cur = {}
+                        blocks.append(cur)
+                    last = pair
+                    cur.setdefault((p[need[0]], p[need[1]], p[need[2]]), []).append(
+                        (int(p[need[3]]), p[need[4]] != '0', p[need[5]] == '1', p[need[6]] != '0', p[need[7]] != '0'))
+            out = []
+            for fights in blocks[-keep:]:
+                res = {}
+                for side in 'AB':
+                    n = crits = 0
+                    for (pair, s, bot), rows in fights.items():
+                        if s != side:
+                            continue
+                        for i, (tick, dealt, crit, taken, crit_taken) in enumerate(rows[:-1]):
+                            if not crit_taken:
+                                continue
+                            t2, d2, c2, k2, _ = rows[i + 1]
+                            if t2 - tick <= 25 and d2 and not k2:
+                                n += 1
+                                crits += c2
+                    res[side] = [crits, n]
+                out.append(res)
+            self.key = (st.st_mtime, st.st_size)
+            self.blocks = out
+            return out
+
+
+def check_extras(checks, hits):
+    """Each check's punish numbers: after their crit the next hit a crit (hits.csv, matched from the newest back), and the
+    jump-ins punished with its crit and the knockback hits on falling jumpers (its 'jumping in' lines)."""
+    school = [c for c in checks if c['kind'] == 'school network']
+    for c, h in zip(reversed(school), reversed(hits)):
+        c['afterCrit'] = h
+    for c in checks:
+        for side, key in (('A', 'aJumpIn'), ('B', 'bJumpIn')):
+            line = c.get(key) or ''
+            pm = re.search(r'punished with its crit (\d+) of (\d+)', line)
+            km = re.search(r'K2 broken\) (\d+)', line)
+            c['punished' + side] = [int(pm.group(1)), int(pm.group(2))] if pm else None
+            c['k2Broken' + side] = int(km.group(1)) if km else None
+        c.pop('aJumpIn', None)
+        c.pop('bJumpIn', None)
+    return checks
+
+
 # ---- what the page gets ------------------------------------------------------------------------------------------------
 
 
@@ -251,7 +411,7 @@ def read_models(run):
         return []
 
 
-def build(cache, techniques, stages, prio):
+def build(cache, techniques, stages, prio, hits=None):
     ups = cache.updates()
     stage_of = {}
     for s in stages:
@@ -327,7 +487,7 @@ def build(cache, techniques, stages, prio):
     crit_chances = [sum(x[2] for x in cr), sum(x[3] for x in cr), sum(x[4] for x in cr), sum(x[8] for x in cr)] if cr else None
     pc = [g for u in ups[-10:] for g in u.get('game', []) if g[1] == 'B1']
     punish = [sum(g[2] for g in pc), sum(g[3] for g in pc)] if pc else None
-    checks = parse_checks(cache.run)
+    checks = check_extras(parse_checks(cache.run), hits.get() if hits else [])
     age = None
     log = os.path.join(cache.run, 'school-client.log')
     if os.path.exists(log):
@@ -344,8 +504,9 @@ def build(cache, techniques, stages, prio):
         'run': current_run(),
         'logAgeSeconds': age, 'state': state,
         'stages': [s for s in stages if s['name'] != 'T-F'], 'priority': prio,
-        'techniques': rows, 'damage': damage[-600:], 'checks': checks, 'landing': landing, 'critChances': crit_chances, 'punish': punish,
-        'models': read_models(cache.run),
+        'techniques': rows, 'damage': damage[-600:], 'checks': checks[-60:], 'landing': landing, 'critChances': crit_chances, 'punish': punish,
+        'models': read_models(cache.run), 'plan': read_plan(), 'experiments': read_experiments(),
+        'punishRolling': punish_rolling(log),
         'served': time.strftime('%H:%M:%S'),
     }
 
@@ -374,13 +535,14 @@ def main():
     techniques = read_techniques()
     stages, prio = read_stages(techniques)
     cache = LogCache(a.run)
+    hits = HitsCache(a.run)
     page = os.path.join(HERE, 'index.html')
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
             if self.path.startswith('/api/data'):
                 try:
-                    body = json.dumps(build(cache, techniques, stages, prio), allow_nan=False).encode('utf8')
+                    body = json.dumps(build(cache, techniques, stages, prio, hits), allow_nan=False).encode('utf8')
                     self.send(200, 'application/json', body)
                 except Exception as e:  # the page shows it instead of going blank
                     self.send(500, 'application/json', json.dumps({'error': repr(e)}).encode('utf8'))
