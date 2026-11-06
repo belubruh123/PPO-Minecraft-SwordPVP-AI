@@ -10,7 +10,7 @@ For the panel (short, plain words; keep both current):
 **NOW: Block 2 · the benchmark · first comparison (run 41 vs your game's model)**
 **INSTALLED: run35-0657 · +4.5 vs B · since 5 Nov 21:19**
 
-**CURRENT STEP (7 Nov 03:35): block 2. Benchmark works: ref1/ref2 done, A/A TIE +0.77 +- 1.16. Queued: run41a (run 41's 03:29 network, suite v1) -> compare run41a ref1. Then v2 references (refv2a, refv2b, request 'TAG NET suite-v2'). Run 41 checks: 01:54 A-B -8.3, 02:44 -3.2; the 03:29 check decides keep/revert (revert if clearly worse). Then block 3 (groundwork agent stopped by the usage limit; resume it).**
+**CURRENT STEP (7 Nov 03:45): block 2 ending, block 3 ready. Waiting: run 41's third check (03:29, ends ~04:05) = run 41's verdict; then the benchmark run41a (queued, suite v1) vs ref1. Run 42 (combo reward, committed 8de2836) deploys after that via run/redeploy-request (on run 41's line, or with COPY_OLD_BODY back on if run 41 is reverted). Then the v2 references.**
 
 ## Why this plan exists (the user, 6 Nov 06:30-07:10)
 - They want a visible improvement **every ~3 hours**, each block with **one number and a target**, reported at its end.
@@ -94,13 +94,14 @@ The user: all ways the document starts a combo, and all ways it holds one, learn
   T7 three-block hit, T8 hit the rising jumper, T9 jump reset (also starts stuns).
 - Holders (doc Part 4): T10 uppercut (+S), T11a lunge, T11b hops ("holds combos"), T11c hops and lunges, T2 standing crit
   (best right after a stun or at a combo's end).
-- [ ] read what myRow/theirRow in hits.csv count (is 1 the first hit?) and fix the baseline row above
-- [ ] read how drills and scenes start (SchoolSession: sceneNow, KIND_PUNISH drill, scenes.txt, focus.txt, the stage
-  "T-E jumping" with its pulls) and how a fight could start AT the moment (right after their swing for T4, they stunned
-  for T10, they hold S for T11a)
-- [ ] reward terms: a stun started (its hit, no hit back within ~10 ticks) and each extra hit of its own combo with no
-  hit taken; small enough not to swamp the damage reward (look at PUNISH_CRIT / OTHER_CRIT sizes)
-- [ ] lower the copy pull for these techniques (the stage's pulls 2.0-3.0 now), keep the reviews
+- [x] 7 Nov 03:35 myRow = hits dealt since the last hit taken (1 = first). Follow-up hits (myRow>=2) a fight, last 3 checks:
+  A 2.14, B 2.31; within 20 ticks of the last hit A 1.74, B 1.75 (groundwork agent; scratchpad block3-groundwork.md)
+- [x] 7 Nov 03:35 scenes restore bodies but not the bot's plan: a moment can't be forced, only kept a few ticks before (T4
+  needs their swing after the start). Exact-moment scenes: a later step if the reward alone stays flat
+- [x] 7 Nov 03:45 reward: run 42 COMBO_HIT 0.2 a follow-up hit (within 20 ticks, nothing taken since), ~+0.35 a fight vs
+  damage +-6; no separate stun-start term (it would pay hit-and-out). Committed 8de2836, compile-check OK
+- [x] 7 Nov 03:35 nothing to lower: every starter/holder pull is already 0 (SchoolStages.PULL_CAP = 0; "pull 2.00" is a
+  share capped to 0). Reviews kept
 - [ ] core tests, compile-check, EXPERIMENTS row, redeploy (not during a check, 20 min after the last)
 - [ ] measure at the block's end with the benchmark (docs/BENCHMARK.md): starters/holders %, follow-up combo hits A vs B, A-B; verdict; if flat -> block 4's method differs
 
