@@ -1,72 +1,64 @@
-"""combos.py [N]: the combos it takes, from the newest N fight traces (run/swordai/traces): a run of hits taken, each
-within GAP ticks of the one before, with no hit of its own in between. For combos of 2+ hits: how long they ran by
-opponent kind, and what keys it held from the 2nd hit on (W/S, strafe A/D, jump), split by how many more hits came:
-does strafing out of the line go with combos that end sooner? (The user, 23 Oct: it "don't know how to run and run to
-left or right to make its combo hard to continue and go back in".)"""
-import collections
-import glob
-import gzip
-import os
+"""combos.py HITS_CSV [K]: follow-up hits of its own combos a fight, per hourly check, side A (training) and B (the 23 Oct model).
+
+Block 3 (PLAN.md, run 42's combo reward): a follow-up hit is a hit dealt with myRow >= 2 (its second or later hit since the
+last hit taken; a trade tick shows myRow 0). "within 20" also needs its previous hit in the same fight at most 20 ticks before
+(run 42's COMBO_GAP), the term the reward pays. The checks are told apart as tools/lastchecks.py does (pair numbers start
+again). Baseline, the last three checks before run 42 (7 Nov 01:54-03:33): any gap A 2.14 / B 2.31, within 20 A 1.74 / B 1.75.
+"""
+import csv
 import sys
 
-GAP = 20
-N = int(sys.argv[1]) if len(sys.argv) > 1 else 600
-files = sorted(glob.glob(r'D:/swordai/run/swordai/traces/*.txt.gz'), key=os.path.getmtime)[-N:]
+
+def checks_of(rows):
+    out, last, cur = [], None, []
+    for r in rows:
+        p = int(r['pair'])
+        if last is not None and p < last - 5:
+            out.append(cur)
+            cur = []
+        cur.append(r)
+        last = p
+    if cur:
+        out.append(cur)
+    return out
 
 
-def parse(f):
-    ticks = []
-    for line in gzip.open(f, 'rt', encoding='utf-8', errors='replace'):
-        p = line.split('|')
-        if len(p) < 10 or not p[0].strip().isdigit():
-            continue
-        keys = p[5].strip()
-        ev = p[8]
-        ticks.append((int(p[0]), keys, 'TAKEN' in ev, 'HIT' in ev and 'TAKEN' not in ev.split('HIT')[0] if 'HIT' in ev else False, p[1].strip()))
-    return ticks
+def side_stats(rows, side):
+    s = [r for r in rows if r['side'] == side]
+    fights = {(r['pair'], r['bot']) for r in s}
+    anygap = within = 0
+    prev = {}
+    for r in s:
+        key = (r['pair'], r['bot'])
+        tick = int(r['tick'])
+        if int(r['hitsDealt']) > 0:
+            if int(r['myRow']) >= 2:
+                anygap += 1
+                if key in prev and tick - prev[key] <= 20:
+                    within += 1
+            prev[key] = tick
+        if int(r['hitsTaken']) > 0:
+            prev.pop(key, None)
+    n = max(1, len(fights))
+    return len(fights), anygap / n, within / n
 
 
-lengths = collections.defaultdict(list)
-after = {'ended': collections.Counter(), 'went on': collections.Counter()}
-kinds_total = collections.Counter()
-for f in files:
-    kind = os.path.basename(f).split('-')[2]
-    t = parse(f)
-    i = 0
-    combo = []
-    for k, (tick, keys, taken, hit, dist) in enumerate(t):
-        if hit:
-            if len(combo) >= 2:
-                lengths[kind].append(len(combo))
-            combo = []
-        if taken:
-            if combo and tick - combo[-1] > GAP:
-                if len(combo) >= 2:
-                    lengths[kind].append(len(combo))
-                combo = []
-            combo.append(tick)
-            if len(combo) >= 2:
-                # Keys in the 12 ticks after this hit of the combo, and whether another hit of it followed.
-                window = [x for x in t[k + 1:k + 13]]
-                more = any(x[2] for x in t[k + 1:k + 1 + GAP]) and not any(x[3] for x in t[k + 1:k + 1 + GAP])
-                c = after['went on' if more else 'ended']
-                for x in window:
-                    ks = x[1]
-                    c['ticks'] += 1
-                    c['W'] += ks[:1] == 'W'
-                    c['S'] += ks[:1] == 'S'
-                    c['strafe'] += len(ks) > 1 and ks[1] in 'AD'
-                    c['jump'] += 'j' in ks or 'J' in ks
-    if len(combo) >= 2:
-        lengths[kind].append(len(combo))
-    kinds_total[kind] += 1
+def main():
+    rows = list(csv.DictReader(open(sys.argv[1], encoding='utf8')))
+    k = int(sys.argv[2]) if len(sys.argv) > 2 else 3
+    print('check (first pair)   A fights  any gap  within 20 |  B fights  any gap  within 20')
+    tot = {'A': [0, 0.0, 0.0], 'B': [0, 0.0, 0.0]}
+    for c in checks_of(rows)[-k:]:
+        line = []
+        for side in 'AB':
+            n, a, w = side_stats(c, side)
+            line.append('%9d %8.2f %10.2f' % (n, a, w))
+            tot[side][0] += n
+            tot[side][1] += a * n
+            tot[side][2] += w * n
+        print('pair %-14s %s | %s' % (c[0]['pair'], line[0], line[1]))
+    print('all %d checks       %s | %s' % (k, *('%9d %8.2f %10.2f' % (t[0], t[1] / max(1, t[0]), t[2] / max(1, t[0])) for t in (tot['A'], tot['B']))))
 
-print('%d traces; combos taken (2+ hits in a row, no hit back between):' % len(files))
-for kind, ls in sorted(lengths.items(), key=lambda kv: -sum(kv[1])):
-    n = kinds_total[kind]
-    print('  %-12s %3d fights: %4d combos (%.1f a fight), avg length %.1f, 3+ hits %d, 5+ hits %d' % (
-        kind, n, len(ls), len(ls) / n, sum(ls) / len(ls), sum(1 for x in ls if x >= 3), sum(1 for x in ls if x >= 5)))
-for what, c in after.items():
-    tk = max(1, c['ticks'])
-    print('after a combo hit, when the combo %-8s: W %.0f%%  S %.0f%%  strafe A/D %.0f%%  jump %.0f%%  (%d ticks)' % (
-        what, 100 * c['W'] / tk, 100 * c['S'] / tk, 100 * c['strafe'] / tk, 100 * c['jump'] / tk, c['ticks']))
+
+if __name__ == '__main__':
+    main()
