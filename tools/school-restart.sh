@@ -7,15 +7,17 @@ printf 'swordai stop\r\n' > /d/swordai/run/swordai/inbox.txt
 sleep 8
 powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { (\$_.Name -in 'cmd.exe','java.exe') -and \$_.CommandLine -match 'start-school\.cmd|start-dev\.cmd|GradleWrapperMain|GradleDaemon|fabric\.dli\.' } | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force -ErrorAction SilentlyContinue }"
 sleep 3
-cmd //c "set JAVA_HOME=C:\Users\jerem\.gradle\jdks\eclipse_adoptium-25-amd64-windows.2&& D:\swordai\gradlew.bat -p D:\swordai build -x test --console=plain < NUL" < /dev/null > "$S/build-school.log" 2>&1
+cmd //c "set JAVA_HOME=C:\Users\jerem\.gradle\jdks\eclipse_adoptium-25-amd64-windows.2&& D:\swordai\gradlew.bat -p D:\swordai build -x test --no-daemon --console=plain < NUL" < /dev/null > "$S/build-school.log" 2>&1
 echo "=== build: $(grep -a 'BUILD' "$S/build-school.log" | tail -1)"
 grep -aq "BUILD SUCCESSFUL" "$S/build-school.log" || { grep -a "error:" -A2 "$S/build-school.log" | head -20; exit 1; }
 V=$(ls -t /d/swordai/core/build/libs/swordai-core-*.jar | head -1 | xargs basename)
 sed -i "s/swordai-core-[0-9.]*\.jar/$V/" /d/swordai/build/loom-cache/argFiles/runClient
 [ -f $L ] && cp $L /d/swordai/run/school-client-$(date +%m%d-%H%M).log
 : > $L
-cmd //c "D:\swordai\run\start-school.cmd" > /dev/null 2>&1 &
-disown
+# The client in a console of its own (7 Nov): started into the caller's console it kept the watchdog task's run open, and
+# Task Scheduler then skipped every later run as "already running". A headless console like the task's own, so the game
+# window shows as before.
+powershell -NoProfile -Command "Start-Process -FilePath conhost.exe -ArgumentList '--headless','cmd.exe','/c','D:\swordai\run\start-school.cmd'"
 for i in $(seq 1 120); do grep -aq "joined the game" $L 2>/dev/null && break; sleep 5; done
 grep -aq "joined the game" $L || { echo "=== $(date +%H:%M:%S) world never loaded"; exit 1; }
 sleep 10
