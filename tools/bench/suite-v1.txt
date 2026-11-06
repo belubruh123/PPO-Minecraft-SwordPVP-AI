@@ -1,0 +1,17 @@
+# SwordAI benchmark suite v1 (docs/BENCHMARK.md). One line per bot: <bot name from Specialists.NAMES> <episodes>.
+# "h2h <episodes>" = head-to-head against the reference network in the league slot (school/league/<name>.bin).
+# Episode i (from 0, in file order) uses seed mix(0xBE4C0L + i); it is recorded as bench/<tag>/<iiii>-<bot>.txt.gz.
+# Never change a line of a released suite: make suite-v2 instead (the reference must be measured again).
+punish-critter 15
+jump-in-critter 15
+swinger 15
+attack-then-s 15
+deflector 15
+straight-sprinter 15
+rhythm-comboer 15
+stunner 15
+uppercutter 15
+hopper 15
+standing-critter 15
+mixer 15
+h2h 20
