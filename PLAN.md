@@ -7,10 +7,10 @@ the time), write each block's verdict under it, and commit. Never delete a block
 for check 2 (done: check 1; next: check 3, verdict)". Keep this line current:
 
 For the panel (short, plain words; keep both current):
-**NOW: Block 2 · the benchmark · run 41 starting**
+**NOW: Block 2 · the benchmark · reference run next**
 **INSTALLED: run35-0657 · +4.5 vs B · since 5 Nov 21:19**
 
-**CURRENT STEP (7 Nov 00:10): block 1 done (MISSED, run 40 reverted). Run 41 deploying via the watchdog (run/redeploy-request; never redeploy from the session). Block 2 (benchmark): Java part committed; tools/bench.py being finished by its agent (overlap and bot-part fixes); then commit it, the A/A test (run35-0657 vs itself: write 'aa1 run/best-run35/run35-0657.bin' to run/bench-request, then 'aa2 ...'), panel box.**
+**CURRENT STEP (7 Nov 00:30): block 2. Built: BENCH mode, bench-run.sh, bench.py (weights, scorer, selftest TIE), panel box. Now: the watchdog run stuck since 00:05 ends at its 30-min limit 00:35; then the watchdog takes run/bench-request (ref1 = run35-0657, about 2-3 h), the hourly loop waits (stop file). Next: ref2 (A/A), compare, then the training network (run 41) as the first candidate. Never start bench-run.sh from the session.**
 
 ## Why this plan exists (the user, 6 Nov 06:30-07:10)
 - They want a visible improvement **every ~3 hours**, each block with **one number and a target**, reported at its end.
@@ -77,10 +77,14 @@ weighted by how often each situation happens in the user's real duels; verdict B
   DONE at the end; tools/bench-run.sh TAG NET. START IT ONLY via the watchdog: write "TAG NET" to run/bench-request
   (the runner swaps NET into training's slot; a session that dies mid-run must not leave it there)
 - [x] head-to-head: suite line h2h 20 plays against school/league/game-run35-0657.bin (untested at runtime)
-- [ ] real-fight frequencies per situation from the user's duels (tools/bench-weights.py)
-- [ ] scorer tools/bench.py: per test C, R, diff, noise; total; verdict; bench/latest.json
-- [ ] the panel's "Benchmark: candidate vs your game" box
-- [ ] the A/A test (R vs R about 0), then set episode counts so the total's noise is under 1 HP per fight
+- [x] 7 Nov 00:07 real-fight frequencies per situation from the user's duels (tools/bench.py weights -> run/swordai/bench/weights.json;
+  per real fight: punish chances 12.0, jump reset 12.3, make miss 5.8, holding combo 5.0, reverse defl 4.7, crits 4.4, deflection 3.8)
+- [x] 7 Nov 00:10 scorer tools/bench.py (df3148c): score / compare / selftest; selftest on the real duels' two halves: TIE (-0.19 +- 0.51)
+- [x] 7 Nov 00:27 the panel's benchmark box (3561294): verdict, total, parts, each test; progress bar while one plays
+- [ ] 7 Nov 00:30 launcher fixes first (8e3a0a8, a28fc30): the client and everything the watchdog starts get consoles of their own
+  (the client in the task's console kept the task "running": every watchdog run 00:15-00:35 was skipped); bench keeps the stop file
+- [ ] reference run ref1 (run35-0657; request in run/bench-request, taken by the watchdog), then the A/A run ref2 (same network),
+  `tools/bench.py compare ref2 ref1` about 0; then set episode counts so the total's noise is under 1 HP per fight
 - [ ] first real comparison: run 40/41's network vs run35-0657
 
 ## Block 3: combo starters and holders. After block 2 (judged by the new benchmark). Method: exact-moment drills + reward on the result
