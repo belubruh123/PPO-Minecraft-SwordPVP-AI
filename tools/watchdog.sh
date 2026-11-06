@@ -13,6 +13,16 @@ if ! curl -s -m 5 -o /dev/null http://localhost:8765/; then
   cd /d/swordai && nohup C:/Python38/python.exe tools/dashboard/server.py > /d/swordai/run/panel.out 2>&1 &
   disown
 fi
+# A redeploy asked for (7 Nov): run/redeploy-request (its text: optional VAR=value settings for it). Run from here, the client
+# and the hourly loop it starts outlive the Claude app (on 6 Nov a client started from a session died with it at 07:13).
+if [ -f /d/swordai/run/redeploy-request ] && ! ps -ef | grep -a "school-redeploy" | grep -qv grep; then
+  ENVLINE=$(tr -d '' < /d/swordai/run/redeploy-request)
+  mv /d/swordai/run/redeploy-request /d/swordai/run/redeploy-request.taken
+  echo "$(date '+%m-%d %H:%M') redeploy asked for ($ENVLINE)" >> $LOG
+  cd /d/swordai && nohup env $ENVLINE bash "$S/school-redeploy.sh" > "/d/swordai/run/redeploy-$(date +%m%d-%H%M).log" 2>&1 &
+  disown
+  exit 0
+fi
 # A benchmark asked for (7 Nov): run/bench-request holds "TAG NET"; started here, outside the Claude app, so a session that
 # ends cannot leave a test network in training's place (tools/bench-run.sh swaps it in and back).
 if [ -f /d/swordai/run/bench-request ] && ! ps -ef | grep -a "bench-run" | grep -qv grep; then
