@@ -44,7 +44,7 @@
   .block:last-child { border-bottom: 0; }
   .block .t { font-weight: 600; }
   .block.now .t::before { content: "▶ "; color: var(--accent); }
-  .tech { display: grid; grid-template-columns: 52px minmax(0, 1fr) 110px 70px 70px; gap: 8px; align-items: center; padding: 4px 0; font-size: 14px; }
+  .tech { display: grid; grid-template-columns: 52px minmax(0, 1fr) 110px 56px 110px; gap: 8px; align-items: center; padding: 4px 0; font-size: 14px; }
   .tech .id { font-weight: 650; }
   .tech .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tech .pct { text-align: right; font-variant-numeric: tabular-nums; }
@@ -220,7 +220,7 @@ function render(d) {
     const status = t.few ? '<span class="muted">few</span>' : t.stuck ? '<span class="bad">stuck</span>' : (t.change != null && t.change >= 5 ? '<span class="ok">rising</span>' : '<span class="muted">–</span>');
     return `<div class="tech"><span class="id">${esc(t.id)}</span><span class="title" title="${esc(t.title)}">${esc(t.title)}</span>
       <div class="bar"><i style="width:${r == null ? 0 : r}%"></i></div><span class="pct">${r == null ? '–' : r.toFixed(0) + '%'}</span>
-      <span class="trend pct">${t.change == null ? '' : fmt(t.change, 0)}</span></div>`;
+      <span class="trend pct">${t.change == null ? '' : fmt(t.change, 0)} ${status}</span></div>`;
   };
   let html = GROUPS.map(([name, ids]) => `<div class="group">${esc(name)}</div>` + ids.filter((i) => byId[i]).map((i) => row(byId[i])).join('')).join('');
   const rest = (d.techniques || []).filter((t) => !seen.has(t.id) && !GROUPS.some((g) => g[1].includes(t.id)));
