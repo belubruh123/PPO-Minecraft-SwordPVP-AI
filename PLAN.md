@@ -10,7 +10,7 @@ For the panel (short, plain words; keep both current):
 **NOW: Block 3 · combo starters and holders · run 42 (combo reward) training**
 **INSTALLED: run35-0657 · +4.5 vs B · since 5 Nov 21:19**
 
-**CURRENT STEP (7 Nov 03:50): block 3, run 42 (combo reward) training since 03:47. Block 2 done: benchmark works (A/A TIE +0.77 +- 1.16; run 41 vs the game's model TIE +1.15 +- 1.05, holding a combo worse). Next: v2 references (refv2a, refv2b: 'TAG NET suite-v2' in run/bench-request) at a quiet time; run 42's checks (~04:50, 05:40, 06:30); block 3's end (~06:50): follow-up hits a fight (A 1.74 / B 1.75 before), starters/holders %, benchmark run42 vs ref (v2).**
+**CURRENT STEP (7 Nov 03:50): block 3, run 42 (combo reward) training since 03:47. Block 2 done: benchmark works (A/A TIE +0.77 +- 1.16; run 41 vs the game's model TIE +1.15 +- 1.05, holding a combo worse). Done: refv2 (04:12). Next: run 42's checks (~04:50, 05:40, 06:30); block 3's end (~06:50): follow-up hits a fight (A 1.74 / B 1.75 before), starters/holders %, benchmark run42 vs ref (v2).**
 
 ## Why this plan exists (the user, 6 Nov 06:30-07:10)
 - They want a visible improvement **every ~3 hours**, each block with **one number and a target**, reported at its end.
@@ -86,7 +86,8 @@ weighted by how often each situation happens in the user's real duels; verdict B
 - [x] 7 Nov 01:05 ref1 (00:37-00:46) and ref2 (00:55-01:04), 200 episodes in 9 minutes each; A/A `compare ref2 ref1`: TIE
   +0.77 +- 1.16 (skills +2.24 +- 1.89, h2h -1.40 +- 2.65, bots +0.01 +- 0.51) -> suite-v2 (25 a bot, 60 h2h, 360 episodes, ~16 min,
   about +- 0.8): request "TAG NET suite-v2"; R must be measured again on v2 (refv2a, refv2b)
-- [ ] first real comparison: run41a = run 41's network of the 03:29 check (best-candidates/run41-0329.bin) on v1 vs ref1 (queued 03:32)
+- [x] 7 Nov 03:45 first real comparison: run41a (run 41's 03:29 network) vs ref1 TIE +1.15 +- 1.05 (vs ref2 +0.55); holding a combo WORSE
+- [x] 7 Nov 04:12 refv2 = run35-0657 on suite-v2 (360 episodes, 03:56-04:12): the reference for every v2 comparison
 
 ## Block 3: combo starters and holders. After block 2 (judged by the new benchmark). Method: exact-moment drills + reward on the result
 The user: all ways the document starts a combo, and all ways it holds one, learned by reward (copying only a light hint).
