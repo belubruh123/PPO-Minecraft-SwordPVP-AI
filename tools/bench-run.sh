@@ -36,20 +36,21 @@ since() { tail -n +$start $L | grep -ac "$1"; }
 # Never left behind: with the suite file in the school folder every later check (the hourly loop's too) would be a benchmark.
 trap 'rm -f $SCH/bench-suite.txt' EXIT
 
-# 1. The loop paused (only if it runs; one paused by someone else stays paused).
-PAUSED=
+# 1. The loop paused, and kept from starting: the stop file stays for the whole benchmark (with the loop not running the
+# watchdog would otherwise start it in the middle, and its hourly check would stop the benchmark). A stop file someone else
+# made stays as it is.
+OWNSTOP=
+[ -f $STOPF ] || { touch $STOPF; OWNSTOP=1; }
 if looping; then
-  touch $STOPF
   for i in $(seq 1 900); do looping || break; sleep 2; done
-  if looping; then rm -f $STOPF; echo "the loop did not pause within 30 minutes: nothing done"; exit 1; fi
-  PAUSED=1
+  if looping; then [ -n "$OWNSTOP" ] && rm -f $STOPF; echo "the loop did not pause within 30 minutes: nothing done"; exit 1; fi
   echo "loop paused $(date +%H:%M:%S)"
 fi
+# The loop is started again by the watchdog (within 10 minutes, from run/ as it always starts it), not from here.
 resume_loop() {
-  [ -n "$PAUSED" ] || return 0
+  [ -n "$OWNSTOP" ] || return 0
   rm -f $STOPF
-  nohup bash $S/$C.sh >/dev/null 2>&1 &
-  echo "loop restarted $(date +%H:%M:%S)"
+  echo "stop file removed $(date +%H:%M:%S): the watchdog starts the loop again"
 }
 
 # 2. The check's other switches set aside (a benchmark plays as the user's game does), put back at the end.
