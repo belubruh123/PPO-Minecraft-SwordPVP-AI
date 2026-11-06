@@ -1296,6 +1296,13 @@ public final class SchoolSession implements AgentSession {
 	/** The same rule in training (run 39); its own switch so that training can go back without the user's fights losing it. */
 	static final boolean JUMP_IN_GUARD_TRAINING = true;
 	static final int JUMP_IN_SWING_TICKS = 1;
+	/**
+	 * Run 40's hold (6 Nov 06:20): through their hit and in its own combo, only a crit swing let through (critSwingNow).
+	 * Reverted 7 Nov 00:10: over three checks its next hit after a crit taken was a crit 51% (95 of 186; B 49%, run 39 46%),
+	 * under the block's 55%, and A-B -0.4 against run 39's +0.6. Off: run 39's hold (let go once their hit lands, never in
+	 * its own combo), the user's rule of 5 Nov.
+	 */
+	static final boolean JUMP_IN_HOLD_THROUGH_HIT = false;
 
 	/**
 	 * Run 40 (6 Nov 06:45): the hold lasts until they land, through their hit too, and in its own combo: the user asked for the
@@ -2820,12 +2827,13 @@ public final class SchoolSession implements AgentSession {
 		if (inCombo && step.teacherTechnique == Technique.K2.ordinal()) {
 			step.teacherHeads &= ~(1 << ActionSpace.ATTACK);
 		}
-		if (them.onGround) {
+		if (them.onGround || !JUMP_IN_HOLD_THROUGH_HIT && clock.ticksSinceHitTaken == 0) {
 			jumpInAir = false;
 		} else if (them.sinceJump == 0 && reader.duel.theyClose > 0.05 && reader.duel.flat < 6.5) {
 			jumpInAir = true;
 		}
-		boolean k2Hold = JUMP_IN_GUARD_TRAINING && jumpInAir && them.sinceJump > JUMP_IN_SWING_TICKS && !critSwingNow(me)
+		boolean k2Hold = JUMP_IN_GUARD_TRAINING && (JUMP_IN_HOLD_THROUGH_HIT || !inCombo) && jumpInAir && them.sinceJump > JUMP_IN_SWING_TICKS
+				&& !(JUMP_IN_HOLD_THROUGH_HIT && critSwingNow(me))
 				|| K2_GUARD && !inCombo && ((me.isSprinting() || reader.duel.me.sprinting)
 				&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, fightLag + K2_MARGIN) || step.teacherTechnique == Technique.K2.ordinal());
 		if (k2Hold) {

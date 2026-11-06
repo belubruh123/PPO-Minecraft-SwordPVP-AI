@@ -427,14 +427,15 @@ final class FightSession implements AgentSession {
 			}
 			// The golden rule (K2): what is seen of them is a round trip behind the server by the time a hit gets there.
 			dev.swordai.core.pvp.Body them = reader.duel.them;
-			if (them.onGround) {
+			if (them.onGround || !SchoolSession.JUMP_IN_HOLD_THROUGH_HIT && takenNow) {
 				jumpInAir = false;
 			} else if (them.sinceJump == 0 && reader.duel.theyClose > 0.05 && reader.duel.flat < 6.5) {
 				jumpInAir = true;
 			}
-			school.holdJumpInSwing(SchoolSession.JUMP_IN_GUARD && jumpInAir && them.sinceJump > SchoolSession.JUMP_IN_SWING_TICKS
-					&& !SchoolSession.critSwingNow(me));
-			school.holdSwing(SchoolSession.K2_GUARD && me.isSprinting()
+			school.holdJumpInSwing(SchoolSession.JUMP_IN_HOLD_THROUGH_HIT && SchoolSession.JUMP_IN_GUARD && jumpInAir
+					&& them.sinceJump > SchoolSession.JUMP_IN_SWING_TICKS && !SchoolSession.critSwingNow(me));
+			school.holdSwing(!SchoolSession.JUMP_IN_HOLD_THROUGH_HIT && SchoolSession.JUMP_IN_GUARD && jumpInAir
+					&& them.sinceJump > SchoolSession.JUMP_IN_SWING_TICKS || SchoolSession.K2_GUARD && me.isSprinting()
 					&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, ownPingTicks() + SchoolSession.K2_MARGIN));
 			double reachNow = Math.sqrt(opp.getBoundingBox().distanceToSqr(me.getEyePosition()));
 			school.rulesLetGo(SchoolSession.RULES_LET_GO_IN_LIFT && liftedFor >= 0 && !me.onGround() && reachNow <= 3.5

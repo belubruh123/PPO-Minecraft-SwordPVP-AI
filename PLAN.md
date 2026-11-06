@@ -49,13 +49,14 @@ Measure from the checks' hit log: `C:/Python38/python.exe -I tools/lastchecks.py
   A-B +1.0 (3.6); swings landing A 94% vs B 90%. Both checks: A 57% (68 of 120) vs B 46%, A-B +0.8
 - [x] 23:20 the progress panel redesigned (tools/dashboard, http://localhost:8765): reads PLAN.md, EXPERIMENTS.md, the
   checks and hits.csv live, so it changes with every commit; the watchdog keeps it running
-- [ ] check 3
-- [ ] verdict after check 3: kept if the share is 55%+ and A-B not clearly under +0.6; else revert to run 39 (JUMP_IN_GUARD logic) and say why
+- [x] check 3 (00:00): after-crit A 43% (26 of 61) vs B 60%; A-B -2.6 (3.4)
+- [x] 00:10 VERDICT: target missed (51% over three checks, 95 of 186; B 49%; run 39 46%), A-B -0.4: run 40 REVERTED
+  (JUMP_IN_HOLD_THROUGH_HIT = false, run 39's hold = the user's rule). Old wording: kept if the share is 55%+ and A-B not clearly under +0.6; else revert to run 39 (JUMP_IN_GUARD logic) and say why
 - [ ] DROPPED for the benchmark (it compares with the game's model directly): screen the game's model on the SAME pairs as the
   hourly check, `FROM=0 bash tools/screen.sh 45 /d/swordai/run/best-run35/run35-0657.bin:1` (B stays the ruler: it is also the
   training's copy target and sparring partner, so swapping it would change training). Then the panel shows
   training vs your game = each check's A-B minus that screen's A-B (same fights); add the line INSTALLED_SAME_PAIRS to this file
-- [ ] if kept: ask the user to install the run-40 jar before they play on 7 Nov (tools/install-ab.sh, same five arms:
+- [ ] DROPPED (run 40 reverted): ask the user to install the run-40 jar before they play on 7 Nov (tools/install-ab.sh, same five arms:
   `noback=@installed,on,,1,noback old1418=.../run23-1418.bin run26=.../run26-0413.bin old0739=.../run30h-0739.bin`, --dry first)
 
 ## Run 41, between blocks 1 and 2 (user, 6 Nov 23:45: "it learns from the 23 Oct model?"). Method: stop copying a worse model
@@ -122,7 +123,7 @@ The user: all ways the document starts a combo, and all ways it holds one, learn
 - [ ] the live A/B pool (review.sh, tools/duels.py)
 
 ## Block reports (append one per block)
-- Block 1:
+- Block 1: MISSED. Method: a rule (hold until they land). After-crit crit 46% -> 51% (target 55%), level with B (49%); reverted. Next blocks use other kinds of method.
 - Block 2:
 - Block 3:
 - Block 4:
