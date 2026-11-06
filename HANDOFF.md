@@ -172,6 +172,8 @@ START_NET=/d/swordai/run/swordai/school/runNN-revert-start.bin bash tools/school
 
 ## 8. Where things stand (updated 2 Nov 07:15; older notes below)
 
+**STATUS 6 Nov 22:40:** training back (run 40) since 22:38, started by the WATCHDOG (survives session ends) after the 07:13-22:35 outage; see PLAN.md block 1. Never start the client from inside the Claude session again: let the watchdog (or school-restart.sh run by it) start it.
+
 **PLAN (6 Nov 07:15): read D:/swordai/PLAN.md right after this section** — the user's 3-hour blocks with one number each, the checklist, the method-switch rule, the scoreboard commands. Tick its boxes as work is done.
 
 **STATUS 6 Nov 06:25 (read this first):** run 40 training since 06:22 (EXPERIMENTS row 40): the jump-in hold now lasts until they land (through their hit, in its own combo), only a crit swing goes through (SchoolSession.critSwingNow); SchoolFighter.holdJumpInSwing for the user's fights. The user (06:10): keep training, analyse damage taken and combos, nearly 100% punish crit on jump-ins; they play again on 7 Nov. The run-40 jar is NOT in the profile yet (asked the user). Judge by the checks' after-a-crit crit share (scratchpad punish.py on hits.csv: run 39 46%) and A-B (run 39 +0.6).
