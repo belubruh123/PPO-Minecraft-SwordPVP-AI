@@ -104,7 +104,7 @@ The user: all ways the document starts a combo, and all ways it holds one, learn
 - [x] 7 Nov 03:35 nothing to lower: every starter/holder pull is already 0 (SchoolStages.PULL_CAP = 0; "pull 2.00" is a
   share capped to 0). Reviews kept
 - [x] 7 Nov 03:47 core tests, compile-check, EXPERIMENTS row 42, redeployed via the watchdog (first update: 38 follow-up hits paid)
-- [ ] measure at the block's end with the benchmark (docs/BENCHMARK.md): starters/holders %, follow-up combo hits A vs B, A-B; verdict; if flat -> block 4's method differs
+- [x] 7 Nov 07:11 measured: see Block reports (PARTLY MET, kept)
 
 ## Block 4: its own jumps inside their reach. After block 3. Method: decided by what is found (must differ in kind if block 3 failed)
 - [ ] who presses jump in those moments: the rules (hits.csv "ruled" bits) or the network; which situation labels
@@ -131,6 +131,6 @@ The user: all ways the document starts a combo, and all ways it holds one, learn
 
 ## Block reports (append one per block)
 - Block 1: MISSED. Method: a rule (hold until they land). After-crit crit 46% -> 51% (target 55%), level with B (49%); reverted. Next blocks use other kinds of method.
-- Block 2:
-- Block 3:
+- Block 2: DONE (00:00-04:12). Method: build a measuring tool. docs/BENCHMARK.md built: BENCH mode, bench-run.sh via the watchdog, bench.py; A/A test TIE +0.77 +- 1.16 (v1), suite v2 (+- 0.9); run 41 vs the game's model TIE +1.15, holding a combo WORSE.
+- Block 3: PARTLY MET (03:47-07:11). Method: a reward term (run 42, COMBO_HIT 0.2 a follow-up hit), no copying. Follow-up combo hits a fight within 20 ticks A 1.68 -> 1.93 (three checks each) while B stayed 1.84 -> 1.88: A clearly up, B not (target met). T10 6-20% -> 25% (target 20+ met), T4 45-53% -> 52% (target 60 missed). A-B +0.5 over three checks (run 41 -3.8). Benchmark vs the game's model (v2): TIE +0.13 +- 0.90; holding a combo no longer worse (+1.1 +- 2.0); head-to-head -1.7 +- 1.8. Kept. Punish crit chances critted drifted 48% -> 34% during it.
 - Block 4:
