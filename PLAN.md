@@ -7,7 +7,7 @@ the time), write each block's verdict under it, and commit. Never delete a block
 for check 2 (done: check 1; next: check 3, verdict)". Keep this line current:
 
 For the panel (short, plain words; keep both current):
-**NOW: Block 1 · waiting for check 3 (~00:05)**
+**NOW: Block 1 · waiting for check 3 (~00:05) · then run 41 and the benchmark**
 **INSTALLED: run35-0657 · +4.5 vs B · since 5 Nov 21:19**
 
 **CURRENT STEP (6 Nov 23:20): block 1 (run 40), waiting for check 3 (~00:05). Done: analysis, change, check 1 (68%),
@@ -59,7 +59,27 @@ Measure from the checks' hit log: `C:/Python38/python.exe -I tools/lastchecks.py
 - [ ] if kept: ask the user to install the run-40 jar before they play on 7 Nov (tools/install-ab.sh, same five arms:
   `noback=@installed,on,,1,noback old1418=.../run23-1418.bin run26=.../run26-0413.bin old0739=.../run30h-0739.bin`, --dry first)
 
-## Block 2: combo starters and holders. ~7 Nov 00:30 to 03:30. Method: exact-moment drills + reward on the result
+## Run 41, between blocks 1 and 2 (user, 6 Nov 23:45: "it learns from the 23 Oct model?"). Method: stop copying a worse model
+The 23 Oct model is B, AND the training's copy target (installed pull 0.05, its replayed moves), the source of the rules'
+keys (pull 0.29), and the only sparring partner (school/league is empty). Two better models were installed since.
+- [ ] find the switches: the installed pull (stage line "installed network's pull"), the installed's replayed examples, oldPull
+- [ ] installed pull 0 and its replay off; the rules stay (hand-written code)
+- [ ] the game's model as sparring partner: run35-0657.bin into run/swordai/school/league/ (LEAGUE_SHARE 0.5 of sparring)
+- [ ] EXPERIMENTS row 41, redeploy after check 3 and the same-pairs screen, measure on the hourly checks + training vs your game
+
+## Block 2: the benchmark. After run 41, a few hours of building. Method: build docs/BENCHMARK.md (the user, 6 Nov 23:50: "redesign the entire benchmark system")
+Skill tests per technique family + head-to-head against the game's model + the bot fights, all in HP per real fight,
+weighted by how often each situation happens in the user's real duels; verdict BETTER/TIE/WORSE with noise; A/A test first.
+- [x] 6 Nov 23:55 design written: docs/BENCHMARK.md
+- [ ] situation detectors + outcome rows per test; a BENCH mode playing a suite with a given network -> bench/<model>-v1.csv
+- [ ] head-to-head through the league slot (SchoolBotPilot with R's network and rules), mirrored seeds
+- [ ] real-fight frequencies per situation from the user's duels (tools/bench-weights.py)
+- [ ] scorer tools/bench.py: per test C, R, diff, noise; total; verdict; bench/latest.json
+- [ ] the panel's "Benchmark: candidate vs your game" box
+- [ ] the A/A test (R vs R about 0), then set episode counts so the total's noise is under 1 HP per fight
+- [ ] first real comparison: run 40/41's network vs run35-0657
+
+## Block 3: combo starters and holders. After block 2 (judged by the new benchmark). Method: exact-moment drills + reward on the result
 The user: all ways the document starts a combo, and all ways it holds one, learned by reward (copying only a light hint).
 - Starters (doc Part 2, "ways to start a stun"): T4 deflection, T5 reverse deflection, T6/T6a make them miss then stun,
   T7 three-block hit, T8 hit the rising jumper, T9 jump reset (also starts stuns).
@@ -72,15 +92,15 @@ The user: all ways the document starts a combo, and all ways it holds one, learn
 - [ ] reward terms: a stun started (its hit, no hit back within ~10 ticks) and each extra hit of its own combo with no
   hit taken; small enough not to swamp the damage reward (look at PUNISH_CRIT / OTHER_CRIT sizes)
 - [ ] lower the copy pull for these techniques (the stage's pulls 2.0-3.0 now), keep the reviews
-- [ ] core tests, compile-check, EXPERIMENTS row 41, redeploy (not during a check, 20 min after the last)
-- [ ] measure at the block's end (~03:30): starters/holders %, follow-up combo hits A vs B, A-B; verdict; if flat -> block 3's method differs
+- [ ] core tests, compile-check, EXPERIMENTS row, redeploy (not during a check, 20 min after the last)
+- [ ] measure at the block's end with the benchmark (docs/BENCHMARK.md): starters/holders %, follow-up combo hits A vs B, A-B; verdict; if flat -> block 4's method differs
 
-## Block 3: its own jumps inside their reach. ~7 Nov 03:30 to 06:30. Method: decided by what is found (must differ in kind if block 2 failed)
+## Block 4: its own jumps inside their reach. After block 3. Method: decided by what is found (must differ in kind if block 3 failed)
 - [ ] who presses jump in those moments: the rules (hits.csv "ruled" bits) or the network; which situation labels
 - [ ] the document's view of those jumps (T1a bait close, T9 jump reset, C3, T11b are allowed: is it their timing that is wrong?)
-- [ ] change, EXPERIMENTS row, redeploy, measure at the block's end (~06:30, target: under 12% of damage taken)
+- [ ] change, EXPERIMENTS row, redeploy, measure at the block's end (target: under 12% of damage taken)
 
-## Block 4: the learning itself. After block 3. Method: reward drives the keys it already copies
+## Block 5: the learning itself. After block 4. Method: reward drives the keys it already copies
 - [ ] copy pulls off (or near) on keys where it agrees with the rules 90%+ (update line "rules' keys ... by head"), A/B
   run judged on the stuck techniques and on fresh-pair screens, not on the +-4 hourly check (25 Oct a fading copy lost,
   with a far weaker network: say so in the report)
@@ -102,3 +122,4 @@ The user: all ways the document starts a combo, and all ways it holds one, learn
 - Block 1:
 - Block 2:
 - Block 3:
+- Block 4:
