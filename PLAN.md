@@ -6,6 +6,10 @@ the time), write each block's verdict under it, and commit. Never delete a block
 **Every report to the user starts with the plan step I am on** (the user, 6 Nov 22:55), e.g. "Plan: block 1, waiting
 for check 2 (done: check 1; next: check 3, verdict)". Keep this line current:
 
+For the panel (short, plain words; keep both current):
+**NOW: Block 1 · waiting for check 3 (~00:05)**
+**INSTALLED: run35-0657 · +4.5 vs B**
+
 **CURRENT STEP (6 Nov 23:20): block 1 (run 40), waiting for check 3 (~00:05). Done: analysis, change, check 1 (68%),
 check 2 (47%; both 57%). Next: verdict after check 3, then block 2's first box (what myRow counts).**
 

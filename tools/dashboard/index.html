@@ -6,59 +6,45 @@
 <title>SwordAI training</title>
 <style>
   :root {
-    --bg: #f5f5f2; --panel: #ffffff; --fg: #1c1c1a; --muted: #686862; --line: #dcdcd5; --soft: #eeeee8;
+    --bg: #f5f5f2; --panel: #fff; --fg: #1c1c1a; --muted: #6b6b65; --line: #dfdfd8; --soft: #eeeee8;
     --accent: #1f5fa8; --b: #8a8a84; --good: #2e7d32; --mid: #9a6400; --bad: #b3261e;
   }
   @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #141413; --panel: #1c1c1a; --fg: #e8e8e3; --muted: #9c9c95; --line: #34342f; --soft: #262623;
-      --accent: #6aa2e0; --b: #8d8d86; --good: #6cbf73; --mid: #d6a14a; --bad: #e0675e;
-    }
+    :root { --bg: #141413; --panel: #1c1c1a; --fg: #e8e8e3; --muted: #9c9c95; --line: #34342f; --soft: #262623;
+            --accent: #6aa2e0; --b: #8d8d86; --good: #6cbf73; --mid: #d6a14a; --bad: #e0675e; }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
-  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
-  h1 { font-size: 20px; margin: 0; font-weight: 650; }
-  h2 { font-size: 16px; margin: 0 0 4px; font-weight: 650; }
-  .lede { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
-  section { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; margin-top: 14px; min-width: 0; }
-  .pill { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 13px; font-weight: 600; border: 1px solid currentColor; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 16px; }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 20px; margin: 0; }
+  h2 { font-size: 15px; margin: 0 0 10px; color: var(--muted); font-weight: 600; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-top: 14px; }
+  .pill { padding: 2px 10px; border-radius: 99px; font-size: 13px; font-weight: 600; border: 1px solid currentColor; }
   .ok { color: var(--good); } .warn { color: var(--mid); } .bad { color: var(--bad); } .muted { color: var(--muted); }
-  .step { font-size: 17px; line-height: 1.45; margin: 4px 0 2px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 12px; }
-  .tile { border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; min-width: 0; }
-  .tile .k { font-size: 13px; color: var(--muted); }
-  .tile .v { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
-  .tile .v small { font-size: 14px; font-weight: 500; color: var(--muted); }
-  .tile .d { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
-  .a { color: var(--accent); } .bcol { color: var(--b); }
-  .scroll { overflow-x: auto; }
-  table { border-collapse: collapse; width: 100%; font-size: 14px; }
-  th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12.5px; border-bottom: 1px solid var(--line); padding: 6px 8px; }
-  td { border-bottom: 1px solid var(--soft); padding: 6px 8px; vertical-align: top; }
-  td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .bar { height: 8px; background: var(--soft); border-radius: 4px; overflow: hidden; min-width: 80px; }
+  .a { color: var(--accent); } .bc { color: var(--b); }
+  .now { font-size: 22px; font-weight: 650; }
+  .sub { color: var(--muted); font-size: 14px; margin-top: 2px; }
+  .bar { height: 8px; background: var(--soft); border-radius: 4px; overflow: hidden; }
   .bar i { display: block; height: 100%; background: var(--accent); }
-  .block { display: grid; grid-template-columns: 1fr; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--soft); }
-  .block:last-child { border-bottom: 0; }
-  .block .t { font-weight: 600; }
-  .block.now .t::before { content: "▶ "; color: var(--accent); }
-  .tech { display: grid; grid-template-columns: 52px minmax(0, 1fr) 110px 56px 110px; gap: 8px; align-items: center; padding: 4px 0; font-size: 14px; }
-  .tech .id { font-weight: 650; }
-  .tech .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tech .pct { text-align: right; font-variant-numeric: tabular-nums; }
-  .group { margin-top: 10px; font-weight: 600; color: var(--muted); font-size: 13px; }
-  dl { display: grid; grid-template-columns: minmax(120px, 210px) 1fr; gap: 6px 14px; margin: 0; font-size: 14px; }
-  dt { font-weight: 650; } dd { margin: 0; color: var(--fg); }
+  .nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); gap: 12px; }
+  .num { border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+  .num .k { font-size: 14px; color: var(--muted); }
+  .num .v { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .num .s { font-size: 13px; color: var(--muted); }
+  .plan { display: grid; grid-template-columns: 22px 1fr 70px; gap: 4px 10px; align-items: center; font-size: 15px; }
+  .plan .m { grid-column: 2 / 4; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  details { margin-top: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; }
+  summary { cursor: pointer; font-weight: 600; }
+  .tech { display: grid; grid-template-columns: 46px 1fr 90px 44px; gap: 8px; align-items: center; font-size: 14px; padding: 3px 0; }
+  .tech b { font-weight: 650; } .tech .p { text-align: right; font-variant-numeric: tabular-nums; }
+  .grp { margin: 10px 0 2px; font-size: 13px; color: var(--muted); }
+  .row { padding: 6px 0; border-bottom: 1px solid var(--soft); font-size: 14px; }
+  .row:last-child { border-bottom: 0; }
+  dl { display: grid; grid-template-columns: 110px 1fr; gap: 6px 12px; margin: 10px 0 0; font-size: 14px; }
+  dt { font-weight: 650; } dd { margin: 0; }
   svg text { fill: var(--muted); font-size: 11px; }
-  .legend { font-size: 13px; color: var(--muted); }
-  .legend b { font-weight: 650; }
-  @media (max-width: 640px) {
-    .tech { grid-template-columns: 44px minmax(0, 1fr) 60px 56px; }
-    .tech .trend { display: none; }
-    dl { grid-template-columns: 1fr; } dd { margin-bottom: 6px; }
-  }
+  .legend { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
 </style>
 </head>
 <body>
@@ -66,232 +52,162 @@
   <header>
     <h1>SwordAI training</h1>
     <span id="state" class="pill muted">loading…</span>
-    <span class="muted" id="served"></span>
+    <span class="muted" id="served" style="font-size:13px"></span>
   </header>
 
-  <section>
-    <h2>What is being done right now</h2>
-    <p class="lede">Straight from PLAN.md, the plan in 3-hour blocks; each block has one number to move and a target.</p>
-    <div class="step" id="step">–</div>
-    <div class="muted" id="stepTime"></div>
-    <div id="runNow" style="margin-top:8px"></div>
-    <div id="blocks" style="margin-top:8px"></div>
-  </section>
+  <div class="card">
+    <h2>Now</h2>
+    <div class="now" id="now">–</div>
+    <div class="sub" id="method"></div>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:8px"><div class="bar" style="flex:1;max-width:260px"><i id="prog" style="width:0"></i></div><span class="sub" id="progt"></span></div>
+  </div>
 
-  <section>
-    <h2>Is it getting better?</h2>
-    <p class="lede">From the hourly checks: <b class="a">A</b> (the network in training) and <b class="bcol">B</b> (a fixed old model) fight the same 45 bot fights. See "What the words mean" below.</p>
-    <div class="grid" id="tiles"></div>
-    <h2 style="margin-top:16px">The plan's scoreboard</h2>
-    <div class="scroll"><table id="score"></table></div>
-  </section>
+  <div class="card">
+    <h2>Scores (this run's checks)</h2>
+    <div class="nums" id="nums"></div>
+  </div>
 
-  <section>
-    <h2>Checks over time</h2>
-    <p class="lede">Each dot is one hourly check. Vertical lines mark where a run (one change to the training) started.</p>
-    <div class="legend"><b class="a">A − B</b> per fight, with its noise (the whisker). Above 0 = A did better than B.</div>
-    <svg id="chartAB" width="100%" height="220" role="img" aria-label="A minus B per check"></svg>
-    <div class="legend" style="margin-top:10px">After their crit, its next hit is a crit: <b class="a">A</b> and <b class="bcol">B</b> (%).</div>
-    <svg id="chartPunish" width="100%" height="200" role="img" aria-label="After their crit, next hit a crit, per check"></svg>
-  </section>
+  <div class="card">
+    <h2>Each hourly check</h2>
+    <div class="legend"><b class="a">A − B</b> &nbsp;(above 0 = training beats the old model)</div>
+    <svg id="chartAB" width="100%" height="180"></svg>
+    <div class="legend" style="margin-top:10px">Punish crit after their crit: <b class="a">A</b> &nbsp;<b class="bc">B</b></div>
+    <svg id="chartP" width="100%" height="150"></svg>
+  </div>
 
-  <section>
-    <h2>Techniques (from docs/PVP-TECHNIQUES.md)</h2>
-    <p class="lede">In moments where a technique fits, how often A's keys did it (its last 40 such moments). The change is the last hour against the hour before.</p>
+  <div class="card">
+    <h2>Plan (3-hour blocks)</h2>
+    <div class="plan" id="plan"></div>
+  </div>
+
+  <details>
+    <summary>Techniques</summary>
     <div id="techs"></div>
-  </section>
+  </details>
 
-  <section>
-    <h2>What changed (newest last)</h2>
-    <p class="lede">The last rows of EXPERIMENTS.md: every change gets a number (a "run"), and every check of it a row.</p>
-    <div class="scroll"><table id="exp"></table></div>
-  </section>
+  <details>
+    <summary>Recent changes</summary>
+    <div id="exp"></div>
+  </details>
 
-  <section>
-    <h2>What the words mean</h2>
+  <details>
+    <summary>What the words mean</summary>
     <dl>
-      <dt>A</dt><dd>The network being trained right now, playing with the hand-written rules on top (the same rules the installed model uses).</dd>
-      <dt>B</dt><dd>A fixed model from 23 Oct, with the same rules. It never changes, so it is the yardstick: if A gets better, A − B goes up.</dd>
-      <dt>Check</dt><dd>Every hour A and B each play the same 45 fights against the training bots (same starting situations), on screen in first person.</dd>
-      <dt>A − B</dt><dd>How many health points more A comes out ahead in a fight than B does. +3 means A ends each fight 3 points better off than B would. One check is noisy (about ±4), so only several checks in a row mean something.</dd>
-      <dt>se (noise)</dt><dd>How far a check's number can be off by chance. A difference smaller than about two se can be luck.</dd>
-      <dt>Run</dt><dd>One change to the training, numbered in EXPERIMENTS.md (run 40 = the 40th). Kept or undone by its checks.</dd>
-      <dt>Block</dt><dd>A 3-hour piece of the plan with one number and a target; the next block uses a different kind of method if the number did not move.</dd>
-      <dt>Punish crit (B1)</dt><dd>Their hit lifts you; you crit them on the way down. "After their crit, next hit a crit" counts, of the times it took a crit and hit back next, how often that hit was a crit.</dd>
-      <dt>Jump-in</dt><dd>They jump at you from a few blocks away to crit you on the way down.</dd>
-      <dt>K2, the golden rule</dt><dd>Don't knockback-hit a falling player: with ping the knockback arrives late, they still crit you. "K2 broken" counts A's sprint hits on falling opponents (lower is better).</dd>
-      <dt>Combo starter</dt><dd>A way to stun them so they can't hit back: deflection T4, reverse deflection T5, make them miss T6, three-block hit T7, hit the rising jumper T8, jump reset T9.</dd>
-      <dt>Combo holder</dt><dd>A way to keep hitting once they are stunned: uppercut T10, lunge T11a, hops T11b, hops and lunges T11c, standing crit T2.</dd>
-      <dt>The rules</dt><dd>Hand-written behaviour (from the installed model) that presses some keys on top of the network. Most of A's fighting is still decided by them.</dd>
-      <dt>PPO</dt><dd>The learning method: the network tries things and the fight result (the reward) makes the better moves likelier.</dd>
-      <dt>Copying</dt><dd>Teaching the network to press what a teacher presses. It can only reach the teacher, never pass it; the plan turns it down.</dd>
-      <dt>Swings landing</dt><dd>Of its swings, how many hit.</dd>
-      <dt>Damage a minute</dt><dd>Damage dealt and taken per minute of fighting in training.</dd>
-      <dt>Installed</dt><dd>The model inside your Minecraft (run35-0657 since 5 Nov 21:19).</dd>
+      <dt>A</dt><dd>The network in training now.</dd>
+      <dt>B</dt><dd>An old fixed model (23 Oct). The ruler A is measured with.</dd>
+      <dt>A − B</dt><dd>Health points a fight A does better than B. ±: chance; small gaps can be luck.</dd>
+      <dt>Your game</dt><dd>The installed model. Training must beat its score to replace it.</dd>
+      <dt>Check</dt><dd>Every hour A and B play the same 45 fights.</dd>
+      <dt>Punish crit</dt><dd>Their hit lifts you, you crit them on the way down.</dd>
+      <dt>Run</dt><dd>One change to the training, numbered.</dd>
+      <dt>Block</dt><dd>3 hours, one number to move.</dd>
+      <dt>K2</dt><dd>Don't knockback-hit a falling player.</dd>
     </dl>
-  </section>
+  </details>
 </main>
 
 <script>
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const pct = (x) => (x && x[1] ? Math.round(100 * x[0] / x[1]) : null);
-const fmt = (v, d = 1) => (v == null ? '–' : (v > 0 ? '+' : '') + v.toFixed(d));
+const pc = (x) => (x && x[1] ? Math.round(100 * x[0] / x[1]) : null);
+const sg = (v, d = 1) => (v == null ? '–' : (v > 0 ? '+' : '') + v.toFixed(d));
+const short = (s, n = 90) => { s = String(s || ''); const cut = s.search(/[.:;(]/); s = cut > 20 ? s.slice(0, cut) : s; return s.length > n ? s.slice(0, n) + '…' : s; };
+const GROUPS = [['Start a combo', ['T4', 'T5', 'T6', 'T6a', 'T7', 'T9']], ['Hold a combo', ['T10', 'T11a', 'T11b', 'T11c', 'T2']],
+  ['Crits', ['B1', 'T1', 'T1a', 'T1b', 'T1c', 'C6']], ['Jump-ins', ['K2', 'K3', 'T9a', 'T9b', 'T9c']], ['Getting out', ['C1', 'C2', 'C3', 'C4', 'C7']]];
 
-const GROUPS = [
-  ['Starting a combo', ['T4', 'T5', 'T6', 'T6a', 'T7', 'T9']],
-  ['Holding a combo', ['T10', 'T11a', 'T11b', 'T11c', 'T2']],
-  ['Crits and the punish crit', ['B1', 'T1', 'T1a', 'T1b', 'T1c', 'C6']],
-  ['Jump-ins and jump resets', ['K2', 'K3', 'T9a', 'T9b', 'T9c']],
-  ['Getting out', ['C1', 'C2', 'C3', 'C4', 'C7']],
-];
-
-function tile(k, v, d, cls = '') {
-  return `<div class="tile"><div class="k">${esc(k)}</div><div class="v ${cls}">${v}</div><div class="d">${d}</div></div>`;
-}
-
-function runOfChecks(d) {
-  const runs = (d.experiments && d.experiments.runs) || [];
-  const last = runs[runs.length - 1];
-  const checks = (d.checks || []).filter((c) => c.kind === 'school network');
-  if (!last) return { run: null, checks: [] };
-  return { run: last, checks: checks.filter((c) => c.time >= last.at) };
-}
+function num(k, v, s, cls = '') { return `<div class="num"><div class="k">${k}</div><div class="v ${cls}">${v}</div><div class="s">${s}</div></div>`; }
 
 function render(d) {
-  const age = d.logAgeSeconds;
-  const st = $('state');
-  if (age == null || age > 600) { st.textContent = 'STOPPED — no training for ' + (age == null ? '?' : Math.round(age / 60) + ' min'); st.className = 'pill bad'; }
-  else if (d.state === 'paired check running') { st.textContent = 'Hourly check playing'; st.className = 'pill warn'; }
-  else { st.textContent = 'Training running'; st.className = 'pill ok'; }
-  $('served').textContent = 'updated ' + d.served + ' · refreshes every 20 s';
+  const age = d.logAgeSeconds, st = $('state');
+  if (age == null || age > 600) { st.textContent = 'Stopped'; st.className = 'pill bad'; }
+  else if (d.state === 'paired check running') { st.textContent = 'Check playing'; st.className = 'pill warn'; }
+  else { st.textContent = 'Training'; st.className = 'pill ok'; }
+  $('served').textContent = 'updated ' + d.served;
 
-  const plan = d.plan || {};
-  $('step').textContent = plan.step || 'no current step in PLAN.md';
-  $('stepTime').textContent = plan.stepTime ? 'step written ' + plan.stepTime : '';
-  const rc = runOfChecks(d);
-  $('runNow').innerHTML = rc.run ? `<b>Training now: run ${esc(rc.run.id)}</b> <span class="muted">(since ${esc(rc.run.at)})</span> — ${esc(rc.run.change)}…` : '';
-  const curBlock = (plan.blocks || []).find((b) => b.done < b.total);
-  $('blocks').innerHTML = (plan.blocks || []).map((b) => {
-    const w = b.total ? Math.round(100 * b.done / b.total) : 0;
-    return `<div class="block ${b === curBlock ? 'now' : ''}"><div class="t">Block ${b.n}: ${esc(b.title)}</div>
-      <div class="muted">${esc(b.when)} · <b>Method:</b> ${esc(b.method)}</div>
-      <div style="display:flex;gap:10px;align-items:center"><div class="bar" style="width:140px"><i style="width:${w}%"></i></div><span class="muted">${b.done} of ${b.total} steps done</span></div>
-      ${b.next ? `<div class="muted">Next: ${esc(b.next)}</div>` : ''}</div>`;
-  }).join('') + ((plan.reports || []).filter((r) => r.text).map((r) => `<div><b>${esc(r.block)} result:</b> ${esc(r.text)}</div>`).join(''));
+  const plan = d.plan || {}, blocks = plan.blocks || [];
+  const cur = blocks.find((b) => b.done < b.total) || blocks[blocks.length - 1];
+  $('now').textContent = plan.now || (cur ? 'Block ' + cur.n + ' · ' + cur.title : '–');
+  $('method').textContent = cur ? 'Block ' + cur.n + ': ' + cur.title + ' — method: ' + cur.method : '';
+  $('prog').style.width = cur && cur.total ? Math.round(100 * cur.done / cur.total) + '%' : '0';
+  $('progt').textContent = cur ? cur.done + ' of ' + cur.total + ' steps' : '';
 
-  // The tiles: the last check, and this run's checks together.
+  const runs = (d.experiments && d.experiments.runs) || [], run = runs[runs.length - 1];
   const checks = (d.checks || []).filter((c) => c.kind === 'school network');
-  const c = checks[checks.length - 1] || {};
-  const all = c.all || {};
-  const runAB = rc.checks.map((x) => x.all.aMinusB).filter((v) => v != null);
-  const mean = runAB.length ? runAB.reduce((s, v) => s + v, 0) / runAB.length : null;
-  const sum = (arr, side) => arr.reduce((s, x) => { const v = x.afterCrit && x.afterCrit[side]; return v ? [s[0] + v[0], s[1] + v[1]] : s; }, [0, 0]);
-  const runA = sum(rc.checks, 'A'), runB = sum(rc.checks, 'B');
-  const ac = c.afterCrit || {};
-  const score1 = (plan.scoreboard || [])[0];
-  const swA = c.aSwings, swB = c.bSwings;
-  $('tiles').innerHTML = [
-    tile('A − B, last check (' + esc(c.time || '–') + ')', `${fmt(all.aMinusB)} <small>± ${all.se == null ? '–' : all.se.toFixed(1)}</small>`,
-      `This run's checks together: ${mean == null ? '–' : fmt(mean)} over ${runAB.length}. Above 0 = A better than B.`, all.aMinusB > 0 ? 'ok' : ''),
-    tile('After their crit, next hit a crit', `<span class="a">${pct(ac.A) ?? '–'}%</span> <small>vs B ${pct(ac.B) ?? '–'}%</small>`,
-      `Last check ${ac.A ? ac.A[0] + ' of ' + ac.A[1] : ''}. This run: A ${pct(runA) ?? '–'}% (${runA[0]} of ${runA[1]}), B ${pct(runB) ?? '–'}%. ${score1 ? 'Before: ' + esc(score1.baseline) + '; target ' + esc(score1.target) : ''}`),
-    tile('Jump-ins punished with its crit', `<span class="a">${pct(c.punishedA) ?? '–'}%</span> <small>vs B ${pct(c.punishedB) ?? '–'}%</small>`,
-      'Of the jump-ins where they hit it, how often it crit them back.'),
-    tile('Swings landing', `<span class="a">${swA ? Math.round(100 * swA[2] / swA[0]) : '–'}%</span> <small>vs B ${swB ? Math.round(100 * swB[2] / swB[0]) : '–'}%</small>`,
-      'Of its swings in the last check, how many hit.'),
-    tile('K2 broken (lower is better)', `<span class="a">${c.k2BrokenA ?? '–'}</span> <small>vs B ${c.k2BrokenB ?? '–'}</small>`,
-      'Sprint hits on falling opponents in the last check: they usually crit back.'),
-    tile('Punish crit in training (rolling)', `${d.punishRolling && d.punishRolling.critted != null ? d.punishRolling.critted + '%' : '–'}`,
-      `Its last 300 punish chances in training that it critted; told to and landed: ${d.punishRolling && d.punishRolling.told != null ? d.punishRolling.told + '%' : '–'}.`),
+  const mine = run ? checks.filter((c) => c.time >= run.at) : [];
+  const last = checks[checks.length - 1] || {};
+  const ab = mine.map((c) => c.all.aMinusB).filter((v) => v != null);
+  const mean = ab.length ? ab.reduce((s, v) => s + v, 0) / ab.length : null;
+  const add = (side) => mine.reduce((s, c) => { const v = c.afterCrit && c.afterCrit[side]; return v ? [s[0] + v[0], s[1] + v[1]] : s; }, [0, 0]);
+  const pA = add('A'), pB = add('B');
+  const jA = mine.reduce((s, c) => (c.punishedA ? [s[0] + c.punishedA[0], s[1] + c.punishedA[1]] : s), [0, 0]);
+  const jB = mine.reduce((s, c) => (c.punishedB ? [s[0] + c.punishedB[0], s[1] + c.punishedB[1]] : s), [0, 0]);
+  const sw = last.aSwings, swb = last.bSwings;
+  const target = ((plan.scoreboard || [])[0] || {}).target || '';
+  $('nums').innerHTML = [
+    num('Training vs old model', sg(mean), `${ab.length} checks · your game: ${esc(plan.installed || '–')}`, mean > 0 ? 'ok' : mean < 0 ? 'bad' : ''),
+    num('Punish crit after their crit', `<span class="a">${pc(pA) ?? '–'}%</span>`, `B ${pc(pB) ?? '–'}% · was 46% · goal ${esc(target.replace(/^block \d+: /, ''))}`),
+    num('Jump-ins punished', `<span class="a">${pc(jA) ?? '–'}%</span>`, `B ${pc(jB) ?? '–'}%`),
+    num('Swings that hit', `<span class="a">${sw ? Math.round(100 * sw[2] / sw[0]) : '–'}%</span>`, `B ${swb ? Math.round(100 * swb[2] / swb[0]) : '–'}% · last check`),
   ].join('');
 
-  $('score').innerHTML = '<tr><th>Number</th><th>Before</th><th>Target</th><th>How it is measured</th></tr>' +
-    (plan.scoreboard || []).map((s) => `<tr><td>${esc(s.number)}</td><td>${esc(s.baseline)}</td><td>${esc(s.target)}</td><td class="muted">${esc(s.how)}</td></tr>`).join('');
+  draw('chartAB', checks.slice(-30), runs, (c) => c.all.aMinusB, (c) => c.all.se, 180, true);
+  draw('chartP', checks.slice(-30), runs, (c) => pc(c.afterCrit && c.afterCrit.A), null, 150, false, (c) => pc(c.afterCrit && c.afterCrit.B));
 
-  drawAB(checks.slice(-40), (d.experiments && d.experiments.runs) || []);
-  drawPunish(checks.slice(-40));
+  $('plan').innerHTML = blocks.map((b) => {
+    const mark = b.done >= b.total ? '<span class="ok">✓</span>' : b === cur ? '<span class="a">▶</span>' : '<span class="muted">○</span>';
+    return `${mark}<span${b === cur ? ' style="font-weight:650"' : ''}>${b.n}. ${esc(b.title)}</span><span class="muted" style="text-align:right">${b.done}/${b.total}</span><div class="m">${esc(b.method)}</div>`;
+  }).join('');
 
   const byId = {}; (d.techniques || []).forEach((t) => { byId[t.id] = t; });
-  const seen = new Set();
-  const row = (t) => {
-    seen.add(t.id);
-    const r = t.rate;
-    const status = t.few ? '<span class="muted">few</span>' : t.stuck ? '<span class="bad">stuck</span>' : (t.change != null && t.change >= 5 ? '<span class="ok">rising</span>' : '<span class="muted">–</span>');
-    return `<div class="tech"><span class="id">${esc(t.id)}</span><span class="title" title="${esc(t.title)}">${esc(t.title)}</span>
-      <div class="bar"><i style="width:${r == null ? 0 : r}%"></i></div><span class="pct">${r == null ? '–' : r.toFixed(0) + '%'}</span>
-      <span class="trend pct">${t.change == null ? '' : fmt(t.change, 0)} ${status}</span></div>`;
-  };
-  let html = GROUPS.map(([name, ids]) => `<div class="group">${esc(name)}</div>` + ids.filter((i) => byId[i]).map((i) => row(byId[i])).join('')).join('');
-  const rest = (d.techniques || []).filter((t) => !seen.has(t.id) && !GROUPS.some((g) => g[1].includes(t.id)));
-  if (rest.length) html += '<div class="group">Other</div>' + rest.map(row).join('');
-  $('techs').innerHTML = html;
+  $('techs').innerHTML = GROUPS.map(([g, ids]) => `<div class="grp">${g}</div>` + ids.filter((i) => byId[i]).map((i) => {
+    const t = byId[i], r = t.rate;
+    return `<div class="tech"><b>${esc(t.id)}</b><span>${esc(t.title)}</span><div class="bar"><i style="width:${r || 0}%"></i></div><span class="p">${r == null ? '–' : Math.round(r) + '%'}</span></div>`;
+  }).join('')).join('');
 
-  const rows = (d.experiments && d.experiments.rows) || [];
-  $('exp').innerHTML = '<tr><th>#</th><th>When</th><th>What</th><th>Result</th></tr>' + rows.map((r) =>
-    `<tr${r.run ? ' style="background:var(--soft)"' : ''}><td><b>${esc(r.id)}</b></td><td class="n">${esc(r.date)}</td><td>${esc(r.change)}</td><td>${esc(r.result)}${r.kept && r.run ? '<div class="muted">' + esc(r.kept) + '</div>' : ''}</td></tr>`).join('');
+  const rows = ((d.experiments && d.experiments.rows) || []).filter((r) => r.run).slice(-6).reverse();
+  $('exp').innerHTML = rows.map((r) => `<div class="row"><b>Run ${esc(r.id)}</b> <span class="muted">${esc(r.date)}</span><br>${esc(short(r.change))}</div>`).join('') || '<div class="muted">none</div>';
 }
 
-function axes(svg, w, h, pad, ymin, ymax, ticks, fmtY) {
-  let s = '';
-  for (const t of ticks) {
-    const y = pad.t + (h - pad.t - pad.b) * (1 - (t - ymin) / (ymax - ymin));
-    s += `<line x1="${pad.l}" x2="${w - pad.r}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="${t === 0 ? 1.5 : 1}"/>`;
-    s += `<text x="${pad.l - 6}" y="${y + 4}" text-anchor="end">${fmtY(t)}</text>`;
-  }
-  return s;
-}
-
-function drawAB(checks, runs) {
-  const svg = $('chartAB'); const w = svg.clientWidth || 600, h = 220, pad = { l: 36, r: 10, t: 14, b: 26 };
+function draw(id, checks, runs, val, err, h, zero, val2) {
+  const svg = $(id), w = svg.clientWidth || 600, pad = { l: 34, r: 8, t: 10, b: 22 };
   if (!checks.length) { svg.innerHTML = ''; return; }
-  const vals = checks.flatMap((c) => [c.all.aMinusB - (c.all.se || 0), c.all.aMinusB + (c.all.se || 0)]);
-  const ymax = Math.max(8, Math.ceil(Math.max(...vals) / 4) * 4), ymin = Math.min(-8, Math.floor(Math.min(...vals) / 4) * 4);
+  const vals = checks.flatMap((c) => { const v = val(c); if (v == null) return []; const e = err ? err(c) || 0 : 0; return [v - e, v + e]; });
+  let lo, hi;
+  if (zero) { hi = Math.max(8, Math.ceil(Math.max(...vals) / 4) * 4); lo = Math.min(-8, Math.floor(Math.min(...vals) / 4) * 4); } else { lo = 0; hi = 100; }
   const X = (i) => pad.l + (w - pad.l - pad.r) * (checks.length === 1 ? 0.5 : i / (checks.length - 1));
-  const Y = (v) => pad.t + (h - pad.t - pad.b) * (1 - (v - ymin) / (ymax - ymin));
-  const ticks = []; for (let t = ymin; t <= ymax; t += 4) ticks.push(t);
-  let s = axes(svg, w, h, pad, ymin, ymax, ticks, (t) => (t > 0 ? '+' : '') + t);
+  const Y = (v) => pad.t + (h - pad.t - pad.b) * (1 - (v - lo) / (hi - lo));
+  let s = '';
+  const step = zero ? 4 : 25;
+  for (let t = lo; t <= hi; t += step) {
+    if (zero && (t - lo) % 8 && t !== 0) continue;
+    s += `<line x1="${pad.l}" x2="${w - pad.r}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)" stroke-width="${t === 0 && zero ? 1.5 : 1}"/><text x="${pad.l - 5}" y="${Y(t) + 4}" text-anchor="end">${zero && t > 0 ? '+' : ''}${t}${zero ? '' : '%'}</text>`;
+  }
   runs.forEach((r) => {
     const i = checks.findIndex((c) => c.time >= r.at);
-    if (i < 0 || (i === 0 && checks[0].time > r.at && runs.some((q) => q !== r && q.at > r.at && q.at <= checks[0].time))) return;
-    const x = i === 0 ? X(0) - 4 : (X(i - 1) + X(i)) / 2;
-    s += `<line x1="${x}" x2="${x}" y1="${pad.t}" y2="${h - pad.b}" stroke="var(--mid)" stroke-dasharray="3 3"/><text x="${x + 3}" y="${pad.t + 9}">run ${r.id}</text>`;
+    if (i <= 0) return;
+    const x = (X(i - 1) + X(i)) / 2;
+    s += `<line x1="${x}" x2="${x}" y1="${pad.t}" y2="${h - pad.b}" stroke="var(--mid)" stroke-dasharray="3 3"/><text x="${x + 3}" y="${pad.t + 9}">run ${esc(r.id)}</text>`;
   });
-  checks.forEach((c, i) => {
-    const v = c.all.aMinusB, se = c.all.se || 0;
-    s += `<line x1="${X(i)}" x2="${X(i)}" y1="${Y(v - se)}" y2="${Y(v + se)}" stroke="var(--accent)" stroke-opacity=".35" stroke-width="2"/>`;
-    s += `<circle cx="${X(i)}" cy="${Y(v)}" r="3.5" fill="var(--accent)"><title>${c.time}: ${fmt(v)} ± ${se.toFixed(1)}</title></circle>`;
-  });
-  const every = Math.max(1, Math.ceil(checks.length / 8));
-  checks.forEach((c, i) => { if (i % every === 0 || i === checks.length - 1) s += `<text x="${X(i)}" y="${h - 8}" text-anchor="middle">${c.time.slice(6)}</text>`; });
-  svg.innerHTML = s;
-}
-
-function drawPunish(checks) {
-  const svg = $('chartPunish'); const w = svg.clientWidth || 600, h = 200, pad = { l: 36, r: 10, t: 12, b: 26 };
-  const pts = checks.map((c, i) => ({ i, t: c.time, a: pct(c.afterCrit && c.afterCrit.A), b: pct(c.afterCrit && c.afterCrit.B) })).filter((p) => p.a != null);
-  if (!pts.length) { svg.innerHTML = ''; return; }
-  const X = (i) => pad.l + (w - pad.l - pad.r) * (checks.length === 1 ? 0.5 : i / (checks.length - 1));
-  const Y = (v) => pad.t + (h - pad.t - pad.b) * (1 - v / 100);
-  let s = axes(svg, w, h, pad, 0, 100, [0, 25, 50, 75, 100], (t) => t + '%');
-  const line = (key, color) => `<polyline fill="none" stroke="${color}" stroke-width="2" points="${pts.filter((p) => p[key] != null).map((p) => X(p.i) + ',' + Y(p[key])).join(' ')}"/>` +
-    pts.filter((p) => p[key] != null).map((p) => `<circle cx="${X(p.i)}" cy="${Y(p[key])}" r="3" fill="${color}"><title>${p.t}: ${p[key]}%</title></circle>`).join('');
-  s += line('b', 'var(--b)') + line('a', 'var(--accent)');
-  const every = Math.max(1, Math.ceil(checks.length / 8));
-  checks.forEach((c, i) => { if (i % every === 0 || i === checks.length - 1) s += `<text x="${X(i)}" y="${h - 8}" text-anchor="middle">${c.time.slice(6)}</text>`; });
+  const series = (f, color, whisk) => {
+    const pts = checks.map((c, i) => [i, f(c), c]).filter((p) => p[1] != null);
+    let o = `<polyline fill="none" stroke="${color}" stroke-opacity=".5" stroke-width="1.5" points="${pts.map((p) => X(p[0]) + ',' + Y(p[1])).join(' ')}"/>`;
+    pts.forEach(([i, v, c]) => {
+      if (whisk) { const e = err(c) || 0; o += `<line x1="${X(i)}" x2="${X(i)}" y1="${Y(v - e)}" y2="${Y(v + e)}" stroke="${color}" stroke-opacity=".3" stroke-width="2"/>`; }
+      o += `<circle cx="${X(i)}" cy="${Y(v)}" r="3.5" fill="${color}"><title>${c.time}: ${zero ? sg(v) : v + '%'}</title></circle>`;
+    });
+    return o;
+  };
+  if (val2) s += series(val2, 'var(--b)', false);
+  s += series(val, 'var(--accent)', !!err);
+  const every = Math.max(1, Math.ceil(checks.length / 6));
+  checks.forEach((c, i) => { if (i % every === 0 || i === checks.length - 1) s += `<text x="${X(i)}" y="${h - 6}" text-anchor="middle">${c.time.slice(6)}</text>`; });
   svg.innerHTML = s;
 }
 
 let last = null;
 async function load() {
-  try {
-    const r = await fetch('/api/data', { cache: 'no-store' });
-    const d = await r.json();
-    if (d.error) throw new Error(d.error);
-    last = d; render(d);
-  } catch (e) {
-    $('state').textContent = 'panel error: ' + e.message; $('state').className = 'pill bad';
-  }
+  try { const r = await fetch('/api/data', { cache: 'no-store' }); const d = await r.json(); if (d.error) throw new Error(d.error); last = d; render(d); }
+  catch (e) { $('state').textContent = 'panel error'; $('state').className = 'pill bad'; $('served').textContent = e.message; }
 }
 load();
 setInterval(load, 20000);

@@ -278,7 +278,10 @@ def read_plan():
         if line.startswith('|') and len(cells) >= 4 and not cells[0].startswith('---') and cells[0] != 'Number':
             score.append({'number': cells[0], 'how': cells[1], 'baseline': cells[2], 'target': cells[3]})
     reports = [{'block': b, 'text': plain(t)} for b, t in re.findall(r'^- (Block \d+):[ \t]*(.*)$', md_section(text, '## Block reports'), re.M)]
-    return {'stepTime': step.group(1) if step else None, 'step': plain(re.sub(r'\s+', ' ', step.group(2))) if step else None,
+    now = re.search(r'\*\*NOW: (.*?)\*\*', text)
+    inst = re.search(r'\*\*INSTALLED: (.*?)\*\*', text)
+    return {'now': plain(now.group(1)) if now else None, 'installed': plain(inst.group(1)) if inst else None,
+            'stepTime': step.group(1) if step else None, 'step': plain(re.sub(r'\s+', ' ', step.group(2))) if step else None,
             'blocks': blocks, 'scoreboard': score, 'reports': reports}
 
 
