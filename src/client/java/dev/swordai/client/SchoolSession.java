@@ -268,6 +268,23 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final String CHECK_FROM_FILE = "check-from";
 	/**
+	 * The benchmark (docs/BENCHMARK.md, tools/bench-run.sh; the user, 6 Nov 23:40: one damage total against one old model cannot
+	 * tell whether a model is good). With this file in the school folder a check plays a fixed suite of episodes instead of its
+	 * pairs: side A only (the network in checkpoint.bin, with the rules as the user's game plays it), each episode on a seed of
+	 * its own, recorded tick by tick in the text of the user's real fights (RoundRecorder) to swordai/bench/TAG/. The network it
+	 * is compared with plays the same suite in a run of its own, and the two are compared episode by episode (paired). The file:
+	 * "tag NAME" first, then optionally "network LABEL" (what to call the network in DONE), then the suite's lines in order
+	 * (tools/bench/suite-v1.txt): "BOT EPISODES" (a name of Specialists.NAMES) or "h2h EPISODES [LEAGUE-NAME]"; "#" starts a
+	 * comment. Without it a check is the paired check, as before.
+	 */
+	static final String BENCH_SUITE_FILE = "bench-suite.txt";
+	/** Episode i of a suite plays on mix(BENCH_SEED + i): apart from the checks' seeds (0x5C400 on), so it never replays a check's pair. */
+	static final long BENCH_SEED = 0xBE4C0L;
+	/** An episode broken off (a pause, a stall, frames that stopped) is played again from its seed, at most this many times in all. */
+	static final int BENCH_TRIES = 3;
+	/** The finished suite's mark in its folder (what bench-run.sh waits for): how many episodes, which network, when. */
+	static final String BENCH_DONE_FILE = "DONE";
+	/**
 	 * Run 30 (EXPERIMENTS.md), the take-over. The installed model's rules press the keys that decide most hits taken (42% of the
 	 * ticks of a hit taken: W/S, sprint or jump), and the network is locked out of a key a rule presses: no policy gradient, no
 	 * lesson. So (1) the network is taught what the rules press (RULED_PULL, SchoolPpo#teach) wherever they press it; (2) a share of
@@ -1340,6 +1357,35 @@ public final class SchoolSession implements AgentSession {
 	private boolean installedPlays;
 	private long checkSeed;
 
+	// ---- the benchmark (BENCH_SUITE_FILE) ---------------------------------------------------------
+	/** One episode of the suite: a bot of Specialists, or -1 for head-to-head against the league network {@code rival} (null: none there). */
+	private record BenchEpisode(int bot, String rival) {
+	}
+
+	private final List<BenchEpisode> bench = new ArrayList<>();
+	/** The suite's tag (its folder's name), or null: no benchmark, the check is the paired check. */
+	private String benchTag;
+	private String benchNetwork = "?";
+	private String benchNetworkHash = "?";
+	private Path benchDir;
+	private String benchStarted;
+	/** The episode playing now (-1 outside a benchmark); the next to play; the last one begun and how often it was begun. */
+	private int benchNow = -1;
+	private int benchNext;
+	private int benchBegun = -1;
+	private int benchTries;
+	/** Episodes written in this run, found written already (a suite broken off and started again under its tag), left out. */
+	private int benchWritten;
+	private int benchHad;
+	private int benchNoRival;
+	private int benchBroken;
+	private final RoundRecorder benchRecorder = new RoundRecorder();
+	/** What the recorder reads the opponent's sword from (its arm), filled on every tick of an episode. */
+	private final BodyState benchBody = new BodyState();
+	/** The rules that had keys on the last decision (Fighter#rules), as a real fight's file has them; 0 without the rules. */
+	private int benchRules;
+	private int benchSwingsSeen;
+
 	// ---- what is counted between updates ----------------------------------------------------------
 	private final float[] botDealt = new float[Specialists.KINDS];
 	private final float[] botTaken = new float[Specialists.KINDS];
@@ -1426,6 +1472,15 @@ public final class SchoolSession implements AgentSession {
 			checkFights = 2L * Long.parseLong(Files.readString(from).trim());
 			SwordAi.LOGGER.info("school check: starting at pair {}", checkFights / 2);
 		}
+		Path suite = SwordFiles.schoolDir().resolve(BENCH_SUITE_FILE);
+		if (mode == Mode.CHECK && !this.teacherPlaysA && Files.exists(suite)) {
+			try {
+				readBench(suite);
+			} catch (IOException e) {
+				learner.close();
+				throw e;
+			}
+		}
 		Path temps = SwordFiles.schoolDir().resolve(PLAY_TEMPERATURE_FILE);
 		if (mode == Mode.CHECK && Files.exists(temps)) {
 			float[] perHead = readHeadTemperatures(temps);
@@ -1443,9 +1498,15 @@ public final class SchoolSession implements AgentSession {
 				sparring = LoadedFighter.loadFrom(teacherFile, icfg, SwordFiles.installedCopy().resolve("curriculum.properties"));
 			}
 			Path leagueDir = SwordFiles.schoolDir().resolve(LEAGUE_DIR);
-			if (sparring != null && mode == Mode.TRAIN && Files.isDirectory(leagueDir)) {
+			// The benchmark's head-to-head episodes play a league network in the league's slot (docs/BENCHMARK.md, part 2): only the
+			// networks its h2h lines name are loaded, each a SchoolBotPilot with the installed model's rules as in training.
+			List<String> benchRivals = bench.stream().filter(e -> e.bot() < 0 && e.rival() != null).map(BenchEpisode::rival).distinct().toList();
+			if ((sparring != null && mode == Mode.TRAIN || !benchRivals.isEmpty()) && Files.isDirectory(leagueDir)) {
 				try (java.util.stream.Stream<Path> files = Files.list(leagueDir)) {
 					for (Path f : files.filter(p -> p.getFileName().toString().endsWith(".bin")).sorted().toList()) {
+						if (benchTag != null && !benchRivals.contains(f.getFileName().toString().replace(".bin", ""))) {
+							continue;
+						}
 						try {
 							league.add(SchoolBotPilot.load(f, teacherFile, icfg, SwordFiles.installedCopy().resolve("curriculum.properties"),
 								SwordFiles.schoolDir().resolve(PLAY_TEMPERATURE_FILE)));
@@ -1455,7 +1516,17 @@ public final class SchoolSession implements AgentSession {
 						}
 					}
 				}
-				SwordAi.LOGGER.info("school: the league, {} of the sparring fights: {}", LEAGUE_SHARE, leagueNames);
+				if (benchTag != null) {
+					SwordAi.LOGGER.info("school bench: the league networks of its head-to-head episodes: {}", leagueNames);
+				} else {
+					SwordAi.LOGGER.info("school: the league, {} of the sparring fights: {}", LEAGUE_SHARE, leagueNames);
+				}
+			}
+			for (String r : benchRivals) {
+				if (!leagueNames.contains(r)) {
+					SwordAi.LOGGER.warn("school bench: the league network {} of its head-to-head episodes is not in {}: those episodes are left out",
+							r, leagueDir);
+				}
 			}
 			// The swing waits for the sword as the installed model's does here (a full hit, a tick before the very end of the
 			// wait; online has its own longer wait): both sides of the check alike, and the school as it would play once
@@ -1489,9 +1560,11 @@ public final class SchoolSession implements AgentSession {
 		List<SchoolBotPilot> leagueNow = List.copyOf(league);
 		server.execute(() -> {
 			ArenaServer.start(server, me, cfg);
-			if (spar != null) {
+			// In training the league comes only with the sparring copy; in a benchmark's check it comes alone, the installed model's
+			// slot (0) left empty: ArenaServer plays a slot only in a fight whose bot moves as SELF, and only the h2h episodes do.
+			if (spar != null || !leagueNow.isEmpty()) {
 				dev.swordai.server.SparPilot[] rivals = new dev.swordai.server.SparPilot[1 + leagueNow.size()];
-				rivals[0] = new dev.swordai.server.BotPilot(spar.fighter, spar.frameAgeTicks, spar.patchedUp);
+				rivals[0] = spar != null ? new dev.swordai.server.BotPilot(spar.fighter, spar.frameAgeTicks, spar.patchedUp) : null;
 				for (int i = 0; i < leagueNow.size(); i++) {
 					rivals[1 + i] = leagueNow.get(i);
 				}
@@ -1699,6 +1772,9 @@ public final class SchoolSession implements AgentSession {
 		if (clickOnTarget && installed != null) {
 			installed.fighter.hitDealt();
 		}
+		if (benchNow >= 0) {
+			benchRecorder.swing(ownSwingKind());
+		}
 	}
 
 	@Override
@@ -1783,7 +1859,27 @@ public final class SchoolSession implements AgentSession {
 			applySpeed(cfg.trainSpeed);
 		}
 		long seed;
-		if (mode == Mode.CHECK) {
+		benchNow = -1;
+		if (mode == Mode.CHECK && benchTag != null) {
+			// The benchmark (BENCH_SUITE_FILE): the suite's next episode, on its own seed, side A only; the network it is compared
+			// with plays the same episode in its own run. No review of the old stages: each episode is the situation its bot makes.
+			int i = nextBenchEpisode();
+			if (i < 0) {
+				finishBench();
+				return;
+			}
+			BenchEpisode ep = bench.get(i);
+			benchNow = i;
+			installedPlays = false;
+			seed = mix(BENCH_SEED + i);
+			checkSeed = seed;
+			Random draw = new Random(seed);
+			// An h2h episode's bot is played by the league network (plan.style is dropped below); the mixer's style only fills the slot.
+			fightBot = ep.bot() >= 0 ? ep.bot() : Specialists.MIXER;
+			checkReview = -1;
+			fightStyle = fightBot == Specialists.MIXER ? Specialists.mixer(draw) : Specialists.draw(fightBot, draw);
+			learner.seedSampling(seed * 0x2545F4914F6CDD1DL);
+		} else if (mode == Mode.CHECK) {
 			long fight = checkFights++;
 			long pair = fight / 2;
 			installedPlays = (fight & 1) == 1;
@@ -1881,6 +1977,12 @@ public final class SchoolSession implements AgentSession {
 					: !drill && sparring != null && (mode == Mode.TRAIN ? rng.nextFloat() < SPAR_SHARE : sparCheck);
 			rivalNow = sparFight && sceneNow == null && mode == Mode.TRAIN && !league.isEmpty() && rng.nextFloat() < LEAGUE_SHARE
 					? 1 + rng.nextInt(league.size()) : 0;
+			if (benchNow >= 0) {
+				// The benchmark: its h2h episodes against their league network, the rest against their bot (the mirror check's
+				// SPAR_CHECK_FILE is not for it). The league network sees it SPAR_LAG_EXTRA ticks late, as in training's sparring.
+				rivalNow = bench.get(benchNow).bot() < 0 ? benchRivalIndex(bench.get(benchNow)) : 0;
+				sparFight = rivalNow > 0;
+			}
 			plan.rivalIndex = rivalNow;
 			if (sparFight) {
 				// The installed model plays the bot (ArenaServer's rival): no scripted style.
@@ -1911,7 +2013,20 @@ public final class SchoolSession implements AgentSession {
 		plan.agentLag = agentLag;
 		SeenLag.set(agentLag, 0f, 0);
 		requestedEpisodeId = truth.episodeId() + 1;
-		server.execute(() -> ArenaServer.reset(plan));
+		if (benchNow >= 0 && rivalNow > 0) {
+			// The league network's own draws from the episode's seed too (SchoolBotPilot#seedSampling), on the server thread it plays on.
+			SchoolBotPilot rival = league.get(rivalNow - 1);
+			long rivalSeed = seed * 0x5851F42D4C957F2DL;
+			server.execute(() -> {
+				rival.seedSampling(rivalSeed);
+				ArenaServer.reset(plan);
+			});
+		} else {
+			server.execute(() -> ArenaServer.reset(plan));
+		}
+		if (benchNow >= 0) {
+			startBenchEpisode();
+		}
 		AgentController.release(mc);
 		mc.player.getInventory().setSelectedSlot(0);
 		// One teacher against every bot: every technique of the families reached so far.
@@ -1988,6 +2103,221 @@ public final class SchoolSession implements AgentSession {
 		z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
 		z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
 		return z ^ (z >>> 31);
+	}
+
+	// ---- the benchmark (BENCH_SUITE_FILE, docs/BENCHMARK.md) ---------------------------------------
+
+	/**
+	 * Reads BENCH_SUITE_FILE into the episode list, in file order: episode i is the i-th of all its lines' episodes, so its seed
+	 * and its file's number stay the same whatever a run leaves out. An h2h line without a name plays the first network of the
+	 * league folder (by name). A file it cannot read stops the check before it starts: a suite read otherwise than the
+	 * reference's would put other episodes on its seeds.
+	 */
+	private void readBench(Path file) throws IOException {
+		Path leagueDir = SwordFiles.schoolDir().resolve(LEAGUE_DIR);
+		String firstRival = null;
+		if (Files.isDirectory(leagueDir)) {
+			try (java.util.stream.Stream<Path> files = Files.list(leagueDir)) {
+				firstRival = files.map(p -> p.getFileName().toString()).filter(n -> n.endsWith(".bin")).sorted()
+						.map(n -> n.substring(0, n.length() - 4)).findFirst().orElse(null);
+			}
+		}
+		for (String raw : Files.readAllLines(file)) {
+			int hash = raw.indexOf('#');
+			String line = (hash >= 0 ? raw.substring(0, hash) : raw).trim();
+			if (line.isEmpty()) {
+				continue;
+			}
+			String[] p = line.split("\\s+");
+			if (benchTag == null) {
+				// The tag names a folder: nothing that could climb out of swordai/bench.
+				if (p.length != 2 || !p[0].equals("tag") || !p[1].matches("[A-Za-z0-9_][A-Za-z0-9._-]*")) {
+					throw new IOException(file + ": the first line must be \"tag NAME\" (letters, digits, . _ -), not \"" + line + "\"");
+				}
+				benchTag = p[1];
+				continue;
+			}
+			if (p[0].equals("network")) {
+				benchNetwork = line.substring("network".length()).trim();
+				continue;
+			}
+			boolean h2h = p[0].equals("h2h");
+			int bot = java.util.Arrays.asList(Specialists.NAMES).indexOf(p[0]);
+			int n = -1;
+			if (p.length >= 2) {
+				try {
+					n = Integer.parseInt(p[1]);
+				} catch (NumberFormatException e) {
+					n = -1;
+				}
+			}
+			if (!h2h && bot < 0 || n < 0 || p.length > (h2h ? 3 : 2)) {
+				throw new IOException(file + ": not a suite line: \"" + line + "\" (BOT EPISODES with a bot of Specialists.NAMES, or h2h EPISODES [LEAGUE-NAME])");
+			}
+			String rival = !h2h ? null : p.length == 3 ? (p[2].endsWith(".bin") ? p[2].substring(0, p[2].length() - 4) : p[2]) : firstRival;
+			if (h2h && rival == null) {
+				SwordAi.LOGGER.warn("school bench: no network in {} for the head-to-head line \"{}\": its {} episodes are left out", leagueDir, line, n);
+			}
+			for (int k = 0; k < n; k++) {
+				bench.add(new BenchEpisode(h2h ? -1 : bot, rival));
+			}
+		}
+		if (benchTag == null) {
+			throw new IOException(file + ": no \"tag NAME\" line");
+		}
+		benchDir = SwordFiles.schoolDir().getParent().resolve("bench").resolve(benchTag);
+		Files.createDirectories(benchDir);
+		benchStarted = java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+		benchNetworkHash = sha256(SwordFiles.schoolCheckpoint());
+		SwordAi.LOGGER.info("school bench {}: {} episodes, side A only (network {}, sha256 {}), recorded to {}", benchTag, bench.size(),
+				benchNetwork, benchNetworkHash, benchDir);
+	}
+
+	/** The file's SHA-256 in hex (as sha256sum prints it), or "?": which network played a benchmark, whatever it was called. */
+	private static String sha256(Path file) {
+		try (java.io.InputStream in = Files.newInputStream(file)) {
+			java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+			byte[] buf = new byte[1 << 16];
+			for (int n; (n = in.read(buf)) > 0; ) {
+				md.update(buf, 0, n);
+			}
+			return java.util.HexFormat.of().formatHex(md.digest());
+		} catch (IOException | java.security.NoSuchAlgorithmException e) {
+			return "?";
+		}
+	}
+
+	/** An episode's file: its number, then its bot, or h2h. */
+	private static String benchFile(int i, BenchEpisode ep) {
+		return String.format(Locale.ROOT, "%04d-%s.txt.gz", i, ep.bot() < 0 ? "h2h" : Specialists.NAMES[ep.bot()]);
+	}
+
+	/** An h2h episode's slot among ArenaServer's rivals (1 + its place in the league), 0 if its network is not loaded. */
+	private int benchRivalIndex(BenchEpisode ep) {
+		return ep.rival() == null ? 0 : leagueNames.indexOf(ep.rival()) + 1;
+	}
+
+	/**
+	 * The benchmark's next episode to play, or -1 when the suite is done. An episode broken off (a pause, a stall, frames that
+	 * stopped, a bot not there) is played again from its seed, BENCH_TRIES times in all; an h2h episode without its league network,
+	 * and one written already (a suite broken off and started again under the same tag), are passed over.
+	 */
+	private int nextBenchEpisode() {
+		while (benchNext < bench.size()) {
+			int i = benchNext;
+			BenchEpisode ep = bench.get(i);
+			if (ep.bot() < 0 && benchRivalIndex(ep) == 0) {
+				benchNoRival++;
+			} else if (Files.exists(benchDir.resolve(benchFile(i, ep)))) {
+				benchHad++;
+			} else {
+				benchTries = i == benchBegun ? benchTries + 1 : 1;
+				benchBegun = i;
+				if (benchTries <= BENCH_TRIES) {
+					return i;
+				}
+				SwordAi.LOGGER.warn("school bench: episode {} was broken off {} times: left out", i, BENCH_TRIES);
+				benchBroken++;
+			}
+			benchNext++;
+		}
+		return -1;
+	}
+
+	/** An episode begins (or begins again after a break): its record from nothing, the hit and jump rows of a broken-off try dropped. */
+	private void startBenchEpisode() {
+		BenchEpisode ep = bench.get(benchNow);
+		benchRecorder.start(ep.bot() < 0 ? "league-" + ep.rival() : Specialists.NAMES[ep.bot()]);
+		benchBody.resetOpponentSwing();
+		benchSwingsSeen = dev.swordai.OwnSwing.count();
+		benchRules = 0;
+		hitRows.setLength(0);
+		jumpRows.setLength(0);
+		jumpAt[0] = jumpAt[1] = -1;
+		jumpWasGround[0] = jumpWasGround[1] = true;
+		jumpLastDist[0] = jumpLastDist[1] = 99f;
+	}
+
+	/**
+	 * One tick of an episode for its file (RoundRecorder, the user's real fights' format): the keys pressed, the rules that had
+	 * keys, and the hits as the server counted them this tick (CombatLog, as the check counts them).
+	 */
+	private void benchTick(LocalPlayer me, Player bot, Truth truth, int[] keys) {
+		observer.fillBody(benchBody, me, bot, truth.floorY());
+		benchRecorder.tick(me, bot, benchBody, keys, benchRules, facts.hitsDealt > 0, facts.hitsTaken > 0);
+	}
+
+	/** What its swing came to as this game made it out (OwnSwing), in the words of a real fight's file (FightSession#endTick). */
+	private String ownSwingKind() {
+		int made = dev.swordai.OwnSwing.count();
+		if (made == benchSwingsSeen) {
+			return "miss";
+		}
+		benchSwingsSeen = made;
+		if (dev.swordai.OwnSwing.charge() <= 0.9f) {
+			return "early";
+		} else if (dev.swordai.OwnSwing.crit()) {
+			return "crit";
+		} else if (dev.swordai.OwnSwing.sprinting()) {
+			return "sprint";
+		} else if (dev.swordai.OwnSwing.sweep()) {
+			return "sweep";
+		}
+		return "plain";
+	}
+
+	/**
+	 * An episode is over: its file (won, lost, or open at the time limit), its line in the log ("school bench", not "school pair":
+	 * the pair counters of the check scripts must not count it), its hit and jump rows in its folder. Not written, it is played again.
+	 */
+	private void endBenchEpisode(boolean won, boolean lost, String result) {
+		BenchEpisode ep = bench.get(benchNow);
+		String line = benchRecorder.finishTo(benchDir, benchFile(benchNow, ep), won ? "won" : lost ? "lost" : "open");
+		SwordAi.LOGGER.info(String.format(Locale.ROOT, "school bench %04d %s: dealt %.1f, taken %.1f, ticks %d%s%s", benchNow,
+				ep.bot() < 0 ? "h2h league-" + ep.rival() : Specialists.NAMES[ep.bot()], fightDealt, fightTaken, fightTicks, result,
+				line == null ? " (its file could not be written: played again)" : ""));
+		if (line != null) {
+			flushHits();
+			benchWritten++;
+			benchNext = benchNow + 1;
+		}
+	}
+
+	/**
+	 * The suite is played: DONE in its folder (what bench-run.sh waits for), "key value" lines saying how many episodes are there,
+	 * which network played them and when; then the check stops as one stopped by command does, and bench-run.sh puts the
+	 * training back.
+	 */
+	private void finishBench() {
+		long files = 0;
+		try (java.util.stream.Stream<Path> s = Files.list(benchDir)) {
+			files = s.filter(p -> p.getFileName().toString().matches("\\d{4}-.+\\.txt\\.gz")).count();
+		} catch (IOException e) {
+			SwordAi.LOGGER.warn("school bench: could not count the episodes in {}: {}", benchDir, e.getMessage());
+		}
+		String done = String.format(Locale.ROOT, "tag %s%nsuite-episodes %d%nepisodes %d%nwritten-now %d%nwritten-before %d%n"
+						+ "left-out-no-league %d%nleft-out-broken-off %d%nnetwork %s%nnetwork-sha256 %s%nleague %s%nstarted %s%nfinished %s%n",
+				benchTag, bench.size(), files, benchWritten, benchHad, benchNoRival, benchBroken, benchNetwork, benchNetworkHash,
+				leagueNames.isEmpty() ? "-" : String.join(" ", leagueNames), benchStarted,
+				java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+		try {
+			Files.writeString(benchDir.resolve(BENCH_DONE_FILE), done);
+		} catch (IOException e) {
+			SwordAi.LOGGER.warn("school bench: could not write {}: {}", benchDir.resolve(BENCH_DONE_FILE), e.getMessage());
+		}
+		say(String.format(Locale.ROOT, "The benchmark %s is done: %d of its %d episodes in %s (%d written now, %d left out without their league network, "
+				+ "%d broken off).", benchTag, files, bench.size(), benchDir, benchWritten, benchNoRival, benchBroken));
+		stop("the benchmark is done");
+	}
+
+	/** The number a check's hit and jump logs give this fight: its pair, or in a benchmark its episode. */
+	private long logPair() {
+		return benchNow >= 0 ? benchNow : (checkFights - 1) / 2;
+	}
+
+	/** Where a check's hit and jump logs go: the school folder, or a benchmark's own folder (rows numbered by episode). */
+	private Path logDir() {
+		return benchNow >= 0 ? benchDir : SwordFiles.schoolDir();
 	}
 
 	private void runTick(Truth truth) {
@@ -2177,6 +2507,11 @@ public final class SchoolSession implements AgentSession {
 				learner.complete(reward, ko, !ko && (timeUp || full), step.obs);
 			}
 			if (ko || timeUp || full) {
+				if (benchNow >= 0) {
+					// The episode's last tick too, with the keys still held: its knockout hit is the episode's last damage (a real
+					// fight's file ends the tick before the death, which is read from the screen).
+					benchTick(me, bot, truth, lastAction);
+				}
 				endFight(facts.koDealt, facts.koTaken);
 				AgentController.release(mc);
 				if (mode == Mode.TRAIN && learner.rolloutSize() >= ROLLOUT) {
@@ -2503,6 +2838,7 @@ public final class SchoolSession implements AgentSession {
 		int ruled = 0;
 		// The heads the rules press on this tick (or would, in a fight played without them): the target of RULED_PULL.
 		int ruledTaught = 0;
+		benchRules = 0;
 		if (RULE_OVERLAY && installed != null && (review < 0 || basics[review].bot.attacks) && !(ruleOff && mode == Mode.CHECK)) {
 			if (!installedDecided) {
 				observer.fillBody(installedBody, me, bot, truth.floorY());
@@ -2510,6 +2846,8 @@ public final class SchoolSession implements AgentSession {
 				installed.fighter.decide(observer.frame, installedBody);
 				installedDecided = true;
 			}
+			// For a benchmark episode's file: the rules that had keys, as a real fight with the rules on records them (FightSession).
+			benchRules = ruleOff ? 0 : installed.fighter.rules();
 			// Only heads still open: a rule's swing waits for the sword, the crosshair and the golden rule like the network's.
 			ruled = installed.fighter.ruledHeads() & keys;
 			int ruledRaw = ruled;
@@ -2618,6 +2956,9 @@ public final class SchoolSession implements AgentSession {
 		}
 		motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));
 		applyAction(motor.yawRate(), motor.pitchRate());
+		if (benchNow >= 0) {
+			benchTick(me, bot, truth, action);
+		}
 		if (installedDecided) {
 			// The installed model watched: it goes on from what was really pressed (see Fighter#pressed).
 			installed.fighter.pressed(action, motor);
@@ -3109,7 +3450,9 @@ public final class SchoolSession implements AgentSession {
 			ownDid[side][h] += reader.own.did(h);
 		}
 		String result = won ? ", knockout" : lost ? ", knocked out" : "";
-		if (mode == Mode.CHECK) {
+		if (mode == Mode.CHECK && benchNow >= 0) {
+			endBenchEpisode(won, lost, result);
+		} else if (mode == Mode.CHECK) {
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school pair %d %s %s%s: dealt %.1f, taken %.1f, ticks %d%s", (checkFights - 1) / 2,
 					installedPlays ? "B" : "A", review >= TIMER ? CHECK_NAMES[review - TIMER] : sparFight ? "installed-model" : Specialists.NAMES[fightBot],
 					review < 0 && fightStyle.heldOut ? " (held out)" : "", fightDealt, fightTaken, fightTicks, result));
@@ -3290,7 +3633,7 @@ public final class SchoolSession implements AgentSession {
 			}
 			if (ground || since > 20) {
 				jumpRows.append(String.format(Locale.ROOT, "%d,%s,%s,%d,%.2f,%.2f,%.2f,%d,%d,%d,%d%n",
-						(checkFights - 1) / 2, side == 0 ? "A" : "B", bot, jumpAt[side], jumpFrom[side], jumpToward[side],
+						logPair(), side == 0 ? "A" : "B", bot, jumpAt[side], jumpFrom[side], jumpToward[side],
 						ground ? dist : -1f, jumpHitRising[side], jumpHitFalling[side], jumpOwnHit[side], jumpOwnCrit[side] ? 1 : 0));
 				jumpAt[side] = -1;
 			}
@@ -3305,7 +3648,7 @@ public final class SchoolSession implements AgentSession {
 			return;
 		}
 		if (mode == Mode.CHECK) {
-			trackJump(side, review >= TIMER ? CHECK_NAMES[review - TIMER] : sparFight ? "installed-model" : Specialists.NAMES[fightBot]);
+			trackJump(side, review >= TIMER ? CHECK_NAMES[review - TIMER] : sparFight ? (benchNow >= 0 ? "h2h" : "installed-model") : Specialists.NAMES[fightBot]);
 		}
 		sinceSwing[side] = swung ? 0 : Math.min(sinceSwing[side] + 1, 999);
 		if (facts.hitsDealt <= 0 && facts.hitsTaken <= 0) {
@@ -3319,11 +3662,11 @@ public final class SchoolSession implements AgentSession {
 			rowTaken[side]++;
 			rowDealt[side] = 0;
 		}
-		String bot = review >= TIMER ? CHECK_NAMES[review - TIMER] : sparFight ? "installed-model" : Specialists.NAMES[fightBot];
+		String bot = review >= TIMER ? CHECK_NAMES[review - TIMER] : sparFight ? (benchNow >= 0 ? "h2h" : "installed-model") : Specialists.NAMES[fightBot];
 		String situation = step.teacherTechnique >= 0 ? Technique.values()[step.teacherTechnique].name() : "-";
 		hitRows.append(String.format(Locale.ROOT,
 				"%d,%s,%s,%d,%.1f,%.1f,%d,%d,%d,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%.2f,%d,%d,%d,%s%n",
-				mode == Mode.CHECK ? (checkFights - 1) / 2 : sceneSerial, side == 0 ? "A" : "B", bot, fightTicks, facts.damageDealt, facts.damageTaken, facts.hitsDealt,
+				mode == Mode.CHECK ? logPair() : sceneSerial, side == 0 ? "A" : "B", bot, fightTicks, facts.damageDealt, facts.damageTaken, facts.hitsDealt,
 				facts.critDealt ? 1 : 0, facts.sprintHit ? 1 : 0, facts.hitCharge, facts.punishCrit ? 1 : 0, facts.uppercut ? 1 : 0,
 				facts.hitsTaken, facts.critsTaken, facts.sprintsTaken, facts.onGround ? 1 : 0, facts.falling ? 1 : 0,
 				mc.player.isSprinting() ? 1 : 0, action[ActionSpace.SPRINT] == 1 ? 1 : 0, mc.player.getAttackStrengthScale(0f), facts.reachDist,
@@ -3377,7 +3720,7 @@ public final class SchoolSession implements AgentSession {
 		jumpWasGround[0] = jumpWasGround[1] = true;
 		jumpLastDist[0] = jumpLastDist[1] = 99f;
 		if (jumpRows.length() > 0) {
-			Path jumps = SwordFiles.schoolDir().resolve(JUMP_LOG);
+			Path jumps = logDir().resolve(JUMP_LOG);
 			try {
 				if (!Files.exists(jumps)) {
 					Files.writeString(jumps, JUMP_HEADER + System.lineSeparator());
@@ -3391,7 +3734,7 @@ public final class SchoolSession implements AgentSession {
 		if (hitRows.length() == 0) {
 			return;
 		}
-		Path file = SwordFiles.schoolDir().resolve(HIT_LOG);
+		Path file = logDir().resolve(HIT_LOG);
 		try {
 			if (!Files.exists(file)) {
 				Files.writeString(file, HIT_HEADER + System.lineSeparator());

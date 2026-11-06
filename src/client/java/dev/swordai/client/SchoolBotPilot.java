@@ -75,6 +75,15 @@ final class SchoolBotPilot implements SparPilot, AutoCloseable {
 		body.setLag(ticks);
 	}
 
+	/**
+	 * Its keys drawn from this seed on (SchoolLearner#seedSampling): the benchmark's head-to-head episodes (docs/BENCHMARK.md) seed
+	 * it from the episode's seed, so that two networks measured on the same suite meet the same draws of it as far as their own
+	 * play lets them. Called on the server thread, before the episode's reset.
+	 */
+	void seedSampling(long seed) {
+		learner.seedSampling(seed);
+	}
+
 	@Override
 	public void reset() {
 		school.reset();

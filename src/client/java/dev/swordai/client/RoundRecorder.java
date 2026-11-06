@@ -307,36 +307,13 @@ final class RoundRecorder {
 		if (timeline.size() < MIN_TICKS && dealt + taken == 0) {
 			return null;
 		}
-		if (takenRow >= 3) {
-			combosTaken++;
-		}
-		String line = String.format(Locale.ROOT, "%s vs %s (%d ms): %.1f s, hits %d dealt / %d taken, damage %.0f / %.0f",
-				result.toUpperCase(Locale.ROOT), opponent, oppPingMillis, timeline.size() / 20f, dealt, taken, damageDealt, damageTaken);
+		String line = closeLine(result, oppPingMillis);
 		List<String> why = reasons();
 		try {
 			Path dir = SwordFiles.fightsDir();
 			Files.createDirectories(dir);
 			String name = started.format(STAMP) + "-" + ModelPack.clean(opponent) + "-" + result + ".txt.gz";
-			try (OutputStream out = new GZIPOutputStream(Files.newOutputStream(dir.resolve(name)));
-				 Writer w = new OutputStreamWriter(out, StandardCharsets.UTF_8)) {
-				w.write("SwordAI round, " + started.format(SHOWN) + "\n" + line + "\n\n");
-				w.write(details(oppPingMillis));
-				w.write("\nWhat decided it, most first:\n");
-				for (String r : why) {
-					w.write("  - " + r + "\n");
-				}
-				w.write("\nTimeline, one line a tick. dist: eye to the opponent's hitbox. sword: its own charge, and the opponent's as read off its arm. "
-						+ "opp: on ground (g) or in the air (a), s if sprinting, toward = blocks a tick it comes at it (minus: going away), side = sideways. "
-						+ "keys: W/S, A/D, r = sprint, j = jump, x = attack. rules: which rule had the keys (" + RULE_NAMES + ").\n");
-				w.write("tick,dist,mySword,oppSword,myHp,oppHp,me,opp,oppUp,oppToward,oppSide,myToward,keys,rules,event\n");
-				for (int i = 0; i < timeline.size(); i++) {
-					Tick t = timeline.get(i);
-					w.write(String.format(Locale.ROOT, "%d,%.2f,%.2f,%.2f,%.0f,%.0f,%s,%s%s,%.2f,%.2f,%.2f,%.2f,%s,%s,%s\n",
-							i, t.dist(), t.myCharge(), t.oppSword(), t.myHp(), t.oppHp(), t.myGround() ? "g" : "a",
-							t.oppGround() ? "g" : "a", t.oppSprint() ? "s" : "", t.oppUp(), t.oppToward(), t.oppSide(), t.myToward(),
-							t.keys(), t.rules(), t.event()));
-				}
-			}
+			write(dir.resolve(name), line, why, oppPingMillis);
 			Path csv = dir.resolve("rounds.csv");
 			if (!Files.exists(csv)) {
 				Files.writeString(csv, "time,result,opponent,ping,seconds,dealt,taken,damageDealt,damageTaken,firstWon,firstLost,takenCrit,takenInCooldown,"
@@ -352,6 +329,66 @@ final class RoundRecorder {
 			SwordAi.LOGGER.warn("could not save the round", e);
 		}
 		return line + (why.isEmpty() ? "" : ". " + why.get(0));
+	}
+
+	/**
+	 * The round is over and goes to {@code dir/fileName}, in the same text as {@link #finish}: the benchmark's episodes
+	 * (docs/BENCHMARK.md, SchoolSession's bench mode), which two networks play on the same seeds and are compared file by file.
+	 * So every round is written however short (one missing from a network's list would unpair the comparison), with no line in
+	 * rounds.csv and nothing pruned (those are the user's real fights). Written under a temporary name and then moved, so that
+	 * a reader of the folder never meets half a file. Returns the line that says how it went, or null if nothing was written.
+	 */
+	String finishTo(Path dir, String fileName, String result) {
+		if (!open) {
+			return null;
+		}
+		open = false;
+		String line = closeLine(result, 0);
+		List<String> why = reasons();
+		Path file = dir.resolve(fileName);
+		Path part = dir.resolve(fileName + ".part");
+		try {
+			Files.createDirectories(dir);
+			write(part, line, why, 0);
+			Files.move(part, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+		} catch (IOException | RuntimeException e) {
+			SwordAi.LOGGER.warn("could not save the round to " + file, e);
+			return null;
+		}
+		return line + (why.isEmpty() ? "" : ". " + why.get(0));
+	}
+
+	/** The round's one line (a combo still running at the end counted first). */
+	private String closeLine(String result, int oppPingMillis) {
+		if (takenRow >= 3) {
+			combosTaken++;
+		}
+		return String.format(Locale.ROOT, "%s vs %s (%d ms): %.1f s, hits %d dealt / %d taken, damage %.0f / %.0f",
+				result.toUpperCase(Locale.ROOT), opponent, oppPingMillis, timeline.size() / 20f, dealt, taken, damageDealt, damageTaken);
+	}
+
+	/** The round's file: the summary on top, the reasons, then the timeline a tick a line. */
+	private void write(Path file, String line, List<String> why, int oppPingMillis) throws IOException {
+		try (OutputStream out = new GZIPOutputStream(Files.newOutputStream(file));
+			 Writer w = new OutputStreamWriter(out, StandardCharsets.UTF_8)) {
+			w.write("SwordAI round, " + started.format(SHOWN) + "\n" + line + "\n\n");
+			w.write(details(oppPingMillis));
+			w.write("\nWhat decided it, most first:\n");
+			for (String r : why) {
+				w.write("  - " + r + "\n");
+			}
+			w.write("\nTimeline, one line a tick. dist: eye to the opponent's hitbox. sword: its own charge, and the opponent's as read off its arm. "
+					+ "opp: on ground (g) or in the air (a), s if sprinting, toward = blocks a tick it comes at it (minus: going away), side = sideways. "
+					+ "keys: W/S, A/D, r = sprint, j = jump, x = attack. rules: which rule had the keys (" + RULE_NAMES + ").\n");
+			w.write("tick,dist,mySword,oppSword,myHp,oppHp,me,opp,oppUp,oppToward,oppSide,myToward,keys,rules,event\n");
+			for (int i = 0; i < timeline.size(); i++) {
+				Tick t = timeline.get(i);
+				w.write(String.format(Locale.ROOT, "%d,%.2f,%.2f,%.2f,%.0f,%.0f,%s,%s%s,%.2f,%.2f,%.2f,%.2f,%s,%s,%s\n",
+						i, t.dist(), t.myCharge(), t.oppSword(), t.myHp(), t.oppHp(), t.myGround() ? "g" : "a",
+						t.oppGround() ? "g" : "a", t.oppSprint() ? "s" : "", t.oppUp(), t.oppToward(), t.oppSide(), t.myToward(),
+						t.keys(), t.rules(), t.event()));
+			}
+		}
 	}
 
 	private String details(int oppPingMillis) {
