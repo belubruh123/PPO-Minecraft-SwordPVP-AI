@@ -7,10 +7,10 @@ the time), write each block's verdict under it, and commit. Never delete a block
 for check 2 (done: check 1; next: check 3, verdict)". Keep this line current:
 
 For the panel (short, plain words; keep both current):
-**NOW: Block 2 · the benchmark · reference run next**
+**NOW: Block 2 · the benchmark · first comparison (run 41 vs your game's model)**
 **INSTALLED: run35-0657 · +4.5 vs B · since 5 Nov 21:19**
 
-**CURRENT STEP (7 Nov 00:30): block 2. Built: BENCH mode, bench-run.sh, bench.py (weights, scorer, selftest TIE), panel box. Now: the watchdog run stuck since 00:05 ends at its 30-min limit 00:35; then the watchdog takes run/bench-request (ref1 = run35-0657, about 2-3 h), the hourly loop waits (stop file). Next: ref2 (A/A), compare, then the training network (run 41) as the first candidate. Never start bench-run.sh from the session.**
+**CURRENT STEP (7 Nov 03:35): block 2. Benchmark works: ref1/ref2 done, A/A TIE +0.77 +- 1.16. Queued: run41a (run 41's 03:29 network, suite v1) -> compare run41a ref1. Then v2 references (refv2a, refv2b, request 'TAG NET suite-v2'). Run 41 checks: 01:54 A-B -8.3, 02:44 -3.2; the 03:29 check decides keep/revert (revert if clearly worse). Then block 3 (groundwork agent stopped by the usage limit; resume it).**
 
 ## Why this plan exists (the user, 6 Nov 06:30-07:10)
 - They want a visible improvement **every ~3 hours**, each block with **one number and a target**, reported at its end.
@@ -81,11 +81,12 @@ weighted by how often each situation happens in the user's real duels; verdict B
   per real fight: punish chances 12.0, jump reset 12.3, make miss 5.8, holding combo 5.0, reverse defl 4.7, crits 4.4, deflection 3.8)
 - [x] 7 Nov 00:10 scorer tools/bench.py (df3148c): score / compare / selftest; selftest on the real duels' two halves: TIE (-0.19 +- 0.51)
 - [x] 7 Nov 00:27 the panel's benchmark box (3561294): verdict, total, parts, each test; progress bar while one plays
-- [ ] 7 Nov 00:30 launcher fixes first (8e3a0a8, a28fc30): the client and everything the watchdog starts get consoles of their own
+- [x] 7 Nov 00:30 launcher fixes first (8e3a0a8, a28fc30): the client and everything the watchdog starts get consoles of their own
   (the client in the task's console kept the task "running": every watchdog run 00:15-00:35 was skipped); bench keeps the stop file
-- [ ] reference run ref1 (run35-0657; request in run/bench-request, taken by the watchdog), then the A/A run ref2 (same network),
-  `tools/bench.py compare ref2 ref1` about 0; then set episode counts so the total's noise is under 1 HP per fight
-- [ ] first real comparison: run 40/41's network vs run35-0657
+- [x] 7 Nov 01:05 ref1 (00:37-00:46) and ref2 (00:55-01:04), 200 episodes in 9 minutes each; A/A `compare ref2 ref1`: TIE
+  +0.77 +- 1.16 (skills +2.24 +- 1.89, h2h -1.40 +- 2.65, bots +0.01 +- 0.51) -> suite-v2 (25 a bot, 60 h2h, 360 episodes, ~16 min,
+  about +- 0.8): request "TAG NET suite-v2"; R must be measured again on v2 (refv2a, refv2b)
+- [ ] first real comparison: run41a = run 41's network of the 03:29 check (best-candidates/run41-0329.bin) on v1 vs ref1 (queued 03:32)
 
 ## Block 3: combo starters and holders. After block 2 (judged by the new benchmark). Method: exact-moment drills + reward on the result
 The user: all ways the document starts a combo, and all ways it holds one, learned by reward (copying only a light hint).
