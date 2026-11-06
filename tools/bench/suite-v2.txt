@@ -1,0 +1,19 @@
+# SwordAI benchmark suite v2 (docs/BENCHMARK.md). One line per bot: <bot name from Specialists.NAMES> <episodes>.
+# "h2h <episodes>" = head-to-head against the reference network in the league slot (school/league/<name>.bin).
+# Episode i (from 0, in file order) uses seed mix(0xBE4C0L + i); it is recorded as bench/<tag>/<iiii>-<bot>.txt.gz.
+# Never change a line of a released suite: make suite-v2 instead (the reference must be measured again).
+# v2 (7 Nov): the A/A test of v1 (ref2 vs ref1) gave TIE +0.77 +- 1.16; the noise was mostly the skills part (1.89) and
+# the 20 head-to-heads (2.65). 25 a bot and 60 head-to-heads: about +- 0.8 expected.
+punish-critter 25
+jump-in-critter 25
+swinger 25
+attack-then-s 25
+deflector 25
+straight-sprinter 25
+rhythm-comboer 25
+stunner 25
+uppercutter 25
+hopper 25
+standing-critter 25
+mixer 25
+h2h 60
