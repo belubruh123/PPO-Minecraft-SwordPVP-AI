@@ -7,30 +7,37 @@ S="${SWORDAI_TOOLS:-/d/swordai/tools}"
 L=/d/swordai/run/school-client.log
 LOG=/d/swordai/run/watchdog.log
 LOCK=/d/swordai/run/watchdog.lock
+# Everything this run starts goes into a hidden console of its own (7 Nov): attached to this run's console it kept the
+# task's run open, and Task Scheduler then skipped every later run as "already running" (00:06-00:35 on 7 Nov). The
+# command goes through a script file because Start-Process passes an argument with spaces unquoted.
+detach() {  # detach LOGFILE COMMAND...: the command run by Git's bash from /d/swordai, its output to LOGFILE
+  local log="$1"; shift
+  local f=/d/swordai/run/detach-$$-$RANDOM.sh
+  printf 'cd /d/swordai\n%s > %s 2>&1\nrm -f %s\n' "$*" "$log" "$f" > "$f"
+  powershell -NoProfile -Command "Start-Process -WindowStyle Hidden -FilePath 'C:\\Program Files\\Git\\bin\\bash.exe' -ArgumentList '-l','$f'"
+}
 # The progress panel (tools/dashboard, port 8765, 6 Nov): started again when nothing answers there, so it outlives the app.
 if ! curl -s -m 5 -o /dev/null http://localhost:8765/; then
   echo "$(date '+%m-%d %H:%M') the panel does not answer: starting it" >> $LOG
-  cd /d/swordai && nohup C:/Python38/python.exe tools/dashboard/server.py > /d/swordai/run/panel.out 2>&1 &
-  disown
+  detach /d/swordai/run/panel.out C:/Python38/python.exe tools/dashboard/server.py
 fi
 # A redeploy asked for (7 Nov): run/redeploy-request (its text: optional VAR=value settings for it). Run from here, the client
 # and the hourly loop it starts outlive the Claude app (on 6 Nov a client started from a session died with it at 07:13).
 if [ -f /d/swordai/run/redeploy-request ] && ! ps -ef | grep -a "school-redeploy" | grep -qv grep; then
-  ENVLINE=$(tr -d '' < /d/swordai/run/redeploy-request)
+  ENVLINE=$(head -1 /d/swordai/run/redeploy-request | tr -d '\r')
   mv /d/swordai/run/redeploy-request /d/swordai/run/redeploy-request.taken
   echo "$(date '+%m-%d %H:%M') redeploy asked for ($ENVLINE)" >> $LOG
-  cd /d/swordai && nohup env $ENVLINE bash "$S/school-redeploy.sh" > "/d/swordai/run/redeploy-$(date +%m%d-%H%M).log" 2>&1 &
-  disown
+  detach "/d/swordai/run/redeploy-$(date +%m%d-%H%M).log" env $ENVLINE bash "$S/school-redeploy.sh"
   exit 0
 fi
 # A benchmark asked for (7 Nov): run/bench-request holds "TAG NET"; started here, outside the Claude app, so a session that
-# ends cannot leave a test network in training's place (tools/bench-run.sh swaps it in and back).
+# ends cannot leave a test network in the place of the training's (tools/bench-run.sh swaps it in and back).
 if [ -f /d/swordai/run/bench-request ] && ! ps -ef | grep -a "bench-run" | grep -qv grep; then
   read -r BTAG BNET < /d/swordai/run/bench-request
+  BNET=$(echo "$BNET" | tr -d '\r')
   mv /d/swordai/run/bench-request /d/swordai/run/bench-request.taken
   echo "$(date '+%m-%d %H:%M') benchmark asked for: $BTAG $BNET" >> $LOG
-  cd /d/swordai && nohup bash "$S/bench-run.sh" "$BTAG" "$BNET" > "/d/swordai/run/bench-$BTAG.out" 2>&1 &
-  disown
+  detach "/d/swordai/run/bench-$BTAG.out" bash "$S/bench-run.sh" "$BTAG" "$BNET"
   exit 0
 fi
 [ -f /d/swordai/run/school-cycle.stop ] && exit 0
@@ -50,7 +57,6 @@ if [ $age -ge 600 ]; then
 fi
 if [ "$(cycles | tr -d '\r')" = "0" ] && [ ! -f /d/swordai/run/school-cycle.stop ]; then
   echo "$(date '+%m-%d %H:%M') no hourly check loop: starting it" >> $LOG
-  cd /d/swordai/run && nohup bash "$S/schoolcycle.sh" > /d/swordai/run/school-cycle.out 2>&1 &
-  disown
+  detach /d/swordai/run/school-cycle.out "cd /d/swordai/run && bash $S/schoolcycle.sh"
 fi
 exit 0
