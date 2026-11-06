@@ -297,6 +297,35 @@ def installed_mod():
     return {'name': os.path.basename(j), 'time': time.strftime('%d %b %H:%M', time.localtime(os.path.getmtime(j)))}
 
 
+def read_bench(run):
+    """The benchmark (docs/BENCHMARK.md): the last comparison tools/bench.py wrote, and a run going on now."""
+    bench = os.path.join(run, 'swordai', 'bench')
+    out = {'latest': None, 'running': None}
+    p = os.path.join(bench, 'latest.json')
+    if os.path.exists(p):
+        try:
+            d = json.load(open(p, encoding='utf8'))
+            out['latest'] = {
+                'time': d.get('time'), 'c': d.get('tag_c'), 'r': d.get('tag_r'), 'verdict': d.get('verdict'),
+                'total': d.get('total'), 'parts': {k: d.get(k) for k in ('skills', 'h2h', 'bots')},
+                'tests': [{'name': t.get('name'), 'ids': t.get('ids'), 'label': t.get('rate_label'), 'kind': t.get('rate_kind'),
+                           'better': t.get('better'), 'c': t.get('c_rate'), 'r': t.get('r_rate'), 'hp': t.get('contrib'),
+                           'se': t.get('contrib_se'), 'worse': t.get('worse')} for t in d.get('tests', [])],
+            }
+        except (OSError, ValueError):
+            pass
+    suite = os.path.join(run, 'swordai', 'school', 'bench-suite.txt')
+    if os.path.exists(suite):
+        lines = open(suite, encoding='utf8', errors='replace').read().splitlines()
+        tag = next((l.split(None, 1)[1] for l in lines if l.startswith('tag ')), '?')
+        net = next((l.split(None, 1)[1] for l in lines if l.startswith('network ')), '?')
+        total = sum(int(m.group(1)) for l in lines if not l.startswith('#') for m in [re.search(r'(\d+)\s*$', l)] if m
+                    and not l.startswith(('tag ', 'network ')))
+        done = len([f for f in glob.glob(os.path.join(bench, tag, '*.txt.gz')) if re.match(r'\d{4}-', os.path.basename(f))])
+        out['running'] = {'tag': tag, 'network': net, 'done': done, 'total': total}
+    return out
+
+
 def punish_rolling(log):
     """The training's rolling punish crit (its last 300 chances), from the newest update line."""
     try:
@@ -521,7 +550,7 @@ def build(cache, techniques, stages, prio, hits=None):
         'stages': [s for s in stages if s['name'] != 'T-F'], 'priority': prio,
         'techniques': rows, 'damage': damage[-600:], 'checks': checks[-60:], 'landing': landing, 'critChances': crit_chances, 'punish': punish,
         'models': read_models(cache.run), 'plan': read_plan(), 'experiments': read_experiments(),
-        'punishRolling': punish_rolling(log), 'mod': installed_mod(),
+        'punishRolling': punish_rolling(log), 'mod': installed_mod(), 'bench': read_bench(cache.run),
         'served': time.strftime('%H:%M:%S'),
     }
 

@@ -68,6 +68,11 @@
   </div>
 
   <div class="card">
+    <h2>Benchmark: a network vs the model in your game</h2>
+    <div id="bench" class="muted">–</div>
+  </div>
+
+  <div class="card">
     <h2>Scores (this run's checks)</h2>
     <div class="nums" id="nums"></div>
   </div>
@@ -120,6 +125,27 @@ const short = (s, n = 90) => { s = String(s || ''); const cut = s.search(/[.:;(]
 const GROUPS = [['Start a combo', ['T4', 'T5', 'T6', 'T6a', 'T7', 'T9']], ['Hold a combo', ['T10', 'T11a', 'T11b', 'T11c', 'T2']],
   ['Crits', ['B1', 'T1', 'T1a', 'T1b', 'T1c', 'C6']], ['Jump-ins', ['K2', 'K3', 'T9a', 'T9b', 'T9c']], ['Getting out', ['C1', 'C2', 'C3', 'C4', 'C7']]];
 
+function renderBench(b) {
+  let h = '';
+  const r = b.running;
+  if (r) h += `<div style="margin-bottom:10px">Playing now: <b>${esc(r.tag)}</b> (${esc(r.network)}) · ${r.done} of ${r.total} fights
+    <div class="bar" style="max-width:260px;margin-top:4px"><i style="width:${r.total ? Math.round(100 * r.done / r.total) : 0}%"></i></div></div>`;
+  const l = b.latest;
+  if (!l) { $('bench').innerHTML = h + (r ? '' : 'No comparison yet.'); return; }
+  const cls = { BETTER: 'ok', WORSE: 'bad', TIE: 'warn' }[l.verdict] || '';
+  const t = l.total || {}, p = l.parts || {};
+  const part = (x) => (x ? `${sg(x.value)} ± ${(x.se || 0).toFixed(1)}` : '–');
+  const rate = (x, kind) => (x == null ? '–' : kind === 'share' ? Math.round(100 * x) + '%' : x.toFixed(2));
+  h += `<div class="nums">${num('Verdict', `<span class="${cls}">${esc(l.verdict || '–')}</span>`, `${esc(l.c)} vs ${esc(l.r)} · ${esc((l.time || '').slice(5, 16))}`)}
+    ${num('Total (HP per real fight)', sg(t.value), `± ${(t.se || 0).toFixed(1)} · above 0 = better than your game's model`)}
+    ${num('Parts', `<span style="font-size:15px;font-weight:500">skills ${part(p.skills)}<br>vs your model ${part(p.h2h)}<br>vs bots ${part(p.bots)}</span>`, 'HP per fight, each part')}</div>`;
+  h += '<div style="margin-top:10px">' + (l.tests || []).map((x) => `<div class="row" style="display:grid;grid-template-columns:1fr auto auto;gap:10px">
+    <span>${esc(x.name)} <span class="muted">${esc(x.ids || '')}</span><div class="sub">${esc(x.label || '')}</div></span>
+    <span style="text-align:right">${rate(x.c, x.kind)} <span class="muted">vs ${rate(x.r, x.kind)}</span></span>
+    <span style="text-align:right;min-width:62px" class="${x.worse ? 'bad' : x.hp > 0.3 ? 'ok' : 'muted'}">${x.hp == null ? '' : sg(x.hp)}</span></div>`).join('') + '</div>';
+  $('bench').innerHTML = h;
+}
+
 function num(k, v, s, cls = '') { return `<div class="num"><div class="k">${k}</div><div class="v ${cls}">${v}</div><div class="s">${s}</div></div>`; }
 
 function render(d) {
@@ -164,6 +190,8 @@ function render(d) {
 
   draw('chartAB', checks.slice(-30), runs, (c) => c.all.aMinusB, (c) => c.all.se, 180, true);
   draw('chartP', checks.slice(-30), runs, (c) => pc(c.afterCrit && c.afterCrit.A), null, 150, false, (c) => pc(c.afterCrit && c.afterCrit.B));
+
+  renderBench(d.bench || {});
 
   $('plan').innerHTML = blocks.map((b) => {
     const mark = b.done >= b.total ? '<span class="ok">✓</span>' : b === cur ? '<span class="a">▶</span>' : '<span class="muted">○</span>';
