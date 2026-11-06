@@ -31,10 +31,14 @@ Measure from the checks' hit log: `C:/Python38/python.exe -I tools/lastchecks.py
 - [x] 06:10 analysis (EXPERIMENTS row 40; tools/punish.py, punish2.py, k2hole.py, air.py)
 - [x] 06:16 change: SchoolSession.critSwingNow, hold until they land, SchoolFighter.holdJumpInSwing (fights)
 - [x] 06:22 redeployed, training run 40
-- [ ] check 1 (~07:00): after-crit crit share, A-B
-- [ ] check 2 (~07:50)
-- [ ] check 3 (~08:40)
-- [ ] ~09:30 verdict: kept if the share is 55%+ and A-B not clearly under +0.6; else revert to run 39 (JUMP_IN_GUARD logic) and say why
+- [x] check 1 (07:11, network of 45 min): after-crit crit share **A 68% (38 of 56)** vs B 46%; jump-ins punished with
+  its crit 40% (19 of 48); A-B +0.5 (4.1); swings landing A 96% vs B 92%
+- **OUTAGE 07:13 to ~22:45 (6 Nov):** the client and check loop were started from inside the Claude session and died when
+  it ended; the watchdog's 89 restarts all failed (Gradle: "Could not determine if stdin is a console"), fixed in
+  tools/school-restart.sh and school-redeploy.sh (stdin from NUL). Let the watchdog start the client (it outlives sessions).
+- [ ] check 2 (first after the restart)
+- [ ] check 3
+- [ ] verdict after check 3: kept if the share is 55%+ and A-B not clearly under +0.6; else revert to run 39 (JUMP_IN_GUARD logic) and say why
 - [ ] if kept: ask the user to install the run-40 jar before they play on 7 Nov (tools/install-ab.sh, same five arms:
   `noback=@installed,on,,1,noback old1418=.../run23-1418.bin run26=.../run26-0413.bin old0739=.../run30h-0739.bin`, --dry first)
 
