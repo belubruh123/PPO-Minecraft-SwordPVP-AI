@@ -162,6 +162,19 @@ public final class SchoolSession implements AgentSession {
 	 * on top of COMBO_HIT (0.4 a hit in all). Of its 2-hit combos 37% went on to a third in run 42's benchmark.
 	 */
 	static final float COMBO_HIT3 = 0.2f;
+	/**
+	 * Run 44, the chase crit (the user, 7 Nov 07:50, their own knowledge: "a lot of player back out of combo so ... once the AI
+	 * sees player backing out, jump and chase it and crit it cause it is a good chance ... their back out ... is over three
+	 * block so jump in crit won't get you knock away"): a crit that carries on its own combo (within CHASE_GAP ticks of its last
+	 * hit, no hit taken since) on an opponent that went away from it for AWAY_TICKS or more since that hit pays this on top.
+	 * Taught by reward, no rule; run 43's AIR_JUMP_HIT costs only when the jump is hit, which a safe chase is not.
+	 */
+	static final float CHASE_CRIT = 0.4f;
+	static final int CHASE_GAP = 30;
+	static final int AWAY_TICKS = 3;
+	/** Ticks since its last hit that they moved away from it (Duel.theyClose below -0.05), and chase crits paid since the update. */
+	private int awayTicks;
+	private int chaseCrits;
 	/** Its hits in a row in the reward's count (1 = a first hit), and the 3rd+ hits paid since the last update. */
 	private int rewardRow;
 	private int combo3Paid;
@@ -2176,6 +2189,7 @@ public final class SchoolSession implements AgentSession {
 		// An own-combo scene starts the tick after its first hit: a hit within COMBO_GAP is that combo's follow-up (COMBO_HIT).
 		lastOwnHitAt = sceneNow != null && sceneNow.kind == KIND_OWN ? -1 : -1000;
 		rewardRow = sceneNow != null && sceneNow.kind == KIND_OWN ? 1 : 0;
+		awayTicks = 0;
 		ownJumpAir = false;
 		ownFrom = -1;
 		ownRow = 0;
@@ -2627,6 +2641,13 @@ public final class SchoolSession implements AgentSession {
 					reward -= AIR_JUMP_HIT;
 					airJumpHits++;
 				}
+				// The chase crit (run 44, CHASE_CRIT): before the combo count below moves its last hit to now.
+				if (facts.hitsDealt > 0 && facts.critDealt && facts.hitsTaken == 0 && lastOwnHitAt > -1000
+						&& fightTicks - lastOwnHitAt <= CHASE_GAP && awayTicks >= AWAY_TICKS) {
+					reward += CHASE_CRIT;
+					chaseCrits++;
+				}
+				awayTicks = facts.hitsDealt > 0 || facts.hitsTaken > 0 ? 0 : awayTicks + (reader.duel.theyClose < -0.05 ? 1 : 0);
 				// The combo reward (run 42, COMBO_HIT): a trade (both hit this tick) or a hit taken ends its combo.
 				if (facts.hitsTaken > 0) {
 					lastOwnHitAt = -1000;
@@ -4305,15 +4326,16 @@ public final class SchoolSession implements AgentSession {
 		pullsNow = stages.techPulls();
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
-				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {} ({} in {} drill fights), other crits {}, combo follow-up hits rewarded {} (3rd+ {}), hits taken in the air from its own jump {} "
+				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {} ({} in {} drill fights), other crits {}, combo follow-up hits rewarded {} (3rd+ {}), chase crits {}, hits taken in the air from its own jump {} "
 				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} (the golden rule held the swing on {} ticks, the installed model's rules set keys on {}) | swings: {} | review of the old stages:{} | bots went into:{} | taught now:{} | sparring the installed model:{} | take-over:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
-				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits, comboHitsPaid, combo3Paid, airJumpHits,
+				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits, comboHitsPaid, combo3Paid, chaseCrits, airJumpHits,
 				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2Held, ruleTicks, swingLine(0), reviewLine(), used, taughtNowLine(), sparLine(), takeOverLine());
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		comboHitsPaid = 0;
 		combo3Paid = 0;
+		chaseCrits = 0;
 		airJumpHits = 0;
 		drillPunishCrits = 0;
 		drillFights = 0;

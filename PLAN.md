@@ -124,6 +124,8 @@ Method: practice the exact moment (own-combo scenes from the tick after its firs
   (median 3 ticks vs 4-17). The bots are not too perfect at stopping combos: they stay (weaker bots = the 24 Oct mistake)
 - [x] 7 Nov 07:40 run 44 written and compile-checked (340116d): KIND_OWN scenes (OWN_SHARE 0.4 of the focus's scene fights; punish
   keeps its quarter), COMBO_HIT3 0.2
+- [x] 7 Nov 07:50 the user's chase crit added to run 44: CHASE_CRIT 0.4 (a crit carrying on its own combo on an opponent backing
+  away 3+ ticks, within 30 ticks of its last hit); compile-check OK; "chase crits" in the update line
 - [ ] deploy after run 43's first check (~08:15), via run/redeploy-request
 - [ ] measure at ~11:30 (three checks + benchmark v2): tools/combos.py on the checks: 3+ combos a fight A 0.39 -> 0.6+, 2->3 share
   33% -> 45%+ (B 0.36 / 29%); combo-bots.py on the benchmark; own-combo scenes won %; guard: punish crit chances critted 50%
