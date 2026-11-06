@@ -13,6 +13,16 @@ if ! curl -s -m 5 -o /dev/null http://localhost:8765/; then
   cd /d/swordai && nohup C:/Python38/python.exe tools/dashboard/server.py > /d/swordai/run/panel.out 2>&1 &
   disown
 fi
+# A benchmark asked for (7 Nov): run/bench-request holds "TAG NET"; started here, outside the Claude app, so a session that
+# ends cannot leave a test network in training's place (tools/bench-run.sh swaps it in and back).
+if [ -f /d/swordai/run/bench-request ] && ! ps -ef | grep -a "bench-run" | grep -qv grep; then
+  read -r BTAG BNET < /d/swordai/run/bench-request
+  mv /d/swordai/run/bench-request /d/swordai/run/bench-request.taken
+  echo "$(date '+%m-%d %H:%M') benchmark asked for: $BTAG $BNET" >> $LOG
+  cd /d/swordai && nohup bash "$S/bench-run.sh" "$BTAG" "$BNET" > "/d/swordai/run/bench-$BTAG.out" 2>&1 &
+  disown
+  exit 0
+fi
 [ -f /d/swordai/run/school-cycle.stop ] && exit 0
 # A restart of its own still going (it waits up to 10 minutes for the world).
 if [ -f $LOCK ] && [ $(( $(date +%s) - $(stat -c %Y $LOCK) )) -lt 1800 ]; then
