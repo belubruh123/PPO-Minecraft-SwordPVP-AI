@@ -68,7 +68,7 @@ if [ -n "$START_NET" ]; then
 fi
 cd /d/swordai
 export JAVA_HOME="C:/Users/jerem/.gradle/jdks/eclipse_adoptium-25-amd64-windows.2"
-./gradlew.bat :core:test --tests 'dev.swordai.core.school.*' --tests 'dev.swordai.core.pvp.*' -q > "$S/test-school.log" 2>&1
+./gradlew.bat :core:test --tests 'dev.swordai.core.school.*' --tests 'dev.swordai.core.pvp.*' -q < /dev/null > "$S/test-school.log" 2>&1
 python - <<'EOF'
 import re, glob, sys
 bad = 0

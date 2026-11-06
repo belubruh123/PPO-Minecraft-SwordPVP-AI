@@ -7,7 +7,7 @@ printf 'swordai stop\r\n' > /d/swordai/run/swordai/inbox.txt
 sleep 8
 powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { (\$_.Name -in 'cmd.exe','java.exe') -and \$_.CommandLine -match 'start-school\.cmd|start-dev\.cmd|GradleWrapperMain|GradleDaemon|fabric\.dli\.' } | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force -ErrorAction SilentlyContinue }"
 sleep 3
-cmd //c "set JAVA_HOME=C:\Users\jerem\.gradle\jdks\eclipse_adoptium-25-amd64-windows.2&& D:\swordai\gradlew.bat -p D:\swordai build -x test --console=plain" > "$S/build-school.log" 2>&1
+cmd //c "set JAVA_HOME=C:\Users\jerem\.gradle\jdks\eclipse_adoptium-25-amd64-windows.2&& D:\swordai\gradlew.bat -p D:\swordai build -x test --console=plain < NUL" < /dev/null > "$S/build-school.log" 2>&1
 echo "=== build: $(grep -a 'BUILD' "$S/build-school.log" | tail -1)"
 grep -aq "BUILD SUCCESSFUL" "$S/build-school.log" || { grep -a "error:" -A2 "$S/build-school.log" | head -20; exit 1; }
 V=$(ls -t /d/swordai/core/build/libs/swordai-core-*.jar | head -1 | xargs basename)
