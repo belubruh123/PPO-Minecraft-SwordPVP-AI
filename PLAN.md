@@ -7,10 +7,10 @@ the time), write each block's verdict under it, and commit. Never delete a block
 for check 2 (done: check 1; next: check 3, verdict)". Keep this line current:
 
 For the panel (short, plain words; keep both current):
-**NOW: Block 4 · its own jumps into their reach · run 43 training**
+**NOW: Block 5 · 3+ combos · run 44 deploys ~08:15 (run 43 training)**
 **INSTALLED: run35-0657 · +4.5 vs B · since 5 Nov 21:19**
 
-**CURRENT STEP (7 Nov 07:25): block 3 done (PARTLY MET, run 42 kept). Block 4 started: run 43 (AIR_JUMP_HIT 0.3, hits taken in the air out of its own jumps) redeploying via the watchdog. Checks ~08:20, 09:10, 10:00, then the v2 benchmark (request 'run43v2 NET suite-v2'); verdict ~10:30. Number: air2.py 'air, own jump' share of damage taken, A 31.4% -> under 12%.**
+**CURRENT STEP (7 Nov 07:45): block 4 (run 43, air hits out of its own jumps) training since 07:17; block 5 (run 44, 3+ combos: own-combo scenes + COMBO_HIT3) committed, deploys after run 43's first check (~08:15). The user's priority now: 3+ combos and combo starts, punish crit ~50% of chances as the guard.**
 
 ## Why this plan exists (the user, 6 Nov 06:30-07:10)
 - They want a visible improvement **every ~3 hours**, each block with **one number and a target**, reported at its end.
@@ -116,7 +116,20 @@ The user: all ways the document starts a combo, and all ways it holds one, learn
 - [ ] measure at the block's end (~10:30, three checks + benchmark v2): air2.py under 12% of damage taken (A 31.4% now);
   airjumps.py network share down from 24%; follow-up combo hits not below 1.9; T9/T11b not collapsing
 
-## Block 5: the learning itself. After block 4. Method: reward drives the keys it already copies
+## Block 5: 3+ combos (run 44). The user, 7 Nov 07:30: "it need always like 3+ combo and nearly starting combos at anytime while
+keeping punish crit good enough like about 50%" (50% = of its punish crit chances: review.sh's "chances critted" line).
+Method: practice the exact moment (own-combo scenes from the tick after its first hit) + a bigger reward for 3rd+ hits.
+- [x] 7 Nov 07:35 the user: "adjust your bot ... it might be too perfect": checked (tools/combo-bots.py): its 2-hit combos reached 3
+  vs the bots 37% (12-56% by bot) and vs real players 38% (200 real duels); real players hit back after its first hit sooner
+  (median 3 ticks vs 4-17). The bots are not too perfect at stopping combos: they stay (weaker bots = the 24 Oct mistake)
+- [x] 7 Nov 07:40 run 44 written and compile-checked (340116d): KIND_OWN scenes (OWN_SHARE 0.4 of the focus's scene fights; punish
+  keeps its quarter), COMBO_HIT3 0.2
+- [ ] deploy after run 43's first check (~08:15), via run/redeploy-request
+- [ ] measure at ~11:30 (three checks + benchmark v2): tools/combos.py on the checks: 3+ combos a fight A 0.39 -> 0.6+, 2->3 share
+  33% -> 45%+ (B 0.36 / 29%); combo-bots.py on the benchmark; own-combo scenes won %; guard: punish crit chances critted 50%
+  (34% at 06:48); A-B not clearly worse
+
+## Block 6: the learning itself. After block 4. Method: reward drives the keys it already copies
 - [ ] copy pulls off (or near) on keys where it agrees with the rules 90%+ (update line "rules' keys ... by head"), A/B
   run judged on the stuck techniques and on fresh-pair screens, not on the +-4 hourly check (25 Oct a fading copy lost,
   with a far weaker network: say so in the report)
