@@ -52,6 +52,10 @@ Measure from the checks' hit log: `C:/Python38/python.exe -I tools/lastchecks.py
   checks and hits.csv live, so it changes with every commit; the watchdog keeps it running
 - [ ] check 3
 - [ ] verdict after check 3: kept if the share is 55%+ and A-B not clearly under +0.6; else revert to run 39 (JUMP_IN_GUARD logic) and say why
+- [ ] after check 3 (user, 23:30: "why not let B be the installed model"): screen the game's model on the SAME pairs as the
+  hourly check, `FROM=0 bash tools/screen.sh 45 /d/swordai/run/best-run35/run35-0657.bin:1` (B stays the ruler: it is also the
+  training's copy target and sparring partner, so swapping it would change training). Then the panel shows
+  training vs your game = each check's A-B minus that screen's A-B (same fights); add the line INSTALLED_SAME_PAIRS to this file
 - [ ] if kept: ask the user to install the run-40 jar before they play on 7 Nov (tools/install-ab.sh, same five arms:
   `noback=@installed,on,,1,noback old1418=.../run23-1418.bin run26=.../run26-0413.bin old0739=.../run30h-0739.bin`, --dry first)
 
