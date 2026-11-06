@@ -6,8 +6,8 @@ the time), write each block's verdict under it, and commit. Never delete a block
 **Every report to the user starts with the plan step I am on** (the user, 6 Nov 22:55), e.g. "Plan: block 1, waiting
 for check 2 (done: check 1; next: check 3, verdict)". Keep this line current:
 
-**CURRENT STEP (6 Nov 22:55): block 1 (run 40), waiting for check 2 (~23:40). Done: analysis, change, check 1 (68%).
-Next: check 3 (~00:30), verdict, then block 2's first box (what myRow counts).**
+**CURRENT STEP (6 Nov 23:20): block 1 (run 40), waiting for check 3 (~00:05). Done: analysis, change, check 1 (68%),
+check 2 (47%; both 57%). Next: verdict after check 3, then block 2's first box (what myRow counts).**
 
 ## Why this plan exists (the user, 6 Nov 06:30-07:10)
 - They want a visible improvement **every ~3 hours**, each block with **one number and a target**, reported at its end.
@@ -42,7 +42,10 @@ Measure from the checks' hit log: `C:/Python38/python.exe -I tools/lastchecks.py
 - **OUTAGE 07:13 to ~22:45 (6 Nov):** the client and check loop were started from inside the Claude session and died when
   it ended; the watchdog's 89 restarts all failed (Gradle: "Could not determine if stdin is a console"), fixed in
   tools/school-restart.sh and school-redeploy.sh (stdin from NUL). Let the watchdog start the client (it outlives sessions).
-- [ ] check 2 (first after the restart)
+- [x] check 2 (23:11, about an hour of training in all): after-crit **A 47% (30 of 64)** vs B 43%; jump-ins punished 37%;
+  A-B +1.0 (3.6); swings landing A 94% vs B 90%. Both checks: A 57% (68 of 120) vs B 46%, A-B +0.8
+- [x] 23:20 the progress panel redesigned (tools/dashboard, http://localhost:8765): reads PLAN.md, EXPERIMENTS.md, the
+  checks and hits.csv live, so it changes with every commit; the watchdog keeps it running
 - [ ] check 3
 - [ ] verdict after check 3: kept if the share is 55%+ and A-B not clearly under +0.6; else revert to run 39 (JUMP_IN_GUARD logic) and say why
 - [ ] if kept: ask the user to install the run-40 jar before they play on 7 Nov (tools/install-ab.sh, same five arms:
