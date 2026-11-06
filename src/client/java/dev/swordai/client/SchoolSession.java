@@ -146,6 +146,21 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final float CRIT_SWING = 0.3f;
 	/**
+	 * Run 42 (block 3, 7 Nov): the combo reward. Each follow-up hit of its own combo (a hit dealt within COMBO_GAP ticks of its
+	 * last one, with no hit taken since) pays this on top of its damage. The user (6 Nov): learn every way the document starts
+	 * a combo (T4, T5, T6/T6a, T7, T8, T9) and every way it holds one (T10, T11a-c, T2), by reward, PPO not copying. A starter
+	 * is worth only the follow-up it makes possible and a holder is the follow-up itself, so one term pays both. Before it no
+	 * reward term touched combos and every starter/holder copy pull was 0 (SchoolStages.PULL_CAP): they were judged only.
+	 * Not paid for a hit that is not followed (that would pay hit-and-out, taken out on 1 Nov). Size: follow-up hits a fight
+	 * were A 1.74, B 1.75 within 20 ticks (last three checks before run 42), so about +0.35 a fight against a damage
+	 * reward of about +-6.
+	 */
+	static final float COMBO_HIT = 0.2f;
+	static final int COMBO_GAP = 20;
+	/** The fight tick of its last hit dealt with no hit taken since (-1000: none), and the follow-up hits paid since the last update. */
+	private int lastOwnHitAt = -1000;
+	private int comboHitsPaid;
+	/**
 	 * The crit swing's pay only in a lift by their hit (the punish crit's chance), and no pay for other crits (OTHER_CRIT 0),
 	 * from 29 Oct 07:10: on fresh seeds (pairs 1700-2431) the school network jumped in at an opponent standing with its sword
 	 * ready 3.4 times as often as the installed model (1.33 a fight to 0.39), was hit first 0.90 a fight and hit first 0.34,
@@ -2078,6 +2093,7 @@ public final class SchoolSession implements AgentSession {
 		sweep = 0;
 		frozenTicks = 0;
 		fightTicks = 0;
+		lastOwnHitAt = -1000;
 		java.util.Arrays.fill(rowDealt, 0);
 		java.util.Arrays.fill(rowTaken, 0);
 		java.util.Arrays.fill(sinceSwing, 999);
@@ -2507,6 +2523,16 @@ public final class SchoolSession implements AgentSession {
 				if (clicked && critChanceAtClick && (!CRIT_SWING_IN_LIFTS_ONLY || liftedFor >= 0)) {
 					reward += CRIT_SWING;
 					critSwings++;
+				}
+				// The combo reward (run 42, COMBO_HIT): a trade (both hit this tick) or a hit taken ends its combo.
+				if (facts.hitsTaken > 0) {
+					lastOwnHitAt = -1000;
+				} else if (facts.hitsDealt > 0) {
+					if (fightTicks - lastOwnHitAt <= COMBO_GAP) {
+						reward += COMBO_HIT;
+						comboHitsPaid++;
+					}
+					lastOwnHitAt = fightTicks;
 				}
 				reward += shaping;
 				shapingPaid += shaping;
@@ -4166,13 +4192,14 @@ public final class SchoolSession implements AgentSession {
 		pullsNow = stages.techPulls();
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
-				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {} ({} in {} drill fights), other crits {} "
+				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {} ({} in {} drill fights), other crits {}, combo follow-up hits rewarded {} "
 				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} (the golden rule held the swing on {} ticks, the installed model's rules set keys on {}) | swings: {} | review of the old stages:{} | bots went into:{} | taught now:{} | sparring the installed model:{} | take-over:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
-				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits,
+				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits, comboHitsPaid,
 				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2Held, ruleTicks, swingLine(0), reviewLine(), used, taughtNowLine(), sparLine(), takeOverLine());
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
+		comboHitsPaid = 0;
 		drillPunishCrits = 0;
 		drillFights = 0;
 		otherCrits = 0;
