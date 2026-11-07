@@ -1153,9 +1153,35 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	private void loadScenes() {
+		retireWrongVelocityScenes();
 		loadScenes(SCENE_FILE, scenes);
 		loadScenes(MASTERED_FILE, mastered);
 		loadFocus();
+	}
+
+	/**
+	 * Run 46e (7 Nov): every scene kept before it put the agent back with the server's no-input velocity (67% of the 538 kept
+	 * ones exactly 0 sideways, the bot 2%; the real median speed ~0.15 a tick), so its moment was not the one that happened.
+	 * They cannot be mended (a scene keeps one tick), so they are moved aside once (kept, not deleted) and new ones refill.
+	 */
+	private static void retireWrongVelocityScenes() {
+		Path dir = SwordFiles.schoolDir();
+		Path done = dir.resolve("scenes-velocity-fix.done");
+		if (Files.exists(done)) {
+			return;
+		}
+		try {
+			for (String name : new String[] {SCENE_FILE, MASTERED_FILE}) {
+				Path f = dir.resolve(name);
+				if (Files.exists(f)) {
+					Files.move(f, dir.resolve(name + ".old-wrong-velocity"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+				}
+			}
+			Files.writeString(done, "scenes before 7 Nov run 46e moved aside: the agent's velocity was the server's, not its own\n");
+			SwordAi.LOGGER.info("school: scenes kept before the velocity fix moved aside (.old-wrong-velocity); new ones refill");
+		} catch (IOException e) {
+			SwordAi.LOGGER.warn("school: the old scenes could not be moved aside: {}", e.getMessage());
+		}
 	}
 
 	private void loadScenes(String name, List<Scene> into) {
