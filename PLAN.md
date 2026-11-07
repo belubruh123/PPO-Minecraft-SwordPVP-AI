@@ -10,7 +10,7 @@ For the panel (short, plain words; keep both current):
 **NOW: Block 5 · 3+ combos · run 44 training, targets by 11:30**
 **INSTALLED: run35-0657 · +4.5 vs B · since 5 Nov 21:19**
 
-**CURRENT STEP (7 Nov 08:15): block 5 (3+ combos), all-in for 11:30. Run 44 (own-combo + 2->3 scenes, COMBO_HIT3, chase crit, human-aim bots + made-to-miss, post-hit PPO weight, with run 43's air-hit cost) deploying. Then benchmarks refv3 + refv3h (hit and out A/B), checks ~09:15, 10:05, 10:55, final benchmark run44 ~11:05 vs refv3. Targets: 3+ combos a fight 0.6+, 2->3 45%+, punish crit chances critted 50%.**
+**CURRENT STEP (7 Nov 09:20): block 5, run 45 deploying (deflection start, bot audit fixes, jump reset lets go for the crit). Final benchmarks from 10:40 (refv4, run45v4), checks ~10:15 and ~11:05, report at 11:30 against: 3+ combos 0.6+ a fight, 2->3 45%+, punish crit chances critted 50%.**
 
 ## Why this plan exists (the user, 6 Nov 06:30-07:10)
 - They want a visible improvement **every ~3 hours**, each block with **one number and a target**, reported at its end.
@@ -131,8 +131,13 @@ Method: practice the exact moment (own-combo scenes from the tick after its firs
   POST_HIT_WEIGHT 2. Findings: a 2nd hit from under 1.6 blocks got a 3rd 27% in real duels, from 2.8+ 56%; S after it helps;
   in h2h our jump-reset rule lands us at 3.2 blocks with no swing (74% hit again) - noted, not the combo target
 - [x] 7 Nov 08:12 deployed run 44 (9841518) via run/redeploy-request; run 43 had no check of its own
-- [ ] 08:25-09:00 benchmarks refv3 (new bots: the reference again) and refv3h (hit and out on), compare; if hit and out clearly
-  raises 2->3 and not the damage taken -> SchoolStages.HIT_AND_OUT on in training (redeploy ~09:15); the user's game: ask
+- [x] 09:01 hit-and-out A/B (refv3h vs refv3): WORSE -2.76 +- 0.87 -> stays off
+- [x] 09:15 run 45 deployed: DEFLECT_HIT (T4, the user's merge), bot audit fixes (human jump-reset timing, punish-critter punishes,
+  standing crit in reach, jump-ins landing 2.5-3 out, uppercut at the peak, human aim fixed), JumpReset lets go when falling
+  (punish diagnosis: the rules make every punish crit; combo lifts 21% vs first-hit 70%). Changes the user's real-fight rule
+  once installed: ASK before any install
+- [ ] 10:40-11:20 final: refv4 (the game's model on the new bots) then run45v4 (the 10:xx check's network), compare; combos.py on
+  the checks (A vs B, as the bots changed: judge A against B too); punish crit chances critted; report at 11:30
 - [ ] measure at ~11:30 (three checks + benchmark v2): tools/combos.py on the checks: 3+ combos a fight A 0.39 -> 0.6+, 2->3 share
   33% -> 45%+ (B 0.36 / 29%); combo-bots.py on the benchmark; own-combo scenes won %; guard: punish crit chances critted 50%
   (34% at 06:48); A-B not clearly worse
