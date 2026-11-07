@@ -1059,12 +1059,31 @@ public final class ArenaServer {
 	 * sent into the gap between this arena's wall and an old one's. Those are moved so that the two fighters' middle is this
 	 * arena's; every fighter is kept inside the walls.
 	 */
+	/** Scenes turned by a random angle when put back (run 46); see {@link #placed}. */
+	static final boolean SCENE_TURN = true;
+	private static final java.util.Random SCENE_TURN_RNG = new java.util.Random();
+
 	static double[] placed(double[] scene, Arena arena) {
 		double[] s = scene.clone();
 		int b = SceneRecorder.BODY;
 		boolean world = Math.abs(s[1]) > 50 || Math.abs(s[b + 1]) > 50;
 		double shiftX = world ? arena.centerX - (s[0] + s[b]) / 2 : arena.centerX;
 		double shiftZ = world ? arena.centerZ - (s[2] + s[b + 2]) / 2 : arena.centerZ;
+		if (!world && SCENE_TURN) {
+			// Run 46 (the user, 7 Nov 09:35: replay the exact moment "in all sort of direction in degree"): the whole moment turned
+			// by a random angle about the arena's middle, positions, motion and both looks alike. The floor is flat, so the moment
+			// is the same fight; seen from the screen it is a new one each time, so a scene is not learned by the direction it
+			// faced. A direction d(yaw) = (-sin yaw, cos yaw) turned by this rotation is d(yaw + angle).
+			double deg = SCENE_TURN_RNG.nextDouble() * 360.0, a = Math.toRadians(deg), c = Math.cos(a), sn = Math.sin(a);
+			for (int o = 0; o <= b; o += b) {
+				double x = s[o], z = s[o + 2], vx = s[o + 3], vz = s[o + 5];
+				s[o] = x * c - z * sn;
+				s[o + 2] = x * sn + z * c;
+				s[o + 3] = vx * c - vz * sn;
+				s[o + 5] = vx * sn + vz * c;
+				s[o + 6] = s[o + 6] + deg;
+			}
+		}
 		for (int o = 0; o <= b; o += b) {
 			s[o] = arena.clampX(s[o] + shiftX);
 			s[o + 1] = world ? s[o + 1] : s[o + 1] + arena.floorY;
