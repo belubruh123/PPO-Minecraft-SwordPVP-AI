@@ -13,9 +13,15 @@ PAIRS=${PAIRS:-44}
 send() { printf '%s\r\n' "$1" > $INBOX; }
 stopped() { # waits for the session to stop after a stop command; $1 = count of "Stopped" lines before
   for i in $(seq 1 120); do [ $(grep -ac "Stopped (" $L) -gt $1 ] && return 0; sleep 1; done; return 1; }
-while [ ! -f /d/swordai/run/school-cycle.stop ]; do
+# One loop only (7 Nov 16:20: four were running, left by redeploys, each stopping training for its own check): the newest
+# writes its pid here and an older one that finds another pid in it ends.
+PIDF=/d/swordai/run/school-cycle.pid
+echo $$ > $PIDF
+mine() { [ "$(cat $PIDF 2>/dev/null)" = "$$" ]; }
+while [ ! -f /d/swordai/run/school-cycle.stop ] && mine; do
   for m in $(seq 1 $WAIT_MIN); do
     [ -f /d/swordai/run/school-cycle.stop ] && exit 0
+    mine || exit 0
     sleep 60
   done
   n=$(grep -ac "Stopped (" $L); send "swordai stop"; stopped $n || { echo "$(date) stop did not take" >> $OUT; continue; }

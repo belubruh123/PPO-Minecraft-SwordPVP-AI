@@ -76,7 +76,7 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	private static final int ARENA_TIMEOUT_TICKS = 600;
-	private static final int RESET_TIMEOUT_TICKS = 200;
+	private static final int RESET_TIMEOUT_TICKS = 600; // 200 until 7 Nov 16:20: the server 2-5 s behind under the repeat's quick resets stopped training
 	private static final int SETTLE_TICKS = 4;
 	private static final int FROZEN_FRAME_TICKS = 20;
 	private static final int FRAMES_TO_RESUME = 3;
@@ -771,6 +771,8 @@ public final class SchoolSession implements AgentSession {
 	 * updates to say anything.
 	 */
 	static final double REPEAT_MIN_MINUTES = 20.0;
+	/** Run 48c: a decided try still lasts this long (tries of 3-9 ticks, several resets a second, put the server 2-5 s behind). */
+	static final int REPEAT_MIN_TICKS = 20;
 	static final float REPEAT_TICK_COST = 0.02f, REPEAT_DONE = 1.0f, REPEAT_FAILED = 0.5f;
 	private final int[] REPEAT_ORDER = {KIND_DEFLECT, KIND_PUNISH2, KIND_PUNISH, KIND_OWN2, KIND_OWN, KIND_CRIT2, KIND_JUMPIN2, KIND_COMBO, KIND_CRIT,
 			KIND_JUMPIN};
@@ -3066,7 +3068,7 @@ public final class SchoolSession implements AgentSession {
 			boolean ko = facts.koDealt || facts.koTaken;
 			boolean timeUp = review >= 0 ? fightTicks >= Math.min(basics[review].bot.attacks ? FIGHT_TICKS : REVIEW_TICKS, basics[review].episodeTicks)
 					|| reviewRewards.lostTooLong(basics[review])
-					: fightTicks >= (sceneNow != null ? sceneNow.ticks() : FIGHT_TICKS) || repeatEndNow;
+					: fightTicks >= (sceneNow != null ? sceneNow.ticks() : FIGHT_TICKS) || repeatEndNow && fightTicks >= REPEAT_MIN_TICKS;
 			if (mode == Mode.TRAIN && review < 0 && sceneNow == null && !drillFight && !ruleOff) {
 				trackOwnCombo(facts.hitsDealt > 0, facts.hitsTaken > 0);
 				harvest(truth.tick(), facts.damageDealt - facts.damageTaken, facts.critsTaken > 0, ko || timeUp);
