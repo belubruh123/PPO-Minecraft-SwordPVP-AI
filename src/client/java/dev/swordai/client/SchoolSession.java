@@ -765,6 +765,12 @@ public final class SchoolSession implements AgentSession {
 	static final float REPEAT_SHARE = 0.85f;
 	static final float REPEAT_TEST_SHARE = 0.3f;
 	static final int REPEAT_MAX = 150;
+	/**
+	 * Run 48c: and not before REPEAT_MIN_MINUTES. A try is ~2 s, so 150 tries were 4-5 minutes, only 4-5 of the network's updates
+	 * (one every ~70 s): the punish, punish short and own combo replays were 'not learned' after that (15:30-15:45), too few
+	 * updates to say anything.
+	 */
+	static final double REPEAT_MIN_MINUTES = 20.0;
 	static final float REPEAT_TICK_COST = 0.02f, REPEAT_DONE = 1.0f, REPEAT_FAILED = 0.5f;
 	private final int[] REPEAT_ORDER = {KIND_DEFLECT, KIND_PUNISH2, KIND_PUNISH, KIND_OWN2, KIND_OWN, KIND_CRIT2, KIND_JUMPIN2, KIND_COMBO, KIND_CRIT,
 			KIND_JUMPIN};
@@ -1571,7 +1577,7 @@ public final class SchoolSession implements AgentSession {
 			repeatTriesSum += repeatTries;
 			line = String.format(Locale.ROOT, "%s replay learned after %d tries, %.1f min", KIND_NAMES[repeatScene.kind], repeatTries, minutes);
 			repeatScene = null;
-		} else if (repeatTries >= REPEAT_MAX) {
+		} else if (repeatTries >= REPEAT_MAX && minutes >= REPEAT_MIN_MINUTES) {
 			scenes.remove(repeatScene);
 			scenes.add(repeatScene);
 			repeatGivenUp++;
