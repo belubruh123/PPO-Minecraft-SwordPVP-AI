@@ -561,6 +561,9 @@ public final class ArenaServer {
 			double[] scene = placed(plan.scene, s.arena);
 			SceneRecorder.apply(s.arena.level, agent, scene, 0);
 			SceneRecorder.apply(s.arena.level, s.bot, scene, SceneRecorder.BODY);
+			// The restore check (7 Nov, the user: verify the recreation is exact): compared 1 and 3 ticks on in publish().
+			s.restoreExpect = scene.clone();
+			s.restoreAt = s.server.getTickCount();
 			s.botLastPos = null;
 			s.agentLastPos = null;
 		}
@@ -1012,6 +1015,7 @@ public final class ArenaServer {
 		ServerPlayer agent = agent();
 		if (b != null && agent != null && pilot == null) {
 			scenes.note(server.getTickCount(), agent, b);
+			restoreCheck(server.getTickCount());
 		}
 		truth = new Truth(
 				true,
@@ -1059,6 +1063,87 @@ public final class ArenaServer {
 	 * sent into the gap between this arena's wall and an old one's. Those are moved so that the two fighters' middle is this
 	 * arena's; every fighter is kept inside the walls.
 	 */
+	/**
+	 * The restore check (7 Nov; the user: "verify ... in case you basically messed up the recreation moment"): a scene put back is
+	 * compared, 1 and 3 ticks on, with what the recorder saw then, for both fighters: horizontal position against the put-back one
+	 * moved by its own motion (and the height by gravity), horizontal velocity, the sword clock (put back + ticks), sprint, look.
+	 * "no motion" is the position error had the motion not been put back, the size a failed restore would show. Logged for the
+	 * first RESTORE_LOG_ALL checks and every RESTORE_LOG_EVERY-th after, with running means.
+	 */
+	private double[] restoreExpect;
+	private long restoreAt;
+	private static final int RESTORE_LOG_ALL = 30, RESTORE_LOG_EVERY = 25;
+	private static final double[][] restoreSum = new double[4][12];
+	private static final int[] restoreN = new int[4];
+	private static int restoreChecks;
+
+	private void restoreCheck(long tick) {
+		if (restoreExpect == null) {
+			return;
+		}
+		long d = tick - restoreAt;
+		if (d != 1 && d != 3) {
+			if (d > 3) {
+				restoreExpect = null;
+			}
+			return;
+		}
+		double[] now = scenes.at(tick);
+		if (now == null) {
+			return;
+		}
+		int b = SceneRecorder.BODY;
+		StringBuilder line = new StringBuilder(String.format(java.util.Locale.ROOT, "scene restore check, %d tick%s on:", d, d == 1 ? "" : "s"));
+		for (int o = 0, who = 0; o <= b; o += b, who++) {
+			double[] e = restoreExpect;
+			double px = e[o] + e[o + 3] * d, pz = e[o + 2] + e[o + 5] * d;
+			double y = e[o + 1], vy = e[o + 4];
+			for (int t = 0; t < d; t++) {
+				y += vy;
+				vy = (vy - 0.08) * 0.98;
+			}
+			double posErr = Math.hypot(now[o] - px, now[o + 2] - pz);
+			double noMotion = Math.hypot(now[o] - e[o], now[o + 2] - e[o + 2]);
+			double yErr = Math.abs(now[o + 1] - y);
+			double velErr = Math.hypot(now[o + 3] - e[o + 3], now[o + 5] - e[o + 5]);
+			double vel = Math.hypot(e[o + 3], e[o + 5]);
+			double tickErr = now[o + 8] - (e[o + 8] + d);
+			boolean sprintKept = (now[o + 13] > 0.5) == (e[o + 13] > 0.5);
+			double yawErr = Math.abs(ViewGeometry.wrapDegrees((float) (now[o + 6] - e[o + 6])));
+			int k = (d == 1 ? 0 : 2) + who;
+			double[] acc = restoreSum[k];
+			acc[0] += posErr;
+			acc[1] += noMotion;
+			acc[2] += yErr;
+			acc[3] += velErr;
+			acc[4] += vel;
+			acc[5] += Math.abs(tickErr);
+			acc[6] += sprintKept ? 1 : 0;
+			acc[7] += yawErr;
+			acc[8] += Math.abs(now[o + 9] - e[o + 9]);
+			restoreN[k]++;
+			line.append(String.format(java.util.Locale.ROOT, " %s pos %.2f (no motion %.2f) height %.2f, velocity %.2f of %.2f, sword clock %+.0f, sprint %s, look %.0f;",
+					who == 0 ? "agent" : "bot", posErr, noMotion, yErr, velErr, vel, tickErr, sprintKept ? "kept" : "LOST", yawErr));
+		}
+		if (d == 3) {
+			restoreChecks++;
+			restoreExpect = null;
+		}
+		if (restoreChecks <= RESTORE_LOG_ALL || restoreChecks % RESTORE_LOG_EVERY == 0) {
+			if (d == 3) {
+				StringBuilder mean = new StringBuilder(" | means so far:");
+				for (int k = 0; k < 4; k++) {
+					double n = Math.max(1, restoreN[k]);
+					double[] a = restoreSum[k];
+					mean.append(String.format(java.util.Locale.ROOT, " %s %d tick%s: pos %.2f (no motion %.2f), height %.2f, velocity %.2f of %.2f, clock %.1f, sprint kept %.0f%%, look %.0f, health %.1f;",
+							k % 2 == 0 ? "agent" : "bot", k < 2 ? 1 : 3, k < 2 ? "" : "s", a[0] / n, a[1] / n, a[2] / n, a[3] / n, a[4] / n, a[5] / n, 100 * a[6] / n, a[7] / n, a[8] / n));
+				}
+				line.append(mean);
+			}
+			SwordAi.LOGGER.info(line.toString());
+		}
+	}
+
 	/** Scenes turned by a random angle when put back (run 46); see {@link #placed}. */
 	static final boolean SCENE_TURN = true;
 	private static final java.util.Random SCENE_TURN_RNG = new java.util.Random();
@@ -1075,6 +1160,8 @@ public final class ArenaServer {
 			// is the same fight; seen from the screen it is a new one each time, so a scene is not learned by the direction it
 			// faced. A direction d(yaw) = (-sin yaw, cos yaw) turned by this rotation is d(yaw + angle).
 			double deg = SCENE_TURN_RNG.nextDouble() * 360.0, a = Math.toRadians(deg), c = Math.cos(a), sn = Math.sin(a);
+			double distBefore = Math.hypot(s[0] - s[b], s[2] - s[b + 2]);
+			double relBefore = ViewGeometry.wrapDegrees((float) (s[6] - ViewGeometry.yawTo(s[b] - s[0], s[b + 2] - s[2])));
 			for (int o = 0; o <= b; o += b) {
 				double x = s[o], z = s[o + 2], vx = s[o + 3], vz = s[o + 5];
 				s[o] = x * c - z * sn;
@@ -1082,6 +1169,13 @@ public final class ArenaServer {
 				s[o + 3] = vx * c - vz * sn;
 				s[o + 5] = vx * sn + vz * c;
 				s[o + 6] = s[o + 6] + deg;
+			}
+			// The turn must keep the moment: the distance between them and its look relative to the bearing to the bot.
+			double distAfter = Math.hypot(s[0] - s[b], s[2] - s[b + 2]);
+			double relAfter = ViewGeometry.wrapDegrees((float) (s[6] - ViewGeometry.yawTo(s[b] - s[0], s[b + 2] - s[2])));
+			if (Math.abs(distAfter - distBefore) > 1e-6 || Math.abs(ViewGeometry.wrapDegrees((float) (relAfter - relBefore))) > 0.01) {
+				SwordAi.LOGGER.warn(String.format(java.util.Locale.ROOT, "scene turn BROKE the moment: distance %.4f -> %.4f, look to bearing %.3f -> %.3f (turned %.1f)",
+						distBefore, distAfter, relBefore, relAfter, deg));
 			}
 		}
 		for (int o = 0; o <= b; o += b) {

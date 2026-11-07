@@ -18,8 +18,10 @@ MC=$(ls $MCDIR/minecraft-clientOnly-*/*/*.jar $MCDIR/minecraft-common-*/*/*.jar 
 [ -z "$MC" ] && MC="$(find /d/swordai/.gradle/loom-cache/minecraftMaven -name '*.jar' | sed 's#^/d/#D:/#' | tr '\n' ';')"
 OUT=D:/swordai/build-check-tmp
 rm -rf $OUT && mkdir -p $OUT
+# Fabric item and registry APIs (for the server files): the newest of each.
+FAPI=$( (ls -t $(find $G -name 'fabric-item-api-v1-*.jar' -not -name '*sources*') | head -1; ls -t $(find $G -name 'fabric-registry-sync-v0-*.jar' -not -name '*sources*') | head -1) 2>/dev/null | w)
 FILES="$@"; [ -z "$FILES" ] && FILES=src/client/java/dev/swordai/client/SchoolSession.java
-"$JAVA_HOME/bin/javac" -proc:none -nowarn -d $OUT -cp "D:/swordai/build/classes/java/client;D:/swordai/build/classes/java/main;D:/swordai/core/build/classes/java/main;$MC$EXTRA$LIBS" $FILES 2>&1 | grep -v "^printing javac" > /tmp/compile-check.out
+"$JAVA_HOME/bin/javac" -proc:none -nowarn -d $OUT -cp "D:/swordai/build/classes/java/client;D:/swordai/build/classes/java/main;D:/swordai/core/build/classes/java/main;$MC$EXTRA$FAPI$LIBS" $FILES 2>&1 | grep -v "^printing javac" > /tmp/compile-check.out
 rm -rf /d/swordai/build-check-tmp
 REAL=$(grep -c "error:" /tmp/compile-check.out)
 KNOWN=$(grep -c "class_6880 not found" /tmp/compile-check.out)
