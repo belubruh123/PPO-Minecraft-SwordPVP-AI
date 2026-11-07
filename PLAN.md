@@ -7,10 +7,10 @@ the time), write each block's verdict under it, and commit. Never delete a block
 for check 2 (done: check 1; next: check 3, verdict)". Keep this line current:
 
 For the panel (short, plain words; keep both current):
-**NOW: Block 5 · 3+ combos · run 44 deploys ~08:15 (run 43 training)**
+**NOW: Block 5 · 3+ combos · run 44 training, targets by 11:30**
 **INSTALLED: run35-0657 · +4.5 vs B · since 5 Nov 21:19**
 
-**CURRENT STEP (7 Nov 07:45): block 4 (run 43, air hits out of its own jumps) training since 07:17; block 5 (run 44, 3+ combos: own-combo scenes + COMBO_HIT3) committed, deploys after run 43's first check (~08:15). The user's priority now: 3+ combos and combo starts, punish crit ~50% of chances as the guard.**
+**CURRENT STEP (7 Nov 08:15): block 5 (3+ combos), all-in for 11:30. Run 44 (own-combo + 2->3 scenes, COMBO_HIT3, chase crit, human-aim bots + made-to-miss, post-hit PPO weight, with run 43's air-hit cost) deploying. Then benchmarks refv3 + refv3h (hit and out A/B), checks ~09:15, 10:05, 10:55, final benchmark run44 ~11:05 vs refv3. Targets: 3+ combos a fight 0.6+, 2->3 45%+, punish crit chances critted 50%.**
 
 ## Why this plan exists (the user, 6 Nov 06:30-07:10)
 - They want a visible improvement **every ~3 hours**, each block with **one number and a target**, reported at its end.
@@ -126,7 +126,13 @@ Method: practice the exact moment (own-combo scenes from the tick after its firs
   keeps its quarter), COMBO_HIT3 0.2
 - [x] 7 Nov 07:50 the user's chase crit added to run 44: CHASE_CRIT 0.4 (a crit carrying on its own combo on an opponent backing
   away 3+ ticks, within 30 ticks of its last hit); compile-check OK; "chase crits" in the update line
-- [ ] deploy after run 43's first check (~08:15), via run/redeploy-request
+- [x] 7 Nov 08:10 the user: "do anything ... I want to see the target by 11:30"; two agents (h2h asymmetry, brainstorm); the user's
+  strafe idea + "your bot has to be like human": human aim in the bots (Style.aimAdapt/aimLead), MADE_MISS; KIND_OWN2 2->3 scenes;
+  POST_HIT_WEIGHT 2. Findings: a 2nd hit from under 1.6 blocks got a 3rd 27% in real duels, from 2.8+ 56%; S after it helps;
+  in h2h our jump-reset rule lands us at 3.2 blocks with no swing (74% hit again) - noted, not the combo target
+- [x] 7 Nov 08:12 deployed run 44 (9841518) via run/redeploy-request; run 43 had no check of its own
+- [ ] 08:25-09:00 benchmarks refv3 (new bots: the reference again) and refv3h (hit and out on), compare; if hit and out clearly
+  raises 2->3 and not the damage taken -> SchoolStages.HIT_AND_OUT on in training (redeploy ~09:15); the user's game: ask
 - [ ] measure at ~11:30 (three checks + benchmark v2): tools/combos.py on the checks: 3+ combos a fight A 0.39 -> 0.6+, 2->3 share
   33% -> 45%+ (B 0.36 / 29%); combo-bots.py on the benchmark; own-combo scenes won %; guard: punish crit chances critted 50%
   (34% at 06:48); A-B not clearly worse
