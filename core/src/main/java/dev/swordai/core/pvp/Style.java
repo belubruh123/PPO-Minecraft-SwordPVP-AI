@@ -29,6 +29,15 @@ public final class Style {
 	/** Aim: noise in degrees, and how fast it can turn, degrees a tick. */
 	public float aimNoise = 3f;
 	public float turnRate = 35f;
+	/**
+	 * Human aim (7 Nov, the user: "make it know how opponent get use to aim you strafe a side and then change your direction ...
+	 * your bot has to be like human"): it gets used to the way the agent moves across its view (aimAdapt of the difference a tick:
+	 * 0.15 = slowly, 0.4 = fast) and aims aimLead ticks ahead along it, as a person leads a strafing target. Steady strafing is
+	 * then tracked; a sudden change of direction is aimed the old way for a few ticks and can be missed. Before, the bots turned
+	 * straight at where they saw it (up to 35 degrees a tick), so no strafe change ever made them miss.
+	 */
+	public float aimAdapt = 0.3f;
+	public float aimLead = 2f;
 	/** The least charge it swings at, 0.9 to 1. */
 	public float swingCharge = 0.92f;
 
@@ -128,6 +137,8 @@ public final class Style {
 		s.ping = ping;
 		s.aimNoise = aimNoise;
 		s.turnRate = turnRate;
+		s.aimAdapt = aimAdapt;
+		s.aimLead = aimLead;
 		s.swingCharge = swingCharge;
 		s.spacing = spacing;
 		s.wtap = wtap;
@@ -165,6 +176,8 @@ public final class Style {
 		ping = (int) Math.round(4 * Math.pow(rng.nextDouble(), 1.5));
 		aimNoise = 1.5f + 4f * rng.nextFloat();
 		turnRate = 25f + 25f * rng.nextFloat();
+		aimAdapt = 0.15f + 0.25f * rng.nextFloat();
+		aimLead = 1f + 2f * rng.nextFloat();
 		swingCharge = 0.9f + 0.1f * rng.nextFloat();
 		spacing = 2.8f + 0.6f * rng.nextFloat();
 		wtap = rng.nextInt(4);

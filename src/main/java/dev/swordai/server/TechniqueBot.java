@@ -65,6 +65,16 @@ public final class TechniqueBot {
 	private float noiseYawGoal;
 	private float noisePitchGoal;
 	private int noiseTicks;
+	/** Human aim (Style#aimAdapt): the agent's bearing a tick ago, and how fast it moves across the view as the bot has got used to. */
+	private float lastBearing = Float.NaN;
+	private float bearingRate;
+	/** Swings that missed the agent within reach (made to miss, the document's T6), counted for the school's reward. */
+	private static volatile int whiffs;
+
+	/** Swings of a bot that missed the agent within its reach so far (SchoolSession pays the agent for making them miss). */
+	public static int whiffs() {
+		return whiffs;
+	}
 	/** The bot's own swing on the last tick, for its next tick's events. */
 	private boolean swungLast;
 
@@ -89,6 +99,8 @@ public final class TechniqueBot {
 		active = true;
 		agentLast = null;
 		botLast = null;
+		lastBearing = Float.NaN;
+		bearingRate = 0f;
 		agentWasOnGround = true;
 		botWasOnGround = true;
 		agentWasSwinging = false;
@@ -203,6 +215,9 @@ public final class TechniqueBot {
 			bot.attack(agent);
 		} else {
 			bot.resetAttackStrengthTicker();
+			if (botEye.distanceTo(box.getCenter()) <= reach + 0.6) {
+				whiffs++;
+			}
 		}
 		bot.swing(InteractionHand.MAIN_HAND);
 	}
@@ -239,7 +254,15 @@ public final class TechniqueBot {
 		}
 		noiseYaw += (noiseYawGoal - noiseYaw) * 0.35f;
 		noisePitch += (noisePitchGoal - noisePitch) * 0.35f;
-		float wantYaw = keys.lookAtThem ? ViewGeometry.yawTo(dx, dz) + noiseYaw : keys.yaw;
+		// Human aim: lead along the bearing rate it has got used to (Style#aimAdapt, #aimLead), at most 25 degrees.
+		float bearing = ViewGeometry.yawTo(dx, dz);
+		if (!Float.isNaN(lastBearing)) {
+			float rateNow = ViewGeometry.wrapDegrees(bearing - lastBearing);
+			bearingRate += (rateNow - bearingRate) * style.aimAdapt;
+		}
+		lastBearing = bearing;
+		float lead = Math.max(-25f, Math.min(25f, bearingRate * style.aimLead));
+		float wantYaw = keys.lookAtThem ? bearing + lead + noiseYaw : keys.yaw;
 		float wantPitch = keys.lookAtThem ? ViewGeometry.pitchTo(dx, dy, dz) + noisePitch : keys.pitch;
 		float rate = style.turnRate;
 		float yaw = bot.getYRot() + Math.max(-rate, Math.min(rate, ViewGeometry.wrapDegrees(wantYaw - bot.getYRot())));

@@ -170,6 +170,15 @@ public final class SchoolSession implements AgentSession {
 	 * Taught by reward, no rule; run 43's AIR_JUMP_HIT costs only when the jump is hit, which a safe chase is not.
 	 */
 	static final float CHASE_CRIT = 0.4f;
+	/**
+	 * Run 44, made to miss (the document's T6, "make them miss, then stun"; the user, 7 Nov 08:00: strafe one way, then
+	 * suddenly the other, circle strafe, so the opponent used to aiming one way misses): a bot's swing that misses it within
+	 * reach (TechniqueBot#whiffs; the bots now aim as people do, Style#aimAdapt) pays this. The strafe that makes it is the
+	 * network's to find.
+	 */
+	static final float MADE_MISS = 0.15f;
+	private int lastWhiffs;
+	private int madeMiss;
 	static final int CHASE_GAP = 30;
 	static final int AWAY_TICKS = 3;
 	/** Ticks since its last hit that they moved away from it (Duel.theyClose below -0.05), and chase crits paid since the update. */
@@ -730,8 +739,19 @@ public final class SchoolSession implements AgentSession {
 	static final int KIND_OWN = 4;
 	static final int OWN_SCENE_TICKS = 50;
 	static final float OWN_SHARE = 0.4f;
-	static final int KINDS = 5;
-	static final String[] KIND_NAMES = {"crit", "jump-in", "combo", "punish", "own combo"};
+	/**
+	 * Own combos that died at two hits (run 44, the brainstorm of 7 Nov 08:05): from the tick after its second hit, OWN2_SCENE_TICKS
+	 * long, won by one more hit before a hit taken: the exact 2 -> 3 moment, about four times as many an hour as the 2 -> 3
+	 * moments of the full fights. OWN2_OF_OWN of the own-combo scene fights are these.
+	 */
+	static final int KIND_OWN2 = 5;
+	static final int OWN2_SCENE_TICKS = 30;
+	static final float OWN2_OF_OWN = 0.6f;
+	/** PPO's weight on the ticks within POST_HIT_TICKS after its 2nd or later hit in a row, no hit taken (run 44, SchoolPpo policyWeight). */
+	static final float POST_HIT_WEIGHT = 2f;
+	static final int POST_HIT_TICKS = 15;
+	static final int KINDS = 6;
+	static final String[] KIND_NAMES = {"crit", "jump-in", "combo", "punish", "own combo", "own combo 2"};
 	static final int PUNISH_BEFORE = 10;
 	static final int PUNISH_SCENE_TICKS = 40;
 	static final int COMBO_BEFORE = 20;
@@ -753,7 +773,7 @@ public final class SchoolSession implements AgentSession {
 	 * cutting comboing opponent that controls hit perfectly", and need not rely on the "unstable punish crit". Combo scenes
 	 * won 39% of the last 200; against the uppercutter A's net was below zero in the last four hourly checks.
 	 */
-	static final int[][] FOCUS_KINDS = {{KIND_CRIT, KIND_JUMPIN, KIND_PUNISH, KIND_COMBO, KIND_OWN}, {KIND_COMBO, KIND_OWN}};
+	static final int[][] FOCUS_KINDS = {{KIND_CRIT, KIND_JUMPIN, KIND_PUNISH, KIND_COMBO, KIND_OWN, KIND_OWN2}, {KIND_COMBO, KIND_OWN, KIND_OWN2}};
 	static final String[] FOCUS_NAMES = {"the crits (crit scenes, jump-in counter, punish crit)", "the combo escape"};
 	static final float FOCUS_SHARE = 0.8f;
 	static final int FOCUS_EVENTS = 300;
@@ -781,7 +801,7 @@ public final class SchoolSession implements AgentSession {
 		double[] state;
 
 		int ticks() {
-			return kind == KIND_CRIT ? SCENE_WINDOW : kind == KIND_PUNISH ? PUNISH_SCENE_TICKS : kind == KIND_OWN ? OWN_SCENE_TICKS : JUMPIN_SCENE_TICKS;
+			return kind == KIND_CRIT ? SCENE_WINDOW : kind == KIND_PUNISH ? PUNISH_SCENE_TICKS : kind == KIND_OWN ? OWN_SCENE_TICKS : kind == KIND_OWN2 ? OWN2_SCENE_TICKS : JUMPIN_SCENE_TICKS;
 		}
 
 		String line() {
@@ -867,7 +887,9 @@ public final class SchoolSession implements AgentSession {
 	private int focusReached;
 	/** Rolling outcomes for the focus bars: per kind, the last scene fights won; the full fights' jump-ins and combos. */
 	private final Rolling[] sceneRoll = {new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS),
-			new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS)};
+			new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS)};
+	private int ownKind = KIND_OWN;
+	private int ownSecondAt;
 	/** Own combos (run 44): the first one of this full fight that died short, to keep from ownFrom at keepOwnAt (-1: none). */
 	private int ownFrom = -1;
 	private int keepOwnAt;
@@ -1160,7 +1182,7 @@ public final class SchoolSession implements AgentSession {
 			punishFrom = -1;
 		}
 		if (ownFrom >= 0 && (fightOver || fightTicks >= keepOwnAt)) {
-			keepScene(Math.max(1, ownFrom), KIND_OWN);
+			keepScene(Math.max(1, ownFrom), ownKind);
 			ownFrom = -2; // one a fight
 		}
 	}
@@ -1172,8 +1194,10 @@ public final class SchoolSession implements AgentSession {
 	private void trackOwnCombo(boolean dealt, boolean taken) {
 		boolean ends = taken || dealt && fightTicks - lastOwnHitAt > COMBO_GAP || !dealt && ownRow > 0 && fightTicks - lastOwnHitAt > COMBO_GAP;
 		if (ends && ownRow >= 1 && ownRow <= 2 && ownFrom == -1 && ownFirstAt + 1 < fightTicks) {
-			ownFrom = ownFirstAt + 1;
-			keepOwnAt = ownFrom + OWN_SCENE_TICKS;
+			// Died at two hits: the 2 -> 3 moment from the tick after the second (KIND_OWN2); at one: from after the first.
+			ownKind = ownRow == 2 ? KIND_OWN2 : KIND_OWN;
+			ownFrom = (ownRow == 2 ? ownSecondAt : ownFirstAt) + 1;
+			keepOwnAt = ownFrom + (ownRow == 2 ? OWN2_SCENE_TICKS : OWN_SCENE_TICKS);
 		}
 		if (ends) {
 			ownRow = 0;
@@ -1183,6 +1207,9 @@ public final class SchoolSession implements AgentSession {
 				ownFirstAt = fightTicks;
 			}
 			ownRow++;
+			if (ownRow == 2) {
+				ownSecondAt = fightTicks;
+			}
 		}
 	}
 
@@ -2053,10 +2080,12 @@ public final class SchoolSession implements AgentSession {
 					}
 					int kind;
 					// Run 44: the own-combo scenes take OWN_SHARE of the focus's scene fights, the other kinds share the rest.
-					if (focusNow && kinds.contains(KIND_OWN) && (kinds.size() == 1 || rng.nextFloat() < OWN_SHARE)) {
-						kind = KIND_OWN;
+					boolean own = kinds.contains(KIND_OWN), own2 = kinds.contains(KIND_OWN2);
+					if (focusNow && (own || own2) && (kinds.size() == (own ? 1 : 0) + (own2 ? 1 : 0) || rng.nextFloat() < OWN_SHARE)) {
+						kind = own2 && (!own || rng.nextFloat() < OWN2_OF_OWN) ? KIND_OWN2 : KIND_OWN;
 					} else {
 						kinds.remove(Integer.valueOf(KIND_OWN));
+						kinds.remove(Integer.valueOf(KIND_OWN2));
 						if (kinds.isEmpty()) {
 							kinds.add(KIND_OWN);
 						}
@@ -2192,8 +2221,9 @@ public final class SchoolSession implements AgentSession {
 		frozenTicks = 0;
 		fightTicks = 0;
 		// An own-combo scene starts the tick after its first hit: a hit within COMBO_GAP is that combo's follow-up (COMBO_HIT).
-		lastOwnHitAt = sceneNow != null && sceneNow.kind == KIND_OWN ? -1 : -1000;
-		rewardRow = sceneNow != null && sceneNow.kind == KIND_OWN ? 1 : 0;
+		boolean ownScene = sceneNow != null && (sceneNow.kind == KIND_OWN || sceneNow.kind == KIND_OWN2);
+		lastOwnHitAt = ownScene ? -1 : -1000;
+		rewardRow = !ownScene ? 0 : sceneNow.kind == KIND_OWN2 ? 2 : 1;
 		awayTicks = 0;
 		ownJumpAir = false;
 		ownFrom = -1;
@@ -2599,7 +2629,8 @@ public final class SchoolSession implements AgentSession {
 			}
 			// An own-combo scene (run 44): two more hits in a row, each within COMBO_GAP of the last (the first of the scene's
 			// start), before a hit taken.
-			if (mode == Mode.TRAIN && sceneNow != null && sceneNow.kind == KIND_OWN && sceneOwnHits < 2 && !sceneOwnBroken) {
+			if (mode == Mode.TRAIN && sceneNow != null && (sceneNow.kind == KIND_OWN && sceneOwnHits < 2 || sceneNow.kind == KIND_OWN2 && sceneOwnHits < 1)
+					&& !sceneOwnBroken) {
 				if (facts.hitsTaken > 0 || fightTicks - Math.max(lastOwnHitAt, 0) > COMBO_GAP) {
 					sceneOwnBroken = true;
 				} else if (facts.hitsDealt > 0) {
@@ -2646,6 +2677,13 @@ public final class SchoolSession implements AgentSession {
 					reward -= AIR_JUMP_HIT;
 					airJumpHits++;
 				}
+				// Made to miss (run 44, MADE_MISS): a bot's swing at it within reach that missed, since the last tick.
+				int whiffsNow = dev.swordai.server.TechniqueBot.whiffs();
+				if (whiffsNow > lastWhiffs && !sparFight) {
+					reward += MADE_MISS;
+					madeMiss++;
+				}
+				lastWhiffs = whiffsNow;
 				// The chase crit (run 44, CHASE_CRIT): before the combo count below moves its last hit to now.
 				if (facts.hitsDealt > 0 && facts.critDealt && facts.hitsTaken == 0 && lastOwnHitAt > -1000
 						&& fightTicks - lastOwnHitAt <= CHASE_GAP && awayTicks >= AWAY_TICKS) {
@@ -2976,6 +3014,10 @@ public final class SchoolSession implements AgentSession {
 		}
 		// Out of view and far, a fight's steps teach nothing; finding them again is what the tracking review is for.
 		step.policyWeight = review < 0 && !facts.enemyVisible && facts.reachDist > SKIP_FARTHER ? 0f : 1f;
+		// Run 44: the 2 -> 3 moments weigh more in PPO (POST_HIT_WEIGHT).
+		if (step.policyWeight > 0f && mode == Mode.TRAIN && rewardRow >= 2 && lastOwnHitAt > -1000 && fightTicks - lastOwnHitAt <= POST_HIT_TICKS) {
+			step.policyWeight = POST_HIT_WEIGHT;
+		}
 		step.botTechnique = botTechnique;
 		step.botKeys = truth.botKeys();
 		step.kind = review >= 0 ? -1 : fightBot;
@@ -3644,7 +3686,8 @@ public final class SchoolSession implements AgentSession {
 			boolean sceneWon = sceneNow.kind == KIND_PUNISH ? !sceneK2 && sceneOwnCrit
 					: sceneNow.kind == KIND_JUMPIN ? !sceneK2 && (!sceneHit || sceneAnswer)
 					: sceneNow.kind == KIND_COMBO ? sceneRowMost < 2
-					: sceneNow.kind == KIND_OWN ? sceneOwnHits >= 2 && !sceneOwnBroken : fightDealt > fightTaken;
+					: sceneNow.kind == KIND_OWN ? sceneOwnHits >= 2 && !sceneOwnBroken
+					: sceneNow.kind == KIND_OWN2 ? sceneOwnHits >= 1 && !sceneOwnBroken : fightDealt > fightTaken;
 			if (!sceneReview) {
 				sceneRoll[sceneNow.kind].add(sceneWon);
 				kindFights[sceneNow.kind]++;
@@ -4331,16 +4374,17 @@ public final class SchoolSession implements AgentSession {
 		pullsNow = stages.techPulls();
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
-				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {} ({} in {} drill fights), other crits {}, combo follow-up hits rewarded {} (3rd+ {}), chase crits {}, hits taken in the air from its own jump {} "
+				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {} ({} in {} drill fights), other crits {}, combo follow-up hits rewarded {} (3rd+ {}), chase crits {}, made to miss {}, hits taken in the air from its own jump {} "
 				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} (the golden rule held the swing on {} ticks, the installed model's rules set keys on {}) | swings: {} | review of the old stages:{} | bots went into:{} | taught now:{} | sparring the installed model:{} | take-over:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
-				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits, comboHitsPaid, combo3Paid, chaseCrits, airJumpHits,
+				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits, comboHitsPaid, combo3Paid, chaseCrits, madeMiss, airJumpHits,
 				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2Held, ruleTicks, swingLine(0), reviewLine(), used, taughtNowLine(), sparLine(), takeOverLine());
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		comboHitsPaid = 0;
 		combo3Paid = 0;
 		chaseCrits = 0;
+		madeMiss = 0;
 		airJumpHits = 0;
 		drillPunishCrits = 0;
 		drillFights = 0;
