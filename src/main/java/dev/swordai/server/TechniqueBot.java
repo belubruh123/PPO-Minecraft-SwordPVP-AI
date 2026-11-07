@@ -68,6 +68,9 @@ public final class TechniqueBot {
 	/** Human aim (Style#aimAdapt): the agent's bearing a tick ago, and how fast it moves across the view as the bot has got used to. */
 	private float lastBearing = Float.NaN;
 	private float bearingRate;
+	/** The bearings it saw the last few ticks (newest at bearingAt % 8): its hand is on where it saw the agent aimLead ticks ago. */
+	private final float[] bearings = new float[8];
+	private int bearingAt;
 	/** Swings that missed the agent within reach (made to miss, the document's T6), counted for the school's reward. */
 	private static volatile int whiffs;
 
@@ -101,6 +104,7 @@ public final class TechniqueBot {
 		botLast = null;
 		lastBearing = Float.NaN;
 		bearingRate = 0f;
+		bearingAt = 0;
 		agentWasOnGround = true;
 		botWasOnGround = true;
 		agentWasSwinging = false;
@@ -254,15 +258,24 @@ public final class TechniqueBot {
 		}
 		noiseYaw += (noiseYawGoal - noiseYaw) * 0.35f;
 		noisePitch += (noisePitchGoal - noisePitch) * 0.35f;
-		// Human aim: lead along the bearing rate it has got used to (Style#aimAdapt, #aimLead), at most 25 degrees.
+		// Human aim (Style#aimAdapt, #aimLead; fixed after the bot audit of 7 Nov): its hand follows where it saw the agent
+		// aimLead ticks ago, led by the rate across its view it has got used to. A steady strafe is tracked; a sudden reversal
+		// is aimed about twice the lead off until the rate adapts (the user: "how opponent get use to aim you strafe a side and
+		// then change your direction"). Before, the lead was added to the bearing of now, an error even on a steady strafe.
 		float bearing = ViewGeometry.yawTo(dx, dz);
-		if (!Float.isNaN(lastBearing)) {
+		if (Float.isNaN(lastBearing)) {
+			java.util.Arrays.fill(bearings, bearing);
+		} else {
 			float rateNow = ViewGeometry.wrapDegrees(bearing - lastBearing);
 			bearingRate += (rateNow - bearingRate) * style.aimAdapt;
 		}
 		lastBearing = bearing;
-		float lead = Math.max(-25f, Math.min(25f, bearingRate * style.aimLead));
-		float wantYaw = keys.lookAtThem ? bearing + lead + noiseYaw : keys.yaw;
+		bearingAt = (bearingAt + 1) % bearings.length;
+		bearings[bearingAt] = bearing;
+		int back = Math.max(0, Math.min(bearings.length - 1, Math.round(style.aimLead)));
+		float seenThen = bearings[(bearingAt - back + bearings.length) % bearings.length];
+		float lead = Math.max(-25f, Math.min(25f, bearingRate * back));
+		float wantYaw = keys.lookAtThem ? seenThen + lead + noiseYaw : keys.yaw;
 		float wantPitch = keys.lookAtThem ? ViewGeometry.pitchTo(dx, dy, dz) + noisePitch : keys.pitch;
 		float rate = style.turnRate;
 		float yaw = bot.getYRot() + Math.max(-rate, Math.min(rate, ViewGeometry.wrapDegrees(wantYaw - bot.getYRot())));

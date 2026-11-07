@@ -60,9 +60,17 @@ public final class Specialists {
 		// in the checks the bots hit first in 70% of the openings with their sprint hits. The specialists below keep their own.
 		s.critOpen = 0.5f + 0.4f * rng.nextFloat();
 		s.critFrom = 2.5f + 3f * rng.nextFloat();
+		// Bot audit (7 Nov): no bot landed its jump-in 2.5-3 blocks out as the user described players doing (2 Nov); half do now.
+		s.jumpInLands = rng.nextBoolean();
+		s.humanTiming = true;
 		float p = 0.5f + 0.45f * rng.nextFloat();
 		switch (bot) {
-			case PUNISH_CRITTER -> s.set(Technique.B1, p);
+			// Bot audit (7 Nov): it crit back after the agent's hits only 4-7% (the hold for the way down, punishJumpIns, was
+			// the teacher's alone): the document's "let it land, punish crit" now held for, so the agent meets real punish crits.
+			case PUNISH_CRITTER -> {
+				s.set(Technique.B1, p);
+				s.punishJumpIns = true;
+			}
 			case DOUBLE_CRITTER -> {
 				// It crits, and crits again; it opens with crits so that there is a punish crit to beat.
 				s.set(Technique.T1, p).set(Technique.T1A, 0.5f * p).set(Technique.T1B, 0.4f * rng.nextFloat()).set(Technique.T1C, p)

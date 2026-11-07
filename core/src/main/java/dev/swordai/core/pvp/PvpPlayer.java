@@ -573,7 +573,10 @@ public final class PvpPlayer {
 
 	/** The jump reset: on the tick the hit is felt, or a tick or two late for a press that is not exact. */
 	private void timedJump(Technique why) {
-		int off = rng.nextFloat() < style.timing ? 0 : 1 + rng.nextInt(2);
+		// Bot audit (7 Nov): pressed on the tick the hit is felt it needed no reaction and was never wasted. A person times it
+		// ahead; the document's T9a: in a combo's set rhythm that is easy, else mostly a tick or more late (wasted).
+		float exact = !style.humanTiming || habits.theirCombo() >= 2 ? style.timing : 0.35f * style.timing;
+		int off = rng.nextFloat() < exact ? 0 : 1 + rng.nextInt(3);
 		jumpAt = tick + off;
 		jumpFor = why;
 	}
@@ -617,7 +620,8 @@ public final class PvpPlayer {
 			// T2 "when": the sprint hit "did not take enough knockback to be put in a combo", as one hit in the air does
 			// (K1). For one that goes by the file only then; else the hit is a combo's start (24 Oct, in the game: a standing
 			// crit after every sprint hit cost about 13 damage a fight against the installed model).
-			if ((!style.onlyWhenItWorks || !d.them.onGround) && roll(Technique.T2)) {
+			// Bot audit (7 Nov): not when the hit knocked them out of reach (it crit after 6-12% of its sprint hits, jumping most).
+			if ((!style.onlyWhenItWorks || !d.them.onGround) && d.reach <= Duel.REACH + 0.3 && roll(Technique.T2)) {
 				begin(Plan.T2);
 				return;
 			}
@@ -951,7 +955,12 @@ public final class PvpPlayer {
 					k.forward = 1;
 					k.sprint = true;
 					boolean top = !me.onGround && Math.abs(me.vy) < 0.12;
-					if ((top || me.falling()) && canSwing(d)) {
+					// Bot audit (7 Nov): the document's T10 is the hit at the peak; 26-29% of its hits came 8+ ticks after the
+					// take-off, a sprint cut (T11). Given up once it falls fast.
+					if (!me.onGround && me.vy < -0.15) {
+						return ABORT;
+					}
+					if (top && canSwing(d)) {
 						k.attack = true;
 						phase = 2;
 						planT = 0;

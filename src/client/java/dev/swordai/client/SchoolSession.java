@@ -2697,7 +2697,9 @@ public final class SchoolSession implements AgentSession {
 				lastWhiffs = whiffsNow;
 				// The deflection start (run 45, DEFLECT_HIT): a sprint hit opening its combo while their sword is empty.
 				if (facts.hitsDealt > 0 && facts.sprintHit && facts.hitsTaken == 0 && fightTicks - lastOwnHitAt > COMBO_GAP
-						&& truth.botCharge() < DEFLECT_CHARGE && !(reader.duel.them.falling() || truth.botFalling())) {
+						&& truth.botCharge() < DEFLECT_CHARGE && !(reader.duel.them.falling() || truth.botFalling())
+						// Not in a lift by their hit: there the punish crit is the answer (B1), not a sprint counter (punish diagnosis).
+						&& liftedFor < 0) {
 					reward += DEFLECT_HIT;
 					deflectStarts++;
 				}

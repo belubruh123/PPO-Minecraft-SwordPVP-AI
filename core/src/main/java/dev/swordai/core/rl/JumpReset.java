@@ -44,6 +44,8 @@ public final class JumpReset {
 	public static final int KIND = 4;
 	/** W and the sprint key are held for the jump: this long at the most. */
 	static final int AIR_TICKS = 14;
+	/** W and the sprint key let go once falling, so the swing on the way down is a crit (7 Nov; see #plan). */
+	public static final boolean LET_GO_FALLING = true;
 	/** Moving up or down at this much a tick or more, the opponent is off the ground. */
 	static final float AIR_SPEED = 0.06f;
 	/** A hit was made from the air if the opponent was seen off the ground within this many ticks before it. */
@@ -168,6 +170,13 @@ public final class JumpReset {
 		left--;
 		if (!ground) {
 			airborne = true;
+			// Falling: W and the sprint key let go (7 Nov, the punish diagnosis): held for all of the air ticks, the sprint went on to
+			// the way down and the swing owed there (AnswerRule, whose own let-go this overrode) was never a crit: 21% punish
+			// crits in combo lifts against 70% after a first hit. The document's T9c: the jump reset "gives you a free crit as you
+			// fall"; B1: the swing when falling and not sprinting.
+			if (LET_GO_FALLING && vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_VEL_UP] < 0f) {
+				return JumpIn.NO_JUMP | JumpIn.LET_GO;
+			}
 			return JumpIn.NO_JUMP | JumpIn.RUN;
 		}
 		if (airborne) {

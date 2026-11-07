@@ -38,6 +38,11 @@ public final class Style {
 	 */
 	public float aimAdapt = 0.3f;
 	public float aimLead = 2f;
+	/**
+	 * A person's timing of the jump reset (bot audit, 7 Nov): exact at the usual rate only in a combo's set rhythm (the document's
+	 * T9a), else mostly late. The opponent bots have it (Specialists#draw); the teacher shows the technique exactly.
+	 */
+	public boolean humanTiming;
 	/** The least charge it swings at, 0.9 to 1. */
 	public float swingCharge = 0.92f;
 
@@ -139,6 +144,7 @@ public final class Style {
 		s.turnRate = turnRate;
 		s.aimAdapt = aimAdapt;
 		s.aimLead = aimLead;
+		s.humanTiming = humanTiming;
 		s.swingCharge = swingCharge;
 		s.spacing = spacing;
 		s.wtap = wtap;
