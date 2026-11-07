@@ -187,6 +187,47 @@ public final class ArenaServer {
 	/** The server tick on which a scene or drill last set the agent's sword clock (its client sets its own a tick or two later). */
 	public static volatile long agentTickerSetAt = -1;
 
+	/** A scene put back at the reset and waiting for the agent's client (run 46f); see {@link #putBackScene}. */
+	private double[] pendingScene;
+	private dev.swordai.core.pvp.Style pendingStyle;
+	private long pendingSeed;
+	/** Scenes put back for the client so far, and the agent as put back: x, y, z, vx, vy, vz, sprint (1 or 0). */
+	public static volatile int scenesPutBack;
+	public static volatile double[] agentPutBack;
+
+	/**
+	 * Run 46f: the agent's client is ready to act, so the waiting scene is put back again exactly (both fighters), the bot's
+	 * memory starts afresh from it and the bot is let go. On the server thread (the client asks with server.execute).
+	 */
+	public static void putBackScene() {
+		ArenaServer s = active;
+		if (s == null || s.bot == null || s.pendingScene == null) {
+			scenesPutBack++;
+			return;
+		}
+		ServerPlayer agent = s.agent();
+		if (agent == null) {
+			return;
+		}
+		double[] scene = s.pendingScene;
+		s.pendingScene = null;
+		SceneRecorder.apply(s.arena.level, agent, scene, 0);
+		SceneRecorder.apply(s.arena.level, s.bot, scene, SceneRecorder.BODY);
+		if (s.pendingStyle != null && s.techPlays) {
+			// Its memory of where the agent was (aim, motion, swings) from this moment on, not from before the put-back.
+			s.tech.start(s.pendingStyle, s.pendingSeed);
+		}
+		// The restore check (7 Nov, the user: verify the recreation is exact): compared 1 and 3 ticks on in publish().
+		s.restoreExpect = scene.clone();
+		s.restoreAt = s.server.getTickCount();
+		agentTickerSetAt = s.restoreAt;
+		s.botLastPos = null;
+		s.agentLastPos = null;
+		s.setIdleNow(false);
+		agentPutBack = new double[] {scene[0], scene[1], scene[2], scene[3], scene[4], scene[5], scene[13]};
+		scenesPutBack++;
+	}
+
 	/** The sparring score as text, or empty before the first round. Safe from any thread. */
 	public static String sparStatus() {
 		return sparStatus;
@@ -565,12 +606,17 @@ public final class ArenaServer {
 			double[] scene = placed(plan.scene, s.arena);
 			SceneRecorder.apply(s.arena.level, agent, scene, 0);
 			SceneRecorder.apply(s.arena.level, s.bot, scene, SceneRecorder.BODY);
-			// The restore check (7 Nov, the user: verify the recreation is exact): compared 1 and 3 ticks on in publish().
-			s.restoreExpect = scene.clone();
-			s.restoreAt = s.server.getTickCount();
-			agentTickerSetAt = s.restoreAt;
+			// Run 46f (7 Nov): the bot is held and the scene put back again, exactly, when the agent's client is ready to act
+			// (putBackScene, asked for at the end of its settle). Until then the bot fought for the 5+ ticks the client spent
+			// seeing the reset and settling with every key let go (its sprint lost): an 8-tick crit twin was mostly gone.
+			s.pendingScene = scene;
+			s.pendingStyle = plan.style;
+			s.pendingSeed = plan.seed != 0L ? plan.seed : s.rng.nextLong();
+			s.setIdleNow(true);
 			s.botLastPos = null;
 			s.agentLastPos = null;
+		} else {
+			s.pendingScene = null;
 		}
 		if (!Float.isNaN(plan.startYaw)) {
 			// A lost fight set up again: where it starts, to be seen to be the same every time.

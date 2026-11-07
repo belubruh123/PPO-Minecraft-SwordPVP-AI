@@ -238,6 +238,53 @@ public final class SchoolSession implements AgentSession {
 	/** This fight is a drill: the agent's sword is set this many ticks into coming back on its first tick; -1 otherwise. */
 	private int drillTicker = -1;
 	private int clientClockSets;
+	// Run 46f: a scene is put back again when this client is ready to act (ArenaServer.putBackScene).
+	private boolean putBackAsked;
+	private int putBackBefore, putBackWait, putBackChecks, putBackTimeouts, putBackSprintKept;
+	private double putBackPosErr, putBackVelErr, putBackVel;
+
+	/** True once the waiting scene (if any) is put back and this client stands where it was put, moving as it was. */
+	private boolean scenePutBackReady() {
+		if (sceneNow == null) {
+			return true;
+		}
+		if (!putBackAsked) {
+			putBackAsked = true;
+			putBackBefore = ArenaServer.scenesPutBack;
+			putBackWait = 0;
+			mc.getSingleplayerServer().execute(ArenaServer::putBackScene);
+			return false;
+		}
+		double[] at = ArenaServer.agentPutBack;
+		boolean put = ArenaServer.scenesPutBack != putBackBefore && at != null;
+		boolean here = put && Math.abs(mc.player.getX() - at[0]) < 1e-4 && Math.abs(mc.player.getY() - at[1]) < 1e-4
+				&& Math.abs(mc.player.getZ() - at[2]) < 1e-4;
+		if (!here && ++putBackWait <= 20) {
+			return false;
+		}
+		putBackAsked = false;
+		if (!here) {
+			putBackTimeouts++;
+		} else {
+			// The direct check of the agent's side: what its own client has the moment it can first act.
+			net.minecraft.world.phys.Vec3 v = mc.player.getDeltaMovement();
+			double velErr = Math.sqrt((v.x - at[3]) * (v.x - at[3]) + (v.y - at[4]) * (v.y - at[4]) + (v.z - at[5]) * (v.z - at[5]));
+			boolean sprint = mc.player.isSprinting() == (at[6] > 0.5);
+			// The server's sprint flag reaches this client with the next entity update, a tick after the teleport: set here.
+			mc.player.setSprinting(at[6] > 0.5);
+			putBackChecks++;
+			putBackVelErr += velErr;
+			putBackVel += Math.sqrt(at[3] * at[3] + at[4] * at[4] + at[5] * at[5]);
+			putBackSprintKept += sprint ? 1 : 0;
+			if (putBackChecks <= 20 || putBackChecks % 50 == 0) {
+				SwordAi.LOGGER.info(String.format(Locale.ROOT, "school: scene put back for the client after %d ticks: velocity error %.3f of %.3f, sprint from the server %s (set)"
+						+ " | so far %d: velocity error %.3f of %.3f, sprint arrived %.0f%%, timeouts %d", putBackWait, velErr,
+						Math.sqrt(at[3] * at[3] + at[4] * at[4] + at[5] * at[5]), sprint ? "kept" : "LOST", putBackChecks,
+						putBackVelErr / putBackChecks, putBackVel / putBackChecks, 100.0 * putBackSprintKept / putBackChecks, putBackTimeouts));
+			}
+		}
+		return true;
+	}
 	private boolean drillFight;
 	private int drillFights;
 	private int drillPunishCrits;
@@ -1915,10 +1962,14 @@ public final class SchoolSession implements AgentSession {
 			case SETTLE -> {
 				keepView();
 				AgentController.release(mc);
-				if (--settleTicks <= 0) {
+				if (--settleTicks <= 0 && scenePutBackReady()) {
 					// Nothing that happened while it was held is scored.
 					CombatLog.clear();
 					phase = Phase.RUN;
+					if (sceneNow != null) {
+						// A scene acts on the tick it is put back: a tick with every key let go would lose its sprint.
+						runTick(truth);
+					}
 				}
 			}
 			case RUN -> {
@@ -2217,6 +2268,7 @@ public final class SchoolSession implements AgentSession {
 		plan.agentLag = agentLag;
 		SeenLag.set(agentLag, 0f, 0);
 		requestedEpisodeId = truth.episodeId() + 1;
+		putBackAsked = false;
 		if (benchNow >= 0 && rivalNow > 0) {
 			// The league network's own draws from the episode's seed too (SchoolBotPilot#seedSampling), on the server thread it plays on.
 			SchoolBotPilot rival = league.get(rivalNow - 1);
