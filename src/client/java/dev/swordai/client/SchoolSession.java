@@ -751,6 +751,28 @@ public final class SchoolSession implements AgentSession {
 	 * SCENE_TIME_SHARE of the training ticks (bounded by SCENE_CHANCE_MIN/MAX), and each kind replays only its SCENE_WORKING_SET
 	 * oldest queued failures, so the same moments come back until they are learned and the next ones move in.
 	 */
+	/**
+	 * Run 48 (the user, 7 Nov 14:35: "just make it replay that part over without letting it even touch other episode until it
+	 * finally learn ... and punish any action ... until the action it should do is there ... while not forgetting other things"):
+	 * one queued failure at a time (repeatScene: the oldest of the next kind in REPEAT_ORDER) is fought again back to back,
+	 * REPEAT_SHARE of the training fights, until it is won SCENE_MASTERED times in a row (learned, put away) or REPEAT_MAX tries
+	 * (logged as not learned: then the setup, not the network, is to be looked at; to the back of the queue). In it every tick
+	 * before the deed costs REPEAT_TICK_COST; the deed pays REPEAT_DONE and a clear failure costs REPEAT_FAILED, and either ends
+	 * the replay at once, so the next try comes straight away. The rest: full fights (new failures still come from them),
+	 * learned replays tested again (REPEAT_TEST_SHARE of them), and the old stages' reviews at their own share.
+	 */
+	static final boolean REPEAT_UNTIL_LEARNED = true;
+	static final float REPEAT_SHARE = 0.85f;
+	static final float REPEAT_TEST_SHARE = 0.3f;
+	static final int REPEAT_MAX = 150;
+	static final float REPEAT_TICK_COST = 0.02f, REPEAT_DONE = 1.0f, REPEAT_FAILED = 0.5f;
+	private final int[] REPEAT_ORDER = {KIND_DEFLECT, KIND_PUNISH2, KIND_PUNISH, KIND_OWN2, KIND_OWN, KIND_CRIT2, KIND_JUMPIN2, KIND_COMBO, KIND_CRIT,
+			KIND_JUMPIN};
+	private Scene repeatScene;
+	private int repeatTries, repeatNext, repeatLearned, repeatGivenUp;
+	private long repeatStartMs, repeatTriesSum;
+	private boolean repeatResolved, repeatEndNow, repeatLiftSeen;
+	private final java.util.ArrayDeque<String> repeatHistory = new java.util.ArrayDeque<>();
 	static final float SCENE_TIME_SHARE = 0.5f; // run 47c (the user, 14:25: "add more replay"); 0.3 in 47b
 	static final float SCENE_CHANCE_MIN = 0.1f, SCENE_CHANCE_MAX = 0.9f;
 	static final int SCENE_WORKING_SET = 4; // run 47c: each moment back twice as often; 8 in 47b
@@ -1344,6 +1366,20 @@ public final class SchoolSession implements AgentSession {
 			kinds.add(j);
 		}
 		o.add("kinds", kinds);
+		com.google.gson.JsonObject r = new com.google.gson.JsonObject();
+		r.addProperty("now", repeatScene == null ? "" : KIND_NAMES[repeatScene.kind]);
+		r.addProperty("tries", repeatTries);
+		r.addProperty("minutes", repeatScene == null ? 0.0 : (System.currentTimeMillis() - repeatStartMs) / 60000.0);
+		r.addProperty("learned", repeatLearned);
+		r.addProperty("givenUp", repeatGivenUp);
+		r.addProperty("avgTries", repeatLearned == 0 ? 0.0 : (double) repeatTriesSum / repeatLearned);
+		r.addProperty("max", REPEAT_MAX);
+		com.google.gson.JsonArray hist = new com.google.gson.JsonArray();
+		for (String h : repeatHistory) {
+			hist.add(h);
+		}
+		r.add("history", hist);
+		o.add("repeat", r);
 		Path file = SwordFiles.schoolDir().resolve(REPLAY_FILE);
 		try {
 			Path tmp = file.resolveSibling(REPLAY_FILE + ".tmp");
@@ -1466,6 +1502,88 @@ public final class SchoolSession implements AgentSession {
 				sceneDeflectOver = true;
 			} else if (facts.hitsTaken > 0 || fightTicks >= DEFLECT_WINDOW) {
 				sceneDeflectOver = true;
+			}
+		}
+	}
+
+	/** Run 48: true when this fight is to be the repeated replay (one is chosen if none is). */
+	private boolean repeatPick(boolean drill) {
+		if (!REPEAT_UNTIL_LEARNED || mode != Mode.TRAIN || drill) {
+			return false;
+		}
+		if (repeatScene == null || !scenes.contains(repeatScene)) {
+			repeatScene = null;
+			for (int i = 0; i < REPEAT_ORDER.length && repeatScene == null; i++) {
+				int k = REPEAT_ORDER[(repeatNext + i) % REPEAT_ORDER.length];
+				for (Scene sc : scenes) {
+					if (sc.kind == k) {
+						repeatScene = sc;
+						repeatNext = (repeatNext + i + 1) % REPEAT_ORDER.length;
+						break;
+					}
+				}
+			}
+			if (repeatScene != null) {
+				repeatTries = 0;
+				repeatStartMs = System.currentTimeMillis();
+				SwordAi.LOGGER.info("school repeat: now a {} replay, again and again until won {} times in a row", KIND_NAMES[repeatScene.kind],
+						SCENE_MASTERED);
+			}
+		}
+		return repeatScene != null && rng.nextFloat() < REPEAT_SHARE;
+	}
+
+	private boolean repeatActive() {
+		return REPEAT_UNTIL_LEARNED && repeatScene != null;
+	}
+
+	/** Run 48: +1 the deed done, -1 clearly failed, 0 not yet, for the kinds with a clear deed (the rest are judged at the end). */
+	private int repeatOutcome() {
+		switch (sceneNow.kind) {
+			case KIND_DEFLECT:
+				return sceneDeflectOver ? (sceneDeflected ? 1 : -1) : 0;
+			case KIND_PUNISH:
+			case KIND_PUNISH2:
+				if (sceneK2) {
+					return -1;
+				}
+				if (sceneOwnCrit) {
+					return 1;
+				}
+				repeatLiftSeen |= liftedFor >= 0;
+				return repeatLiftSeen && liftedFor < 0 ? -1 : 0;
+			case KIND_OWN:
+				return sceneOwnBroken ? -1 : sceneOwnHits >= 2 ? 1 : 0;
+			case KIND_OWN2:
+				return sceneOwnBroken ? -1 : sceneOwnHits >= 1 ? 1 : 0;
+			default:
+				return 0;
+		}
+	}
+
+	/** Run 48: after a try of the repeated replay: learned (put away), or given up after REPEAT_MAX tries. */
+	private void repeatAfter() {
+		repeatTries++;
+		double minutes = (System.currentTimeMillis() - repeatStartMs) / 60000.0;
+		String line = null;
+		if (!scenes.contains(repeatScene)) {
+			repeatLearned++;
+			repeatTriesSum += repeatTries;
+			line = String.format(Locale.ROOT, "%s replay learned after %d tries, %.1f min", KIND_NAMES[repeatScene.kind], repeatTries, minutes);
+			repeatScene = null;
+		} else if (repeatTries >= REPEAT_MAX) {
+			scenes.remove(repeatScene);
+			scenes.add(repeatScene);
+			repeatGivenUp++;
+			line = String.format(Locale.ROOT, "%s replay NOT learned after %d tries, %.1f min (to the back of the queue)", KIND_NAMES[repeatScene.kind],
+					repeatTries, minutes);
+			repeatScene = null;
+		}
+		if (line != null) {
+			SwordAi.LOGGER.info("school repeat: " + line);
+			repeatHistory.addFirst(java.time.LocalTime.now().withNano(0) + " " + line);
+			while (repeatHistory.size() > 12) {
+				repeatHistory.removeLast();
 			}
 		}
 	}
@@ -2259,6 +2377,9 @@ public final class SchoolSession implements AgentSession {
 		lastBotChargeSeen = -1f;
 		sceneDeflected = false;
 		sceneDeflectOver = false;
+		repeatResolved = false;
+		repeatEndNow = false;
+		repeatLiftSeen = false;
 		exAt[0] = -1;
 		exAt[1] = -1;
 		sceneCrit = false;
@@ -2351,8 +2472,12 @@ public final class SchoolSession implements AgentSession {
 		} else {
 			boolean drill = mode == Mode.TRAIN && rng.nextFloat() < DRILL_SHARE;
 			sceneReview = false;
-			if (mode == Mode.TRAIN && !drill && (!scenes.isEmpty() || !mastered.isEmpty()) && rng.nextFloat() < sceneChance()) {
-				sceneReview = !mastered.isEmpty() && (scenes.isEmpty() || rng.nextFloat() < SCENE_REVIEW_SHARE);
+			if (repeatPick(drill)) {
+				sceneNow = repeatScene;
+			} else if (mode == Mode.TRAIN && !drill && (!scenes.isEmpty() || !mastered.isEmpty())
+					&& rng.nextFloat() < (repeatActive() ? (mastered.isEmpty() ? 0f : REPEAT_TEST_SHARE) : sceneChance())) {
+				// While one is repeated (run 48) the other fights are full fights or a learned replay tested again.
+				sceneReview = !mastered.isEmpty() && (repeatActive() || scenes.isEmpty() || rng.nextFloat() < SCENE_REVIEW_SHARE);
 				List<Scene> from = sceneReview ? mastered : scenes;
 				if (!sceneReview) {
 					// The focus's kinds (equally), or the earlier focuses' (their review); whatever has scenes.
@@ -2935,7 +3060,7 @@ public final class SchoolSession implements AgentSession {
 			boolean ko = facts.koDealt || facts.koTaken;
 			boolean timeUp = review >= 0 ? fightTicks >= Math.min(basics[review].bot.attacks ? FIGHT_TICKS : REVIEW_TICKS, basics[review].episodeTicks)
 					|| reviewRewards.lostTooLong(basics[review])
-					: fightTicks >= (sceneNow != null ? sceneNow.ticks() : FIGHT_TICKS);
+					: fightTicks >= (sceneNow != null ? sceneNow.ticks() : FIGHT_TICKS) || repeatEndNow;
 			if (mode == Mode.TRAIN && review < 0 && sceneNow == null && !drillFight && !ruleOff) {
 				trackOwnCombo(facts.hitsDealt > 0, facts.hitsTaken > 0);
 				harvest(truth.tick(), facts.damageDealt - facts.damageTaken, facts.critsTaken > 0, ko || timeUp);
@@ -3006,6 +3131,16 @@ public final class SchoolSession implements AgentSession {
 					deflectStarts++;
 				}
 				trackDeflection(truth);
+				if (sceneNow != null && sceneNow == repeatScene && !sceneReview && !repeatResolved) {
+					// Run 48: until the deed every tick costs; the deed or a clear failure ends the try.
+					reward -= REPEAT_TICK_COST;
+					int out = repeatOutcome();
+					if (out != 0) {
+						reward += out > 0 ? REPEAT_DONE : -REPEAT_FAILED;
+						repeatResolved = true;
+						repeatEndNow = true;
+					}
+				}
 				// The chase crit (run 44, CHASE_CRIT): before the combo count below moves its last hit to now.
 				if (facts.hitsDealt > 0 && facts.critDealt && facts.hitsTaken == 0 && lastOwnHitAt > -1000
 						&& fightTicks - lastOwnHitAt <= CHASE_GAP && awayTicks >= AWAY_TICKS) {
@@ -4069,6 +4204,9 @@ public final class SchoolSession implements AgentSession {
 					scenesMastered++;
 					scenesMasteredAll++;
 				}
+			}
+			if (sceneNow == repeatScene && !sceneReview) {
+				repeatAfter();
 			}
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school scene %s (lost %.1f there the first time): dealt %.1f, taken %.1f, ticks %d%s; %s scene%s, %s, %s, %08x",
 					sceneNow.spar ? "installed-model" : Specialists.NAMES[fightBot], -sceneNow.net, fightDealt, fightTaken, fightTicks, result,

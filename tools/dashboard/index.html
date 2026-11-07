@@ -142,6 +142,9 @@ function renderReplays(r) {
   $('replays').innerHTML = `<div style="margin-bottom:8px">In the queue <b>${q}</b> · learned and put away <b>${l}</b> · replays take ${Math.round(100 * r.share)}% of the training time (${r.chance != null ? Math.round(100 * r.chance) + '% of fights' : ''}; each kind works on its ${r.workingSet || 8} oldest until learned);
     learned = done ${r.learnedAfter} times in a row; ${Math.round(100 * r.testShare)}% of replays test a learned one again, a failed one goes back in the queue.
     Deflection chances since the last update: ${r.deflectChances}, made ${r.deflectMade}, missed ${r.deflectMissed}. Punish crit chances critted: ${esc(r.punishRolling)}. <span class="muted">(${esc(r.time)})</span></div>
+    ${r.repeat ? `<div style="margin-bottom:8px"><b>Repeating now:</b> ${r.repeat.now ? esc(r.repeat.now) + ' replay, try ' + r.repeat.tries + ' (' + r.repeat.minutes.toFixed(1) + ' min)' : 'choosing the next'}
+      · learned by repeating <b>${r.repeat.learned}</b>${r.repeat.learned ? ' (average ' + r.repeat.avgTries.toFixed(1) + ' tries)' : ''} · not learned after ${r.repeat.max}: <b>${r.repeat.givenUp}</b> (since the last restart)
+      ${(r.repeat.history || []).length ? '<div class="muted" style="margin-top:4px">' + r.repeat.history.map(esc).join('<br>') + '</div>' : ''}</div>` : ''}
     <table><tr><th>kind</th><th>queued</th><th>replayed</th><th>success</th><th>recent success</th><th>learned</th><th>put away now</th><th>tested again</th><th>forgot</th></tr>${rows}</table>`;
 }
 
