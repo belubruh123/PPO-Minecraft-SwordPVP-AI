@@ -743,7 +743,25 @@ public final class SchoolSession implements AgentSession {
 	 * against the same opponent, for SCENE_WINDOW ticks: the lost moments fought again and again, without the walking in
 	 * around them. Kept in SCENE_FILE (the newest SCENES_KEPT).
 	 */
-	static final float SCENE_SHARE = 0.3f; // run 47 (the user, 7 Nov 10:25: "about 30% of time", the rest normal training); was 0.6 // run 21: 0.5 from 09:20; 0.6 from 09:40 with the other techniques and the basics reviewed in between (the user, 09:27: "The AI need to review other technique and basic during other training so it won't forget")
+	static final float SCENE_SHARE = 0.3f; // run 47 (the user, 7 Nov 10:25: "about 30% of time", the rest normal training); was 0.6
+	/**
+	 * Run 47b (11:50): the user's 30% is of the TIME. A replay is about 2 s and a full fight about 15 s, so 30% of the fights was
+	 * about 5% of the time: ~75 replays an hour for ~580 queued, each back about once in 8 hours, never won 3 times in a row.
+	 * Now the chance of a replay is set each fight from the measured lengths (sceneTicksAvg, fullTicksAvg) so that replays take
+	 * SCENE_TIME_SHARE of the training ticks (bounded by SCENE_CHANCE_MIN/MAX), and each kind replays only its SCENE_WORKING_SET
+	 * oldest queued failures, so the same moments come back until they are learned and the next ones move in.
+	 */
+	static final float SCENE_TIME_SHARE = 0.3f;
+	static final float SCENE_CHANCE_MIN = 0.1f, SCENE_CHANCE_MAX = 0.85f;
+	static final int SCENE_WORKING_SET = 8;
+	private float sceneTicksAvg = 40f, fullTicksAvg = 280f;
+
+	/** The chance that a training fight is a replay, so that replays take SCENE_TIME_SHARE of the training time. */
+	private float sceneChance() {
+		float t = SCENE_TIME_SHARE;
+		float p = t * fullTicksAvg / ((1f - t) * sceneTicksAvg + t * fullTicksAvg);
+		return Math.max(SCENE_CHANCE_MIN, Math.min(SCENE_CHANCE_MAX, p));
+	} // run 21: 0.5 from 09:20; 0.6 from 09:40 with the other techniques and the basics reviewed in between (the user, 09:27: "The AI need to review other technique and basic during other training so it won't forget")
 	static final int SCENE_WINDOW = 100;
 	/**
 	 * Run 21 from 09:35 (the user: "train until it ALWAYS deals more damage than crit guy"): a scene is the moment an opponent
@@ -1296,7 +1314,11 @@ public final class SchoolSession implements AgentSession {
 	private void writeReplayStatus() {
 		com.google.gson.JsonObject o = new com.google.gson.JsonObject();
 		o.addProperty("time", java.time.LocalDateTime.now().withNano(0).toString());
-		o.addProperty("share", SCENE_SHARE);
+		o.addProperty("share", SCENE_TIME_SHARE);
+		o.addProperty("chance", sceneChance());
+		o.addProperty("workingSet", SCENE_WORKING_SET);
+		o.addProperty("replayTicks", sceneTicksAvg);
+		o.addProperty("fightTicks", fullTicksAvg);
 		o.addProperty("learnedAfter", SCENE_MASTERED);
 		o.addProperty("testShare", SCENE_REVIEW_SHARE);
 		o.addProperty("deflectChances", deflectChances);
@@ -2329,7 +2351,7 @@ public final class SchoolSession implements AgentSession {
 		} else {
 			boolean drill = mode == Mode.TRAIN && rng.nextFloat() < DRILL_SHARE;
 			sceneReview = false;
-			if (mode == Mode.TRAIN && !drill && (!scenes.isEmpty() || !mastered.isEmpty()) && rng.nextFloat() < SCENE_SHARE) {
+			if (mode == Mode.TRAIN && !drill && (!scenes.isEmpty() || !mastered.isEmpty()) && rng.nextFloat() < sceneChance()) {
 				sceneReview = !mastered.isEmpty() && (scenes.isEmpty() || rng.nextFloat() < SCENE_REVIEW_SHARE);
 				List<Scene> from = sceneReview ? mastered : scenes;
 				if (!sceneReview) {
@@ -2383,6 +2405,10 @@ public final class SchoolSession implements AgentSession {
 						ofKind = ofSpar;
 					}
 					from = ofKind;
+					// Run 47b: its oldest queued failures only, until learned (scenes keeps them oldest first).
+					if (from.size() > SCENE_WORKING_SET) {
+						from = from.subList(0, SCENE_WORKING_SET);
+					}
 				}
 				sceneNow = from.get(rng.nextInt(from.size()));
 			}
@@ -3955,6 +3981,14 @@ public final class SchoolSession implements AgentSession {
 		for (int h = 0; h < Habits.COUNT; h++) {
 			ownSeen[side][h] += reader.own.seen(h);
 			ownDid[side][h] += reader.own.did(h);
+		}
+		if (mode == Mode.TRAIN && review < 0 && fightTicks > 0) {
+			// The measured lengths behind sceneChance (run 47b).
+			if (sceneNow != null) {
+				sceneTicksAvg += 0.02f * (fightTicks - sceneTicksAvg);
+			} else if (!drillFight) {
+				fullTicksAvg += 0.02f * (fightTicks - fullTicksAvg);
+			}
 		}
 		String result = won ? ", knockout" : lost ? ", knocked out" : "";
 		if (mode == Mode.CHECK && benchNow >= 0) {
