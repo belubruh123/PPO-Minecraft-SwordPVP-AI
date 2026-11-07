@@ -761,8 +761,17 @@ public final class SchoolSession implements AgentSession {
 	/** PPO's weight on the ticks within POST_HIT_TICKS after its 2nd or later hit in a row, no hit taken (run 44, SchoolPpo policyWeight). */
 	static final float POST_HIT_WEIGHT = 2f;
 	static final int POST_HIT_TICKS = 15;
-	static final int KINDS = 6;
-	static final String[] KIND_NAMES = {"crit", "jump-in", "combo", "punish", "own combo", "own combo 2"};
+	/**
+	 * Short crit scenes (run 46c; the user, 7 Nov 09:40: put it at the exact moment "with exact velocity and stuff and dont even
+	 * give a head buffer ... 1-2 second per episode ... mix both"): every crit scene kept (KIND_CRIT, 3 s before their crit, 5 s
+	 * long) also keeps this twin from CRIT2_BEFORE ticks before the crit, CRIT2_SCENE_TICKS long, won the same way (more dealt than
+	 * taken). The own-combo scenes start on the tick after its hit already; the punish scenes half a second before their hit.
+	 */
+	static final int KIND_CRIT2 = 6;
+	static final int CRIT2_BEFORE = 8;
+	static final int CRIT2_SCENE_TICKS = 30;
+	static final int KINDS = 7;
+	static final String[] KIND_NAMES = {"crit", "jump-in", "combo", "punish", "own combo", "own combo 2", "crit short"};
 	static final int PUNISH_BEFORE = 10;
 	static final int PUNISH_SCENE_TICKS = 40;
 	static final int COMBO_BEFORE = 20;
@@ -784,7 +793,7 @@ public final class SchoolSession implements AgentSession {
 	 * cutting comboing opponent that controls hit perfectly", and need not rely on the "unstable punish crit". Combo scenes
 	 * won 39% of the last 200; against the uppercutter A's net was below zero in the last four hourly checks.
 	 */
-	static final int[][] FOCUS_KINDS = {{KIND_CRIT, KIND_JUMPIN, KIND_PUNISH, KIND_COMBO, KIND_OWN, KIND_OWN2}, {KIND_COMBO, KIND_OWN, KIND_OWN2}};
+	static final int[][] FOCUS_KINDS = {{KIND_CRIT, KIND_CRIT2, KIND_JUMPIN, KIND_PUNISH, KIND_COMBO, KIND_OWN, KIND_OWN2}, {KIND_COMBO, KIND_OWN, KIND_OWN2}};
 	static final String[] FOCUS_NAMES = {"the crits (crit scenes, jump-in counter, punish crit)", "the combo escape"};
 	static final float FOCUS_SHARE = 0.8f;
 	static final int FOCUS_EVENTS = 300;
@@ -812,7 +821,7 @@ public final class SchoolSession implements AgentSession {
 		double[] state;
 
 		int ticks() {
-			return kind == KIND_CRIT ? SCENE_WINDOW : kind == KIND_PUNISH ? PUNISH_SCENE_TICKS : kind == KIND_OWN ? OWN_SCENE_TICKS : kind == KIND_OWN2 ? OWN2_SCENE_TICKS : JUMPIN_SCENE_TICKS;
+			return kind == KIND_CRIT ? SCENE_WINDOW : kind == KIND_PUNISH ? PUNISH_SCENE_TICKS : kind == KIND_OWN ? OWN_SCENE_TICKS : kind == KIND_OWN2 ? OWN2_SCENE_TICKS : kind == KIND_CRIT2 ? CRIT2_SCENE_TICKS : JUMPIN_SCENE_TICKS;
 		}
 
 		String line() {
@@ -898,7 +907,7 @@ public final class SchoolSession implements AgentSession {
 	private int focusReached;
 	/** Rolling outcomes for the focus bars: per kind, the last scene fights won; the full fights' jump-ins and combos. */
 	private final Rolling[] sceneRoll = {new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS),
-			new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS)};
+			new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS)};
 	private int ownKind = KIND_OWN;
 	private int ownSecondAt;
 	/** Own combos (run 44): the first one of this full fight that died short, to keep from ownFrom at keepOwnAt (-1: none). */
@@ -1177,8 +1186,11 @@ public final class SchoolSession implements AgentSession {
 		}
 		while (critsPending > 0 && (fightOver || fightTicks >= critAt[0] + SCENE_WINDOW - SCENE_BEFORE)) {
 			int start = Math.max(1, critAt[0] - SCENE_BEFORE + 1);
+			int shortStart = Math.max(1, critAt[0] - CRIT2_BEFORE);
 			System.arraycopy(critAt, 1, critAt, 0, --critsPending);
 			keepScene(start, KIND_CRIT);
+			// Its short twin (run 46c), the same moment with no head room.
+			keepScene(shortStart, KIND_CRIT2);
 		}
 		if (jumpInFrom >= 0 && (fightOver || fightTicks >= keepJumpInAt)) {
 			keepScene(Math.max(1, jumpInFrom - JUMPIN_BEFORE), KIND_JUMPIN);
