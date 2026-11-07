@@ -30,7 +30,8 @@ redeploying() {
   [ -n "$r" ] && [ $(( $(date +%s) - $(stat -c %Y "$r") )) -lt 1800 ] \
     && ! grep -aqE "=== cycle restarted|tests failed|world never loaded|nothing restarted" "$r"
 }
-if [ -f /d/swordai/run/redeploy-request ] && ! redeploying; then
+# Never in the middle of a benchmark (it has a test network in the training's place).
+if [ -f /d/swordai/run/redeploy-request ] && ! redeploying && ! ps -ef | grep -a "bench-run" | grep -qv grep; then
   ENVLINE=$(head -1 /d/swordai/run/redeploy-request | tr -d '\r')
   mv /d/swordai/run/redeploy-request /d/swordai/run/redeploy-request.taken
   echo "$(date '+%m-%d %H:%M') redeploy asked for ($ENVLINE)" >> $LOG
