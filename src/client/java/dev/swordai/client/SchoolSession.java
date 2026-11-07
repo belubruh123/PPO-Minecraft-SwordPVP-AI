@@ -177,6 +177,17 @@ public final class SchoolSession implements AgentSession {
 	 * network's to find.
 	 */
 	static final float MADE_MISS = 0.15f;
+	/**
+	 * Run 45, the deflection start (the document's T4: "sprint-hit the opponent immediately after they attack you"; the user,
+	 * 7 Nov 08:30: knock the attacker away, crit or not, and combo from it): a sprint hit that opens a combo of its own (no hit of
+	 * its own within COMBO_GAP before) while their sword is under DEFLECT_CHARGE (they just swung) and no hit taken this tick
+	 * pays this; COMBO_HIT then pays the follow-ups. Measured before: such first hits got a 2nd hit 39% in the user's real duels
+	 * (44% benchmark), into a ready sword 22% (20%), and they were only a third of its first hits. The jump-in hold (the user's
+	 * 5 Nov rule: only an early riser, a lag buffer, never a faller) and K2's cost stay as they are.
+	 */
+	static final float DEFLECT_HIT = 0.25f;
+	static final float DEFLECT_CHARGE = 0.5f;
+	private int deflectStarts;
 	private int lastWhiffs;
 	private int madeMiss;
 	static final int CHASE_GAP = 30;
@@ -2684,6 +2695,12 @@ public final class SchoolSession implements AgentSession {
 					madeMiss++;
 				}
 				lastWhiffs = whiffsNow;
+				// The deflection start (run 45, DEFLECT_HIT): a sprint hit opening its combo while their sword is empty.
+				if (facts.hitsDealt > 0 && facts.sprintHit && facts.hitsTaken == 0 && fightTicks - lastOwnHitAt > COMBO_GAP
+						&& truth.botCharge() < DEFLECT_CHARGE && !(reader.duel.them.falling() || truth.botFalling())) {
+					reward += DEFLECT_HIT;
+					deflectStarts++;
+				}
 				// The chase crit (run 44, CHASE_CRIT): before the combo count below moves its last hit to now.
 				if (facts.hitsDealt > 0 && facts.critDealt && facts.hitsTaken == 0 && lastOwnHitAt > -1000
 						&& fightTicks - lastOwnHitAt <= CHASE_GAP && awayTicks >= AWAY_TICKS) {
@@ -4374,10 +4391,10 @@ public final class SchoolSession implements AgentSession {
 		pullsNow = stages.techPulls();
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
-				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {} ({} in {} drill fights), other crits {}, combo follow-up hits rewarded {} (3rd+ {}), chase crits {}, made to miss {}, hits taken in the air from its own jump {} "
+				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {} ({} in {} drill fights), other crits {}, combo follow-up hits rewarded {} (3rd+ {}), chase crits {}, made to miss {}, deflection starts {}, hits taken in the air from its own jump {} "
 				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} (the golden rule held the swing on {} ticks, the installed model's rules set keys on {}) | swings: {} | review of the old stages:{} | bots went into:{} | taught now:{} | sparring the installed model:{} | take-over:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
-				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits, comboHitsPaid, combo3Paid, chaseCrits, madeMiss, airJumpHits,
+				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits, comboHitsPaid, combo3Paid, chaseCrits, madeMiss, deflectStarts, airJumpHits,
 				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2Held, ruleTicks, swingLine(0), reviewLine(), used, taughtNowLine(), sparLine(), takeOverLine());
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
@@ -4385,6 +4402,7 @@ public final class SchoolSession implements AgentSession {
 		combo3Paid = 0;
 		chaseCrits = 0;
 		madeMiss = 0;
+		deflectStarts = 0;
 		airJumpHits = 0;
 		drillPunishCrits = 0;
 		drillFights = 0;
