@@ -1346,6 +1346,9 @@ public final class SchoolSession implements AgentSession {
 		}
 		try {
 			com.google.gson.JsonObject o = com.google.gson.JsonParser.parseString(Files.readString(file)).getAsJsonObject();
+			if (o.has("repeat") && o.getAsJsonObject("repeat").has("resumeKind")) {
+				repeatNext = Math.floorMod(o.getAsJsonObject("repeat").get("resumeKind").getAsInt(), REPEAT_ORDER.length);
+			}
 			for (com.google.gson.JsonElement e : o.getAsJsonArray("kinds")) {
 				com.google.gson.JsonObject k = e.getAsJsonObject();
 				int i = java.util.Arrays.asList(KIND_NAMES).indexOf(k.get("name").getAsString());
@@ -1403,6 +1406,9 @@ public final class SchoolSession implements AgentSession {
 		r.addProperty("givenUp", repeatGivenUp);
 		r.addProperty("avgTries", repeatLearned == 0 ? 0.0 : (double) repeatTriesSum / repeatLearned);
 		r.addProperty("max", REPEAT_MAX);
+		// Run 48e: where the turn of kinds is, so a restart (each hourly check, each benchmark) goes on with the same kind instead
+		// of starting again at the deflection (the punish replays were cut off by every restart before their 20 minutes).
+		r.addProperty("resumeKind", repeatScene != null ? (repeatNext - 1 + REPEAT_ORDER.length) % REPEAT_ORDER.length : repeatNext);
 		com.google.gson.JsonArray hist = new com.google.gson.JsonArray();
 		for (String h : repeatHistory) {
 			hist.add(h);
