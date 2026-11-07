@@ -48,7 +48,11 @@ public final class SchoolPpo implements AutoCloseable {
 		public boolean adaptiveLr = true;
 		// Less on the keys that are pressed or not (sprint, jump, swing): a technique needs them pressed on one tick and not
 		// on the others, and a bonus for being unsure of them keeps a jump on every twentieth tick.
-		public float[] entropy = {0.005f, 0.005f, 0.01f, 0.01f, 0.003f, 0.003f, 0.003f};
+		// Run 46 (7 Nov, the user: "if the AI is always the first to hit then it will never have chance to do deflection"): the
+		// swing's 0.015, five times the old 0.003. It swung first in 74% of the exchanges of the user's real duels (they 14%) and the
+		// swing head's entropy was 0.013: it never tried waiting for their swing, so the deflection (T4) and its pay (DEFLECT_HIT)
+		// were out of reach. A swing drawn before the sword is back waits for the charge (swingMinCharge), so this costs little.
+		public float[] entropy = {0.005f, 0.005f, 0.01f, 0.01f, 0.003f, 0.003f, 0.015f};
 		/** The pulls of the teachers for this update: each technique's teacher's ({@code Technique} ordinal), and the installed network's. */
 		public float[] techPulls = new float[dev.swordai.core.pvp.Technique.COUNT];
 		public float oldPull;
