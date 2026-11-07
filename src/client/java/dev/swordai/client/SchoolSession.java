@@ -773,6 +773,13 @@ public final class SchoolSession implements AgentSession {
 	static final double REPEAT_MIN_MINUTES = 20.0;
 	/** Run 48c: a decided try still lasts this long (tries of 3-9 ticks, several resets a second, put the server 2-5 s behind). */
 	static final int REPEAT_MIN_TICKS = 20;
+	/**
+	 * Run 48i (8 Nov 06:50): a moment with no win at all in this many tries is set aside (scenes-no-win.txt) and not fought again:
+	 * of the punish short moments overnight some rose to 10% won and were learned, others went 0 of 634+ (impossible as put back,
+	 * e.g. the bot, its memory started afresh, not coming back into reach), each costing the full 20 minutes.
+	 */
+	static final int REPEAT_NO_WIN_TRIES = 300;
+	private int repeatWins;
 	static final float REPEAT_TICK_COST = 0.02f, REPEAT_DONE = 1.0f, REPEAT_FAILED = 0.5f;
 	// Run 48h: without the long punish replay (from 10 ticks before their hit the bot must choose to hit again, most often it did
 	// not: won 7 of 737, 1%); its exact twin from inside the lift (KIND_PUNISH2) covers the same moment and was learned (716 tries).
@@ -1570,6 +1577,7 @@ public final class SchoolSession implements AgentSession {
 			}
 			if (repeatScene != null) {
 				repeatTries = 0;
+				repeatWins = 0;
 				repeatStartMs = System.currentTimeMillis();
 				SwordAi.LOGGER.info("school repeat: now a {} replay, again and again until won {} times in a row", KIND_NAMES[repeatScene.kind],
 						SCENE_MASTERED);
@@ -1615,6 +1623,18 @@ public final class SchoolSession implements AgentSession {
 			repeatLearned++;
 			repeatTriesSum += repeatTries;
 			line = String.format(Locale.ROOT, "%s replay learned after %d tries, %.1f min", KIND_NAMES[repeatScene.kind], repeatTries, minutes);
+			repeatScene = null;
+		} else if (repeatWins == 0 && repeatTries >= REPEAT_NO_WIN_TRIES) {
+			scenes.remove(repeatScene);
+			try {
+				Files.writeString(SwordFiles.schoolDir().resolve("scenes-no-win.txt"), repeatScene.line() + System.lineSeparator(),
+						java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+			} catch (IOException e) {
+				SwordAi.LOGGER.warn("school: a no-win replay could not be kept aside: {}", e.getMessage());
+			}
+			repeatGivenUp++;
+			line = String.format(Locale.ROOT, "%s replay set aside: no win in %d tries, %.1f min (impossible as put back? scenes-no-win.txt)",
+					KIND_NAMES[repeatScene.kind], repeatTries, minutes);
 			repeatScene = null;
 		} else if (repeatTries >= REPEAT_MAX && minutes >= REPEAT_MIN_MINUTES) {
 			scenes.remove(repeatScene);
@@ -4288,6 +4308,7 @@ public final class SchoolSession implements AgentSession {
 				}
 			}
 			if (sceneNow == repeatScene && !sceneReview) {
+				repeatWins += sceneWon ? 1 : 0;
 				repeatAfter();
 			}
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school scene %s (lost %.1f there the first time): dealt %.1f, taken %.1f, ticks %d%s; %s scene%s, %s, %s, %08x",
