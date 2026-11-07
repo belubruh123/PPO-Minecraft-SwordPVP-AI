@@ -18,6 +18,8 @@ PAT = {
     'chase crits': r'chase crits (\d+)',
     'made miss': r'made to miss (\d+)',
     'deflect starts': r'deflection starts (\d+)',
+    'deflect chances': r'deflection chances (\d+)',
+    'deflect missed': r'deflection chances \d+ made \d+ missed (\d+)',
     'air hits taken': r'hits taken in the air from its own jump (\d+)',
     'K2 broken': r'K2 broken (\d+)',
 }
@@ -26,6 +28,8 @@ SCENE = {
     'own2 scenes won%': r'; own combo 2 scenes kept \d+, won \d+ of \d+ \(last (\d+)% of (\d+)\)',
     'punish scenes won%': r'; punish scenes kept \d+, won \d+ of \d+ \(last (\d+)% of (\d+)\)',
     'crit scenes won%': r'; crit scenes kept \d+, won \d+ of \d+ \(last (\d+)% of (\d+)\)',
+    'deflect scenes won%': r'; deflection scenes kept \d+, won \d+ of \d+ \(last (\d+)% of (\d+)\)',
+    'punish short won%': r'; punish short scenes kept \d+, won \d+ of \d+ \(last (\d+)% of (\d+)\)',
 }
 
 
