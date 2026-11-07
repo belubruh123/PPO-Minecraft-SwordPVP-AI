@@ -136,6 +136,18 @@ Method: practice the exact moment (own-combo scenes from the tick after its firs
 - [ ] measure at ~11:30 (three checks + benchmark v2): tools/combos.py on the checks: 3+ combos a fight A 0.39 -> 0.6+, 2->3 share
   33% -> 45%+ (B 0.36 / 29%); combo-bots.py on the benchmark; own-combo scenes won %; guard: punish crit chances critted 50%
   (34% at 06:48); A-B not clearly worse
+- [x] 7 Nov 08:45 the user: every reward term gets a LEARN-BY expectation; a reward must be learned unless something is wrong
+  (reward hacking, an impossible bot, a bot teaching it wrongly) - then investigate. tools/reward-trend.py (counters per update).
+  Expectations (check at every review):
+  | term | since | counter now (per update) | expected by |
+  |---|---|---|---|
+  | COMBO_HIT (run 42) | 03:47 | follow-ups 33 -> 41.5; checks A 1.68 -> 1.93 | met |
+  | AIR_JUMP_HIT (run 43) | 07:17 | air hits taken 23-29 | -30% (<= 18) by 10:30 |
+  | COMBO_HIT3 + own/own2 scenes + POST_HIT_WEIGHT (run 44) | 08:21 | 3rd+ 17 | 3rd+ >= 25 by 10:30; checks 2->3 45% at the 10:55 check |
+  | CHASE_CRIT (run 44) | 08:21 | 1.5 | >= 3 by 10:30 |
+  | MADE_MISS (run 44) | 08:21 | 18 | >= 25 by 10:30 |
+  | DEFLECT_HIT (run 45) | ~09:20 | baseline = its first 30 min | +30% by 11:30 |
+  | PUNISH_CRIT 0.5 | 26 Oct | ~5 a update flat, punish scenes 29% flat 8 h | FAILED: two agents investigating (08:45: why the punish crit never learns; the bots vs the document) |
 
 ## Block 6: the learning itself. After block 4. Method: reward drives the keys it already copies
 - [ ] copy pulls off (or near) on keys where it agrees with the rules 90%+ (update line "rules' keys ... by head"), A/B
