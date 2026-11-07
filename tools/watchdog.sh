@@ -23,7 +23,14 @@ if ! curl -s -m 5 -o /dev/null http://localhost:8765/; then
 fi
 # A redeploy asked for (7 Nov): run/redeploy-request (its text: optional VAR=value settings for it). Run from here, the client
 # and the hourly loop it starts outlive the Claude app (on 6 Nov a client started from a session died with it at 07:13).
-if [ -f /d/swordai/run/redeploy-request ] && ! ps -ef | grep -a "school-redeploy" | grep -qv grep; then
+# A redeploy is going on only while its log is under 30 minutes old and has not printed its last line (7 Nov: the script stays
+# listed as the hourly loop's parent long after it ended, which blocked every later redeploy for an hour).
+redeploying() {
+  local r; r=$(ls -t /d/swordai/run/redeploy-*.log 2>/dev/null | head -1)
+  [ -n "$r" ] && [ $(( $(date +%s) - $(stat -c %Y "$r") )) -lt 1800 ] \
+    && ! grep -aqE "=== cycle restarted|tests failed|world never loaded|nothing restarted" "$r"
+}
+if [ -f /d/swordai/run/redeploy-request ] && ! redeploying; then
   ENVLINE=$(head -1 /d/swordai/run/redeploy-request | tr -d '\r')
   mv /d/swordai/run/redeploy-request /d/swordai/run/redeploy-request.taken
   echo "$(date '+%m-%d %H:%M') redeploy asked for ($ENVLINE)" >> $LOG
@@ -54,6 +61,15 @@ cycles() {
   powershell -NoProfile -Command "@(Get-CimInstance Win32_Process | Where-Object { \$_.Name -eq 'bash.exe' -and \$_.CommandLine -match 'schoolcycle\.sh' }).Count"
 }
 age=$(( $(date +%s) - $(stat -c %Y $L 2>/dev/null || echo 0) ))
+# Training stopped with the client still up (7 Nov 07:55: "the server did not start the next fight"; the server's "Can't keep up"
+# lines kept the log new for 23 minutes): the age of the last school line counts too.
+last=$(grep -a "(swordai) school \|school bench\|school pair" $L 2>/dev/null | tail -1 | grep -o '^\[[0-9:]*\]' | tr -d '[]')
+if [ -n "$last" ] && [ $age -lt 600 ]; then
+  ls_=$(( $(date -d "$last" +%s 2>/dev/null || date +%s) ))
+  [ $ls_ -gt $(date +%s) ] && ls_=$(( ls_ - 86400 ))
+  sage=$(( $(date +%s) - ls_ ))
+  [ $sage -ge 600 ] && { echo "$(date '+%m-%d %H:%M') no school line for $sage s (training stopped, client up)" >> $LOG; age=$sage; }
+fi
 if [ $age -ge 600 ]; then
   touch $LOCK
   echo "$(date '+%m-%d %H:%M') the client log is $age s old: restarting the client" >> $LOG
