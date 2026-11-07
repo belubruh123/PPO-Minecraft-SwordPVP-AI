@@ -1289,6 +1289,27 @@ public final class SchoolSession implements AgentSession {
 		retireWrongVelocityScenes();
 		loadReplayTotals();
 		loadScenes(SCENE_FILE, scenes);
+		// Run 48d: punish twins that begin with the agent not rising had no lift to punish from: moved aside (kept).
+		List<Scene> noLift = new ArrayList<>();
+		for (Scene sc : scenes) {
+			if (sc.kind == KIND_PUNISH2 && sc.state[4] <= 0.05) {
+				noLift.add(sc);
+			}
+		}
+		if (!noLift.isEmpty()) {
+			scenes.removeAll(noLift);
+			StringBuilder b = new StringBuilder();
+			for (Scene sc : noLift) {
+				b.append(sc.line()).append(System.lineSeparator());
+			}
+			try {
+				Files.writeString(SwordFiles.schoolDir().resolve("scenes-punish-short-no-lift.txt"), b.toString(),
+						java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+			} catch (IOException e) {
+				SwordAi.LOGGER.warn("school: the punish twins with no lift could not be kept aside: {}", e.getMessage());
+			}
+			SwordAi.LOGGER.info("school: {} punish short replays without the lift moved aside", noLift.size());
+		}
 		loadScenes(MASTERED_FILE, mastered);
 		loadFocus();
 	}
@@ -1450,9 +1471,12 @@ public final class SchoolSession implements AgentSession {
 		}
 		if (punishFrom >= 0 && (fightOver || fightTicks >= keepPunishAt)) {
 			keepScene(Math.max(1, punishFrom - PUNISH_BEFORE), KIND_PUNISH);
-			// Its exact twin (run 47): from just after their hit, the lift already on.
-			if (punishFrom + PUNISH2_AFTER < fightTicks) {
-				keepScene(punishFrom + PUNISH2_AFTER, KIND_PUNISH2);
+			// Its exact twin (run 47): from just after their hit, the lift already on. Run 48d: from the first tick its recorded
+			// motion is really rising (the client gets the knockback a tick or more after the server's hit: 43% of the twins kept
+			// at a fixed 2 ticks began standing on the ground, so their lift was not there and they could not be won).
+			int liftFrom = liftStartAfter(punishFrom);
+			if (liftFrom > 0 && liftFrom < fightTicks) {
+				keepScene(liftFrom, KIND_PUNISH2);
 			}
 			punishFrom = -1;
 		}
@@ -1594,6 +1618,17 @@ public final class SchoolSession implements AgentSession {
 				repeatHistory.removeLast();
 			}
 		}
+	}
+
+	/** Run 48d: the first fight tick 1-5 after {@code hit} with the agent's recorded motion rising (in the lift), or -1. */
+	private int liftStartAfter(int hit) {
+		for (int t = hit + 1; t <= hit + 5 && t < fightTicks; t++) {
+			double[] st = ArenaServer.sceneAt(histTick[t % histTick.length]);
+			if (st != null && st[4] > 0.05) {
+				return t;
+			}
+		}
+		return -1;
 	}
 
 	private boolean punishScene() {
