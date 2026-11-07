@@ -4088,7 +4088,11 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	private void endFight(boolean won, boolean lost) {
-		if (mode == Mode.TRAIN && ruleOff) {
+		// Full fights only (7 Nov, run 48b): a replay without the rules goes on to the replay's own tally below (won, 3 in a row,
+		// learned). Since run 30f (1 Nov) about half the replays were played without the rules and returned here uncounted, and
+		// since 47c (every replay without the rules) none was counted: the repeated deflection replay was fought ~700 times with
+		// no try or win recorded.
+		if (mode == Mode.TRAIN && ruleOff && sceneNow == null) {
 			// A fight played without the rules (run 30) has its tally and line apart: it is not one of the full fights the bars,
 			// the lost-case harvest and the damage curve count, as the network is still learning to press the rules' keys itself.
 			ruleOffFights++;
