@@ -237,6 +237,7 @@ public final class SchoolSession implements AgentSession {
 	static final float DRILL_FAR = 2.8f;
 	/** This fight is a drill: the agent's sword is set this many ticks into coming back on its first tick; -1 otherwise. */
 	private int drillTicker = -1;
+	private int clientClockSets;
 	private boolean drillFight;
 	private int drillFights;
 	private int drillPunishCrits;
@@ -2661,17 +2662,24 @@ public final class SchoolSession implements AgentSession {
 		// The new observation: the picture, its body, the memory of the fight; and for the critic the truth.
 		clock.episodeFraction = Math.min(1f, fightTicks / (float) FIGHT_TICKS);
 		// In a review, the old stage's keys and number, as the installed model saw them when it learned that stage.
+		if (!hasLastAction && drillTicker >= 0) {
+			// The drill's sword on this side too: the swing gate and what it sees go by the client's own. Set before the first
+			// look (until 7 Nov it came after it), plus the server ticks since the server set its own (the client's first tick
+			// of the episode comes a tick or two later, and the server's clock has counted on meanwhile).
+			long since = ArenaServer.agentTickerSetAt >= 0 ? Math.max(0, Math.min(5, truth.tick() - ArenaServer.agentTickerSetAt)) : 0;
+			((dev.swordai.mixin.LivingEntityAccessor) me).swordai$setAttackStrengthTicker(drillTicker + (int) since);
+			if (clientClockSets++ < 20) {
+				SwordAi.LOGGER.info("school: the agent's sword clock on its client set to {} + {} server ticks since the server set it",
+						drillTicker, since);
+			}
+			drillTicker = -1;
+		}
 		observer.fillObs(step.obs.base, mc, me, bot, truth, facts, hasLastAction ? lastAction : null,
 				review >= 0 ? basics[review].headMask : ActionSpace.ALL_HEADS, review >= 0 ? BASIC_OLD[review] : 9, clock, motor, idea);
 		System.arraycopy(reader.memory(), 0, step.obs.mem, 0, step.obs.mem.length);
 		step.obs.setOpponent(botTechnique, review >= 0 || sparFight ? null : fightStyle.p, review >= 0 || sparFight ? -1 : fightBot);
 
 		lastTruthFalling = truth.botFalling();
-		if (!hasLastAction && drillTicker >= 0) {
-			// The drill's sword on this side too: the swing gate and what it sees go by the client's own.
-			((dev.swordai.mixin.LivingEntityAccessor) me).swordai$setAttackStrengthTicker(drillTicker);
-			drillTicker = -1;
-		}
 		if (hasLastAction) {
 			fightTicks++;
 			fightDealt += facts.damageDealt;

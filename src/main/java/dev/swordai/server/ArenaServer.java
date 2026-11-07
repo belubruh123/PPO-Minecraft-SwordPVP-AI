@@ -184,6 +184,9 @@ public final class ArenaServer {
 		return truth;
 	}
 
+	/** The server tick on which a scene or drill last set the agent's sword clock (its client sets its own a tick or two later). */
+	public static volatile long agentTickerSetAt = -1;
+
 	/** The sparring score as text, or empty before the first round. Safe from any thread. */
 	public static String sparStatus() {
 		return sparStatus;
@@ -546,6 +549,7 @@ public final class ArenaServer {
 			// The punish crit drill: its sword all the way back, the agent's part of the way (it is lifted before it can swing).
 			((dev.swordai.mixin.LivingEntityAccessor) s.bot).swordai$setAttackStrengthTicker(1000);
 			((dev.swordai.mixin.LivingEntityAccessor) agent).swordai$setAttackStrengthTicker(plan.drillAgentTicker);
+			agentTickerSetAt = s.server.getTickCount();
 		}
 		// Put back anything that went missing since the last episode.
 		s.equip(agent);
@@ -564,6 +568,7 @@ public final class ArenaServer {
 			// The restore check (7 Nov, the user: verify the recreation is exact): compared 1 and 3 ticks on in publish().
 			s.restoreExpect = scene.clone();
 			s.restoreAt = s.server.getTickCount();
+			agentTickerSetAt = s.restoreAt;
 			s.botLastPos = null;
 			s.agentLastPos = null;
 		}
