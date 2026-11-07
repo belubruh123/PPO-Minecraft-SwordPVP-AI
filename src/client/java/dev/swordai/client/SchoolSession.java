@@ -751,9 +751,9 @@ public final class SchoolSession implements AgentSession {
 	 * SCENE_TIME_SHARE of the training ticks (bounded by SCENE_CHANCE_MIN/MAX), and each kind replays only its SCENE_WORKING_SET
 	 * oldest queued failures, so the same moments come back until they are learned and the next ones move in.
 	 */
-	static final float SCENE_TIME_SHARE = 0.3f;
-	static final float SCENE_CHANCE_MIN = 0.1f, SCENE_CHANCE_MAX = 0.85f;
-	static final int SCENE_WORKING_SET = 8;
+	static final float SCENE_TIME_SHARE = 0.5f; // run 47c (the user, 14:25: "add more replay"); 0.3 in 47b
+	static final float SCENE_CHANCE_MIN = 0.1f, SCENE_CHANCE_MAX = 0.9f;
+	static final int SCENE_WORKING_SET = 4; // run 47c: each moment back twice as often; 8 in 47b
 	private float sceneTicksAvg = 40f, fullTicksAvg = 280f;
 
 	/** The chance that a training fight is a replay, so that replays take SCENE_TIME_SHARE of the training time. */
@@ -2452,7 +2452,10 @@ public final class SchoolSession implements AgentSession {
 		// hit (13 vs 7 taken a fight) and in the air (15 vs 4), exactly the scenes' contexts, which were all played with the rules, so the
 		// network never practised its own answer there.
 		ruleOff = mode == Mode.CHECK ? rulesOffCheck && !installedPlays
-			: review < 0 && !drillFight && rng.nextFloat() < ruleOffShare();
+			// Run 47c (the user, 14:25: many replays and still not learned): every replay is played without the rules, so the network
+			// presses every key of the moment itself and gets the gradient for it (with the rules on, about half the replays, the
+			// rules pressed the deciding keys and those got none).
+			: review < 0 && !drillFight && (sceneNow != null && mode == Mode.TRAIN || rng.nextFloat() < ruleOffShare());
 		drillTicker = plan.drillLift ? plan.drillAgentTicker : sceneNow != null ? SceneRecorder.agentTicker(sceneNow.state) : -1;
 		drillFights += plan.drillLift ? 1 : 0;
 		plan.seed = seed;
@@ -3411,7 +3414,9 @@ public final class SchoolSession implements AgentSession {
 			// of the ticks of their combos' hits against the installed model's 94-96%, pressing S 13-18% against 3-4%, and hit in the air 244-376
 			// times against 67, which is the keys no rule presses, where its copying target was the frozen run 6 network's chances (ANCHOR_TO_BEST),
 			// not the installed model's own network.
-			ruledTaught = ruleOff ? keys & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH) : ruled;
+			// Run 47c: no copying pull in a replay. The replays are the failures of the rules and the network together, and the pull
+			// to the installed model's keys (RULED_PULL) dragged it back to the answer that failed there; a replay learns by its reward.
+			ruledTaught = ruleOff ? (sceneNow != null && mode == Mode.TRAIN ? 0 : keys & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH)) : ruled;
 			if (ruleOff) {
 				ruled = 0;
 			}
