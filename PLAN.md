@@ -7,7 +7,7 @@ the time), write each block's verdict under it, and commit. Never delete a block
 for check 2 (done: check 1; next: check 3, verdict)". Keep this line current:
 
 For the panel (short, plain words; keep both current):
-**NOW: Block 5 · 3+ combos · run 46 batch live 09:50, 46f (scene start timing) deploys ~10:15; measured for 11:30**
+**NOW: Block 5 · run 47 (failed-attempt queue: deflection + exact punish twin, 30% scenes) deploys 10:45; user away until 8 Nov**
 **INSTALLED: run35-0657 · +4.5 vs B · since 5 Nov 21:19**
 
 **CURRENT STEP (7 Nov 09:47): block 5. Run 46 batch deployed 09:45, early (30 min after run 45) because 46e found that every scene put the agent back with the wrong velocity (67% of kept scenes had it standing still): 46 swing entropy, 46b scene turn, 46c short twins, 46d restore check, 46e agent velocity from its client + motion sent with the teleport + client sword clock aligned + old scenes moved aside. refv4 (game model, new bots) done; the first check after the deploy (~10:35) is benched as run46v4 against refv4; report at 11:30 against: 3+ combos 0.6+ a fight, 2->3 45%+, punish crit chances critted 50%, plus the restore check's numbers.**
