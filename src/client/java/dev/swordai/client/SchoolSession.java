@@ -770,8 +770,12 @@ public final class SchoolSession implements AgentSession {
 	static final int KIND_CRIT2 = 6;
 	static final int CRIT2_BEFORE = 8;
 	static final int CRIT2_SCENE_TICKS = 30;
-	static final int KINDS = 7;
-	static final String[] KIND_NAMES = {"crit", "jump-in", "combo", "punish", "own combo", "own combo 2", "crit short"};
+	/** Short jump-in scenes (run 46c, the same request): 2 ticks before their take-off, 2 s, won as a jump-in scene. */
+	static final int KIND_JUMPIN2 = 7;
+	static final int JUMPIN2_BEFORE = 2;
+	static final int JUMPIN2_SCENE_TICKS = 40;
+	static final int KINDS = 8;
+	static final String[] KIND_NAMES = {"crit", "jump-in", "combo", "punish", "own combo", "own combo 2", "crit short", "jump-in short"};
 	static final int PUNISH_BEFORE = 10;
 	static final int PUNISH_SCENE_TICKS = 40;
 	static final int COMBO_BEFORE = 20;
@@ -793,7 +797,8 @@ public final class SchoolSession implements AgentSession {
 	 * cutting comboing opponent that controls hit perfectly", and need not rely on the "unstable punish crit". Combo scenes
 	 * won 39% of the last 200; against the uppercutter A's net was below zero in the last four hourly checks.
 	 */
-	static final int[][] FOCUS_KINDS = {{KIND_CRIT, KIND_CRIT2, KIND_JUMPIN, KIND_PUNISH, KIND_COMBO, KIND_OWN, KIND_OWN2}, {KIND_COMBO, KIND_OWN, KIND_OWN2}};
+	static final int[][] FOCUS_KINDS = {{KIND_CRIT, KIND_CRIT2, KIND_JUMPIN, KIND_JUMPIN2, KIND_PUNISH, KIND_COMBO, KIND_OWN, KIND_OWN2},
+			{KIND_COMBO, KIND_OWN, KIND_OWN2}};
 	static final String[] FOCUS_NAMES = {"the crits (crit scenes, jump-in counter, punish crit)", "the combo escape"};
 	static final float FOCUS_SHARE = 0.8f;
 	static final int FOCUS_EVENTS = 300;
@@ -821,7 +826,7 @@ public final class SchoolSession implements AgentSession {
 		double[] state;
 
 		int ticks() {
-			return kind == KIND_CRIT ? SCENE_WINDOW : kind == KIND_PUNISH ? PUNISH_SCENE_TICKS : kind == KIND_OWN ? OWN_SCENE_TICKS : kind == KIND_OWN2 ? OWN2_SCENE_TICKS : kind == KIND_CRIT2 ? CRIT2_SCENE_TICKS : JUMPIN_SCENE_TICKS;
+			return kind == KIND_CRIT ? SCENE_WINDOW : kind == KIND_PUNISH ? PUNISH_SCENE_TICKS : kind == KIND_OWN ? OWN_SCENE_TICKS : kind == KIND_OWN2 ? OWN2_SCENE_TICKS : kind == KIND_CRIT2 ? CRIT2_SCENE_TICKS : kind == KIND_JUMPIN2 ? JUMPIN2_SCENE_TICKS : JUMPIN_SCENE_TICKS;
 		}
 
 		String line() {
@@ -907,7 +912,8 @@ public final class SchoolSession implements AgentSession {
 	private int focusReached;
 	/** Rolling outcomes for the focus bars: per kind, the last scene fights won; the full fights' jump-ins and combos. */
 	private final Rolling[] sceneRoll = {new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS),
-			new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS)};
+			new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS), new Rolling(FOCUS_REPLAYS),
+			new Rolling(FOCUS_REPLAYS)};
 	private int ownKind = KIND_OWN;
 	private int ownSecondAt;
 	/** Own combos (run 44): the first one of this full fight that died short, to keep from ownFrom at keepOwnAt (-1: none). */
@@ -1194,6 +1200,8 @@ public final class SchoolSession implements AgentSession {
 		}
 		if (jumpInFrom >= 0 && (fightOver || fightTicks >= keepJumpInAt)) {
 			keepScene(Math.max(1, jumpInFrom - JUMPIN_BEFORE), KIND_JUMPIN);
+			// Its short twin (run 46c): from just before their take-off.
+			keepScene(Math.max(1, jumpInFrom - JUMPIN2_BEFORE), KIND_JUMPIN2);
 			jumpInFrom = -1;
 		}
 		if (comboFrom >= 0 && (fightOver || fightTicks >= keepComboAt)) {
@@ -3715,7 +3723,7 @@ public final class SchoolSession implements AgentSession {
 			sceneNet += fightDealt - fightTaken;
 			sceneNetBefore += sceneNow.net;
 			boolean sceneWon = sceneNow.kind == KIND_PUNISH ? !sceneK2 && sceneOwnCrit
-					: sceneNow.kind == KIND_JUMPIN ? !sceneK2 && (!sceneHit || sceneAnswer)
+					: sceneNow.kind == KIND_JUMPIN || sceneNow.kind == KIND_JUMPIN2 ? !sceneK2 && (!sceneHit || sceneAnswer)
 					: sceneNow.kind == KIND_COMBO ? sceneRowMost < 2
 					: sceneNow.kind == KIND_OWN ? sceneOwnHits >= 2 && !sceneOwnBroken
 					: sceneNow.kind == KIND_OWN2 ? sceneOwnHits >= 1 && !sceneOwnBroken : fightDealt > fightTaken;
