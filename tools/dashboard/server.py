@@ -297,6 +297,16 @@ def installed_mod():
     return {'name': os.path.basename(j), 'time': time.strftime('%d %b %H:%M', time.localtime(os.path.getmtime(j)))}
 
 
+def read_replays(run):
+    """The replay queue (run 47, SchoolSession.writeReplayStatus): queued, replayed, won, learned, tested again, forgot, per kind."""
+    p = os.path.join(run, 'swordai', 'school', 'replay-queue.json')
+    try:
+        with open(p, encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
 def read_bench(run):
     """The benchmark (docs/BENCHMARK.md): the last comparison tools/bench.py wrote, and a run going on now."""
     bench = os.path.join(run, 'swordai', 'bench')
@@ -550,7 +560,7 @@ def build(cache, techniques, stages, prio, hits=None):
         'stages': [s for s in stages if s['name'] != 'T-F'], 'priority': prio,
         'techniques': rows, 'damage': damage[-600:], 'checks': checks[-60:], 'landing': landing, 'critChances': crit_chances, 'punish': punish,
         'models': read_models(cache.run), 'plan': read_plan(), 'experiments': read_experiments(),
-        'punishRolling': punish_rolling(log), 'mod': installed_mod(), 'bench': read_bench(cache.run),
+        'punishRolling': punish_rolling(log), 'mod': installed_mod(), 'bench': read_bench(cache.run), 'replays': read_replays(cache.run),
         'served': time.strftime('%H:%M:%S'),
     }
 

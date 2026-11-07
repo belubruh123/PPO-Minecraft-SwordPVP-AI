@@ -946,6 +946,14 @@ public final class SchoolSession implements AgentSession {
 	private boolean sceneReview;
 	private int sceneReviews;
 	private int sceneForgot;
+	/**
+	 * The replay queue for the panel (the user, 7 Nov 10:50: how many replays are queued, how many replayed, how many it learned,
+	 * its success rate, and the learned ones tested again at random and put back when failed). Per kind, since REPLAY_FILE began
+	 * (kept across restarts): replayed, won, learned (won SCENE_MASTERED in a row, put away), learned ones tested again, of those
+	 * failed and put back in the queue.
+	 */
+	static final String REPLAY_FILE = "replay-queue.json";
+	private final long[][] replayTotals = new long[KINDS][5];
 	private final long[] histTick = new long[256];
 	private final float[] histNet = new float[256];
 	private long fightStyleSeed;
@@ -1231,6 +1239,7 @@ public final class SchoolSession implements AgentSession {
 
 	private void loadScenes() {
 		retireWrongVelocityScenes();
+		loadReplayTotals();
 		loadScenes(SCENE_FILE, scenes);
 		loadScenes(MASTERED_FILE, mastered);
 		loadFocus();
@@ -1258,6 +1267,68 @@ public final class SchoolSession implements AgentSession {
 			SwordAi.LOGGER.info("school: scenes kept before the velocity fix moved aside (.old-wrong-velocity); new ones refill");
 		} catch (IOException e) {
 			SwordAi.LOGGER.warn("school: the old scenes could not be moved aside: {}", e.getMessage());
+		}
+	}
+
+	private void loadReplayTotals() {
+		Path file = SwordFiles.schoolDir().resolve(REPLAY_FILE);
+		if (!Files.exists(file)) {
+			return;
+		}
+		try {
+			com.google.gson.JsonObject o = com.google.gson.JsonParser.parseString(Files.readString(file)).getAsJsonObject();
+			for (com.google.gson.JsonElement e : o.getAsJsonArray("kinds")) {
+				com.google.gson.JsonObject k = e.getAsJsonObject();
+				int i = java.util.Arrays.asList(KIND_NAMES).indexOf(k.get("name").getAsString());
+				if (i >= 0) {
+					String[] keys = {"replayed", "won", "learned", "tested", "forgot"};
+					for (int j = 0; j < keys.length; j++) {
+						replayTotals[i][j] = k.has(keys[j]) ? k.get(keys[j]).getAsLong() : 0;
+					}
+				}
+			}
+		} catch (IOException | RuntimeException e) {
+			SwordAi.LOGGER.warn("school: the replay totals could not be read: {}", e.getMessage());
+		}
+	}
+
+	/** The replay queue as the panel shows it (tools/dashboard), written at every update. */
+	private void writeReplayStatus() {
+		com.google.gson.JsonObject o = new com.google.gson.JsonObject();
+		o.addProperty("time", java.time.LocalDateTime.now().withNano(0).toString());
+		o.addProperty("share", SCENE_SHARE);
+		o.addProperty("learnedAfter", SCENE_MASTERED);
+		o.addProperty("testShare", SCENE_REVIEW_SHARE);
+		o.addProperty("deflectChances", deflectChances);
+		o.addProperty("deflectMade", deflectMade);
+		o.addProperty("deflectMissed", deflectMissed);
+		o.addProperty("punishRolling", punishRoll.line());
+		com.google.gson.JsonArray kinds = new com.google.gson.JsonArray();
+		for (int k = 0; k < KINDS; k++) {
+			int learnedNow = 0;
+			for (Scene sc : mastered) {
+				learnedNow += sc.kind == k ? 1 : 0;
+			}
+			com.google.gson.JsonObject j = new com.google.gson.JsonObject();
+			j.addProperty("name", KIND_NAMES[k]);
+			j.addProperty("queued", countKind(k));
+			j.addProperty("learnedNow", learnedNow);
+			j.addProperty("replayed", replayTotals[k][0]);
+			j.addProperty("won", replayTotals[k][1]);
+			j.addProperty("learned", replayTotals[k][2]);
+			j.addProperty("tested", replayTotals[k][3]);
+			j.addProperty("forgot", replayTotals[k][4]);
+			j.addProperty("recent", sceneRoll[k].line());
+			kinds.add(j);
+		}
+		o.add("kinds", kinds);
+		Path file = SwordFiles.schoolDir().resolve(REPLAY_FILE);
+		try {
+			Path tmp = file.resolveSibling(REPLAY_FILE + ".tmp");
+			Files.writeString(tmp, o.toString());
+			Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
+		} catch (IOException e) {
+			SwordAi.LOGGER.warn("school: the replay queue could not be written: {}", e.getMessage());
 		}
 	}
 
@@ -1450,6 +1521,7 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, "; jump-in scenes kept %d, fought again %d, countered %d (%.0f%%), mastered %d; jump-ins countered in the full fights %d of %d (%.0f%%)",
 						countKind(KIND_JUMPIN), jumpInScenes, jumpInScenesWon, jumpInScenes == 0 ? 0f : 100f * jumpInScenesWon / jumpInScenes,
 						jumpInScenesMastered, trainJumpInsCountered, trainJumpIns, trainJumpIns == 0 ? 0f : 100f * trainJumpInsCountered / trainJumpIns);
+		writeReplayStatus();
 		StringBuilder kindsLine = new StringBuilder();
 		for (int k = 0; k < KINDS; k++) {
 			kindsLine.append(String.format(Locale.ROOT, "; %s scenes kept %d, won %d of %d (last %s)", KIND_NAMES[k], countKind(k), kindWon[k],
@@ -3929,6 +4001,15 @@ public final class SchoolSession implements AgentSession {
 				sceneDecidedWon += sceneWon ? 1 : 0;
 			}
 			sceneNow.replays++;
+			long[] tot = replayTotals[sceneNow.kind];
+			if (sceneReview) {
+				tot[3]++;
+				tot[4] += sceneWon ? 0 : 1;
+			} else {
+				tot[0]++;
+				tot[1] += sceneWon ? 1 : 0;
+				tot[2] += sceneNow.wins + (sceneWon ? 1 : 0) >= SCENE_MASTERED ? 1 : 0;
+			}
 			if (sceneReview) {
 				sceneReviews++;
 				if (!sceneWon) {

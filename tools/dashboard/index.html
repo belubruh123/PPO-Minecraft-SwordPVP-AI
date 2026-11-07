@@ -71,6 +71,10 @@
     <h2>Benchmark: a network vs the model in your game</h2>
     <div id="bench" class="muted">–</div>
   </div>
+  <div class="card">
+    <h2>Replay queue (failed attempts, put back exactly)</h2>
+    <div id="replays" class="muted">–</div>
+  </div>
 
   <div class="card">
     <h2>Scores (this run's checks)</h2>
@@ -124,6 +128,22 @@ const sg = (v, d = 1) => (v == null ? '–' : (v > 0 ? '+' : '') + v.toFixed(d))
 const short = (s, n = 90) => { s = String(s || ''); const cut = s.search(/[.:;(]/); s = cut > 20 ? s.slice(0, cut) : s; return s.length > n ? s.slice(0, n) + '…' : s; };
 const GROUPS = [['Start a combo', ['T4', 'T5', 'T6', 'T6a', 'T7', 'T9']], ['Hold a combo', ['T10', 'T11a', 'T11b', 'T11c', 'T2']],
   ['Crits', ['B1', 'T1', 'T1a', 'T1b', 'T1c', 'C6']], ['Jump-ins', ['K2', 'K3', 'T9a', 'T9b', 'T9c']], ['Getting out', ['C1', 'C2', 'C3', 'C4', 'C7']]];
+
+function renderReplays(r) {
+  if (!r || !r.kinds) { $('replays').innerHTML = 'No replay numbers yet (written at every training update).'; return; }
+  let q = 0, l = 0;
+  let rows = r.kinds.filter((k) => k.queued || k.replayed || k.learnedNow).map((k) => {
+    q += k.queued; l += k.learnedNow;
+    const all = k.replayed ? Math.round(100 * k.won / k.replayed) + '%' : '–';
+    const m = /(\d+)% of (\d+)/.exec(k.recent || '');
+    const rec = m && +m[2] > 0 ? m[1] + '% <span class="muted">of ' + m[2] + '</span>' : '–';
+    return `<tr><td>${esc(k.name)}</td><td>${k.queued}</td><td>${k.replayed}</td><td>${all}</td><td>${rec}</td><td>${k.learned}</td><td>${k.learnedNow}</td><td>${k.tested}</td><td>${k.forgot}</td></tr>`;
+  }).join('');
+  $('replays').innerHTML = `<div style="margin-bottom:8px">In the queue <b>${q}</b> · learned and put away <b>${l}</b> · replays are ${Math.round(100 * r.share)}% of training;
+    learned = done ${r.learnedAfter} times in a row; ${Math.round(100 * r.testShare)}% of replays test a learned one again, a failed one goes back in the queue.
+    Deflection chances since the last update: ${r.deflectChances}, made ${r.deflectMade}, missed ${r.deflectMissed}. Punish crit chances critted: ${esc(r.punishRolling)}. <span class="muted">(${esc(r.time)})</span></div>
+    <table><tr><th>kind</th><th>queued</th><th>replayed</th><th>success</th><th>recent success</th><th>learned</th><th>put away now</th><th>tested again</th><th>forgot</th></tr>${rows}</table>`;
+}
 
 function renderBench(b) {
   let h = '';
@@ -192,6 +212,7 @@ function render(d) {
   draw('chartP', checks.slice(-30), runs, (c) => pc(c.afterCrit && c.afterCrit.A), null, 150, false, (c) => pc(c.afterCrit && c.afterCrit.B));
 
   renderBench(d.bench || {});
+  renderReplays(d.replays || {});
 
   $('plan').innerHTML = blocks.map((b) => {
     const mark = b.done >= b.total ? '<span class="ok">✓</span>' : b === cur ? '<span class="a">▶</span>' : '<span class="muted">○</span>';
