@@ -3663,7 +3663,10 @@ public final class SchoolSession implements AgentSession {
 			techniqueReward();
 		}
 		ruledNow = ruled;
-		if (!(ruleOff && mode == Mode.TRAIN)) {
+		// Run 48f (7 Nov 18:50): and in every replay. traceJumpIn keeps the replay's own result (its crit, a K2, a hit taken, an
+		// answer); skipped in rule-off fights, so since 47c (every replay rule-off) no punish replay could be won (0 of 659, 13
+		// of them with a real crit) and every jump-in replay counted as won.
+		if (!(ruleOff && mode == Mode.TRAIN) || sceneNow != null) {
 			traceCrit(0, action[ActionSpace.ATTACK] == 1);
 			traceJumpIn(0);
 			logHits(0, action[ActionSpace.ATTACK] == 1, truth.botFalling());
