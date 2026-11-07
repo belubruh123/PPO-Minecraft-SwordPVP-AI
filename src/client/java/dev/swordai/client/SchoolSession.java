@@ -1292,7 +1292,7 @@ public final class SchoolSession implements AgentSession {
 		// Run 48d: punish twins that begin with the agent not rising had no lift to punish from: moved aside (kept).
 		List<Scene> noLift = new ArrayList<>();
 		for (Scene sc : scenes) {
-			if (sc.kind == KIND_PUNISH2 && sc.state[4] <= 0.05) {
+			if (sc.kind == KIND_PUNISH2 && sc.state[4] <= 0.05 || (sc.kind == KIND_OWN || sc.kind == KIND_OWN2) && !botKnocked(sc.state)) {
 				noLift.add(sc);
 			}
 		}
@@ -1308,7 +1308,8 @@ public final class SchoolSession implements AgentSession {
 			} catch (IOException e) {
 				SwordAi.LOGGER.warn("school: the punish twins with no lift could not be kept aside: {}", e.getMessage());
 			}
-			SwordAi.LOGGER.info("school: {} punish short replays without the lift moved aside", noLift.size());
+			SwordAi.LOGGER.info("school: {} punish short replays without the lift and own-combo replays without the knockback moved aside",
+					noLift.size());
 		}
 		loadScenes(MASTERED_FILE, mastered);
 		loadFocus();
@@ -1493,7 +1494,12 @@ public final class SchoolSession implements AgentSession {
 			deflectFrom = -1;
 		}
 		if (ownFrom >= 0 && (fightOver || fightTicks >= keepOwnAt)) {
-			keepScene(Math.max(1, ownFrom), ownKind);
+			// Run 48g: from the first tick the bot is really knocked away (its knockback comes a ping late, KnockbackLag): 37% of
+			// the own-combo replays began with the bot not yet moving away, the knockback lost in the put-back, so it hit back.
+			int knocked = knockStartAfter(ownFrom - 1);
+			if (knocked > 0 && knocked < fightTicks) {
+				keepScene(knocked, ownKind);
+			}
 			ownFrom = -2; // one a fight
 		}
 	}
@@ -1624,6 +1630,25 @@ public final class SchoolSession implements AgentSession {
 				repeatHistory.removeLast();
 			}
 		}
+	}
+
+	/** Run 48g: whether the bot in a kept state is moving away from the agent (its knockback on). */
+	private static boolean botKnocked(double[] st) {
+		int b = 14; // SceneRecorder.BODY (package-private): numbers kept per fighter
+		double dx = st[b] - st[0], dz = st[b + 2] - st[2];
+		double d = Math.max(1e-6, Math.hypot(dx, dz));
+		return (st[b + 3] * dx + st[b + 5] * dz) / d > 0.15;
+	}
+
+	/** Run 48g: the first fight tick 1-6 after {@code hit} with the bot knocked away, or -1. */
+	private int knockStartAfter(int hit) {
+		for (int t = hit + 1; t <= hit + 6 && t < fightTicks; t++) {
+			double[] st = ArenaServer.sceneAt(histTick[t % histTick.length]);
+			if (st != null && botKnocked(st)) {
+				return t;
+			}
+		}
+		return -1;
 	}
 
 	/** Run 48d: the first fight tick 1-5 after {@code hit} with the agent's recorded motion rising (in the lift), or -1. */
