@@ -774,8 +774,9 @@ public final class SchoolSession implements AgentSession {
 	/** Run 48c: a decided try still lasts this long (tries of 3-9 ticks, several resets a second, put the server 2-5 s behind). */
 	static final int REPEAT_MIN_TICKS = 20;
 	static final float REPEAT_TICK_COST = 0.02f, REPEAT_DONE = 1.0f, REPEAT_FAILED = 0.5f;
-	private final int[] REPEAT_ORDER = {KIND_DEFLECT, KIND_PUNISH2, KIND_PUNISH, KIND_OWN2, KIND_OWN, KIND_CRIT2, KIND_JUMPIN2, KIND_COMBO, KIND_CRIT,
-			KIND_JUMPIN};
+	// Run 48h: without the long punish replay (from 10 ticks before their hit the bot must choose to hit again, most often it did
+	// not: won 7 of 737, 1%); its exact twin from inside the lift (KIND_PUNISH2) covers the same moment and was learned (716 tries).
+	private final int[] REPEAT_ORDER = {KIND_DEFLECT, KIND_PUNISH2, KIND_OWN2, KIND_OWN, KIND_CRIT2, KIND_JUMPIN2, KIND_COMBO, KIND_CRIT, KIND_JUMPIN};
 	private Scene repeatScene;
 	private int repeatTries, repeatNext, repeatLearned, repeatGivenUp;
 	private long repeatStartMs, repeatTriesSum;
