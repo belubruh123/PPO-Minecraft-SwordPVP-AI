@@ -56,6 +56,11 @@ public class SwordAiClient implements ClientModInitializer {
 			}
 		});
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
+			if (mc.player != null && mc.getSingleplayerServer() != null) {
+				// The agent's real motion for the scene recorder (the server only gets its positions).
+				net.minecraft.world.phys.Vec3 v = mc.player.getDeltaMovement();
+				dev.swordai.server.SceneRecorder.noteClientMotion(mc.player.getX(), mc.player.getY(), mc.player.getZ(), v.x, v.y, v.z);
+			}
 			AgentSession s = session;
 			if (s != null) {
 				s.endTick();

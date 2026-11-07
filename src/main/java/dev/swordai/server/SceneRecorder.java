@@ -48,8 +48,62 @@ public final class SceneRecorder {
 		return null;
 	}
 
+	/**
+	 * The agent's own client after each of its ticks: where it was and how fast it was moving (7 Nov, the restore check). The
+	 * server never learns a client player's motion: it only gets positions, and its own copy of the player's velocity is a
+	 * no-input simulation (1.21.11: Player.canSimulateMovement), so recording {@code getDeltaMovement()} for the agent put every
+	 * scene back with the wrong velocity. The client writes this (same game, the integrated server) and the recorder takes the
+	 * snapshot whose position is the one the server has.
+	 */
+	private static final int SNAPS = 8;
+	private static final double[][] clientSnap = new double[SNAPS][6];
+	private static int clientSnapNext, clientSnapCount;
+	/** Agent velocities recorded from its client, and from the server's movement packets when no snapshot matched. */
+	public static volatile long fromClient, fromPackets;
+
+	public static synchronized void noteClientMotion(double x, double y, double z, double vx, double vy, double vz) {
+		double[] c = clientSnap[clientSnapNext];
+		c[0] = x;
+		c[1] = y;
+		c[2] = z;
+		c[3] = vx;
+		c[4] = vy;
+		c[5] = vz;
+		clientSnapNext = (clientSnapNext + 1) % SNAPS;
+		clientSnapCount = Math.min(clientSnapCount + 1, SNAPS);
+	}
+
+	/** The client's velocity when it was at (x, y, z), newest first, or null. */
+	private static synchronized double[] clientMotionAt(double x, double y, double z) {
+		for (int i = 0; i < clientSnapCount; i++) {
+			double[] c = clientSnap[(clientSnapNext - 1 - i + SNAPS) % SNAPS];
+			if (Math.abs(c[0] - x) < 1e-6 && Math.abs(c[1] - y) < 1e-6 && Math.abs(c[2] - z) < 1e-6) {
+				return new double[] {c[3], c[4], c[5]};
+			}
+		}
+		return null;
+	}
+
+	/** How fast a fighter is really moving: for a real client (the agent) its own velocity, else the server's. */
+	static Vec3 motion(ServerPlayer p, boolean agent) {
+		if (!agent) {
+			return p.getDeltaMovement();
+		}
+		double[] c = clientMotionAt(p.getX(), p.getY(), p.getZ());
+		if (c != null) {
+			fromClient++;
+			return new Vec3(c[0], c[1], c[2]);
+		}
+		// No snapshot at this position: the client's last move as the server got it, turned into the velocity it leaves
+		// behind (friction 0.546 on the ground, 0.91 in the air; gravity 0.08, drag 0.98).
+		fromPackets++;
+		Vec3 m = p.getKnownMovement();
+		double f = p.onGround() ? 0.546 : 0.91;
+		return new Vec3(m.x * f, p.onGround() ? 0 : (m.y - 0.08) * 0.98, m.z * f);
+	}
+
 	private static void write(ServerPlayer p, double[] s, int o) {
-		Vec3 v = p.getDeltaMovement();
+		Vec3 v = motion(p, o == 0);
 		s[o] = p.getX();
 		s[o + 1] = p.getY();
 		s[o + 2] = p.getZ();
@@ -71,8 +125,13 @@ public final class SceneRecorder {
 		p.teleportTo(level, s[o], s[o + 1], s[o + 2], Set.of(), (float) s[o + 6], (float) s[o + 7], true);
 		p.setYHeadRot((float) s[o + 6]);
 		p.setDeltaMovement(s[o + 3], s[o + 4], s[o + 5]);
-		// Sends the motion to the client (the agent's own client moves it).
-		p.hurtMarked = true;
+		if (o == 0) {
+			// The agent's own client moves it: its motion goes out right behind the teleport (which sets it to zero), so both
+			// arrive together; hurtMarked would send it a tick later, after the client had already moved once without it.
+			p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket(p));
+		} else {
+			p.hurtMarked = true;
+		}
 		((LivingEntityAccessor) p).swordai$setAttackStrengthTicker((int) s[o + 8]);
 		p.setHealth((float) Math.max(1.0, s[o + 9]));
 		p.hurtTime = (int) s[o + 10];

@@ -1138,7 +1138,8 @@ public final class ArenaServer {
 					mean.append(String.format(java.util.Locale.ROOT, " %s %d tick%s: pos %.2f (no motion %.2f), height %.2f, velocity %.2f of %.2f, clock %.1f, sprint kept %.0f%%, look %.0f, health %.1f;",
 							k % 2 == 0 ? "agent" : "bot", k < 2 ? 1 : 3, k < 2 ? "" : "s", a[0] / n, a[1] / n, a[2] / n, a[3] / n, a[4] / n, a[5] / n, 100 * a[6] / n, a[7] / n, a[8] / n));
 				}
-				line.append(mean);
+				line.append(mean).append(String.format(java.util.Locale.ROOT, " agent velocity recorded from its client %d, from packets %d",
+						SceneRecorder.fromClient, SceneRecorder.fromPackets));
 			}
 			SwordAi.LOGGER.info(line.toString());
 		}
