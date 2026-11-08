@@ -131,9 +131,23 @@ public final class TechniqueBot {
 		return player;
 	}
 
-	/** How late the bot's knockback comes, ticks: never less than one; see the class comment. */
+	/**
+	 * Run 49c (8 Nov 22:35): the agent's own connection, the ticks its hit takes to reach the server. In singleplayer the
+	 * agent's swing lands on the server at once; only what it sees comes late (SeenLag, the fight's 1-4 ticks). On a real
+	 * server the swing also travels up and the knockback then down to the other player, so a late hit on a jumper lands when
+	 * the jumper is already coming down on it: the user's real duels, a late swing at a jump 0.17-0.20 crits and -0.35 to -0.40
+	 * HP a jump against -0.10 to +0.10 with none, while the bots took 0.04 crits a jump either way (the knock-away came 2-4
+	 * ticks sooner than on a server). Kept across a scene's put-back (start() leaves it).
+	 */
+	private int uplink;
+
+	void uplink(int ticks) {
+		uplink = Math.max(0, ticks);
+	}
+
+	/** How late the bot's knockback comes, ticks: never less than one, plus the agent's way up (run 49c); see the class comment. */
 	int ping() {
-		return Math.max(1, style.ping);
+		return Math.max(1, style.ping) + uplink;
 	}
 
 	/** A hit of the agent's landed on the bot, of this kind ({@link Events}): it feels it when the knockback reaches it. */

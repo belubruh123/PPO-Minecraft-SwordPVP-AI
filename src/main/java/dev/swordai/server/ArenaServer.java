@@ -184,6 +184,8 @@ public final class ArenaServer {
 		return truth;
 	}
 
+	/** Run 49c (8 Nov 22:35): the bots' knockback also waits for the agent's way up to the server; see TechniqueBot#uplink. */
+	static final boolean UPLINK_FROM_AGENT = true;
 	/** The server tick on which a scene or drill last set the agent's sword clock (its client sets its own a tick or two later). */
 	public static volatile long agentTickerSetAt = -1;
 
@@ -516,13 +518,17 @@ public final class ArenaServer {
 		s.brain.setProfile(plan.bot);
 		s.brain.setLag(plan.botLag);
 		s.techPlays = plan.style != null;
+		// Run 49c: the agent's hit reaches the server as late as its connection (the fight's lag, also how late it sees them);
+		// see TechniqueBot#uplink.
+		int uplink = UPLINK_FROM_AGENT ? Math.max(0, plan.agentLag) : 0;
 		if (s.techPlays) {
+			s.tech.uplink(uplink);
 			s.tech.start(plan.style, plan.seed != 0L ? plan.seed : s.rng.nextLong());
 			// The bot feels a hit when its knockback reaches it, at least a tick late; see TechniqueBot.
 			KnockbackLag.set(s.bot, s.tech.ping(), 1f);
 		} else {
 			s.tech.stop();
-			KnockbackLag.set(s.bot, plan.botPing, plan.botKnockback);
+			KnockbackLag.set(s.bot, plan.botPing + uplink, plan.botKnockback);
 		}
 		KnockbackLag.setAgent(agent, plan.agentKnockLag);
 		s.setIdleNow(false);
