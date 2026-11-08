@@ -632,6 +632,16 @@ public final class SchoolSession implements AgentSession {
 	private int k2Held;
 	/** In the air now on a jump that started at it from close (JUMP_IN_GUARD), not yet hit by it. */
 	private boolean jumpInAir;
+	/** Run 51: it took off along with their jump-in and has not landed yet; and the counts for the update line. */
+	private boolean jumpedAlong;
+	private int jumpAlongs, jumpAlongCrits, jumpAlongPunish;
+
+	private String jumpAlongLine() {
+		String s = String.format(Locale.ROOT, " | jumped along with their jump-in %d, its crits on them then %d, punish crits then %d",
+				jumpAlongs, jumpAlongCrits, jumpAlongPunish);
+		jumpAlongs = jumpAlongCrits = jumpAlongPunish = 0;
+		return s;
+	}
 	private int ruleTicks;
 	/** The school's sprint hits on one the server had falling (Truth.botFalling), and that flag as of the step. */
 	private int k2Truth;
@@ -1948,6 +1958,16 @@ public final class SchoolSession implements AgentSession {
 	 * it waste a sprint hit on a falling jump in critter or late rising jump in critter").
 	 */
 	static final boolean JUMP_IN_ANY_DIRECTION = true;
+	/**
+	 * Run 51 (9 Nov 06:55), the user: "when opponent jump in it can consider to jump along so both deals a crit and if luckily
+	 * they hit you first you can get a punish crit on them". The guard holds knockback hits on a late jumper (they land their
+	 * crit through the ping anyway); a crit of its own (falling, not sprinting, sword back) is not a knock-away, so it goes
+	 * through. JUMP_ALONG_CRIT pays its crit on them when it took off along with their jump-in (up to JUMP_ALONG_TICKS of their
+	 * jump); a punish crit after their hit lifted it is paid as any (PUNISH_CRIT). Learned, not forced: the jump is its own.
+	 */
+	static final boolean JUMP_IN_LET_CRIT = true;
+	static final int JUMP_ALONG_TICKS = 4;
+	static final float JUMP_ALONG_CRIT = 0.3f;
 
 	/** A take-off the guard watches: close enough, and coming at it unless JUMP_IN_ANY_DIRECTION. */
 	static boolean jumpInWatched(dev.swordai.core.pvp.Duel duel) {
@@ -2766,6 +2786,7 @@ public final class SchoolSession implements AgentSession {
 		liftedFor = sceneNow != null && sceneNow.kind == KIND_PUNISH2 ? PUNISH2_AFTER : -1;
 		jumpInAir = false;
 		onGroundBefore = true;
+		jumpedAlong = false;
 		liftKind = -1;
 		liftStage = 0;
 		liftTaught = false;
@@ -3154,6 +3175,13 @@ public final class SchoolSession implements AgentSession {
 		if (liftedFor > 3 && me.onGround() || liftedFor > PUNISH_WINDOW) {
 			liftedFor = -1;
 		}
+		// Run 51: it jumped along with their jump-in (its take-off early in their jump); until it lands again.
+		if (onGroundBefore && !me.onGround() && jumpInAir && jumpInTick(reader.duel.them) <= JUMP_ALONG_TICKS) {
+			jumpedAlong = true;
+			jumpAlongs++;
+		} else if (me.onGround() && !onGroundBefore) {
+			jumpedAlong = false;
+		}
 		onGroundBefore = me.onGround();
 		clock.takenStreak.tick(shownDealt ? 1 : 0, facts.hitsTaken);
 		if (installed != null && hurtNow) {
@@ -3237,6 +3265,14 @@ public final class SchoolSession implements AgentSession {
 					} else {
 						reward += OTHER_CRIT;
 						otherCrits++;
+					}
+					if (jumpedAlong) {
+						if (liftedFor >= 0) {
+							jumpAlongPunish++;
+						} else {
+							reward += JUMP_ALONG_CRIT;
+							jumpAlongCrits++;
+						}
 					}
 				}
 				// Falling as it saw them, or on the server already (seen late: "it might be landing already while client still
@@ -3636,7 +3672,7 @@ public final class SchoolSession implements AgentSession {
 			jumpInAir = true;
 		}
 		boolean k2Hold = JUMP_IN_GUARD_TRAINING && (JUMP_IN_HOLD_THROUGH_HIT || !inCombo) && jumpInAir && jumpInTick(them) > JUMP_IN_SWING_TICKS
-				&& !(JUMP_IN_HOLD_THROUGH_HIT && critSwingNow(me))
+				&& !((JUMP_IN_HOLD_THROUGH_HIT || JUMP_IN_LET_CRIT) && critSwingNow(me))
 				|| K2_GUARD && !inCombo && ((me.isSprinting() || reader.duel.me.sprinting)
 				&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, fightLag + K2_MARGIN) || step.teacherTechnique == Technique.K2.ordinal());
 		if (k2Hold) {
@@ -5013,7 +5049,7 @@ public final class SchoolSession implements AgentSession {
 				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {}{} (the golden rule held the swing on {} ticks, the installed model's rules set keys on {}) | swings: {} | review of the old stages:{} | bots went into:{} | taught now:{} | sparring the installed model:{} | take-over:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
 				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits, comboHitsPaid, combo3Paid, chaseCrits, madeMiss, deflectStarts, deflectChances, deflectMade, deflectMissed, airJumpHits,
-				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2KindLine(), k2Held, ruleTicks, swingLine(0), reviewLine(), used, taughtNowLine(), sparLine(), takeOverLine() + dev.swordai.server.TechniqueBot.critLine());
+				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2KindLine(), k2Held, ruleTicks, swingLine(0), reviewLine(), used, taughtNowLine(), sparLine(), takeOverLine() + jumpAlongLine() + dev.swordai.server.TechniqueBot.critLine());
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		comboHitsPaid = 0;

@@ -436,7 +436,8 @@ final class FightSession implements AgentSession {
 			school.holdJumpInSwing(SchoolSession.JUMP_IN_HOLD_THROUGH_HIT && SchoolSession.JUMP_IN_GUARD && jumpInAir
 					&& SchoolSession.jumpInTick(them) > SchoolSession.JUMP_IN_SWING_TICKS && !SchoolSession.critSwingNow(me));
 			school.holdSwing(!SchoolSession.JUMP_IN_HOLD_THROUGH_HIT && SchoolSession.JUMP_IN_GUARD && jumpInAir
-					&& SchoolSession.jumpInTick(them) > SchoolSession.JUMP_IN_SWING_TICKS || SchoolSession.K2_GUARD && me.isSprinting()
+					&& SchoolSession.jumpInTick(them) > SchoolSession.JUMP_IN_SWING_TICKS
+					&& !(SchoolSession.JUMP_IN_LET_CRIT && SchoolSession.critSwingNow(me)) || SchoolSession.K2_GUARD && me.isSprinting()
 					&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, ownPingTicks() + SchoolSession.K2_MARGIN));
 			double reachNow = Math.sqrt(opp.getBoundingBox().distanceToSqr(me.getEyePosition()));
 			school.rulesLetGo(SchoolSession.RULES_LET_GO_IN_LIFT && liftedFor >= 0 && !me.onGround() && reachNow <= 3.5
