@@ -1992,7 +1992,7 @@ public final class SchoolSession implements AgentSession {
 	 * (its own closing speed at least ENTER_OWN_CLOSE) costs ENTER_BY_WALK. Their walking in is not its approach.
 	 */
 	static final float ENTER_BY_JUMP = 0.2f;
-	static final float ENTER_BY_WALK = 0.1f;
+	static final float ENTER_BY_WALK = 0f; // 0.1 from 07:03 to 07:21 on 9 Nov: the opponent off its screen rose from about 2 to 32 an update within 15 minutes and damage fell to 192 dealt, 499 taken a minute
 	static final double ENTER_OWN_CLOSE = 0.05;
 
 	/** A take-off the guard watches: close enough, and coming at it unless JUMP_IN_ANY_DIRECTION. */
