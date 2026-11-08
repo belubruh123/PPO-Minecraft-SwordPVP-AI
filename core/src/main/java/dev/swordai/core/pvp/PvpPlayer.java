@@ -467,7 +467,7 @@ public final class PvpPlayer {
 	}
 
 	/**
-	 * Run 49d (8 Nov 23:15): the user, 8 Nov 19:40: "even a rising jumper will land crit because of ping unless rising jumper
+	 * Run 49d (8 Nov 23:12): the user, 8 Nov 19:40: "even a rising jumper will land crit because of ping unless rising jumper
 	 * just jump like for 1-2 ticks". A player hit in the air on a crit jump does not give it up: the hit (and its knockback)
 	 * reaches them late and they come down clicking. These bots gave up any plan on feeling a hit, so a late hit on their jump
 	 * cost the agent nothing (the installed network's benchmark, 8 Nov: their crits 0.03-0.04 a jump after a late swing, the
