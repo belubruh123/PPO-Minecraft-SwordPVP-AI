@@ -635,11 +635,20 @@ public final class SchoolSession implements AgentSession {
 	/** Run 51: it took off along with their jump-in and has not landed yet; and the counts for the update line. */
 	private boolean jumpedAlong;
 	private int jumpAlongs, jumpAlongCrits, jumpAlongPunish;
+	/** Run 51b: its own jump kept the jump-in rule so far; its own jumps, those that kept it, crits paid for it. */
+	private boolean jumpRuleKept;
+	private int ownJumps, ownJumpsRuleKept, ruleJumpCrits;
+	/** Run 51c: in reach on the last tick; the reward for how it came into reach, paid on the next step; the counts. */
+	private boolean wasInReach;
+	private float enterReward;
+	private int enteredByJump, enteredByWalk;
 
 	private String jumpAlongLine() {
-		String s = String.format(Locale.ROOT, " | jumped along with their jump-in %d, its crits on them then %d, punish crits then %d",
-				jumpAlongs, jumpAlongCrits, jumpAlongPunish);
+		String s = String.format(Locale.ROOT, " | came into reach by a jump that kept the rule %d, walking in %d; its own jumps %d, off beyond their reach and rising out of it %d, crits from those %d; jumped along with their jump-in %d, crits then %d, punish crits then %d",
+				enteredByJump, enteredByWalk, ownJumps, ownJumpsRuleKept, ruleJumpCrits, jumpAlongs, jumpAlongCrits, jumpAlongPunish);
+		enteredByJump = enteredByWalk = 0;
 		jumpAlongs = jumpAlongCrits = jumpAlongPunish = 0;
+		ownJumps = ownJumpsRuleKept = ruleJumpCrits = 0;
 		return s;
 	}
 	private int ruleTicks;
@@ -1968,6 +1977,23 @@ public final class SchoolSession implements AgentSession {
 	static final boolean JUMP_IN_LET_CRIT = true;
 	static final int JUMP_ALONG_TICKS = 4;
 	static final float JUMP_ALONG_CRIT = 0.3f;
+	/**
+	 * Run 51b (9 Nov 07:00), the user: "jump in crit has a rule where you jump out side the opponent's reach so it cannot knock
+	 * you away when you are rising and enter your reach when you are falling and land a crit on them" (as their 2 Nov tip). The
+	 * crit of its own jump (jumped along or not) is paid only when the jump kept that rule: took off beyond JUMP_RULE_REACH and
+	 * stayed beyond it all the way up, so it came into reach falling. A jump into reach on the way up is not paid (29 Oct: paid
+	 * so, it jumped in at ready opponents and was hit first) and its being hit in the air costs as before (AIR_JUMP_HIT).
+	 */
+	static final float JUMP_RULE_REACH = 3.0f;
+	/**
+	 * Run 51c (9 Nov 07:00), the user: "anytime when the AI is not in the reach it should just go for a jump in instead of keep
+	 * walking straight to hit the opponent once enter reach". Coming into reach (from beyond JUMP_RULE_REACH to within it) by
+	 * its own approach: falling from its own jump that kept the rule pays ENTER_BY_JUMP; on the ground walking or sprinting in
+	 * (its own closing speed at least ENTER_OWN_CLOSE) costs ENTER_BY_WALK. Their walking in is not its approach.
+	 */
+	static final float ENTER_BY_JUMP = 0.2f;
+	static final float ENTER_BY_WALK = 0.1f;
+	static final double ENTER_OWN_CLOSE = 0.05;
 
 	/** A take-off the guard watches: close enough, and coming at it unless JUMP_IN_ANY_DIRECTION. */
 	static boolean jumpInWatched(dev.swordai.core.pvp.Duel duel) {
@@ -2787,6 +2813,8 @@ public final class SchoolSession implements AgentSession {
 		jumpInAir = false;
 		onGroundBefore = true;
 		jumpedAlong = false;
+		wasInReach = false;
+		enterReward = 0f;
 		liftKind = -1;
 		liftStage = 0;
 		liftTaught = false;
@@ -3182,6 +3210,26 @@ public final class SchoolSession implements AgentSession {
 		} else if (me.onGround() && !onGroundBefore) {
 			jumpedAlong = false;
 		}
+		// Run 51c: how it came into reach.
+		boolean inReachNow = facts.reachDist <= JUMP_RULE_REACH;
+		if (inReachNow && !wasInReach && mode == Mode.TRAIN && review < 0) {
+			if (!me.onGround() && me.getDeltaMovement().y < 0 && ownJumpAir && jumpRuleKept) {
+				enterReward += ENTER_BY_JUMP;
+				enteredByJump++;
+			} else if (me.onGround() && reader.duel.iClose >= ENTER_OWN_CLOSE) {
+				enterReward -= ENTER_BY_WALK;
+				enteredByWalk++;
+			}
+		}
+		wasInReach = inReachNow;
+		// Run 51b: the jump-in rule for its own jump: off the ground beyond their reach, and beyond it all the way up.
+		if (onGroundBefore && !me.onGround()) {
+			jumpRuleKept = facts.reachDist > JUMP_RULE_REACH;
+			ownJumps += ownJumpAir ? 1 : 0;
+			ownJumpsRuleKept += ownJumpAir && jumpRuleKept ? 1 : 0;
+		} else if (!me.onGround() && me.getDeltaMovement().y > 0 && facts.reachDist <= JUMP_RULE_REACH) {
+			jumpRuleKept = false;
+		}
 		onGroundBefore = me.onGround();
 		clock.takenStreak.tick(shownDealt ? 1 : 0, facts.hitsTaken);
 		if (installed != null && hurtNow) {
@@ -3256,6 +3304,8 @@ public final class SchoolSession implements AgentSession {
 				learner.complete(reward, ko, !ko && (timeUp || full), step.obs);
 			} else if (mode == Mode.TRAIN) {
 				float reward = PER_HEALTH * (DEALT_WEIGHT * facts.damageDealt - facts.damageTaken) + (facts.koDealt ? KNOCKOUT : 0f) - (facts.koTaken ? KNOCKOUT : 0f);
+				reward += enterReward;
+				enterReward = 0f;
 				if (facts.hitsDealt > 0 && facts.critDealt) {
 					if (liftedFor >= 0) {
 						reward += PUNISH_CRIT;
@@ -3266,13 +3316,13 @@ public final class SchoolSession implements AgentSession {
 						reward += OTHER_CRIT;
 						otherCrits++;
 					}
-					if (jumpedAlong) {
-						if (liftedFor >= 0) {
-							jumpAlongPunish++;
-						} else {
-							reward += JUMP_ALONG_CRIT;
-							jumpAlongCrits++;
-						}
+					if (liftedFor < 0 && ownJumpAir && jumpRuleKept) {
+						// Run 51/51b: the crit of its own jump that kept the jump-in rule, jumped along with theirs or not.
+						reward += JUMP_ALONG_CRIT;
+						ruleJumpCrits++;
+						jumpAlongCrits += jumpedAlong ? 1 : 0;
+					} else if (liftedFor >= 0 && jumpedAlong) {
+						jumpAlongPunish++;
 					}
 				}
 				// Falling as it saw them, or on the server already (seen late: "it might be landing already while client still
