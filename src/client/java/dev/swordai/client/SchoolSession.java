@@ -1941,7 +1941,7 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final boolean JUMP_IN_FROM_GROUND = true;
 	/**
-	 * Run 49b (8 Nov 21:25): every jump of theirs within 6.5 blocks, not only one coming at it (run 39's "theyClose > 0.05" at
+	 * Run 49b (8 Nov 21:18): every jump of theirs within 6.5 blocks, not only one coming at it (run 39's "theyClose > 0.05" at
 	 * the take-off was mine, not the user's rule). The user's real duels, jumps within 6.5 blocks: not toward it with a late swing
 	 * 587 jumps, 0.20 crits and -0.40 HP a jump, with no swing 330, 0.12 and +0.10 (toward it: late -0.35, none -0.10); and a
 	 * swing at such jumps spent the sword before 18% of the lifts that found it down (the user, 21:05: "make sure it is not because
