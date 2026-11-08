@@ -1932,6 +1932,25 @@ public final class SchoolSession implements AgentSession {
 	static final boolean JUMP_IN_GUARD_TRAINING = true;
 	static final int JUMP_IN_SWING_TICKS = 1;
 	/**
+	 * Run 49 (8 Nov 19:50): the jump's ticks counted from their ground flag turning to air, as the user's 5 Nov numbers were
+	 * (tools/jumpins.py: "ground to air"; their rise shows a tick or more later). Run 39 counted from the rise it SAW (Body.tookOff
+	 * on the drawn height), which another player's gliding drawing shows 2-3 ticks after the ground flag against the bots and
+	 * 1 tick after it in the user's real duels: the guard let swings through up to ground tick 4 in training (77 of 133 let
+	 * through in the installed's benchmark came at ground ticks 2-4) and up to 3 in real fights (57 of 103 at 2-3), the ticks
+	 * the user's rule forbids ("even a rising jumper will land crit because of ping unless it just jumped 1-2 ticks").
+	 */
+	static final boolean JUMP_IN_FROM_GROUND = true;
+
+	/** The jump-in's take-off as the guard counts it: the ground flag to air (not hurt: not lifted by a hit), or the rise seen. */
+	static boolean jumpInTookOff(dev.swordai.core.pvp.Body them) {
+		return them.sinceJump == 0 || JUMP_IN_FROM_GROUND && them.airTicks == 1 && them.sinceHurt >= 10;
+	}
+
+	/** Ticks since the jump-in's take-off as the guard counts them (0 = the take-off tick). */
+	static int jumpInTick(dev.swordai.core.pvp.Body them) {
+		return JUMP_IN_FROM_GROUND ? them.airTicks - 1 : them.sinceJump;
+	}
+	/**
 	 * Run 40's hold (6 Nov 06:20): through their hit and in its own combo, only a crit swing let through (critSwingNow).
 	 * Reverted 7 Nov 00:10: over three checks its next hit after a crit taken was a crit 51% (95 of 186; B 49%, run 39 46%),
 	 * under the block's 55%, and A-B -0.4 against run 39's +0.6. Off: run 39's hold (let go once their hit lands, never in
@@ -3600,10 +3619,10 @@ public final class SchoolSession implements AgentSession {
 		}
 		if (them.onGround || !JUMP_IN_HOLD_THROUGH_HIT && clock.ticksSinceHitTaken == 0) {
 			jumpInAir = false;
-		} else if (them.sinceJump == 0 && reader.duel.theyClose > 0.05 && reader.duel.flat < 6.5) {
+		} else if (jumpInTookOff(them) && reader.duel.theyClose > 0.05 && reader.duel.flat < 6.5) {
 			jumpInAir = true;
 		}
-		boolean k2Hold = JUMP_IN_GUARD_TRAINING && (JUMP_IN_HOLD_THROUGH_HIT || !inCombo) && jumpInAir && them.sinceJump > JUMP_IN_SWING_TICKS
+		boolean k2Hold = JUMP_IN_GUARD_TRAINING && (JUMP_IN_HOLD_THROUGH_HIT || !inCombo) && jumpInAir && jumpInTick(them) > JUMP_IN_SWING_TICKS
 				&& !(JUMP_IN_HOLD_THROUGH_HIT && critSwingNow(me))
 				|| K2_GUARD && !inCombo && ((me.isSprinting() || reader.duel.me.sprinting)
 				&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, fightLag + K2_MARGIN) || step.teacherTechnique == Technique.K2.ordinal());

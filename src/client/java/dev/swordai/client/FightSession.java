@@ -429,13 +429,14 @@ final class FightSession implements AgentSession {
 			dev.swordai.core.pvp.Body them = reader.duel.them;
 			if (them.onGround || !SchoolSession.JUMP_IN_HOLD_THROUGH_HIT && takenNow) {
 				jumpInAir = false;
-			} else if (them.sinceJump == 0 && reader.duel.theyClose > 0.05 && reader.duel.flat < 6.5) {
+			} else if (SchoolSession.jumpInTookOff(them) && reader.duel.theyClose > 0.05 && reader.duel.flat < 6.5) {
 				jumpInAir = true;
 			}
+			// Run 49: the jump's ticks from their ground flag (the user's 5 Nov numbers), not from the rise drawn a tick later.
 			school.holdJumpInSwing(SchoolSession.JUMP_IN_HOLD_THROUGH_HIT && SchoolSession.JUMP_IN_GUARD && jumpInAir
-					&& them.sinceJump > SchoolSession.JUMP_IN_SWING_TICKS && !SchoolSession.critSwingNow(me));
+					&& SchoolSession.jumpInTick(them) > SchoolSession.JUMP_IN_SWING_TICKS && !SchoolSession.critSwingNow(me));
 			school.holdSwing(!SchoolSession.JUMP_IN_HOLD_THROUGH_HIT && SchoolSession.JUMP_IN_GUARD && jumpInAir
-					&& them.sinceJump > SchoolSession.JUMP_IN_SWING_TICKS || SchoolSession.K2_GUARD && me.isSprinting()
+					&& SchoolSession.jumpInTick(them) > SchoolSession.JUMP_IN_SWING_TICKS || SchoolSession.K2_GUARD && me.isSprinting()
 					&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, ownPingTicks() + SchoolSession.K2_MARGIN));
 			double reachNow = Math.sqrt(opp.getBoundingBox().distanceToSqr(me.getEyePosition()));
 			school.rulesLetGo(SchoolSession.RULES_LET_GO_IN_LIFT && liftedFor >= 0 && !me.onGround() && reachNow <= 3.5
