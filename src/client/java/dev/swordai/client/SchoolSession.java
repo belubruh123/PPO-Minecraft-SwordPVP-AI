@@ -1932,7 +1932,7 @@ public final class SchoolSession implements AgentSession {
 	static final boolean JUMP_IN_GUARD_TRAINING = true;
 	static final int JUMP_IN_SWING_TICKS = 1;
 	/**
-	 * Run 49 (8 Nov 19:50): the jump's ticks counted from their ground flag turning to air, as the user's 5 Nov numbers were
+	 * Run 49 (8 Nov 19:35): the jump's ticks counted from their ground flag turning to air, as the user's 5 Nov numbers were
 	 * (tools/jumpins.py: "ground to air"; their rise shows a tick or more later). Run 39 counted from the rise it SAW (Body.tookOff
 	 * on the drawn height), which another player's gliding drawing shows 2-3 ticks after the ground flag against the bots and
 	 * 1 tick after it in the user's real duels: the guard let swings through up to ground tick 4 in training (77 of 133 let
