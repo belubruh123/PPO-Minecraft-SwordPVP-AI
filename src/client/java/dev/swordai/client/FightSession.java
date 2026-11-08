@@ -429,7 +429,7 @@ final class FightSession implements AgentSession {
 			dev.swordai.core.pvp.Body them = reader.duel.them;
 			if (them.onGround || !SchoolSession.JUMP_IN_HOLD_THROUGH_HIT && takenNow) {
 				jumpInAir = false;
-			} else if (SchoolSession.jumpInTookOff(them) && reader.duel.theyClose > 0.05 && reader.duel.flat < 6.5) {
+			} else if (SchoolSession.jumpInTookOff(them) && SchoolSession.jumpInWatched(reader.duel)) {
 				jumpInAir = true;
 			}
 			// Run 49: the jump's ticks from their ground flag (the user's 5 Nov numbers), not from the rise drawn a tick later.

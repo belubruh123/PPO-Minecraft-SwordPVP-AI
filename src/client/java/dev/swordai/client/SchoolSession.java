@@ -1940,6 +1940,19 @@ public final class SchoolSession implements AgentSession {
 	 * the user's rule forbids ("even a rising jumper will land crit because of ping unless it just jumped 1-2 ticks").
 	 */
 	static final boolean JUMP_IN_FROM_GROUND = true;
+	/**
+	 * Run 49b (8 Nov 21:25): every jump of theirs within 6.5 blocks, not only one coming at it (run 39's "theyClose > 0.05" at
+	 * the take-off was mine, not the user's rule). The user's real duels, jumps within 6.5 blocks: not toward it with a late swing
+	 * 587 jumps, 0.20 crits and -0.40 HP a jump, with no swing 330, 0.12 and +0.10 (toward it: late -0.35, none -0.10); and a
+	 * swing at such jumps spent the sword before 18% of the lifts that found it down (the user, 21:05: "make sure it is not because
+	 * it waste a sprint hit on a falling jump in critter or late rising jump in critter").
+	 */
+	static final boolean JUMP_IN_ANY_DIRECTION = true;
+
+	/** A take-off the guard watches: close enough, and coming at it unless JUMP_IN_ANY_DIRECTION. */
+	static boolean jumpInWatched(dev.swordai.core.pvp.Duel duel) {
+		return (JUMP_IN_ANY_DIRECTION || duel.theyClose > 0.05) && duel.flat < 6.5;
+	}
 
 	/** The jump-in's take-off as the guard counts it: the ground flag to air (not hurt: not lifted by a hit), or the rise seen. */
 	static boolean jumpInTookOff(dev.swordai.core.pvp.Body them) {
@@ -3619,7 +3632,7 @@ public final class SchoolSession implements AgentSession {
 		}
 		if (them.onGround || !JUMP_IN_HOLD_THROUGH_HIT && clock.ticksSinceHitTaken == 0) {
 			jumpInAir = false;
-		} else if (jumpInTookOff(them) && reader.duel.theyClose > 0.05 && reader.duel.flat < 6.5) {
+		} else if (jumpInTookOff(them) && jumpInWatched(reader.duel)) {
 			jumpInAir = true;
 		}
 		boolean k2Hold = JUMP_IN_GUARD_TRAINING && (JUMP_IN_HOLD_THROUGH_HIT || !inCombo) && jumpInAir && jumpInTick(them) > JUMP_IN_SWING_TICKS
