@@ -1524,7 +1524,10 @@ public final class SchoolSession implements AgentSession {
 		float botCharge = truth.botCharge();
 		boolean theirSwing = lastBotChargeSeen >= 0.9f && botCharge < 0.2f;
 		lastBotChargeSeen = botCharge;
-		boolean deflectHit = facts.hitsDealt > 0 && facts.sprintHit && botCharge < DEFLECT_CHARGE;
+		// Never on a faller (run 48k, the user's lag rule, 5 Nov: only an early riser, never one about to fall): a sprint hit on a
+		// falling opponent is a K2 broken (-1.0), and until now it also won the deflection replay (+1.0), so the two pulled apart.
+		boolean deflectHit = facts.hitsDealt > 0 && facts.sprintHit && botCharge < DEFLECT_CHARGE
+				&& !(reader.duel.them.falling() || truth.botFalling());
 		if (deflectChanceAt >= 0) {
 			int since = fightTicks - deflectChanceAt;
 			if (facts.hitsTaken > 0 && facts.hitsDealt == 0 && since <= 2) {
