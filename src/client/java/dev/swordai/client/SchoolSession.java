@@ -1686,6 +1686,19 @@ public final class SchoolSession implements AgentSession {
 		return -1;
 	}
 
+	/** Run 48m: K2 broken counted by where it happened, full fights and each replay kind (index KINDS = full fights). */
+	private final int[] k2ByKind = new int[KINDS + 1];
+
+	private String k2KindLine() {
+		StringBuilder b = new StringBuilder();
+		for (int k = 0; k <= KINDS; k++) {
+			if (k2ByKind[k] > 0) {
+				b.append(b.length() == 0 ? " (by fight: " : ", ").append(k == KINDS ? "full fights" : KIND_NAMES[k]).append(' ').append(k2ByKind[k]);
+			}
+		}
+		return b.length() == 0 ? "" : b.append(')').toString();
+	}
+
 	private boolean punishScene() {
 		return sceneNow != null && (sceneNow.kind == KIND_PUNISH || sceneNow.kind == KIND_PUNISH2);
 	}
@@ -3200,6 +3213,7 @@ public final class SchoolSession implements AgentSession {
 				if (facts.hitsDealt > 0 && facts.sprintHit && !(K2_COMBO_EXEMPT && inOwnCombo) && (reader.duel.them.falling() || truth.botFalling())) {
 					reward -= K2_BROKEN;
 					k2Broken++;
+					k2ByKind[sceneNow == null ? KINDS : sceneNow.kind]++;
 				}
 				if (clicked && !clickOnTarget) {
 					reward -= AIR_SWING;
@@ -4964,10 +4978,10 @@ public final class SchoolSession implements AgentSession {
 		lastUpdateLine = String.format(Locale.ROOT, "update %d, %d steps (%.0f a second): %s", learner.updates, steps, perSecond, stats);
 		SwordAi.LOGGER.info("school {} | {} | predictor {} | decider {} | teachers' examples again: {} | per bot:{} | its moments by technique (network's likeliest keys):{} | done since the last update:{} "
 				+ "| why not done:{} | jumps, swings, S a minute off/on moments: {} | by the game:{} | crit moments: {} | jumping in: {} | real punish crits rewarded {} ({} in {} drill fights), other crits {}, combo follow-up hits rewarded {} (3rd+ {}), chase crits {}, made to miss {}, deflection starts {}, deflection chances {} made {} missed {}, hits taken in the air from its own jump {} "
-				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {} (the golden rule held the swing on {} ticks, the installed model's rules set keys on {}) | swings: {} | review of the old stages:{} | bots went into:{} | taught now:{} | sparring the installed model:{} | take-over:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
+				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {}{} (the golden rule held the swing on {} ticks, the installed model's rules set keys on {}) | swings: {} | review of the old stages:{} | bots went into:{} | taught now:{} | sparring the installed model:{} | take-over:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
 				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits, comboHitsPaid, combo3Paid, chaseCrits, madeMiss, deflectStarts, deflectChances, deflectMade, deflectMissed, airJumpHits,
-				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2Held, ruleTicks, swingLine(0), reviewLine(), used, taughtNowLine(), sparLine(), takeOverLine());
+				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2KindLine(), k2Held, ruleTicks, swingLine(0), reviewLine(), used, taughtNowLine(), sparLine(), takeOverLine());
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		comboHitsPaid = 0;
@@ -4992,6 +5006,7 @@ public final class SchoolSession implements AgentSession {
 		momentsPaid = 0;
 		momentsWon = 0;
 		k2Broken = 0;
+		java.util.Arrays.fill(k2ByKind, 0);
 		k2Held = 0;
 		ruleTicks = 0;
 		k2Truth = 0;
