@@ -4260,7 +4260,10 @@ public final class SchoolSession implements AgentSession {
 					: sceneNow.kind == KIND_JUMPIN || sceneNow.kind == KIND_JUMPIN2 ? !sceneK2 && (!sceneHit || sceneAnswer)
 					: sceneNow.kind == KIND_COMBO ? sceneRowMost < 2
 					: sceneNow.kind == KIND_OWN ? sceneOwnHits >= 2 && !sceneOwnBroken
-					: sceneNow.kind == KIND_OWN2 ? sceneOwnHits >= 1 && !sceneOwnBroken : fightDealt > fightTaken;
+					: sceneNow.kind == KIND_OWN2 ? sceneOwnHits >= 1 && !sceneOwnBroken
+					// Run 48l: the crit replays (and any other kind judged by damage) never won by a K2 broken (a sprint hit on the
+					// falling jumper, the user's lag rule): K2 broken ran 16-31 an update with the crit replays learned on trades.
+					: fightDealt > fightTaken && !sceneK2;
 			if (!sceneReview) {
 				sceneRoll[sceneNow.kind].add(sceneWon);
 				kindFights[sceneNow.kind]++;
