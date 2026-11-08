@@ -762,7 +762,7 @@ public final class SchoolSession implements AgentSession {
 	 * learned replays tested again (REPEAT_TEST_SHARE of them), and the old stages' reviews at their own share.
 	 */
 	static final boolean REPEAT_UNTIL_LEARNED = true;
-	static final float REPEAT_SHARE = 0.85f;
+	static final float REPEAT_SHARE = 0.6f; // run 48j (8 Nov): 0.85 until then; punish crit chances critted in the full fights fell 51% -> 42% (05:48-08:18) with only ~10% full fights
 	static final float REPEAT_TEST_SHARE = 0.3f;
 	static final int REPEAT_MAX = 150;
 	/**
