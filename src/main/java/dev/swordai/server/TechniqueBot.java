@@ -152,7 +152,7 @@ public final class TechniqueBot {
 
 	/** A hit of the agent's landed on the bot, of this kind ({@link Events}): it feels it when the knockback reaches it. */
 	void tookHit(int kind) {
-		hitsComing.addLast(new int[] {(int) (now + ping()), kind});
+		hitsComing.addLast(new int[] {(int) (now + ping()), kind, botBody.onGround ? -1 : botBody.airTicks + 1});
 	}
 
 	/** A hit of the bot's landed on the agent: it sees it land as late as it sees the agent. */
@@ -183,7 +183,9 @@ public final class TechniqueBot {
 		events.iSwung = swungLast;
 		events.theySwung = seen.sinceSwing == 0;
 		while (!hitsComing.isEmpty() && hitsComing.peekFirst()[0] <= now) {
-			events.theyHit = hitsComing.removeFirst()[1];
+			int[] h = hitsComing.removeFirst();
+			events.theyHit = h[1];
+			events.theyHitAirTick = h[2];
 		}
 		while (!seenComing.isEmpty() && seenComing.peekFirst()[0] <= now) {
 			events.iHit = seenComing.removeFirst()[1];

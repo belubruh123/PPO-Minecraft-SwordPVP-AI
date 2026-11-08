@@ -466,6 +466,24 @@ public final class PvpPlayer {
 		planAlt = false;
 	}
 
+	/**
+	 * Run 49d (8 Nov 23:15): the user, 8 Nov 19:40: "even a rising jumper will land crit because of ping unless rising jumper
+	 * just jump like for 1-2 ticks". A player hit in the air on a crit jump does not give it up: the hit (and its knockback)
+	 * reaches them late and they come down clicking. These bots gave up any plan on feeling a hit, so a late hit on their jump
+	 * cost the agent nothing (the installed network's benchmark, 8 Nov: their crits 0.03-0.04 a jump after a late swing, the
+	 * user's real opponents 0.17-0.20, -0.35 to -0.40 HP a jump). Now a crit jump hit from its LATE_HIT_AIR_TICKS-th air tick on
+	 * goes on (the knockback still moves it); one hit earlier in the jump is knocked out of it as before.
+	 */
+	static final boolean KEEP_CRIT_JUMP_HIT_LATE = true;
+	/** Air ticks (1 = the first off the ground) from which their hit on a crit jump is late: ground tick 3 on. */
+	static final int LATE_HIT_AIR_TICKS = 4;
+
+	/** A plan whose jump is for a crit on them. */
+	private static boolean critJump(Plan p) {
+		return p == Plan.OPEN_CRIT || p == Plan.T1 || p == Plan.T1A || p == Plan.T1B || p == Plan.T1C || p == Plan.T2 || p == Plan.C6
+				|| p == Plan.K3;
+	}
+
 	private void end() {
 		plan = Plan.NONE;
 		planT = 0;
@@ -517,6 +535,10 @@ public final class PvpPlayer {
 			return;
 		}
 		if (plan == Plan.B1 || plan == Plan.C2 || plan == Plan.C3 || plan == Plan.C4) {
+			return;
+		}
+		if (KEEP_CRIT_JUMP_HIT_LATE && !lifted && e.theyHitAirTick >= LATE_HIT_AIR_TICKS && critJump(plan)) {
+			// Run 49d: hit late in its crit jump, it comes down on them for the crit all the same.
 			return;
 		}
 		end();

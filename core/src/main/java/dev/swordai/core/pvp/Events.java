@@ -17,6 +17,11 @@ public final class Events {
 	public int iHit;
 	/** Their hit landed on me this tick. */
 	public int theyHit;
+	/**
+	 * Run 49d: my air ticks when their hit got to the server (1 = the first tick off the ground), -1 if on the ground or not
+	 * known. Felt later (the knockback's way), the jump has gone on meanwhile.
+	 */
+	public int theyHitAirTick = -1;
 	/** My arm began a swing this tick (hit or miss). */
 	public boolean iSwung;
 	/** Their arm began a swing this tick (hit or miss). */
@@ -25,6 +30,7 @@ public final class Events {
 	public void clear() {
 		iHit = NONE;
 		theyHit = NONE;
+		theyHitAirTick = -1;
 		iSwung = false;
 		theySwung = false;
 	}
@@ -32,6 +38,7 @@ public final class Events {
 	public void copyFrom(Events o) {
 		iHit = o.iHit;
 		theyHit = o.theyHit;
+		theyHitAirTick = o.theyHitAirTick;
 		iSwung = o.iSwung;
 		theySwung = o.theySwung;
 	}
@@ -39,6 +46,7 @@ public final class Events {
 	public void mirrorOf(Events o) {
 		iHit = o.theyHit;
 		theyHit = o.iHit;
+		theyHitAirTick = -1;
 		iSwung = o.theySwung;
 		theySwung = o.iSwung;
 	}
