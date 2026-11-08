@@ -478,6 +478,11 @@ public final class PvpPlayer {
 	/** Air ticks (1 = the first off the ground) from which their hit on a crit jump is late: ground tick 3 on. */
 	static final int LATE_HIT_AIR_TICKS = 4;
 
+	/** Whether it is on a crit jump now (run 50's counters, TechniqueBot#critLine). */
+	public boolean inCritJump() {
+		return critJump(plan);
+	}
+
 	/** A plan whose jump is for a crit on them. */
 	private static boolean critJump(Plan p) {
 		return p == Plan.OPEN_CRIT || p == Plan.T1 || p == Plan.T1A || p == Plan.T1B || p == Plan.T1C || p == Plan.T2 || p == Plan.C6

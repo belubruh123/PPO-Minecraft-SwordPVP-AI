@@ -78,6 +78,21 @@ public final class TechniqueBot {
 	public static int whiffs() {
 		return whiffs;
 	}
+	/**
+	 * Run 50 (9 Nov 04:30): the bots' crit jumps counted on the server, since the bots crit 1.7% of their hits against the user's
+	 * real opponents' 11.7%: crit jumps begun, swings made in one, of those swings the ones the game could make a crit (falling,
+	 * not sprinting, sword back) and the ones that hit nothing, and the crits that landed (any plan).
+	 */
+	private static volatile int critJumps, critSwings, critSwingsReady, critSwingsMissed, critsLanded;
+	private boolean wasInCritJump;
+
+	/** The counters since the last call, for the school's update line; then zeroed. */
+	public static String critLine() {
+		String s = String.format(java.util.Locale.ROOT, " | the bots' crit jumps %d, swings in them %d (could crit %d, hit nothing %d), their crits landed %d",
+				critJumps, critSwings, critSwingsReady, critSwingsMissed, critsLanded);
+		critJumps = critSwings = critSwingsReady = critSwingsMissed = critsLanded = 0;
+		return s;
+	}
 	/** The bot's own swing on the last tick, for its next tick's events. */
 	private boolean swungLast;
 
@@ -157,6 +172,9 @@ public final class TechniqueBot {
 
 	/** A hit of the bot's landed on the agent: it sees it land as late as it sees the agent. */
 	void landedHit(int kind) {
+		if (kind == Events.CRIT) {
+			critsLanded++;
+		}
 		seenComing.addLast(new int[] {(int) (now + Math.max(0, style.lag)), kind});
 	}
 
@@ -194,6 +212,11 @@ public final class TechniqueBot {
 		botWasOnGround = bot.onGround();
 
 		player.tick(view, events, keys);
+		boolean cj = player.inCritJump();
+		if (cj && !wasInCritJump) {
+			critJumps++;
+		}
+		wasInCritJump = cj;
 		lastTechnique = keys.technique.ordinal();
 		lastKeys = (keys.forward > 0 ? 1 : 0) | (keys.forward < 0 ? 2 : 0) | (keys.strafe < 0 ? 4 : 0) | (keys.strafe > 0 ? 8 : 0)
 				| (keys.sprint ? 16 : 0) | (keys.jump ? 32 : 0) | (keys.attack ? 64 : 0);
@@ -230,6 +253,11 @@ public final class TechniqueBot {
 		AABB box = agent.getBoundingBox().move(seen.x - agent.getX(), seen.y - agent.getY(), seen.z - agent.getZ()).inflate(agent.getPickRadius());
 		Vec3 end = botEye.add(bot.getLookAngle().scale(reach));
 		boolean canHit = box.contains(botEye) || box.clip(botEye, end).isPresent();
+		if (player.inCritJump()) {
+			critSwings++;
+			critSwingsReady += !bot.onGround() && bot.getDeltaMovement().y < 0 && !bot.isSprinting() && bot.getAttackStrengthScale(0.5f) > 0.9f ? 1 : 0;
+			critSwingsMissed += canHit ? 0 : 1;
+		}
 		swungLast = true;
 		if (canHit) {
 			bot.attack(agent);
