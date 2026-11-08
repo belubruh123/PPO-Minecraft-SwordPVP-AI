@@ -74,6 +74,17 @@ fi
 # One line a run (8 Nov: the client froze at 15:58 on a sound error, its log kept new by "Can't keep up" lines, and no run
 # restarted it for 90 minutes): whether the runs reach this check at all, and what they saw.
 echo "$(date '+%m-%d %H:%M') log age $age s, last school line ${last:-none}" >> /d/swordai/run/watchdog-trace.log
+# The PC out of memory (8 Nov 18:33-19:08: the user's programs left 0.4 GB free, the server stood still for seconds,
+# "the server did not start the next fight"): a restart then only pushes the user's programs onto the disk. Wait for
+# memory while the client is up; restart as before once 1.2 GB is available (or the client is gone).
+if [ $age -ge 600 ]; then
+  avail=$(powershell -NoProfile -Command "[math]::Round((Get-Counter '\Memory\Available MBytes').CounterSamples[0].CookedValue)" | tr -d '\r')
+  up=$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process | Where-Object { \$_.Name -eq 'java.exe' -and \$_.CommandLine -match 'fabric\.dli\.' }).Count" | tr -d '\r')
+  if [ "$up" != "0" ] && [ -n "$avail" ] && [ "$avail" -lt 1200 ]; then
+    echo "$(date '+%m-%d %H:%M') training stopped but only $avail MB of memory available: waiting for memory, not restarting" >> $LOG
+    exit 0
+  fi
+fi
 if [ $age -ge 600 ]; then
   touch $LOCK
   echo "$(date '+%m-%d %H:%M') the client log is $age s old: restarting the client" >> $LOG
