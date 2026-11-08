@@ -71,6 +71,9 @@ if [ -n "$last" ] && [ $age -lt 600 ]; then
   sage=$(( $(date +%s) - ls_ ))
   [ $sage -ge 600 ] && { echo "$(date '+%m-%d %H:%M') no school line for $sage s (training stopped, client up)" >> $LOG; age=$sage; }
 fi
+# One line a run (8 Nov: the client froze at 15:58 on a sound error, its log kept new by "Can't keep up" lines, and no run
+# restarted it for 90 minutes): whether the runs reach this check at all, and what they saw.
+echo "$(date '+%m-%d %H:%M') log age $age s, last school line ${last:-none}" >> /d/swordai/run/watchdog-trace.log
 if [ $age -ge 600 ]; then
   touch $LOCK
   echo "$(date '+%m-%d %H:%M') the client log is $age s old: restarting the client" >> $LOG
