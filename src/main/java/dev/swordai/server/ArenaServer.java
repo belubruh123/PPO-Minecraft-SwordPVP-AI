@@ -184,7 +184,7 @@ public final class ArenaServer {
 		return truth;
 	}
 
-	/** Run 49c (8 Nov 22:35): the bots' knockback also waits for the agent's way up to the server; see TechniqueBot#uplink. */
+	/** Run 49c (8 Nov 22:22): the bots' knockback also waits for the agent's way up to the server; see TechniqueBot#uplink. */
 	static final boolean UPLINK_FROM_AGENT = true;
 	/** The server tick on which a scene or drill last set the agent's sword clock (its client sets its own a tick or two later). */
 	public static volatile long agentTickerSetAt = -1;

@@ -132,7 +132,7 @@ public final class TechniqueBot {
 	}
 
 	/**
-	 * Run 49c (8 Nov 22:35): the agent's own connection, the ticks its hit takes to reach the server. In singleplayer the
+	 * Run 49c (8 Nov 22:22): the agent's own connection, the ticks its hit takes to reach the server. In singleplayer the
 	 * agent's swing lands on the server at once; only what it sees comes late (SeenLag, the fight's 1-4 ticks). On a real
 	 * server the swing also travels up and the knockback then down to the other player, so a late hit on a jumper lands when
 	 * the jumper is already coming down on it: the user's real duels, a late swing at a jump 0.17-0.20 crits and -0.35 to -0.40
