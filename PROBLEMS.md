@@ -3,6 +3,7 @@
 The user (9 Nov 22:00): "type out all of the AI's problem and until the problem is solved don't remove it".
 This file is printed at every 30-minute review (tools/review.sh) and copied into every progress report.
 **Never delete an item.** Mark it SOLVED only with real-duel evidence (the user's rounds), and move it to the bottom.
+**3-hour rule** (the user, 10 Nov 06:55): an item whose training fix has been flat for 3+ hours gets a different KIND of approach. Research it with a subagent, then apply the best idea as its own run.
 The bench and the bot checks do not count as proof: on 9 Nov the bench called run52-1218 BETTER, and it lost in real duels.
 
 ## OPEN
