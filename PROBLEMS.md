@@ -12,6 +12,8 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
    - Cause found: the jump-in guard held the swing at every jump within 6.5 blocks (38-45% of those ticks).
    - Fix 1 (run 53, jar 21:49, installed): the guard now only watches take-offs from outside its reach (3.3).
    - Status: NOT VERIFIED in real duels.
+   - Training (run 54d, 29 updates): on the ground and not swinging at a NON-falling opponent on 14% of those moments; nothing paid that hit.
+   - Fix 2 (run 55, deployed after the ~03:00 check): COUNTER_HIT +0.2 for a hit that breaks into their combo on one not falling (document C4). Status: NOT VERIFIED.
 2. **Gets comboed and stunned too easily.**
    - Seen: real duels, combos of 3+ hits taken: run52 0.79 a round, run35 0.30 a round. The user: "get stunned easily".
    - Measure: 3+ combos taken per round in real duels (tools/swingback.py, rounds.csv combosTaken3).
@@ -26,6 +28,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
    - The document: T1c (after your punish crit, jump and crit again), and C1/C2 against their double crit (sprint-hit instead of punish-critting; hold S when your double crit is sprint-hit).
    - Seen in checks: T1c done 7%, T1 double crit 12%. Real duels: after its 410 punish crits they hit back within 30 ticks in 63% (a crit in 12%); it tried T1c in 6%.
    - Fix 1 (run 54): T1C_CRIT +0.3 for a crit from its own jump within 30 ticks of its punish crit; CRIT_BACK_COST -0.3 for their crit in that window. After 2 h: T1c still 2% of its punish crits.
+   - 02:49 (after run 54c): its own jump after 14% of its punish crits (4-11% before), T1c 2%, critted back 17% (22-34% before).
    - Cause found (run 54b counters): after 141 punish crits its own jump followed only 11 times. The run 43 cost (-0.3 for any hit in the air out of its own jump, paid on 31 of 69 jumps an update) taught it not to jump.
    - Fix 2 (run 54c, 00:21 10 Nov): that cost is now only paid for a hit while rising, past the jump reset's moment (document T9, K3). Status: NOT VERIFIED.
 5. **KEEP the punish crit (B1)**, the user: "while keeping the current ability for punish crit".
