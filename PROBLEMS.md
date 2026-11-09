@@ -24,7 +24,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
 3. **Cannot tell a jump-in crit from an uppercut (T10), a lunge (T11a) or hops (T11b), and gets comboed by those.**
    - The guard treats every jump from outside reach as a jump-in crit: it holds the swing and waits to punish crit. Uppercuts, lunges and hops end in a SPRINT hit (knockback, a stun), so waiting means being stunned.
    - The document's answers: uppercut -> T8 (hit them while they rise); lunge -> K1/K2, T8, B1; hops -> back out, C3 before the hit; jump-in crit (falling, critting) -> no KB hit (K2), let it land, punish crit (B1).
-   - Measured (200 real rounds): 75% of their hits after a jump from outside reach are sprint or plain hits, 25% crits. Their sprint flag in the air does not tell the two apart (23-25% crits either way), so a rule cannot. The network has to learn it.
+   - ~~Measured: 75% of their hits after a jump from outside reach are sprint or plain hits~~. CORRECTED 10 Nov 07:25 (agent 2): the round files' "crit?" tag is a guess. Labelled by the knockback it received, only about 20% of jump-in hits from outside reach are sprint hits; most are crits, so B1 against jump-ins is right most of the time. No visible take-off cue separates the sprint-hit jumpers; the only weak one is about 0.5 block farther at air tick 5. Real hits come at air tick 9 of their jump, the bots' at 7.
    - Fix 1 (run 54, training from 22:00): 25% of training fights against the uppercutter, lunger, hopper, double-critter, jump-in critter and rhythm comboer. Status: NOT VERIFIED.
 4. **After its punish crit, the opponent crits it back** (their double crit T1 / T1c after its punish crit).
    - The user: it should "either crit back or not let its punish crit be punish-critted".
@@ -42,6 +42,8 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
 7. **Lost rounds were not counted in real duels** (deaths 0, losses "open").
    - Fix (jar 21:49): health at 4 or less, then full on the next tick = a lost round. NOT VERIFIED.
 8. **The bots do not fight like real players**: they do not combo, jump-reset or double-crit back as people do. So the checks and the bench do not predict real duels.
+   - Found (10 Nov, agent 2): since run 49c the bots felt its knockback 2-4 ticks later than any real player (swing to lift: median 6-7 ticks against real 3-5). They also hit from farther away (2.7-2.9 against 1.87), rarely fly out (8-12% against 36%), and rarely answer its punish crit (24-32% against 56%).
+   - Fix 1 (run 58, ~07:25): the 49c uplink off. Gates: bench swing-to-lift median back to 3-4; a re-bench should rank run35-0657 above run52-1218, as in real duels. Next: bots answer its punish crit (A4), bot hit distance (A2). Status: NOT VERIFIED.
 9. **It swings about 11% less than the 23 Oct model** in every check (383 vs 429 swings a check), so it deals less.
    - 23:42 check 375 vs 456; 01:12 check 417 vs 462 (run 54c); 04:32 check 359 vs 432. At the moments a swing is called for: A 51 vs B 62 a minute. STILL OPEN after runs 54-55b.
 10. **It is in the air too much in the opponent's combo** (run52 37% of those ticks, run35 27%), where it cannot swing back.

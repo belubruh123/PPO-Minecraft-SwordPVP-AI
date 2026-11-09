@@ -417,3 +417,30 @@ Judge it within 3 hours:
 - no late jump-in hits.
 
 If flat: build the agent's 1b, combo scenes cut from the 701 real combo hits against a bot copying the measured rhythm.
+
+## Run 58 (10 Nov ~07:25): the 49c uplink off (the bots felt its knockback 2-4 ticks later than any real player)
+
+The 3-hour rule's research (agent 2, read-only; scripts in the scratchpad agentB folder: realvsbots.py, timing.py, kbgain.py, hitdist.py, punishback.py, jumphitkind.py, critcheck.py) measured the real duels and the benchmark's bot fights with the same code.
+
+Ticks from its sprint swing to the first tick it sees them in the air:
+- real: median 3 (0-39 ms), 4 (40-89 ms), 5 (90+ ms);
+- bots before 49c: 4;
+- bots since 49c: 6-7.
+
+Since 8 Nov 22:22, every bot stayed in reach 2-4 ticks too long after its hit. Run52-1218 was trained and benched in that world and lost real duels; run35-0657 was trained before 49c.
+
+Change: ArenaServer.UPLINK_FROM_AGENT = false (TechniqueBot.ping() back to max(1, style.ping); KnockbackLag without the uplink). Run 49d stays.
+
+Other measured differences, for the next runs:
+- Bots hit from farther away: median 2.7-2.9 against real 1.87.
+- Real players fly out after its sprint hit: 36% are more than 2 blocks farther 8 ticks later, bots 8-12%.
+- Bots rarely answer its punish crit: real players hit back within 12 ticks in 56% (it hits first in 26%); bots 24-32% (it hits first in 50-59%).
+- Real follow-up hits are closer (2.65 against 3.5) and 30% fall from their own jump (bots 11%).
+- Real hits come at air tick 9 of their jump, the bots' at 7.
+- The "crit?" tag in the round files is a guess. Labelled by the knockback it received, only about 20% of jump-in hits from outside reach are sprint hits. So the "75% sprint or plain hits" in PROBLEMS.md 3 was wrong; B1 against jump-ins is right most of the time.
+
+Gates:
+1. The swing-to-lift timing in new bench episodes is back to a median of 3-4.
+2. Re-bench run35-0657 and run52-1218 in this world. If run35-0657 now ranks above run52-1218 (as in real duels), trust the bench again.
+
+Next if it passes: A4 (bots answer its punish crit), then A2 (bot hit distance).

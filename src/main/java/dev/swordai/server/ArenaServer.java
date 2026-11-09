@@ -184,8 +184,15 @@ public final class ArenaServer {
 		return truth;
 	}
 
-	/** Run 49c (8 Nov 22:22): the bots' knockback also waits for the agent's way up to the server; see TechniqueBot#uplink. */
-	static final boolean UPLINK_FROM_AGENT = true;
+	/**
+	 * Run 49c (8 Nov 22:22): the bots' knockback also waits for the agent's way up to the server; see TechniqueBot#uplink.
+	 * Off since run 58 (10 Nov 07:25): the 3-hour rule's research (agent 2) measured, with the same code on the real duels and the
+	 * benchmark's bot fights, the ticks from its sprint swing to the first tick it sees them in the air: real median 3 (opponents
+	 * at 0-39 ms), 4 (40-89 ms), 5 (90+ ms); bots before 49c 4; bots since 49c 6-7, later than any real ping. Every bot stayed in
+	 * reach 2-4 ticks too long after its hit, which made its combos easy; run52-1218, trained and benched in that world, lost real
+	 * duels, run35-0657 (trained before 49c) is the best in them. Run 49d (a crit jump kept when hit late) stays.
+	 */
+	static final boolean UPLINK_FROM_AGENT = false;
 	/** The server tick on which a scene or drill last set the agent's sword clock (its client sets its own a tick or two later). */
 	public static volatile long agentTickerSetAt = -1;
 
