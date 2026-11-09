@@ -2,7 +2,7 @@
 "it should have learned it by now" can be checked (the user, 7 Nov 08:40: give an expectation of when a reward is learned, and
 investigate if it falls short: reward hacking, an impossible bot, or a bot that teaches the technique wrongly).
 
-Reads the school update lines (default run/school-client.log) and the counters the reward terms print there:
+Reads the school update lines (default run/school-client-live.log) and the counters the reward terms print there:
   punish crits paid, other crits, combo follow-up hits (3rd+), chase crits, made to miss, deflection starts,
   hits taken in the air from its own jump, own-combo scenes won (of fought), punish crit chances critted (whatever chosen).
 Counts are per update (about 70 s of play); a term that is learned rises (or, for a cost, falls) bucket after bucket.
@@ -39,7 +39,7 @@ def main():
     if '--bucket' in sys.argv:
         bucket = int(sys.argv[sys.argv.index('--bucket') + 1])
         args = [a for a in args if a != str(bucket)]
-    logs = args or ['D:/swordai/run/school-client.log']
+    logs = args or ['D:/swordai/run/school-client-live.log']
     rows = []
     for p in logs:
         with open(p, encoding='utf8', errors='replace') as f:

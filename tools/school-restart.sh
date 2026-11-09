@@ -2,7 +2,7 @@
 # school-restart.sh [command]: stop the dev client, build, start it again and send the school command (default "swordai school").
 CMD=${1:-swordai school}
 S="${SWORDAI_TOOLS:-/d/swordai/tools}"
-L=/d/swordai/run/school-client.log
+L=/d/swordai/run/school-client-live.log
 printf 'swordai stop\r\n' > /d/swordai/run/swordai/inbox.txt
 sleep 8
 powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { (\$_.Name -in 'cmd.exe','java.exe') -and \$_.CommandLine -match 'start-school\.cmd|start-dev\.cmd|GradleWrapperMain|GradleDaemon|fabric\.dli\.' } | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force -ErrorAction SilentlyContinue }"

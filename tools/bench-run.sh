@@ -17,7 +17,7 @@ MAX_MIN=${MAX_MIN:-360}
 case "$TAG" in [A-Za-z0-9_]*) ;; *) echo "bad tag $TAG"; exit 1;; esac
 case "$TAG" in *[!A-Za-z0-9._-]*) echo "bad tag $TAG: letters, digits, . _ - only"; exit 1;; esac
 C=school; C="${C}cycle"
-L=/d/swordai/run/school-client.log
+L=/d/swordai/run/school-client-live.log
 INBOX=/d/swordai/run/swordai/inbox.txt
 SCH=/d/swordai/run/swordai/school
 OUTD=/d/swordai/run/swordai/bench/$TAG

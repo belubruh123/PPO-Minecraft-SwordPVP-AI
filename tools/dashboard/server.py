@@ -543,7 +543,7 @@ def build(cache, techniques, stages, prio, hits=None):
     punish = [sum(g[2] for g in pc), sum(g[3] for g in pc)] if pc else None
     checks = check_extras(parse_checks(cache.run), hits.get() if hits else [])
     age = None
-    log = os.path.join(cache.run, 'school-client.log')
+    log = os.path.join(cache.run, 'school-client-live.log')
     if os.path.exists(log):
         age = time.time() - os.path.getmtime(log)
     state = 'training'

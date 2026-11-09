@@ -1,5 +1,5 @@
 import re
-lines=[l for l in open('D:/swordai/run/school-client.log',encoding='utf8',errors='replace') if 'school update' in l][-6:]
+lines=[l for l in open('D:/swordai/run/school-client-live.log',encoding='utf8',errors='replace') if 'school update' in l][-6:]
 c=n=sf=sc=cf=cw=0; ck=sk=ma=pl='?'
 for l in lines:
     m=re.search(r'jump-ins countered in the full fights (\d+) of (\d+)',l); 

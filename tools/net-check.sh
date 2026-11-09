@@ -3,7 +3,7 @@
 # against the installed model; then training resumes on the network it had.
 S="${SWORDAI_TOOLS:-/d/swordai/tools}"
 NET="$1"; LABEL="$2"; [ -f "$NET" ] || { echo "no network $NET"; exit 1; }
-L=/d/swordai/run/school-client.log
+L=/d/swordai/run/school-client-live.log
 OUT=/d/swordai/run/school-checks.log
 INBOX=/d/swordai/run/swordai/inbox.txt
 SCH=/d/swordai/run/swordai/school

@@ -9,7 +9,7 @@ The question it answers: is the network without the rules as good as with them, 
 import re
 import sys
 
-path = sys.argv[1] if len(sys.argv) > 1 else 'D:/swordai/run/school-client.log'
+path = sys.argv[1] if len(sys.argv) > 1 else 'D:/swordai/run/school-client-live.log'
 first = sys.argv[2] if len(sys.argv) > 2 else '00:00'
 
 take = re.compile(r"\[(\d\d:\d\d):\d\d\].*school update (\d+), .*take-over: rules' keys ce ([\d.]+) \(smoothed\), agree (\d+)%(?:, pull [\d.]+)?; "

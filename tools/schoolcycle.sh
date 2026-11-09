@@ -4,7 +4,7 @@
 # appends the table and the technique summary to D:/swordai/run/school-checks.log, keeps a copy of that checkpoint, and
 # goes back to training. Stop it by creating D:/swordai/run/school-cycle.stop.
 S="${SWORDAI_TOOLS:-/d/swordai/tools}"
-L=/d/swordai/run/school-client.log
+L=/d/swordai/run/school-client-live.log
 OUT=/d/swordai/run/school-checks.log
 INBOX=/d/swordai/run/swordai/inbox.txt
 TRAIN_MIN=${TRAIN_MIN:-45}

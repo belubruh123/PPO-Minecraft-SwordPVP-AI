@@ -4,7 +4,7 @@
 # school-cycle.stop exists (a redeploy in progress, or stopped on purpose). If the client log has not been written for
 # 10 minutes it restarts the client in school mode; if the hourly check loop is gone it starts that again.
 S="${SWORDAI_TOOLS:-/d/swordai/tools}"
-L=/d/swordai/run/school-client.log
+L=/d/swordai/run/school-client-live.log
 LOG=/d/swordai/run/watchdog.log
 LOCK=/d/swordai/run/watchdog.lock
 # Everything this run starts goes into a hidden console of its own (7 Nov): attached to this run's console it kept the
@@ -79,7 +79,9 @@ echo "$(date '+%m-%d %H:%M') log age $age s, last school line ${last:-none}" >> 
 # memory while the client is up; restart as before once 1.2 GB is available (or the client is gone).
 if [ $age -ge 600 ]; then
   avail=$(powershell -NoProfile -Command "[math]::Round((Get-Counter '\Memory\Available MBytes').CounterSamples[0].CookedValue)" | tr -d '\r')
-  up=$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process | Where-Object { \$_.Name -eq 'java.exe' -and \$_.CommandLine -match 'fabric\.dli\.' }).Count" | tr -d '\r')
+  # Only a client that is still alive: at 21:13 the frozen one had exited but could not be cleared away (one thread stuck,
+  # its log file still locked), and it counted as up.
+  up=$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process | Where-Object { \$_.Name -eq 'java.exe' -and \$_.CommandLine -match 'fabric\.dli\.' } | ForEach-Object { Get-Process -Id \$_.ProcessId -ErrorAction SilentlyContinue } | Where-Object { -not \$_.HasExited }).Count" | tr -d '\r')
   # 9 Nov 20:41: the client itself froze (Windows: not responding) and held 2.7 GB, so the wait for memory never ended.
   # A frozen client is restarted at once (the restart ends it and gives its memory back).
   hung=$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process | Where-Object { \$_.Name -eq 'java.exe' -and \$_.CommandLine -match 'fabric\.dli\.' } | ForEach-Object { Get-Process -Id \$_.ProcessId } | Where-Object { -not \$_.Responding }).Count" | tr -d '\r')

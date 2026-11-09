@@ -1,6 +1,6 @@
 import re,glob,os,statistics as st
 bots={'attack-then-s':'C3','stun-escaper':'C3','uppercutter':'T10','lunger':'T11a','fall-spacer':'K3'}
-files=sorted(glob.glob(r'D:\swordai\run\school-client-1025-*.log'))+[r'D:\swordai\run\school-client.log']
+files=sorted(glob.glob(r'D:\swordai\run\school-client-1025-*.log'))+[r'D:\swordai\run\school-client-live.log']
 pat=re.compile(r'school fight (random )?([a-z\-]+): dealt ([\d.]+), taken ([\d.]+), ticks (\d+)(.*?)teacher spoke on (\d+) ticks; (random )?[a-z\-]+ \[(.*?)\] react (\d+) timing ([\d.]+) lag (\d+) ping (\d+)')
 rows=[]
 for f in files:

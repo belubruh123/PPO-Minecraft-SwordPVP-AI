@@ -20,7 +20,7 @@ KEYS = ('W/S', 'A/D', 'sprint', 'jump', 'swing')
 
 def updates(run):
     logs = sorted(glob.glob(os.path.join(run, 'school-client-*.log')), key=os.path.getmtime)[-4:]
-    logs.append(os.path.join(run, 'school-client.log'))
+    logs.append(os.path.join(run, 'school-client-live.log'))
     out = []
     for f in logs:
         if os.path.exists(f):
