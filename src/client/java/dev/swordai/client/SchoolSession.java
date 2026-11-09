@@ -674,7 +674,7 @@ public final class SchoolSession implements AgentSession {
 	/** Run 54b: the T1c funnel (its own jump after the punish crit, hits from it, sprint hits among them) and its swing back in their combo. */
 	private boolean t1cJumpCounted;
 	private int t1cJumps, t1cHits, t1cSprintHits;
-	private int comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboOther, comboAirLifted, comboAirFalling;
+	private int comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboOther, comboAirLifted, comboAirFalling, comboOtherFalling;
 	/** Run 54c: ticks in the air since its last take-off; its vertical speed on the tick before; hits in its own jump not paid. */
 	private int ownAirTicks;
 	private double prevVy;
@@ -683,13 +683,13 @@ public final class SchoolSession implements AgentSession {
 	private String jumpAlongLine() {
 		String s = String.format(Locale.ROOT, " | came into reach by a jump that kept the rule %d, walking in %d; its own jumps %d, off beyond their reach and rising out of it %d, crits from those %d; jumped along with their jump-in %d, crits then %d, punish crits then %d"
 						+ " | after its %d punish crits: crit again from its own jump (T1c) %d, critted back by them %d; its own jump after them %d, hits from it %d (sprint hits %d)"
-						+ " | in their combo with the sword ready and them in reach: %d ticks, swung %d, held by the jump-in guard %d, in the air itself %d (lifted by their hit %d, falling %d), other %d; hits in its own jump not charged (falling or the jump reset's moment) %d",
+						+ " | in their combo with the sword ready and them in reach: %d ticks, swung %d, held by the jump-in guard %d, in the air itself %d (lifted by their hit %d, falling %d), other %d (them falling %d); hits in its own jump not charged (falling or the jump reset's moment) %d",
 				enteredByJump, enteredByWalk, ownJumps, ownJumpsRuleKept, ruleJumpCrits, jumpAlongs, jumpAlongCrits, jumpAlongPunish,
 				punishCritsForT1c, t1cCrits, critBacks, t1cJumps, t1cHits, t1cSprintHits,
-				comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, airJumpHitsFree);
+				comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, comboOtherFalling, airJumpHitsFree);
 		punishCritsForT1c = t1cCrits = critBacks = 0;
 		t1cJumps = t1cHits = t1cSprintHits = 0;
-		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = 0;
+		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = comboOtherFalling = 0;
 		airJumpHitsFree = 0;
 		enteredByJump = enteredByWalk = 0;
 		jumpAlongs = jumpAlongCrits = jumpAlongPunish = 0;
@@ -3932,6 +3932,8 @@ public final class SchoolSession implements AgentSession {
 					comboAirFalling += me.getDeltaMovement().y < 0 ? 1 : 0;
 				} else {
 					comboOther++;
+					// Run 54d: on the ground and not swinging; with them falling holding is the document's K2 (no KB hit on a faller).
+					comboOtherFalling += reader.duel.them.falling() || truth.botFalling() ? 1 : 0;
 				}
 			}
 			if (sincePunishCrit == 0) {
