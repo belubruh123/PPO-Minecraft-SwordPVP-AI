@@ -662,13 +662,21 @@ public final class SchoolSession implements AgentSession {
 	/** Run 54: ticks since its last punish crit (past T1C_WINDOW: none open); after those punish crits, its T1c crits and their crits back. */
 	private int sincePunishCrit = T1C_WINDOW + 1;
 	private int punishCritsForT1c, t1cCrits, critBacks;
+	/** Run 54b: the T1c funnel (its own jump after the punish crit, hits from it, sprint hits among them) and its swing back in their combo. */
+	private boolean t1cJumpCounted;
+	private int t1cJumps, t1cHits, t1cSprintHits;
+	private int comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboOther;
 
 	private String jumpAlongLine() {
 		String s = String.format(Locale.ROOT, " | came into reach by a jump that kept the rule %d, walking in %d; its own jumps %d, off beyond their reach and rising out of it %d, crits from those %d; jumped along with their jump-in %d, crits then %d, punish crits then %d"
-						+ " | after its %d punish crits: crit again from its own jump (T1c) %d, critted back by them %d",
+						+ " | after its %d punish crits: crit again from its own jump (T1c) %d, critted back by them %d; its own jump after them %d, hits from it %d (sprint hits %d)"
+						+ " | in their combo with the sword ready and them in reach: %d ticks, swung %d, held by the jump-in guard %d, in the air itself %d, other %d",
 				enteredByJump, enteredByWalk, ownJumps, ownJumpsRuleKept, ruleJumpCrits, jumpAlongs, jumpAlongCrits, jumpAlongPunish,
-				punishCritsForT1c, t1cCrits, critBacks);
+				punishCritsForT1c, t1cCrits, critBacks, t1cJumps, t1cHits, t1cSprintHits,
+				comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboOther);
 		punishCritsForT1c = t1cCrits = critBacks = 0;
+		t1cJumps = t1cHits = t1cSprintHits = 0;
+		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = 0;
 		enteredByJump = enteredByWalk = 0;
 		jumpAlongs = jumpAlongCrits = jumpAlongPunish = 0;
 		ownJumps = ownJumpsRuleKept = ruleJumpCrits = 0;
@@ -3359,6 +3367,10 @@ public final class SchoolSession implements AgentSession {
 					sincePunishCrit = T1C_WINDOW + 1;
 				}
 				if (afterPunish && facts.hitsDealt > 0) {
+					if (liftedFor < 0 && ownJumpAir) {
+						t1cHits++;
+						t1cSprintHits += facts.sprintHit ? 1 : 0;
+					}
 					if (facts.critDealt && liftedFor < 0 && ownJumpAir) {
 						reward += T1C_CRIT;
 						t1cCrits++;
@@ -3885,6 +3897,30 @@ public final class SchoolSession implements AgentSession {
 		// Run 43: a take-off on the ground by the network (not a rule's jump) marks the air until it stands again.
 		if (me.onGround()) {
 			ownJumpAir = action[ActionSpace.JUMP] == 1 && (ruled & (1 << ActionSpace.JUMP)) == 0;
+		}
+		// Run 54b: counters for PROBLEMS.md 1, 2, 10 (the swing back in their combo) and 4 (the T1c funnel after its punish crit).
+		if (mode == Mode.TRAIN && review < 0) {
+			boolean theirCombo = clock.ticksSinceHitTaken <= 20 && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken;
+			if (theirCombo && charge >= 0.95f && facts.reachDist <= 3.0f) {
+				comboReadyTicks++;
+				if (action[ActionSpace.ATTACK] == 1) {
+					comboSwung++;
+				} else if (k2Hold) {
+					comboGuard++;
+				} else if (!me.onGround()) {
+					comboOwnAir++;
+				} else {
+					comboOther++;
+				}
+			}
+			if (sincePunishCrit == 0) {
+				t1cJumpCounted = false;
+			}
+			if (sincePunishCrit <= T1C_WINDOW && !t1cJumpCounted && me.onGround() && action[ActionSpace.JUMP] == 1
+					&& (ruled & (1 << ActionSpace.JUMP)) == 0) {
+				t1cJumps++;
+				t1cJumpCounted = true;
+			}
 		}
 		if (mode == Mode.CHECK) {
 			fairJump.apply(action, me.onGround(), clock.ticksSinceHitTaken, clock.takenStreak.hits());
