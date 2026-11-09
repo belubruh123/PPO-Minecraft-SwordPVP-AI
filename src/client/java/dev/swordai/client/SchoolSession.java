@@ -98,6 +98,16 @@ public final class SchoolSession implements AgentSession {
 	static final int PUNISH_WINDOW = 18;
 	static final float PUNISH_CRIT = 0.5f;
 	/**
+	 * Run 54 (9 Nov 22:10), the user: "after it punish crit the opponent crit back ... it should either crit back or just let
+	 * the punish crit not be able to be punish crit by opponent". Their real duels: after its 410 punish crits they hit it back
+	 * within 30 ticks in 63% (a crit in 12%), and it jumped again for the document's T1c ("after you punish-crit them,
+	 * immediately jump and crit again") in 6%. Within T1C_WINDOW ticks of its punish crit (until its next hit): a crit out of
+	 * its own jump pays T1C_CRIT; a crit taken (the server's count) costs CRIT_BACK_COST.
+	 */
+	static final int T1C_WINDOW = 30;
+	static final float T1C_CRIT = 0.3f;
+	static final float CRIT_BACK_COST = 0.3f;
+	/**
 	 * Since 24 Oct 15:45 the punish crit is paid only as the game counts it (the user's table, "punish crit 0 of 89"):
 	 * thrown up from the ground by their hit, the crit before it lands. Any crit within the window was paid before, 4 or 5
 	 * an update against the game's 0 or 1. A crit that is not a punish crit pays this.
@@ -649,10 +659,16 @@ public final class SchoolSession implements AgentSession {
 	private boolean wasInReach;
 	private float enterReward;
 	private int enteredByJump, enteredByWalk;
+	/** Run 54: ticks since its last punish crit (past T1C_WINDOW: none open); after those punish crits, its T1c crits and their crits back. */
+	private int sincePunishCrit = T1C_WINDOW + 1;
+	private int punishCritsForT1c, t1cCrits, critBacks;
 
 	private String jumpAlongLine() {
-		String s = String.format(Locale.ROOT, " | came into reach by a jump that kept the rule %d, walking in %d; its own jumps %d, off beyond their reach and rising out of it %d, crits from those %d; jumped along with their jump-in %d, crits then %d, punish crits then %d",
-				enteredByJump, enteredByWalk, ownJumps, ownJumpsRuleKept, ruleJumpCrits, jumpAlongs, jumpAlongCrits, jumpAlongPunish);
+		String s = String.format(Locale.ROOT, " | came into reach by a jump that kept the rule %d, walking in %d; its own jumps %d, off beyond their reach and rising out of it %d, crits from those %d; jumped along with their jump-in %d, crits then %d, punish crits then %d"
+						+ " | after its %d punish crits: crit again from its own jump (T1c) %d, critted back by them %d",
+				enteredByJump, enteredByWalk, ownJumps, ownJumpsRuleKept, ruleJumpCrits, jumpAlongs, jumpAlongCrits, jumpAlongPunish,
+				punishCritsForT1c, t1cCrits, critBacks);
+		punishCritsForT1c = t1cCrits = critBacks = 0;
 		enteredByJump = enteredByWalk = 0;
 		jumpAlongs = jumpAlongCrits = jumpAlongPunish = 0;
 		ownJumps = ownJumpsRuleKept = ruleJumpCrits = 0;
@@ -836,6 +852,14 @@ public final class SchoolSession implements AgentSession {
 	static final int SCENE_MASTERED = 3;
 	/** Of the full fights left (where new scenes come from), the share against the bots that crit. */
 	static final float CRIT_BOT_SHARE = 0.25f; // the rest: every technique's bots (the review of the other techniques)
+	/**
+	 * Run 54 (9 Nov 22:10): the user's real-duel problems (PROBLEMS.md 2-4): "let it learn to know difference between jump in
+	 * crit and uppercut lunge and hop where it got comboed by this super easily", and their crit back after its punish crit.
+	 * A share of the training fights against exactly those bots (the hopper was drawn only as any technique's bot before).
+	 */
+	static final float PROBLEM_BOT_SHARE = 0.25f;
+	static final int[] PROBLEM_BOTS = {Specialists.UPPERCUTTER, Specialists.LUNGER, Specialists.HOPPER, Specialists.DOUBLE_CRITTER,
+			Specialists.JUMP_IN_CRITTER, Specialists.RHYTHM_COMBOER};
 	static final int[] CRIT_BOTS = {Specialists.PUNISH_CRITTER, Specialists.DOUBLE_CRITTER, Specialists.CRIT_BREAKER,
 			Specialists.STANDING_CRITTER, Specialists.JUMP_IN_CRITTER};
 	static final int SCENES_KEPT = 400;
@@ -2643,7 +2667,9 @@ public final class SchoolSession implements AgentSession {
 			learner.seedSampling(seed * 0x2545F4914F6CDD1DL);
 		} else {
 			installedPlays = false;
-			fightBot = rng.nextFloat() < CRIT_BOT_SHARE ? CRIT_BOTS[rng.nextInt(CRIT_BOTS.length)] : stages.drawBot(rng);
+			float drawU = rng.nextFloat();
+			fightBot = drawU < CRIT_BOT_SHARE ? CRIT_BOTS[rng.nextInt(CRIT_BOTS.length)]
+					: drawU < CRIT_BOT_SHARE + PROBLEM_BOT_SHARE ? PROBLEM_BOTS[rng.nextInt(PROBLEM_BOTS.length)] : stages.drawBot(rng);
 			// Half of the specialists do other things as well, at random (see Specialists.varied); drawn from a seed of its own,
 			// so that a scene of this fight can bring the same opponent back.
 			fightStyleSeed = rng.nextLong();
@@ -2860,6 +2886,7 @@ public final class SchoolSession implements AgentSession {
 		sweep = 0;
 		frozenTicks = 0;
 		fightTicks = 0;
+		sincePunishCrit = T1C_WINDOW + 1;
 		// An own-combo scene starts the tick after its first hit: a hit within COMBO_GAP is that combo's follow-up (COMBO_HIT).
 		boolean ownScene = sceneNow != null && (sceneNow.kind == KIND_OWN || sceneNow.kind == KIND_OWN2);
 		lastOwnHitAt = ownScene ? -1 : -1000;
@@ -3323,12 +3350,29 @@ public final class SchoolSession implements AgentSession {
 				float reward = PER_HEALTH * (DEALT_WEIGHT * facts.damageDealt - facts.damageTaken) + (facts.koDealt ? KNOCKOUT : 0f) - (facts.koTaken ? KNOCKOUT : 0f);
 				reward += enterReward;
 				enterReward = 0f;
+				// Run 54: after its punish crit, T1c pays and their crit back costs, until its next hit or T1C_WINDOW.
+				sincePunishCrit++;
+				boolean afterPunish = sincePunishCrit <= T1C_WINDOW;
+				if (afterPunish && facts.critsTaken > 0) {
+					reward -= CRIT_BACK_COST;
+					critBacks++;
+					sincePunishCrit = T1C_WINDOW + 1;
+				}
+				if (afterPunish && facts.hitsDealt > 0) {
+					if (facts.critDealt && liftedFor < 0 && ownJumpAir) {
+						reward += T1C_CRIT;
+						t1cCrits++;
+					}
+					sincePunishCrit = T1C_WINDOW + 1;
+				}
 				if (facts.hitsDealt > 0 && facts.critDealt) {
 					if (liftedFor >= 0) {
 						reward += PUNISH_CRIT;
 						punishCritsPaid++;
 						drillPunishCrits += drillFight ? 1 : 0;
 						liftStage = 6;
+						sincePunishCrit = 0;
+						punishCritsForT1c++;
 					} else {
 						reward += OTHER_CRIT;
 						otherCrits++;

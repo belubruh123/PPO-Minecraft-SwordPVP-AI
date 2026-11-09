@@ -304,3 +304,26 @@ Lost rounds: the server never kills the loser and does not make it a spectator. 
 Installed 21:50: the 21:49 jar with run35-0657 back as the main model, A/B pool off (backup backup-before-school-20261109-215017). run52-1218 stays in run/best-candidates.
 
 Lesson: the bench and checks score against bots, which neither combo nor jump-reset like real players. The bench's "BETTER" (bot rounds 205 vs 172) did not carry over to real duels. Real duels decide installs, and the A/B pool is the way to get them.
+
+## Run 54 (9 Nov 22:15): from run35-0657 (best in real duels), with T1c after its punish crit and a share of the user's problem bots
+
+The user (22:00) asked for four things, keeping the punish crit: tell a jump-in crit from uppercuts, lunges and hops (it got comboed and stunned by those); crit back after its punish crit, or not let it be punished; stop getting comboed.
+
+Real duels (200 rounds, tools in the scratchpad: jumpkinds.py, sprintsignal.py, afterpunish.py):
+- Of the opponent's jumps from outside reach that ended in their hit, 25% were crits by the recorder's test and 75% sprint or plain hits. The guard treated them all as jump-in crits.
+- The jumper's sprint flag seen in the air does not tell them apart: 23-25% crits, sprinting or not, at air ticks 2-7. So no rule can split them. The network has to learn the document's answers against the bots: uppercut T8; lunge K1/K2, T8, B1; hops back out, C3 before the hit.
+- After its 410 punish crits, they hit back within 30 ticks in 63% (a crit in 12%). It jumped again for T1c in only 6%.
+
+Changes (training):
+- T1C_CRIT 0.3: a crit out of its own jump within 30 ticks of its punish crit (before its next hit).
+- CRIT_BACK_COST 0.3: a crit taken in that window (the server's count).
+- PROBLEM_BOT_SHARE 0.25: uppercutter, lunger, hopper, double-critter, jump-in critter, rhythm comboer.
+- Run 53's guard (take-off beyond 3.3 only) now in training too.
+- Start network: run35-0657 (the installed one, best in the user's real duels). The run 52 line is kept as training-kept-*.bin.
+
+Keep and watch:
+- punish crit chances critted (about 50-65%) and B1 in the checks;
+- K2 and late jump-in hits;
+- the new update-line part "after its N punish crits: crit again (T1c) x, critted back y".
+
+Judge by the user's real duels (PROBLEMS.md), not the bench.
