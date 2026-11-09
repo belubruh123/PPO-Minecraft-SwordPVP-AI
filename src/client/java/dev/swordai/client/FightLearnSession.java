@@ -118,6 +118,16 @@ final class FightLearnSession extends Trainer {
 	private int deadTicks;
 	private boolean deathCounted;
 	private boolean killCounted;
+	/** The opponent is watching as a spectator (it died on the user's server) and that kill is counted. */
+	private boolean oppSpectatorCounted;
+
+	/** Whether that player is in spectator mode, by the server's player list (where the user's server puts one who dies). */
+	private boolean spectating(java.util.UUID id) {
+		if (id == null || mc.getConnection() == null || mc.getConnection().getPlayerInfo(id) == null) {
+			return false;
+		}
+		return mc.getConnection().getPlayerInfo(id).getGameMode() == net.minecraft.world.level.GameType.SPECTATOR;
+	}
 
 	// ---- what this client has seen of the fight since the last step ------------------------------
 	private int pendHitsDealt;
@@ -387,8 +397,28 @@ final class FightLearnSession extends Trainer {
 			}
 			return;
 		}
+		// The user's server does not kill: the one who dies watches the rest as a spectator. This session counted only a
+		// real death, so its deaths stayed 0 and every lost round looked unfinished (9 Nov, the user's report).
+		if (me.isSpectator()) {
+			if (!deathCounted) {
+				deathCounted = true;
+				deaths++;
+				endFight(false, true);
+			}
+			handBack("the next round");
+			return;
+		}
 		deadTicks = 0;
 		deathCounted = false;
+		boolean oppSpectating = opponentId != null && spectating(opponentId);
+		if (oppSpectating && !oppSpectatorCounted) {
+			oppSpectatorCounted = true;
+			kills++;
+			endFight(true, false);
+		}
+		if (!oppSpectating) {
+			oppSpectatorCounted = false;
+		}
 
 		// Any menu hands the game back to the player; the chat does not.
 		Screen screen = mc.screen;

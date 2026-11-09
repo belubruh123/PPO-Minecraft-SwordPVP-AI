@@ -92,6 +92,8 @@ final class FightSession implements AgentSession {
 	private int deadTicks;
 	private boolean deathCounted;
 	private boolean killCounted;
+	/** The opponent is watching as a spectator (it died on the user's server) and that kill is counted. */
+	private boolean oppSpectatorCounted;
 	/** In the air now on a jump that started at it from close, not yet hit by it (SchoolSession.JUMP_IN_GUARD). */
 	private boolean jumpInAir;
 	/** How the opponent fights, counted for training; see {@link StyleWatch}. */
@@ -266,12 +268,12 @@ final class FightSession implements AgentSession {
 			}
 			return;
 		}
-		deadTicks = 0;
-		deathCounted = false;
 		// The user's server does not kill: the one who dies watches the rest as a spectator (5 Nov), so a round lost that
 		// way showed as never closed, and the stats then had rounds lost with more dealt than taken.
+		// 9 Nov: counted once per spectating spell, whether or not a round file is open (deaths stayed 0 in the user's duels).
 		if (me.isSpectator()) {
-			if (rounds.open()) {
+			if (!deathCounted) {
+				deathCounted = true;
 				deaths++;
 				closeStyle(true);
 				closeRound("lost");
@@ -279,10 +281,17 @@ final class FightSession implements AgentSession {
 			handBack("the next round");
 			return;
 		}
-		if (opponent != null && rounds.open() && spectating(opponentId)) {
+		deadTicks = 0;
+		deathCounted = false;
+		boolean oppSpectating = opponent != null && spectating(opponentId);
+		if (oppSpectating && !oppSpectatorCounted) {
+			oppSpectatorCounted = true;
 			kills++;
 			closeStyle(false);
 			closeRound("won");
+		}
+		if (!oppSpectating) {
+			oppSpectatorCounted = false;
 		}
 
 		// Any menu hands the game back to the player; the chat does not.

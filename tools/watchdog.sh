@@ -80,7 +80,10 @@ echo "$(date '+%m-%d %H:%M') log age $age s, last school line ${last:-none}" >> 
 if [ $age -ge 600 ]; then
   avail=$(powershell -NoProfile -Command "[math]::Round((Get-Counter '\Memory\Available MBytes').CounterSamples[0].CookedValue)" | tr -d '\r')
   up=$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process | Where-Object { \$_.Name -eq 'java.exe' -and \$_.CommandLine -match 'fabric\.dli\.' }).Count" | tr -d '\r')
-  if [ "$up" != "0" ] && [ -n "$avail" ] && [ "$avail" -lt 1200 ]; then
+  # 9 Nov 20:41: the client itself froze (Windows: not responding) and held 2.7 GB, so the wait for memory never ended.
+  # A frozen client is restarted at once (the restart ends it and gives its memory back).
+  hung=$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process | Where-Object { \$_.Name -eq 'java.exe' -and \$_.CommandLine -match 'fabric\.dli\.' } | ForEach-Object { Get-Process -Id \$_.ProcessId } | Where-Object { -not \$_.Responding }).Count" | tr -d '\r')
+  if [ "$up" != "0" ] && [ "$hung" = "0" ] && [ -n "$avail" ] && [ "$avail" -lt 1200 ]; then
     echo "$(date '+%m-%d %H:%M') training stopped but only $avail MB of memory available: waiting for memory, not restarting" >> $LOG
     exit 0
   fi

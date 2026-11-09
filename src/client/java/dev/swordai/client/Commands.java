@@ -268,7 +268,14 @@ final class Commands {
 			return 0;
 		}
 		try {
-			if (SwordFiles.loadConfig().learnFromPeople) {
+			// 9 Nov: with "learn from people" on, every duel of 7-8 Nov was played by the old network of 19 Oct (checkpoint.bin)
+			// in FightLearnSession: never the installed school network nor the A/B pool. That learning is for the old network
+			// only, so with a school network installed the fight is always the school's (FightSession).
+			boolean schoolInstalled = Files.exists(SwordFiles.schoolCheckpoint());
+			if (SwordFiles.loadConfig().learnFromPeople && schoolInstalled) {
+				say(source, "Learning from people is for the old network only; the installed school network plays (with the A/B pool if there is one).");
+			}
+			if (SwordFiles.loadConfig().learnFromPeople && !schoolInstalled) {
 				FightLearnSession session = SwordAiClient.startFightLearning(mc, opponentName);
 				say(source, "The AI now plays your character against " + (opponentName == null ? "the other player" : opponentName)
 						+ ", and learns from it (/swordai learn off turns that off). " + session.skillLine());
