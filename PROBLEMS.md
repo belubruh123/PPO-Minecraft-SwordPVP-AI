@@ -44,6 +44,10 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
 10. **It is in the air too much in the opponent's combo** (run52 37% of those ticks, run35 27%), where it cannot swing back.
    - Training (run 54b, 3309 ticks in their combo with the sword ready and them in reach): swung 25%, guard 8%, in the air itself 48%, other 19%. Split into lifted by their hit / falling from run 54c on.
 11. **Uppercutter and fight-jumpin bots**: behind in most checks of 9 Nov (uppercutter -18, -23, -21, -44 in the last four).
+12. **Fight back with its own combo: start a combo and hold it with uppercuts (T10), hops (T11b), lunges (T11a) and strafing (T6a)** (the user, 10 Nov 06:40).
+   - The document: deflection into uppercut starts combos (T10); hops hold players in combos (T11b); lunges catch players holding S (T11a); alternate hops and lunges (T11c); strafe so they miss (T6a).
+   - Seen (training, 9-10 Nov): uppercut (T10) 7-30% and hops (T11b) 12-58%, both stuck or swinging; T11c 0-15%; lunge (T11a) too few moments.
+   - Fix 1 (run 56, deployed about 06:52): on top of the combo reward, a follow-up hit of its own combo pays +0.2 when it is a sprint hit out of its own jump (uppercut rising, lunge or hop falling), and +0.1 when A or D was held. Counted as "its combo held by an uppercut / a lunge or hop / strafing". Status: NOT VERIFIED.
 
 ## SOLVED (with the evidence)
 

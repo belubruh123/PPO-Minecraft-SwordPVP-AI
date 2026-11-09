@@ -188,6 +188,16 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final float COMBO_HIT3 = 0.2f;
 	/**
+	 * Run 56 (10 Nov 06:50), the user: "fight back with a combo: learn how to start a combo and hold a combo with uppercut/hop/lunge
+	 * and strafe". The document: T10 uppercut (jump, sprint-hit at the peak; "best time: right after you stun them", "deflection
+	 * into uppercut is an easy way to start combos"), T11a lunge (sprint-jump forward, sprint-hit as you fall), T11b hops ("hops hold
+	 * players in combos"), T11c alternate them, T6a strafing ("strafe side to side as you fight, so they miss"). On top of COMBO_HIT,
+	 * a follow-up hit of its own combo pays JUMP_COMBO_HIT when it is a sprint hit out of its own jump (uppercut rising, lunge or hop
+	 * falling), and STRAFE_COMBO_HIT when A or D was held.
+	 */
+	static final float JUMP_COMBO_HIT = 0.2f;
+	static final float STRAFE_COMBO_HIT = 0.1f;
+	/**
 	 * Run 44, the chase crit (the user, 7 Nov 07:50, their own knowledge: "a lot of player back out of combo so ... once the AI
 	 * sees player backing out, jump and chase it and crit it cause it is a good chance ... their back out ... is over three
 	 * block so jump in crit won't get you knock away"): a crit that carries on its own combo (within CHASE_GAP ticks of its last
@@ -691,21 +701,25 @@ public final class SchoolSession implements AgentSession {
 	private boolean inTheirCombo;
 	/** Run 55c: outside their combo, on the ground, sword ready, them in reach: ticks, swung, held with them falling, held otherwise. */
 	private int readyTicks, readySwung, readyHeldFalling, readyHeldOther;
+	/** Run 56: A or D on the last step; its combo's follow-up hits by an uppercut (rising), a lunge or hop (falling), and strafing. */
+	private boolean lastStrafe;
+	private int uppercutComboHits, fallingJumpComboHits, strafeComboHits;
 	private int counterHits;
 
 	private String jumpAlongLine() {
 		String s = String.format(Locale.ROOT, " | came into reach by a jump that kept the rule %d, walking in %d; its own jumps %d, off beyond their reach and rising out of it %d, crits from those %d; jumped along with their jump-in %d, crits then %d, punish crits then %d"
 						+ " | after its %d punish crits: crit again from its own jump (T1c) %d, critted back by them %d; its own jump after them %d, hits from it %d (sprint hits %d)"
-						+ " | in their combo with the sword ready and them in reach: %d ticks, swung %d, held by the jump-in guard %d, in the air itself %d (lifted by their hit %d, falling %d), other %d (them falling %d); hits in its own jump not charged (falling or the jump reset's moment) %d; hits breaking into their combo (C4) %d | outside their combo on the ground, sword ready, them in reach: %d ticks, swung %d, held with them falling %d, held otherwise %d",
+						+ " | in their combo with the sword ready and them in reach: %d ticks, swung %d, held by the jump-in guard %d, in the air itself %d (lifted by their hit %d, falling %d), other %d (them falling %d); hits in its own jump not charged (falling or the jump reset's moment) %d; hits breaking into their combo (C4) %d | outside their combo on the ground, sword ready, them in reach: %d ticks, swung %d, held with them falling %d, held otherwise %d | its combo held by an uppercut %d, a lunge or hop %d, strafing %d",
 				enteredByJump, enteredByWalk, ownJumps, ownJumpsRuleKept, ruleJumpCrits, jumpAlongs, jumpAlongCrits, jumpAlongPunish,
 				punishCritsForT1c, t1cCrits, critBacks, t1cJumps, t1cHits, t1cSprintHits,
-				comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, comboOtherFalling, airJumpHitsFree, counterHits, readyTicks, readySwung, readyHeldFalling, readyHeldOther);
+				comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, comboOtherFalling, airJumpHitsFree, counterHits, readyTicks, readySwung, readyHeldFalling, readyHeldOther, uppercutComboHits, fallingJumpComboHits, strafeComboHits);
 		punishCritsForT1c = t1cCrits = critBacks = 0;
 		t1cJumps = t1cHits = t1cSprintHits = 0;
 		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = comboOtherFalling = 0;
 		airJumpHitsFree = 0;
 		counterHits = 0;
 		readyTicks = readySwung = readyHeldFalling = readyHeldOther = 0;
+		uppercutComboHits = fallingJumpComboHits = strafeComboHits = 0;
 		enteredByJump = enteredByWalk = 0;
 		jumpAlongs = jumpAlongCrits = jumpAlongPunish = 0;
 		ownJumps = ownJumpsRuleKept = ruleJumpCrits = 0;
@@ -3502,6 +3516,19 @@ public final class SchoolSession implements AgentSession {
 						reward += COMBO_HIT + (rewardRow >= 3 ? COMBO_HIT3 : 0f);
 						comboHitsPaid++;
 						combo3Paid += rewardRow >= 3 ? 1 : 0;
+						// Run 56: held with an uppercut, a lunge or a hop (a sprint hit out of its own jump), or while strafing.
+						if (facts.sprintHit && ownJumpAir && !facts.onGround) {
+							reward += JUMP_COMBO_HIT;
+							if (prevVy > 0.0) {
+								uppercutComboHits++;
+							} else {
+								fallingJumpComboHits++;
+							}
+						}
+						if (lastStrafe) {
+							reward += STRAFE_COMBO_HIT;
+							strafeComboHits++;
+						}
 					} else {
 						rewardRow = 1;
 					}
@@ -3983,6 +4010,7 @@ public final class SchoolSession implements AgentSession {
 			}
 		}
 		ownAirTicks = me.onGround() ? 0 : ownAirTicks + 1;
+		lastStrafe = action[ActionSpace.STRAFE] != 0;
 		prevVy = me.getDeltaMovement().y;
 		if (mode == Mode.CHECK) {
 			fairJump.apply(action, me.onGround(), clock.ticksSinceHitTaken, clock.takenStreak.hits());

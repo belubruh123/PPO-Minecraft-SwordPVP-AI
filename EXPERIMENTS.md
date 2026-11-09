@@ -366,3 +366,26 @@ Watch:
 - their combos' third hit in the checks (A 33% vs B 26% at 02:02);
 - K2 broken (must not rise: the payment excludes fallers);
 - punish crit chances critted.
+
+## Run 56 (10 Nov ~06:52): its combo held by uppercuts, lunges, hops and strafing (the user's new problem 12)
+
+The user (06:40): "fight back with a combo: learn how to start a combo and hold a combo with uppercut/hop/lunge and strafe".
+
+The document's definitions:
+- T10: sprint-hit at your jump's peak, best right after a stun; deflection into uppercut starts combos.
+- T11a lunge: sprint-hit as you fall from a forward sprint-jump.
+- T11b hops: they hold players in combos.
+- T11c: alternate hops and lunges.
+- T6a strafing: so they miss.
+
+Change: on top of COMBO_HIT (+0.2 a follow-up, +0.2 more from the third), a follow-up hit pays:
+- JUMP_COMBO_HIT +0.2 when it is a sprint hit out of its own jump (counted as uppercut when rising, lunge or hop when falling);
+- STRAFE_COMBO_HIT +0.1 when A or D was held.
+
+Starting a combo stays paid as before: the second hit's COMBO_HIT and the deflection start (DEFLECT_HIT).
+
+Watch:
+- the new counts;
+- T10, T11a, T11b, T11c in the technique review;
+- K2 broken (its own combo is exempt since run 52: watch that sprint hits on fallers do not swell);
+- the punish crit.
