@@ -701,6 +701,8 @@ public final class SchoolSession implements AgentSession {
 	private boolean inTheirCombo;
 	/** Run 55c: outside their combo, on the ground, sword ready, them in reach: ticks, swung, held with them falling, held otherwise. */
 	private int readyTicks, readySwung, readyHeldFalling, readyHeldOther;
+	/** Run 57: of those, ticks the swing was not open (crosshair off or the sword's lock). */
+	private int comboLocked, readyLocked;
 	/** Run 56: A or D on the last step; its combo's follow-up hits by an uppercut (rising), a lunge or hop (falling), and strafing. */
 	private boolean lastStrafe;
 	private int uppercutComboHits, fallingJumpComboHits, strafeComboHits;
@@ -709,16 +711,17 @@ public final class SchoolSession implements AgentSession {
 	private String jumpAlongLine() {
 		String s = String.format(Locale.ROOT, " | came into reach by a jump that kept the rule %d, walking in %d; its own jumps %d, off beyond their reach and rising out of it %d, crits from those %d; jumped along with their jump-in %d, crits then %d, punish crits then %d"
 						+ " | after its %d punish crits: crit again from its own jump (T1c) %d, critted back by them %d; its own jump after them %d, hits from it %d (sprint hits %d)"
-						+ " | in their combo with the sword ready and them in reach: %d ticks, swung %d, held by the jump-in guard %d, in the air itself %d (lifted by their hit %d, falling %d), other %d (them falling %d); hits in its own jump not charged (falling or the jump reset's moment) %d; hits breaking into their combo (C4) %d | outside their combo on the ground, sword ready, them in reach: %d ticks, swung %d, held with them falling %d, held otherwise %d | its combo held by an uppercut %d, a lunge or hop %d, strafing %d",
+						+ " | in their combo with the sword ready and them in reach: %d ticks, swung %d, held by the jump-in guard %d, swing not open %d, in the air itself %d (lifted by their hit %d, falling %d), other %d (them falling %d); hits in its own jump not charged (falling or the jump reset's moment) %d; hits breaking into their combo (C4) %d | outside their combo on the ground, sword ready, them in reach: %d ticks, swung %d, swing not open %d, held with them falling %d, held otherwise %d | its combo held by an uppercut %d, a lunge or hop %d, strafing %d",
 				enteredByJump, enteredByWalk, ownJumps, ownJumpsRuleKept, ruleJumpCrits, jumpAlongs, jumpAlongCrits, jumpAlongPunish,
 				punishCritsForT1c, t1cCrits, critBacks, t1cJumps, t1cHits, t1cSprintHits,
-				comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, comboOtherFalling, airJumpHitsFree, counterHits, readyTicks, readySwung, readyHeldFalling, readyHeldOther, uppercutComboHits, fallingJumpComboHits, strafeComboHits);
+				comboReadyTicks, comboSwung, comboGuard, comboLocked, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, comboOtherFalling, airJumpHitsFree, counterHits, readyTicks, readySwung, readyLocked, readyHeldFalling, readyHeldOther, uppercutComboHits, fallingJumpComboHits, strafeComboHits);
 		punishCritsForT1c = t1cCrits = critBacks = 0;
 		t1cJumps = t1cHits = t1cSprintHits = 0;
 		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = comboOtherFalling = 0;
 		airJumpHitsFree = 0;
 		counterHits = 0;
 		readyTicks = readySwung = readyHeldFalling = readyHeldOther = 0;
+		comboLocked = readyLocked = 0;
 		uppercutComboHits = fallingJumpComboHits = strafeComboHits = 0;
 		enteredByJump = enteredByWalk = 0;
 		jumpAlongs = jumpAlongCrits = jumpAlongPunish = 0;
@@ -1035,6 +1038,13 @@ public final class SchoolSession implements AgentSession {
 	static final int FOCUS_EVENTS = 300;
 	static final int FOCUS_REPLAYS = 200;
 	static final String FOCUS_FILE = "focus.txt";
+	/**
+	 * Run 57 (10 Nov 07:25), the 3-hour rule's research (PROBLEMS.md 1, 2): "the crits" never met their 90% bar (told the punish
+	 * crit and landed it about 45-50%), so the focus never moved and "the combo escape" scenes (KIND_COMBO starts 20 ticks before
+	 * their second hit) were "kept 60, fought again 0". This pins the focus (-1: by the bars as before). Focus 1 keeps the punish
+	 * scenes (KIND_PUNISH, KIND_PUNISH2), so the punish crit is still practised.
+	 */
+	static final int FORCE_FOCUS = 1;
 	static final String SCENE_FILE = "scenes.txt";
 	/**
 	 * Mastered scenes reviewed in between (the user, 26 Oct 09:25: "review in between"): this share of the scene fights fight a
@@ -1261,6 +1271,10 @@ public final class SchoolSession implements AgentSession {
 				String[] v = Files.readString(f).trim().split(" ");
 				focus = Math.max(0, Math.min(FOCUS_KINDS.length - 1, Integer.parseInt(v[0])));
 				focusReached = v.length > 1 ? Math.max(focus, Math.min(FOCUS_KINDS.length - 1, Integer.parseInt(v[1]))) : focus;
+				if (FORCE_FOCUS >= 0) {
+					focus = FORCE_FOCUS;
+					focusReached = Math.max(focusReached, focus);
+				}
 				// The rolling measures (a check restarts the session every 45 minutes; the bars take hours).
 				Rolling[] all = rollings();
 				for (int i = 0; i < all.length && 2 + i < v.length; i++) {
@@ -1298,6 +1312,12 @@ public final class SchoolSession implements AgentSession {
 
 	/** Moves the focus on once its bars are met; a learned one that falls under them is retrained first. */
 	private void checkFocus() {
+		if (FORCE_FOCUS >= 0) {
+			if (focus != FORCE_FOCUS) {
+				setFocus(FORCE_FOCUS);
+			}
+			return;
+		}
 		for (int f = 0; f < focusReached; f++) {
 			if (f == focus) {
 				continue;
@@ -3978,6 +3998,9 @@ public final class SchoolSession implements AgentSession {
 					comboSwung++;
 				} else if (k2Hold) {
 					comboGuard++;
+				} else if (!ActionSpace.unlocked(keys, ActionSpace.ATTACK)) {
+					// Run 57: the swing was not open (crosshair off them or the sword's lock): no choice was the network's.
+					comboLocked++;
 				} else if (!me.onGround()) {
 					comboOwnAir++;
 					comboAirLifted += liftedFor >= 0 ? 1 : 0;
@@ -3994,6 +4017,8 @@ public final class SchoolSession implements AgentSession {
 				readyTicks++;
 				if (action[ActionSpace.ATTACK] == 1) {
 					readySwung++;
+				} else if (!ActionSpace.unlocked(keys, ActionSpace.ATTACK)) {
+					readyLocked++;
 				} else if (reader.duel.them.falling() || truth.botFalling()) {
 					readyHeldFalling++;
 				} else {

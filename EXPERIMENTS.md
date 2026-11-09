@@ -389,3 +389,31 @@ Watch:
 - T10, T11a, T11b, T11c in the technique review;
 - K2 broken (its own combo is exempt since run 52: watch that sprint hits on fallers do not swell);
 - the punish crit.
+
+## Run 57 (10 Nov, deployed after the ~07:50 check): the practice focus pinned on "the combo escape" (the 3-hour rule's research, agent 1)
+
+A research subagent (read-only; scripts in the scratchpad agentA folder, all 200 real rounds) found why problems 1, 2, 9 and 10 stayed flat.
+
+What it found:
+- Of the opponent's 701 real combo hits (their second or later hit in a row), 59% had no on-the-ground moment with the sword ready and them in reach before them:
+  - 25%: never in reach;
+  - 32%: only in the air after their hit.
+- 13% had only moments forbidden by the jump-in rule or K2. Only 11% had an allowed moment with no swing.
+- So COUNTER_HIT (run 55) reaches at most about 11-13%.
+- The document's answers there are C3 (S before the stun), T9 and T9a (jump reset on their rhythm: 31% of real combo hits landed 0-2 ticks after it touched down), and B1 on the way down.
+- The scene practice for exactly this, focus 1 "the combo escape" (KIND_COMBO starts 20 ticks before their second hit), never ran. "The crits" never met their 90% bar, so the focus stayed at 0 ("combo scenes kept 60, fought again 0").
+- Several copying pulls teach holding the swing.
+- The bots' combos go from a second to a third hit 27-42% of the time; real opponents 12%.
+
+Changes:
+- FORCE_FOCUS = 1. Focus 1 keeps the punish scenes (KIND_PUNISH, KIND_PUNISH2) beside KIND_COMBO, KIND_OWN, KIND_OWN2 and KIND_DEFLECT.
+- The counters now count "swing not open" (crosshair off or the sword's lock) apart from a held swing.
+
+Judge it within 3 hours:
+- "combo scenes fought again / won";
+- "combos got out of";
+- the checks' third-hit share, A vs B;
+- punish crit chances critted (keep 50-65%);
+- no late jump-in hits.
+
+If flat: build the agent's 1b, combo scenes cut from the 701 real combo hits against a bot copying the measured rhythm.
