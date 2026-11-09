@@ -18,10 +18,13 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
 3. **Cannot tell a jump-in crit from an uppercut (T10), a lunge (T11a) or hops (T11b), and gets comboed by those.**
    - The guard treats every jump from outside reach as a jump-in crit: it holds the swing and waits to punish crit. Uppercuts, lunges and hops end in a SPRINT hit (knockback, a stun), so waiting means being stunned.
    - The document's answers: uppercut -> T8 (hit them while they rise); lunge -> K1/K2, T8, B1; hops -> back out, C3 before the hit; jump-in crit (falling, critting) -> no KB hit (K2), let it land, punish crit (B1).
+   - Measured (200 real rounds): 75% of their hits after a jump from outside reach are sprint or plain hits, 25% crits. Their sprint flag in the air does not tell the two apart (23-25% crits either way), so a rule cannot. The network has to learn it.
+   - Fix 1 (run 54, training from 22:00): 25% of training fights against the uppercutter, lunger, hopper, double-critter, jump-in critter and rhythm comboer. Status: NOT VERIFIED.
 4. **After its punish crit, the opponent crits it back** (their double crit T1 / T1c after its punish crit).
    - The user: it should "either crit back or not let its punish crit be punish-critted".
    - The document: T1c (after your punish crit, jump and crit again), and C1/C2 against their double crit (sprint-hit instead of punish-critting; hold S when your double crit is sprint-hit).
-   - Seen in checks: T1c done 7%, T1 double crit 12%.
+   - Seen in checks: T1c done 7%, T1 double crit 12%. Real duels: after its 410 punish crits they hit back within 30 ticks in 63% (a crit in 12%); it tried T1c in 6%.
+   - Fix 1 (run 54): T1C_CRIT +0.3 for a crit from its own jump within 30 ticks of its punish crit; CRIT_BACK_COST -0.3 for their crit in that window. Status: NOT VERIFIED.
 5. **KEEP the punish crit (B1)**, the user: "while keeping the current ability for punish crit".
    - Guard: training "punish crit chances critted" around 50-65%, and the punish crit share in checks, must not fall.
 6. **KEEP no late hits on jump-ins** (the user's critical rule: no swing at a jump-in from ground tick 2 on, rising or falling).
