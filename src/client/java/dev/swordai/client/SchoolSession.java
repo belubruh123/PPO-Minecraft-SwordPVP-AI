@@ -3385,7 +3385,9 @@ public final class SchoolSession implements AgentSession {
 				reward += enterReward;
 				enterReward = 0f;
 				// Run 55: a hit that breaks into their combo, on one not falling (C4, K2).
-				if (facts.hitsDealt > 0 && inTheirCombo && !(reader.duel.them.falling() || truth.botFalling())) {
+				// Run 55b: only from the ground (the gap measured was on the ground); in the air after their hit the punish crit
+				// (B1, the user's must-keep) waits for the way down, and a rising swing must not be paid over it.
+				if (facts.hitsDealt > 0 && inTheirCombo && facts.onGround && !(reader.duel.them.falling() || truth.botFalling())) {
 					reward += COUNTER_HIT;
 					counterHits++;
 				}
