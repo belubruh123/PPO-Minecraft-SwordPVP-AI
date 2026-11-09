@@ -8,7 +8,7 @@ export JAVA_HOME="C:/Users/jerem/.gradle/jdks/eclipse_adoptium-25-amd64-windows.
 G=/c/Users/jerem/.gradle/caches/modules-2/files-2.1
 w() { sed 's#^/c/#C:/#; s#^/d/#D:/#' | tr '\n' ';'; }
 EXTRA=$( (find /d/swordai/.gradle /d/swordai/build/loom-cache -iname '*carpet*.jar' -not -name '*sources*' | head -1; find $G -name 'slf4j-api-2.0.17.jar'; find $G -name 'jspecify-1.0.0.jar'; find $G -name 'fabric-block-view-api-v2-1.0.39*.jar' -not -name '*sources*'; \
-  find $G -name 'fabric-resource-loader-v1-2.0.13*.jar' -not -name '*sources*'; find $G -name 'fabric-data-attachment-api-v1*.jar' -not -name '*sources*' | head -2; \
+  find $G -name 'fabric-resource-loader-v1-*.jar' -not -name '*sources*'; find $G -name 'fabric-data-attachment-api-v1*.jar' -not -name '*sources*' | head -2; \
   find $G -name 'annotations-2*.jar' -path '*jetbrains*' -not -name '*sources*' | head -1) 2>/dev/null | w)
 LIBS=$(find $G \( -name "guava-*.jar" -o -name "gson-*.jar" -o -name "joml-*.jar" -o -name "jsr305*.jar" -o -name "fabric-loader-*.jar" -o -name "sponge-mixin*.jar" \
   -o -name "datafixerupper*.jar" -o -name "brigadier*.jar" -o -name "netty-*.jar" -o -name "lwjgl-3*.jar" -o -name "commons-lang3*.jar" -o -name "fastutil*.jar" \

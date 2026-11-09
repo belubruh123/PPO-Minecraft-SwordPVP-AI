@@ -501,7 +501,7 @@ public final class SchoolSession implements AgentSession {
 	private int ruleOffLost;
 	private int ruleOffFightsAll;
 	/** The same for their swings (as swingCount: swings, on them, hits landed, their second and third hits in a row). */
-	private final long[] ruleOffSwings = new long[5];
+	private final long[] ruleOffSwings = new long[9];
 	private boolean sparCheck;
 	static final int SPAR_LAG_EXTRA = 2;
 	private boolean sparFight;
@@ -653,7 +653,7 @@ public final class SchoolSession implements AgentSession {
 	 * second and third hits in a row with none of its own between (the user's real fights, 24 Oct 22:05: comboed, "like 3 sprint
 	 * hits before it even press S or do any react").
 	 */
-	private final long[][] swingCount = new long[2][5];
+	private final long[][] swingCount = new long[2][9];
 	/** Their hits in a row in this fight, none of its own between. */
 	private int theirRow;
 	/** Ticks what it sees of them is behind the game this fight. */
@@ -3591,6 +3591,7 @@ public final class SchoolSession implements AgentSession {
 			logHits(1, action[ActionSpace.ATTACK] == 1, truth.botFalling());
 			applyAction(installed.fighter.yawRate(), installed.fighter.pitchRate());
 			clicked = action[ActionSpace.ATTACK] == 1;
+			countReady(1, charge, reader.duel.them.falling() || truth.botFalling());
 			showBar(truth);
 			return;
 		}
@@ -3939,6 +3940,7 @@ public final class SchoolSession implements AgentSession {
 		if (me.onGround()) {
 			ownJumpAir = action[ActionSpace.JUMP] == 1 && (ruled & (1 << ActionSpace.JUMP)) == 0;
 		}
+		countReady(0, charge, reader.duel.them.falling() || truth.botFalling());
 		// Run 54b: counters for PROBLEMS.md 1, 2, 10 (the swing back in their combo) and 4 (the T1c funnel after its punish crit).
 		if (mode == Mode.TRAIN && review < 0) {
 			boolean theirCombo = clock.ticksSinceHitTaken <= 20 && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken;
@@ -4407,7 +4409,33 @@ public final class SchoolSession implements AgentSession {
 		long[] c = swingCount[side];
 		return String.format(Locale.ROOT, "%d swings, %d with the crosshair on them (%.0f%%), %d hits landed (%.0f%%); their combos: second hits in a row %d, "
 				+ "a third after %d (%.0f%%)", c[0], c[1], 100.0 * c[1] / Math.max(1, c[0]), c[2], 100.0 * c[2] / Math.max(1, c[0]), c[3], c[4],
-				100.0 * c[4] / Math.max(1, c[3]));
+				100.0 * c[4] / Math.max(1, c[3]))
+				+ (c[5] == 0 ? "" : String.format(Locale.ROOT, "; outside their combo on the ground, sword ready, them in reach: %d ticks, swung %.0f%%, held with them falling %.0f%%, held otherwise %.0f%%",
+						c[5], 100.0 * c[6] / c[5], 100.0 * c[7] / c[5], 100.0 * c[8] / c[5]));
+	}
+
+	/**
+	 * Run 55d (PROBLEMS.md 9): in a paired check, for the side playing (0 the school, 1 the installed model), the ticks outside their
+	 * combo on the ground with the sword ready and them in reach, and whether it swung, held with them falling (K2) or held
+	 * otherwise; so A and B are compared on the same moments.
+	 */
+	private void countReady(int side, float charge, boolean themFalling) {
+		if (mode != Mode.CHECK || mc.player == null) {
+			return;
+		}
+		boolean theirCombo = clock.ticksSinceHitTaken <= 20 && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken;
+		if (theirCombo || !mc.player.onGround() || charge < 0.95f || facts.reachDist > 3.0f) {
+			return;
+		}
+		long[] c = swingCount[side];
+		c[5]++;
+		if (action[ActionSpace.ATTACK] == 1) {
+			c[6]++;
+		} else if (themFalling) {
+			c[7]++;
+		} else {
+			c[8]++;
+		}
 	}
 
 	private static String keysOf(int[] a) {
