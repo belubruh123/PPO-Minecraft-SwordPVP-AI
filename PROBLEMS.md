@@ -13,7 +13,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
    - Fix 1 (run 53, jar 21:49, installed): the guard now only watches take-offs from outside its reach (3.3).
    - Status: NOT VERIFIED in real duels.
    - Training (run 54d, 29 updates): on the ground and not swinging at a NON-falling opponent on 14% of those moments; nothing paid that hit.
-   - Fix 2 (run 55, deployed after the ~03:00 check): COUNTER_HIT +0.2 for a hit that breaks into their combo on one not falling (document C4). Status: NOT VERIFIED.
+   - Fix 2 (run 55, live 03:14): COUNTER_HIT +0.2 for a hit that breaks into their combo on one not falling (document C4). Run 55b (about 03:41): paid only from the ground, because B1 dipped 85% -> 71% in its first 4 updates. Status: NOT VERIFIED.
 2. **Gets comboed and stunned too easily.**
    - Seen: real duels, combos of 3+ hits taken: run52 0.79 a round, run35 0.30 a round. The user: "get stunned easily".
    - Measure: 3+ combos taken per round in real duels (tools/swingback.py, rounds.csv combosTaken3).
@@ -33,6 +33,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
    - Fix 2 (run 54c, 00:21 10 Nov): that cost is now only paid for a hit while rising, past the jump reset's moment (document T9, K3). Status: NOT VERIFIED.
 5. **KEEP the punish crit (B1)**, the user: "while keeping the current ability for punish crit".
    - Guard: training "punish crit chances critted" around 50-65%, and the punish crit share in checks, must not fall.
+   - 03:19: chances critted 56% (OK); the technique review's B1 71% (85% before run 55): run 55b keeps the new swing-back reward off the punish crit's air time.
 6. **KEEP no late hits on jump-ins** (the user's critical rule: no swing at a jump-in from ground tick 2 on, rising or falling).
 7. **Lost rounds were not counted in real duels** (deaths 0, losses "open").
    - Fix (jar 21:49): health at 4 or less, then full on the next tick = a lost round. NOT VERIFIED.
