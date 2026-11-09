@@ -689,20 +689,23 @@ public final class SchoolSession implements AgentSession {
 	private int airJumpHitsFree;
 	/** Run 55: in their combo as of the last step; hits that broke into it (COUNTER_HIT). */
 	private boolean inTheirCombo;
+	/** Run 55c: outside their combo, on the ground, sword ready, them in reach: ticks, swung, held with them falling, held otherwise. */
+	private int readyTicks, readySwung, readyHeldFalling, readyHeldOther;
 	private int counterHits;
 
 	private String jumpAlongLine() {
 		String s = String.format(Locale.ROOT, " | came into reach by a jump that kept the rule %d, walking in %d; its own jumps %d, off beyond their reach and rising out of it %d, crits from those %d; jumped along with their jump-in %d, crits then %d, punish crits then %d"
 						+ " | after its %d punish crits: crit again from its own jump (T1c) %d, critted back by them %d; its own jump after them %d, hits from it %d (sprint hits %d)"
-						+ " | in their combo with the sword ready and them in reach: %d ticks, swung %d, held by the jump-in guard %d, in the air itself %d (lifted by their hit %d, falling %d), other %d (them falling %d); hits in its own jump not charged (falling or the jump reset's moment) %d; hits breaking into their combo (C4) %d",
+						+ " | in their combo with the sword ready and them in reach: %d ticks, swung %d, held by the jump-in guard %d, in the air itself %d (lifted by their hit %d, falling %d), other %d (them falling %d); hits in its own jump not charged (falling or the jump reset's moment) %d; hits breaking into their combo (C4) %d | outside their combo on the ground, sword ready, them in reach: %d ticks, swung %d, held with them falling %d, held otherwise %d",
 				enteredByJump, enteredByWalk, ownJumps, ownJumpsRuleKept, ruleJumpCrits, jumpAlongs, jumpAlongCrits, jumpAlongPunish,
 				punishCritsForT1c, t1cCrits, critBacks, t1cJumps, t1cHits, t1cSprintHits,
-				comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, comboOtherFalling, airJumpHitsFree, counterHits);
+				comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, comboOtherFalling, airJumpHitsFree, counterHits, readyTicks, readySwung, readyHeldFalling, readyHeldOther);
 		punishCritsForT1c = t1cCrits = critBacks = 0;
 		t1cJumps = t1cHits = t1cSprintHits = 0;
 		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = comboOtherFalling = 0;
 		airJumpHitsFree = 0;
 		counterHits = 0;
+		readyTicks = readySwung = readyHeldFalling = readyHeldOther = 0;
 		enteredByJump = enteredByWalk = 0;
 		jumpAlongs = jumpAlongCrits = jumpAlongPunish = 0;
 		ownJumps = ownJumpsRuleKept = ruleJumpCrits = 0;
@@ -3954,6 +3957,18 @@ public final class SchoolSession implements AgentSession {
 					comboOther++;
 					// Run 54d: on the ground and not swinging; with them falling holding is the document's K2 (no KB hit on a faller).
 					comboOtherFalling += reader.duel.them.falling() || truth.botFalling() ? 1 : 0;
+				}
+			}
+			// Run 55c (counter only), PROBLEMS.md 9: outside their combo, on the ground with the sword ready and them in reach: did it
+			// swing; if not, were they falling (holding is the document's K2 then) or not.
+			if (!theirCombo && me.onGround() && charge >= 0.95f && facts.reachDist <= 3.0f) {
+				readyTicks++;
+				if (action[ActionSpace.ATTACK] == 1) {
+					readySwung++;
+				} else if (reader.duel.them.falling() || truth.botFalling()) {
+					readyHeldFalling++;
+				} else {
+					readyHeldOther++;
 				}
 			}
 			if (sincePunishCrit == 0) {
