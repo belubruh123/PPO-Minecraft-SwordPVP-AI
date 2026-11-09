@@ -126,8 +126,15 @@ public final class SchoolSession implements AgentSession {
 	 * whole knockout's worth since 24 Oct 15:40: at 0.5, 4 to 14 an update when jumpers (the uppercutter) came in.
 	 */
 	static final float K2_BROKEN = 1.0f; // run 2 (EXPERIMENTS.md): the 06:54 recipe (0 from 09:35)
-	/** The K2_BROKEN penalty not paid within its own combo (09:25); off in run 2, as in the 06:54 recipe. */
-	static final boolean K2_COMBO_EXEMPT = false;
+	/**
+	 * The K2_BROKEN penalty not paid within its own combo (09:25); off in run 2, as in the 06:54 recipe. On again in run 52
+	 * (9 Nov 10:25): since run 49c the bots' jump reset comes as late as their knockback, so its next hit in a combo often found
+	 * them coming down (K2 broken 12-38 an update, 6-15 before) and every network trained since held combos worse in the
+	 * benchmark (hits in a row after its first 0.87, 0.82, 0.74 against the installed's 1.27); in the user's real duels a K2
+	 * break within its own combo is about even with waiting (-0.25 against -0.20 HP over 20 ticks), and combos of 3+ come
+	 * first (the user, 7 Nov). Outside its combo the penalty stays.
+	 */
+	static final boolean K2_COMBO_EXEMPT = true;
 	/**
 	 * The basics teacher (the user, 24 Oct: "make a brand new teacher specializing on teaching this"): outside the technique
 	 * moments the swing is its, as soon as the sword is back and only with the crosshair on them (the game's own pick, so in
