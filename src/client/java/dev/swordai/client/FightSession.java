@@ -94,6 +94,10 @@ final class FightSession implements AgentSession {
 	private boolean killCounted;
 	/** The opponent is watching as a spectator (it died on the user's server) and that kill is counted. */
 	private boolean oppSpectatorCounted;
+	/** Its health on the tick before (-1 before the first); see LOST_ROUND_HP. */
+	private float lastHealth = -1f;
+	/** Health at or under this, then full on the next tick: the server ended a round it lost (it never kills). */
+	private static final float LOST_ROUND_HP = 4f;
 	/** In the air now on a jump that started at it from close, not yet hit by it (SchoolSession.JUMP_IN_GUARD). */
 	private boolean jumpInAir;
 	/** How the opponent fights, counted for training; see {@link StyleWatch}. */
@@ -293,6 +297,17 @@ final class FightSession implements AgentSession {
 		if (!oppSpectating) {
 			oppSpectatorCounted = false;
 		}
+		// 9 Nov 21:50, the user's duels: the server never kills the loser and it is not a spectator either. Its health stays
+		// just above 0 (shown as 0) for about 1.7 s and then comes back full: every lost round stayed open, deaths 0. A health
+		// that jumps from LOST_ROUND_HP or less to full (natural healing never does) is a lost round; a won round has been
+		// closed by then (the opponent's death or spectator spell), so it does not count twice.
+		float hpNow = me.getHealth();
+		if (lastHealth >= 0f && lastHealth <= LOST_ROUND_HP && hpNow >= me.getMaxHealth() - 0.5f) {
+			deaths++;
+			closeStyle(true);
+			closeRound("lost");
+		}
+		lastHealth = hpNow;
 
 		// Any menu hands the game back to the player; the chat does not.
 		Screen screen = mc.screen;

@@ -279,3 +279,28 @@ What was learned for sure:
 | 51c | 9 Nov 06:58 (with 51) | 51b | The user (06:57): "anytime when the AI is not in the reach it should just go for a jump in instead of keep walking straight to hit the opponent once enter reach". Coming into reach by its own approach: falling from its own rule-kept jump +0.2 (ENTER_BY_JUMP); on the ground walking or sprinting in (its own closing speed 0.05+) -0.1 (ENTER_BY_WALK); their walking in is not counted. Update line: came into reach by a jump / walking in. | entries by jump up, walking in down; checks not worse | 07:20: ENTER_BY_WALK set to 0 (kept ENTER_BY_JUMP): within 15 min the opponent off its screen rose from about 2 to 32 an update (find 7-37) and damage fell to 192 dealt / 499 taken a minute; entries by a rule jump 6-14 an update, walking in 38-83 (-6 to -8 reward an update) |
 | 52 | 9 Nov 10:25 (deploy after the ref51 bench) | 51c | Bench run51-0948 vs ref49d: TOTAL -1.79 (0.81) WORSE; punish crit 18% vs 14% (HP -0.07), chances critted 68% vs 61%; holding a combo 0.74 vs 1.27 (-2.68), head-to-head -2.45 (1.29). Every network trained since 49c holds combos worse (0.87, 0.82, 0.74 vs 1.27) and the checks stay about -6.6 behind B (8 checks). Since 49c the bots' jump reset comes late with their knockback, so its next combo hit often finds them falling: K2 broken 12-38 an update (6-15 before), -1.0 each, teaching it to stop comboing. Real duels: K2 break in its own combo -0.25 vs -0.20 waiting (about even). K2_COMBO_EXEMPT on (no K2 penalty within its own combo, 15 ticks); outside its combo the penalty stays. | holding a combo back toward 1.2; checks back toward B; K2 broken outside combos not up | off again if K2 broken outside combos rises or punish crit falls |
 | ops | 8 Nov 17:30 | - | The training client froze at 15:58 (render thread; '[ALSOFT] WaitForSingleObjectEx error', 'System default audio device has changed', the server 5272 s behind); its log stayed new from the server's lines, and the watchdog did not restart it for 90 minutes although the last school line was old (the task showed 'Running'; runs between 16:05 and 17:15 logged nothing). Restarted by hand 17:29 (stop + start scripts). The watchdog now writes a trace line a run (run/watchdog-trace.log) to see whether its runs reach the check. K2 broken still 15-24 an update after 48l (only 4 updates before the freeze). | next freeze restarted within 20 min | if the trace shows no runs: the task is stuck 'Running' (IgnoreNew) - shorten its time limit |
+
+## Run 53 (9 Nov 21:50): the jump-in guard only for jumps from outside its reach; a lost round counted from the health reset
+
+The user's real-player test of run52-1218 (9 Nov 21:30-21:42, 25 duels with the A/B pool): "not able to counter combo at all ... not even dare swinging back when it is obviously not 3 block ... get comboed more easily". Their recorded rounds agree:
+- Combos of 3+ hits taken: run52 0.79 a round (11 in 14), run35-0657 0.30 (3 in 10).
+- Rounds won (kills): run52 8 of 15, run35-0657 7 of 10.
+
+Why it would not swing back. In the opponent's combo (within 20 ticks of a hit taken, none dealt), with its sword ready and them in reach (3.0):
+
+| | swung | held: they were in the air 2+ ticks (the jump-in guard) | held: itself in the air | held: other |
+|---|---|---|---|---|
+| run52 | 20% | 38% | 37% | 5% |
+| run35 | 21% | 45% | 27% | 7% |
+
+The guard of runs 49/49b (every jump within 6.5 blocks, any direction, from ground tick 2 until they land or their hit lands) also held its swing at their jump resets and sprint-jumps inside reach. The document's C4 says to attack them there ("attack them right before you hold S"). The user's own jump-in rule is a jump that takes off OUTSIDE reach.
+
+Fix:
+- SchoolSession.jumpInWatched also needs the take-off beyond JUMP_IN_FROM_BEYOND = 3.3 (centers, about 3.0 to the hitbox). This changes both training and the game.
+- Run52 jumped more in their combos (37% vs 27%). Run 51c's ENTER_BY_JUMP and the punish crit pay its own jumps, so the network keeps a jump-in habit inside combos. To watch.
+
+Lost rounds: the server never kills the loser and does not make it a spectator. Its health stays below 0.5 for about 1.7 s and then comes back full, so every loss stayed "open" with deaths 0. FightSession now counts health at 4 or less followed by full health on the next tick as a lost round.
+
+Installed 21:50: the 21:49 jar with run35-0657 back as the main model, A/B pool off (backup backup-before-school-20261109-215017). run52-1218 stays in run/best-candidates.
+
+Lesson: the bench and checks score against bots, which neither combo nor jump-reset like real players. The bench's "BETTER" (bot rounds 205 vs 172) did not carry over to real duels. Real duels decide installs, and the A/B pool is the way to get them.

@@ -2002,9 +2002,19 @@ public final class SchoolSession implements AgentSession {
 	static final float ENTER_BY_WALK = 0f; // 0.1 from 07:03 to 07:21 on 9 Nov: the opponent off its screen rose from about 2 to 32 an update within 15 minutes and damage fell to 192 dealt, 499 taken a minute
 	static final double ENTER_OWN_CLOSE = 0.05;
 
-	/** A take-off the guard watches: close enough, and coming at it unless JUMP_IN_ANY_DIRECTION. */
+	/**
+	 * Run 53 (9 Nov 21:50): only a jump that takes off OUTSIDE its reach is a jump-in (the user's rule: "you jump outside the
+	 * opponent's reach ... and enter your reach when you are falling"). Their jumps inside reach (jump resets and sprint-jumps in
+	 * their combo, the document's C4 "they sprint-jump toward you as they attack") were held too: in the user's real duels of
+	 * 9 Nov, in the opponent's combo with its sword ready and them in reach it swung on only 20% of the ticks, and 38-45% of
+	 * those ticks were this guard; the user: "not able to counter combo at all ... not even dare swinging back". Centers 3.3
+	 * apart is about 3.0 from its eye to their hitbox (JUMP_RULE_REACH).
+	 */
+	static final double JUMP_IN_FROM_BEYOND = 3.3;
+
+	/** A take-off the guard watches: from beyond its reach, close enough, and coming at it unless JUMP_IN_ANY_DIRECTION. */
 	static boolean jumpInWatched(dev.swordai.core.pvp.Duel duel) {
-		return (JUMP_IN_ANY_DIRECTION || duel.theyClose > 0.05) && duel.flat < 6.5;
+		return (JUMP_IN_ANY_DIRECTION || duel.theyClose > 0.05) && duel.flat < 6.5 && duel.flat > JUMP_IN_FROM_BEYOND;
 	}
 
 	/** The jump-in's take-off as the guard counts it: the ground flag to air (not hurt: not lifted by a hit), or the rise seen. */
