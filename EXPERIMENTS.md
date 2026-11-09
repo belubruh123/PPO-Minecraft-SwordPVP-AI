@@ -327,3 +327,22 @@ Keep and watch:
 - the new update-line part "after its N punish crits: crit again (T1c) x, critted back y".
 
 Judge by the user's real duels (PROBLEMS.md), not the bench.
+
+## Run 54c (10 Nov 00:25): AIR_JUMP_HIT only while rising from its own jump, past the jump reset's moment
+
+Run 54b's counters, 20 updates:
+- After its 141 punish crits, its own jump followed in 11 (8%). From those: 7 hits, 3 of them sprint hits, 3 T1c crits.
+- So T1c fails at the jump, not the crit.
+- AIR_JUMP_HIT (run 43, -0.3 for any hit taken in the air out of its own jump) was paid on 31 of its 69 own jumps an update. That teaches "don't jump".
+- The document says otherwise. T9: "press jump at the same moment you take damage". K3: "make them hit you while you fall ... reduces your own knockback. Use it to crit again and again".
+- Stuck jump techniques: T9 46% (off: jump 96%), T10 4%, T11b 10%, T11c 3%, T2 25%, C6 33%.
+
+Change: the cost is only paid for a hit while still rising (vertical speed on the tick before the hit > 0), from its jump's air tick 2 on. That is the opponent's T8 on it, full knockback (K2). The unpaid ones are counted ("hits in its own jump not charged").
+
+Also measured, in their combo with the sword ready and them in reach (PROBLEMS 1, 2, 10), 3309 ticks:
+- swung 25%;
+- jump-in guard 8%;
+- in the air itself 48% (now split into lifted by their hit / falling);
+- other 19%.
+
+Watch: the T1c funnel's jump share, T9/T10/T11b/T2/C6, punish crit chances critted (keep about 50-65%), and the opponent off the screen.

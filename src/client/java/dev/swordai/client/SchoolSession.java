@@ -232,6 +232,15 @@ public final class SchoolSession implements AgentSession {
 	 * Size: about 1.8 such hits an episode in that benchmark, about -0.5 a fight against the damage reward's +-6.
 	 */
 	static final float AIR_JUMP_HIT = 0.3f;
+	/**
+	 * Run 54c (10 Nov 00:25): AIR_JUMP_HIT only for a hit taken while still RISING from its own jump, from air tick
+	 * AIR_HIT_FROM_TICK on. The document: T9 jump reset is "press jump at the same moment you take damage", and K3 "make them
+	 * hit you while you fall ... it reduces your own knockback. Use it to crit again and again". The old cost (any hit in the
+	 * air out of its own jump) was paid on 31 of its 69 jumps an update (9 Nov 23:49) and taught it to stop jumping: after
+	 * its 141 punish crits its own jump followed in 11 (T1c needs it), T9 stuck at 46% (off: jump 96%), T10 4%, T11b 10%.
+	 * Being hit rising is still paid: that is the opponent's T8 on it (K2: the knockback is full then).
+	 */
+	static final int AIR_HIT_FROM_TICK = 2;
 	/** In the air from a jump the network pressed on the ground (not a rule's), until it stands again; such hits since the update. */
 	private boolean ownJumpAir;
 	private int airJumpHits;
@@ -665,18 +674,23 @@ public final class SchoolSession implements AgentSession {
 	/** Run 54b: the T1c funnel (its own jump after the punish crit, hits from it, sprint hits among them) and its swing back in their combo. */
 	private boolean t1cJumpCounted;
 	private int t1cJumps, t1cHits, t1cSprintHits;
-	private int comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboOther;
+	private int comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboOther, comboAirLifted, comboAirFalling;
+	/** Run 54c: ticks in the air since its last take-off; its vertical speed on the tick before; hits in its own jump not paid. */
+	private int ownAirTicks;
+	private double prevVy;
+	private int airJumpHitsFree;
 
 	private String jumpAlongLine() {
 		String s = String.format(Locale.ROOT, " | came into reach by a jump that kept the rule %d, walking in %d; its own jumps %d, off beyond their reach and rising out of it %d, crits from those %d; jumped along with their jump-in %d, crits then %d, punish crits then %d"
 						+ " | after its %d punish crits: crit again from its own jump (T1c) %d, critted back by them %d; its own jump after them %d, hits from it %d (sprint hits %d)"
-						+ " | in their combo with the sword ready and them in reach: %d ticks, swung %d, held by the jump-in guard %d, in the air itself %d, other %d",
+						+ " | in their combo with the sword ready and them in reach: %d ticks, swung %d, held by the jump-in guard %d, in the air itself %d (lifted by their hit %d, falling %d), other %d; hits in its own jump not charged (falling or the jump reset's moment) %d",
 				enteredByJump, enteredByWalk, ownJumps, ownJumpsRuleKept, ruleJumpCrits, jumpAlongs, jumpAlongCrits, jumpAlongPunish,
 				punishCritsForT1c, t1cCrits, critBacks, t1cJumps, t1cHits, t1cSprintHits,
-				comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboOther);
+				comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, airJumpHitsFree);
 		punishCritsForT1c = t1cCrits = critBacks = 0;
 		t1cJumps = t1cHits = t1cSprintHits = 0;
-		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = 0;
+		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = 0;
+		airJumpHitsFree = 0;
 		enteredByJump = enteredByWalk = 0;
 		jumpAlongs = jumpAlongCrits = jumpAlongPunish = 0;
 		ownJumps = ownJumpsRuleKept = ruleJumpCrits = 0;
@@ -3413,10 +3427,15 @@ public final class SchoolSession implements AgentSession {
 					reward += CRIT_SWING;
 					critSwings++;
 				}
-				// Run 43 (AIR_JUMP_HIT): hit in the air out of its own jump.
+				// Run 43 (AIR_JUMP_HIT): hit in the air out of its own jump; since run 54c only while still rising, past the jump
+				// reset's moment (its vertical speed on the tick before the hit, before their knockback lifted it).
 				if (facts.hitsTaken > 0 && !facts.onGround && ownJumpAir) {
-					reward -= AIR_JUMP_HIT;
-					airJumpHits++;
+					if (prevVy > 0.0 && ownAirTicks >= AIR_HIT_FROM_TICK) {
+						reward -= AIR_JUMP_HIT;
+						airJumpHits++;
+					} else {
+						airJumpHitsFree++;
+					}
 				}
 				// Made to miss (run 44, MADE_MISS): a bot's swing at it within reach that missed, since the last tick.
 				int whiffsNow = dev.swordai.server.TechniqueBot.whiffs();
@@ -3909,6 +3928,8 @@ public final class SchoolSession implements AgentSession {
 					comboGuard++;
 				} else if (!me.onGround()) {
 					comboOwnAir++;
+					comboAirLifted += liftedFor >= 0 ? 1 : 0;
+					comboAirFalling += me.getDeltaMovement().y < 0 ? 1 : 0;
 				} else {
 					comboOther++;
 				}
@@ -3922,6 +3943,8 @@ public final class SchoolSession implements AgentSession {
 				t1cJumpCounted = true;
 			}
 		}
+		ownAirTicks = me.onGround() ? 0 : ownAirTicks + 1;
+		prevVy = me.getDeltaMovement().y;
 		if (mode == Mode.CHECK) {
 			fairJump.apply(action, me.onGround(), clock.ticksSinceHitTaken, clock.takenStreak.hits());
 		}
