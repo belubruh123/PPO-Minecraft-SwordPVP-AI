@@ -1032,7 +1032,10 @@ public final class SchoolSession implements AgentSession {
 	 * won 39% of the last 200; against the uppercutter A's net was below zero in the last four hourly checks.
 	 */
 	static final int[][] FOCUS_KINDS = {{KIND_CRIT, KIND_CRIT2, KIND_JUMPIN, KIND_JUMPIN2, KIND_PUNISH, KIND_PUNISH2, KIND_DEFLECT, KIND_COMBO,
-			KIND_OWN, KIND_OWN2}, {KIND_COMBO, KIND_OWN, KIND_OWN2, KIND_DEFLECT, KIND_PUNISH, KIND_PUNISH2}};
+			KIND_OWN, KIND_OWN2}, {KIND_COMBO, KIND_OWN, KIND_OWN2, KIND_DEFLECT, KIND_PUNISH}};
+	// Run 57b (07:27): KIND_PUNISH2 ("punish short") out of focus 1: in its first 20 minutes 227 of the last 300 scene fights were
+	// punish-short scenes, lost 223 of them (the replay's opponent flies past), while the kept combo scenes were all mastered and
+	// only tested again. KIND_PUNISH stays for the punish crit.
 	static final String[] FOCUS_NAMES = {"the crits (crit scenes, jump-in counter, punish crit)", "the combo escape"};
 	static final float FOCUS_SHARE = 0.8f;
 	static final int FOCUS_EVENTS = 300;
