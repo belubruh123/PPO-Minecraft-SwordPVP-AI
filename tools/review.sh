@@ -26,3 +26,5 @@ awk '/^=== 1[0-2]-[0-9]+ /{b=""} {b=b"\n"$0} END{print b}' school-checks.log | g
 ls -t swordai/school/checked-*.bin | head -1
 echo "--- live A/B pool in the user's duels (empty until two arms have played)"
 C:/Python38/python.exe D:/swordai/tools/duels.py 2>&1 | sed -n '/^arms of the live/,$p' | cut -c1-130
+echo "--- OPEN PROBLEMS (D:/swordai/PROBLEMS.md, the user's checklist: never remove an item until real duels show it solved)"
+sed -n '/^## OPEN/,/^## SOLVED/p' /d/swordai/PROBLEMS.md | grep -E "^[0-9]+\. " | cut -c1-160
