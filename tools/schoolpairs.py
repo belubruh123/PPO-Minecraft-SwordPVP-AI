@@ -47,6 +47,19 @@ def main():
             return net, f"{w}-{l}", f"{sum(p[s][1] for p in ps) / mins:5.0f}/{sum(p[s][2] for p in ps) / mins:<5.0f}"
         a, b = side('A'), side('B')
         print(f"{bot:20s} {n:5d} {a[0]:11.1f} {b[0]:11.1f} {mean:7.1f} {se:6.1f} {a[1]:>9s} {b[1]:>9s} {a[2]:>13s} {b[2]:>13s}")
+    # Rounds won (the user, 9 Nov: "full heart and fight until one is dead"): every check fight starts at full health and
+    # ends at a knockout, so a fight won is a round won. Paired by the same seed: only A won it, only B won it.
+    ps = rows['ALL']
+    if ps:
+        n = len(ps)
+        aw = sum(1 for p in ps if p['A'][4] == ', knockout')
+        bw = sum(1 for p in ps if p['B'][4] == ', knockout')
+        oa = sum(1 for p in ps if p['A'][4] == ', knockout' and p['B'][4] != ', knockout')
+        ob = sum(1 for p in ps if p['B'][4] == ', knockout' and p['A'][4] != ', knockout')
+        z = (oa - ob) / math.sqrt(oa + ob) if oa + ob else 0.0
+        unended = sum(1 for p in ps for s in 'AB' if p[s][4] == '')
+        print(f"ROUNDS WON: A {aw}/{n} ({100 * aw / n:.0f}%), B {bw}/{n} ({100 * bw / n:.0f}%); same seed, only A won {oa}, only B won {ob}, z {z:+.1f}"
+              + (f"; {unended} fights ended without a knockout" if unended else ""))
 
 
 main()
