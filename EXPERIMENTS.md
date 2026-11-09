@@ -346,3 +346,23 @@ Also measured, in their combo with the sword ready and them in reach (PROBLEMS 1
 - other 19%.
 
 Watch: the T1c funnel's jump share, T9/T10/T11b/T2/C6, punish crit chances critted (keep about 50-65%), and the opponent off the screen.
+
+## Run 55 (10 Nov, deployed after the ~03:00 check): COUNTER_HIT 0.2 for a hit breaking into their combo (document C4)
+
+Run 54d's split, 29 updates: in their combo with its sword ready and them in reach (5099 ticks):
+- swung 24%;
+- guard 9%;
+- in the air 46% (mostly lifted by their hit);
+- on the ground not swinging 20%: them falling 30% of that (holding is right there, K2), them NOT falling 70%, which is 14% of all those ticks.
+
+Nothing paid a hit there. The document's C4: "attack them right before you hold S. That usually kills their momentum".
+
+Change: a hit landed in their combo (a hit taken within 20 ticks, none dealt since) on an opponent not falling pays 0.2. Counted as "hits breaking into their combo (C4)".
+
+Also, T1c funnel at 02:49 (29 updates since 02:14): its own jump after 14% of its punish crits (4-11% before), T1c 2%, critted back 17% (22-34% before). Slowly moving.
+
+Watch:
+- the on-ground no-swing share;
+- their combos' third hit in the checks (A 33% vs B 26% at 02:02);
+- K2 broken (must not rise: the payment excludes fallers);
+- punish crit chances critted.

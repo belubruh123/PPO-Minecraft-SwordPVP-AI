@@ -105,6 +105,14 @@ public final class SchoolSession implements AgentSession {
 	 * its own jump pays T1C_CRIT; a crit taken (the server's count) costs CRIT_BACK_COST.
 	 */
 	static final int T1C_WINDOW = 30;
+	/**
+	 * Run 55 (10 Nov 03:00), PROBLEMS.md 1 (the user: "not able to counter combo at all ... not even dare swinging back").
+	 * Run 54d's counter, 29 updates: in their combo with its sword ready and them in reach it was on the ground, not swinging
+	 * and them not falling on 724 of 5099 ticks (14%); nothing paid a hit there. The document's C4: "attack them right before
+	 * you hold S. That usually kills their momentum". A hit landed in their combo (a hit taken within 20 ticks, none dealt
+	 * since) on one not falling (K2) pays COUNTER_HIT.
+	 */
+	static final float COUNTER_HIT = 0.2f;
 	static final float T1C_CRIT = 0.3f;
 	static final float CRIT_BACK_COST = 0.3f;
 	/**
@@ -679,18 +687,22 @@ public final class SchoolSession implements AgentSession {
 	private int ownAirTicks;
 	private double prevVy;
 	private int airJumpHitsFree;
+	/** Run 55: in their combo as of the last step; hits that broke into it (COUNTER_HIT). */
+	private boolean inTheirCombo;
+	private int counterHits;
 
 	private String jumpAlongLine() {
 		String s = String.format(Locale.ROOT, " | came into reach by a jump that kept the rule %d, walking in %d; its own jumps %d, off beyond their reach and rising out of it %d, crits from those %d; jumped along with their jump-in %d, crits then %d, punish crits then %d"
 						+ " | after its %d punish crits: crit again from its own jump (T1c) %d, critted back by them %d; its own jump after them %d, hits from it %d (sprint hits %d)"
-						+ " | in their combo with the sword ready and them in reach: %d ticks, swung %d, held by the jump-in guard %d, in the air itself %d (lifted by their hit %d, falling %d), other %d (them falling %d); hits in its own jump not charged (falling or the jump reset's moment) %d",
+						+ " | in their combo with the sword ready and them in reach: %d ticks, swung %d, held by the jump-in guard %d, in the air itself %d (lifted by their hit %d, falling %d), other %d (them falling %d); hits in its own jump not charged (falling or the jump reset's moment) %d; hits breaking into their combo (C4) %d",
 				enteredByJump, enteredByWalk, ownJumps, ownJumpsRuleKept, ruleJumpCrits, jumpAlongs, jumpAlongCrits, jumpAlongPunish,
 				punishCritsForT1c, t1cCrits, critBacks, t1cJumps, t1cHits, t1cSprintHits,
-				comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, comboOtherFalling, airJumpHitsFree);
+				comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, comboOtherFalling, airJumpHitsFree, counterHits);
 		punishCritsForT1c = t1cCrits = critBacks = 0;
 		t1cJumps = t1cHits = t1cSprintHits = 0;
 		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = comboOtherFalling = 0;
 		airJumpHitsFree = 0;
+		counterHits = 0;
 		enteredByJump = enteredByWalk = 0;
 		jumpAlongs = jumpAlongCrits = jumpAlongPunish = 0;
 		ownJumps = ownJumpsRuleKept = ruleJumpCrits = 0;
@@ -3372,6 +3384,11 @@ public final class SchoolSession implements AgentSession {
 				float reward = PER_HEALTH * (DEALT_WEIGHT * facts.damageDealt - facts.damageTaken) + (facts.koDealt ? KNOCKOUT : 0f) - (facts.koTaken ? KNOCKOUT : 0f);
 				reward += enterReward;
 				enterReward = 0f;
+				// Run 55: a hit that breaks into their combo, on one not falling (C4, K2).
+				if (facts.hitsDealt > 0 && inTheirCombo && !(reader.duel.them.falling() || truth.botFalling())) {
+					reward += COUNTER_HIT;
+					counterHits++;
+				}
 				// Run 54: after its punish crit, T1c pays and their crit back costs, until its next hit or T1C_WINDOW.
 				sincePunishCrit++;
 				boolean afterPunish = sincePunishCrit <= T1C_WINDOW;
@@ -3920,6 +3937,7 @@ public final class SchoolSession implements AgentSession {
 		// Run 54b: counters for PROBLEMS.md 1, 2, 10 (the swing back in their combo) and 4 (the T1c funnel after its punish crit).
 		if (mode == Mode.TRAIN && review < 0) {
 			boolean theirCombo = clock.ticksSinceHitTaken <= 20 && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken;
+			inTheirCombo = theirCombo;
 			if (theirCombo && charge >= 0.95f && facts.reachDist <= 3.0f) {
 				comboReadyTicks++;
 				if (action[ActionSpace.ATTACK] == 1) {
