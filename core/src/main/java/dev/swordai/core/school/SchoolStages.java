@@ -274,6 +274,16 @@ public final class SchoolStages {
 	public static final int C4_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.ATTACK,
 			dev.swordai.core.rl.ActionSpace.FORWARD, dev.swordai.core.rl.ActionSpace.JUMP);
 
+	/**
+	 * Run 70 (Fable, PROBLEMS.md 3): the jump along with their jump-in in THEIR combo and the crit on the way down (K3), taught the
+	 * user's way of 27 Oct (the decider picks WHEN, a gated option layer learns HOW: run 62's method, which took T10/T11 to 90%+ when
+	 * told). The teacher's new moment is PvpPlayer#jumpAlongMoment; its keys go into K3's option layer alone, and no rule gives way
+	 * (the hand-over was what failed in run 65). The jump-in guard still holds every knockback swing; the crit passes it.
+	 */
+	public static final boolean JUMP_ALONG_TAUGHT = true;
+	public static final int K3_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP,
+			dev.swordai.core.rl.ActionSpace.FORWARD, dev.swordai.core.rl.ActionSpace.SPRINT, dev.swordai.core.rl.ActionSpace.ATTACK);
+
 	/** The combo escape's techniques taught by run 65: the jump reset in their rhythm (T9a) and the hit before the S (C4). */
 	public static boolean comboEscape(int technique) {
 		return technique == Technique.T9A.ordinal() || technique == Technique.C4.ordinal();
@@ -296,6 +306,9 @@ public final class SchoolStages {
 		if (COMBO_ESCAPE_TAUGHT && comboEscape(technique)) {
 			return technique == Technique.T9A.ordinal() ? T9A_GATED_HEADS : C4_GATED_HEADS;
 		}
+		if (JUMP_ALONG_TAUGHT && technique == Technique.K3.ordinal()) {
+			return K3_GATED_HEADS;
+		}
 		return technique == Technique.B1.ordinal() ? B1_GATED_HEADS : 0;
 	}
 
@@ -307,6 +320,10 @@ public final class SchoolStages {
 		}
 		if (COMBO_ESCAPE_TAUGHT && GATED && comboEscape(technique)) {
 			return gatedHeads(technique);
+		}
+		// Run 70: the jump along's keys go into K3's option layer alone.
+		if (JUMP_ALONG_TAUGHT && GATED && technique == Technique.K3.ordinal()) {
+			return K3_GATED_HEADS;
 		}
 		int whole = technique == Technique.B1.ordinal() ? B1_TAUGHT_HEADS : technique == Technique.T9.ordinal() ? T9_TAUGHT_HEADS
 				: technique == Technique.C3.ordinal() ? C3_TAUGHT_HEADS : dev.swordai.core.rl.ActionSpace.ALL_HEADS;
@@ -363,6 +380,9 @@ public final class SchoolStages {
 		if (COMBO_ESCAPE_TAUGHT) {
 			RUN_TAUGHT[Technique.T9A.ordinal()] = true;
 			RUN_TAUGHT[Technique.C4.ordinal()] = true;
+		}
+		if (JUMP_ALONG_TAUGHT) {
+			RUN_TAUGHT[Technique.K3.ordinal()] = true;
 		}
 	}
 
