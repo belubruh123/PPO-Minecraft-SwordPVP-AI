@@ -120,7 +120,9 @@ public final class SchoolSession implements AgentSession {
 	 * AIR_JUMP_HIT in the window; no JUMP_COMBO_HIT in it on one falling. In the checks its jumps after a punish crit took off at c+10
 	 * (median), half were hit rising, and only 6-11% became crits; in the user's duels 10 of its 16 such jumps did.
 	 */
-	static final boolean T1C_CREDIT = true;
+	// Run 68b (10 Nov 21:55): OFF. In 64 updates T1c stayed 7-8% of its punish crits, critted back went 15% -> 26%, its own jump after
+	// them fell back 37% -> 24%, and the punish crit chances critted slid 54% -> 45-47% (under the user's 50% floor for an hour).
+	static final boolean T1C_CREDIT = false;
 	private boolean inT1cWindow;
 	/**
 	 * Since 24 Oct 15:45 the punish crit is paid only as the game counts it (the user's table, "punish crit 0 of 89"):

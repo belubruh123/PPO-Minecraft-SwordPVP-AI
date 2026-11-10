@@ -690,3 +690,20 @@ The 20:12 check (run 67, first): ROUNDS WON A 17/45, B 18/45 (z -0.3); damage A 
 - Outside their combo, sword ready: A swung 49% (33% at 19:12), held with them falling 17% (28%), crosshair off them 25% (B 36%).
 - In their combo: swung 29% vs 42%.
 - Third hits 40% vs 29%.
+
+## Run 68b (10 Nov 21:55): run 68 reverted (T1C_CREDIT = false)
+
+Run 68's gates failed over 64 updates (20:24-21:51):
+- T1c stayed at 7-8% of its punish crits (the gate was 15%+).
+- Critted back went 15% (first 24 updates) -> 26% (next 40).
+- Its own jump after them went 37% -> 24%.
+- "punish crit chances critted" slid 54% -> 45-47%: under the user's 50% floor since 20:57. Technique review B1 74-75% (81-86% before).
+
+The 21:12 check (run 68): ROUNDS WON A 17/45, B 19/45 (z -0.5); damage A 353/419, B 359/392.
+- Outside their combo: A swung 44% vs B 53%, crosshair off them 39% vs 32%.
+- In their combo: 32% vs 35%.
+- Third hits: 40% vs 30%.
+- K2 broken: 28 vs 34; crits within ten ticks after: 7 vs 2.
+
+Not taken from it: the stage moved T-D -> T-E at about 20:53, so part of the slide may be the stage. The punish crit floor decides anyway.
+Problem 4 goes to Fable's priority list (launched 20:50, max effort).
