@@ -103,6 +103,15 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
 
 - Batch 1 (runs 69a seen history + 69b entropy floor), merged 22:05: for problems 1, 2, 3, 4, 9 and 12 (timing it could not see; the swing head never waits). Status: NOT VERIFIED.
 - Next on its list: problem 3 (the guard in their combo); then P3 (T9b/T1c as gated options) and P4 (the rules' keys pulled only where the rule's moment went well).
+- DEPLOYED TOGETHER 22:17 10 Nov (one restart; the build ran after the merges): run 68b + 69a/69b + 70 (K3 jump along in their combo) + 71 (T1c/T9b gated).
+- Night, 194 updates to 02:52 11 Nov:
+  - punish crit chances critted 50 -> 61% (OK);
+  - T1c 9-17% of its punish crits (was 7-8%), its jump after 42-45% (24%), critted back 17-23%;
+  - the guard's share in their combo 6-8% (18-25%); the jump along about 5 an update, crits about 0.5;
+  - swing in their combo still 25-30%; third hits 40-43%; seen-history weights growing (1.0 -> 1.7);
+  - K3 91%, T9b 100% when told.
+- Checks since the restart: A 83/224, B 85/224 (z -1.5, +0.9, +0.5, -0.5, -0.2): still level. 02:23: punish crit on jump-ins A 31% vs B 15%; third hits 42% vs 42%; in their combo A swung 31% vs B 50%.
+- Fable resumed 02:52 on P4 (the rules' keys pulled only where the rule's moment went well).
 
 ## SOLVED (with the evidence)
 
