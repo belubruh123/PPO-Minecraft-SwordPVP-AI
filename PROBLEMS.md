@@ -26,6 +26,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
    - Measure: 3+ combos taken per round in real duels (tools/swingback.py, rounds.csv combosTaken3).
    - 3-hour rule again (flat since run 57, 07:50): research agent 5 launched 12:25 (the combos it takes in real duels, why C3/T9a are not taught; two different kinds of approach).
    - Agent 5's findings (real duels, after a hit in their combo): jump reset + crit down -> its hit first 84%; jump reset without a swing -> theirs 23%; ready and no swing -> theirs 60%; late S -> 27%. Run 57's focus never ran (a scene queue took the fights; combo scenes fought 0). The bots combo far harder than real players (2->3 34-36% vs 13%). Fix (run 65, deploying with run 64 after the ~12:40 check): T9a (with the crit down) and C4 taught by gated option layers; the rules give way in their combo while told those. Status: NOT VERIFIED.
+   - Checks since run 62: ROUNDS WON A vs B 10:45 24-29 (z -1.4), 11:45 18-15 (z +0.7), 12:42 12-17 (z -1.5; 40% vs 40% third hits). Before run 62: +0.8, +0.7. Watch: if the 13:40 check (runs 64+65) is behind again, take run 62's rule yield out of checks and real fights (keep its lesson).
    - Checks (bots): their combos reaching a third hit, A vs B: 35% vs 23% at 23:42; 24% vs 23% at 01:12; 33% vs 26% at 02:02; 30% vs 42% at 03:02; 27% vs 30% at 04:32. New bot world (runs 58-60): 17% vs 10% at 09:26 (real duels: a 2-hit chain reaches 3 in 12%).
 3. **Cannot tell a jump-in crit from an uppercut (T10), a lunge (T11a) or hops (T11b), and gets comboed by those.**
    - The guard treats every jump from outside reach as a jump-in crit: it holds the swing and waits to punish crit. Uppercuts, lunges and hops end in a SPRINT hit (knockback, a stun), so waiting means being stunned.
@@ -74,6 +75,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
    - Training (run 54b, 3309 ticks in their combo with the sword ready and them in reach): swung 25%, guard 8%, in the air itself 48%, other 19%. Split into lifted by their hit / falling from run 54c on.
 11. **Uppercutter and fight-jumpin bots**: behind in most checks of 9 Nov (uppercutter -18, -23, -21, -44 in the last four).
    - 09:26 check: uppercutter -12.2, fight-jumpin -14.0 (A minus B, net damage a fight); still behind.
+   - 12:42 check (run 63 world): uppercutter 0.0, fight-jumpin +8.2; A behind on reverse-deflector -28.0, fall-spacer -26.5, mixer* -19.8.
 12. **Fight back with its own combo: start a combo and hold it with uppercuts (T10), hops (T11b), lunges (T11a) and strafing (T6a)** (the user, 10 Nov 06:40).
    - The document: deflection into uppercut starts combos (T10); hops hold players in combos (T11b); lunges catch players holding S (T11a); alternate hops and lunges (T11c); strafe so they miss (T6a).
    - Seen (training, 9-10 Nov): uppercut (T10) 7-30% and hops (T11b) 12-58%, both stuck or swinging; T11c 0-15%; lunge (T11a) too few moments.
