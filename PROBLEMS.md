@@ -112,6 +112,15 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - K3 91%, T9b 100% when told.
 - Checks since the restart: A 83/224, B 85/224 (z -1.5, +0.9, +0.5, -0.5, -0.2): still level. 02:23: punish crit on jump-ins A 31% vs B 15%; third hits 42% vs 42%; in their combo A swung 31% vs B 50%.
 - Fable resumed 02:52 on P4 (the rules' keys pulled only where the rule's moment went well).
+- Fable finished 03:05. Run 72 (RULED_AWR) live 03:46, after its test fix; training was down 03:21-03:46.
+- 04:35 check (first with run 72): A 19/45, B 16/45 (z +0.8); damage A 364/408, B 365/399.
+  - Third hits A 32% vs B 40% (41% vs 19% at 03:10).
+  - In their combo A swung 34% vs B 38%; outside their combo 48% vs 54%.
+- Run 72, first hour:
+  - fights without the rules net: bots -104, league -268, sparring -234 (before: -112, -243, -217);
+  - rules' agree 85-88%;
+  - punish crit chances critted dipped to 49-50% at 04:38-04:46, then 54%.
+  - Judge at about 06:45.
 
 ## SOLVED (with the evidence)
 
