@@ -664,3 +664,29 @@ Gates:
 - A's swings outside their combo toward B's 53%;
 - "turned to find them" and swings with the crosshair on them not worse;
 - the punish crit unchanged.
+
+## Run 68 (10 Nov 20:15): the T1c window's credit fixed (PPO's own way, no new rule)
+
+Agent 6 (the 3-hour rule, PROBLEMS.md 4):
+- The sword is not the cause: in the user's duels it was 0.94 at take-off and 10 of its 16 jumps after a punish crit became crits; it jumped after only 3%.
+- In the last 7 checks (164 punish crits, 44 jumps) its take-off median was c+10.5. Of the take-offs at c+5..c+12, 11 of 21 were hit while rising (landing 5 blocks out).
+- The credit punished the document's T1c course: their crit on the rising jump closed the window (so the crit after it paid nothing) and cost AIR_JUMP_HIT too; a ground sprint hit later paid more (about -1.4 vs +0.9).
+- Agent 6 ranked a scripted T1c rule first; not taken, because the user asked for no hard rules and for PPO to learn.
+
+Change: SchoolSession.T1C_CREDIT. In the T1c window after its punish crit:
+- their crit while it is up in its own jump costs CRIT_BACK_COST but keeps the window open;
+- no AIR_JUMP_HIT;
+- no JUMP_COMBO_HIT on one falling (K2: "while they are critting you").
+
+Gates (1-2 h):
+- "after its N punish crits: crit again (T1c)" from 6-11% to 15%+;
+- its own jump after them not down;
+- critted back not up;
+- punish crit chances critted >= 50%;
+- jumps a minute off the moments not spreading.
+Next if flat: agent 6's approach 2 (T1c scenes at its landing after a punish crit).
+
+The 20:12 check (run 67, first): ROUNDS WON A 17/45, B 18/45 (z -0.3); damage A 363/430, B 355/396.
+- Outside their combo, sword ready: A swung 49% (33% at 19:12), held with them falling 17% (28%), crosshair off them 25% (B 36%).
+- In their combo: swung 29% vs 42%.
+- Third hits 40% vs 29%.

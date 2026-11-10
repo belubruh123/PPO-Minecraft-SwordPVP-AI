@@ -116,6 +116,13 @@ public final class SchoolSession implements AgentSession {
 	static final float T1C_CRIT = 0.3f;
 	static final float CRIT_BACK_COST = 0.3f;
 	/**
+	 * Run 68 (10 Nov, PROBLEMS.md 4, agent 6): the T1c window's credit. Their crit on its rising jump keeps the window open; no
+	 * AIR_JUMP_HIT in the window; no JUMP_COMBO_HIT in it on one falling. In the checks its jumps after a punish crit took off at c+10
+	 * (median), half were hit rising, and only 6-11% became crits; in the user's duels 10 of its 16 such jumps did.
+	 */
+	static final boolean T1C_CREDIT = true;
+	private boolean inT1cWindow;
+	/**
 	 * Since 24 Oct 15:45 the punish crit is paid only as the game counts it (the user's table, "punish crit 0 of 89"):
 	 * thrown up from the ground by their hit, the crit before it lands. Any crit within the window was paid before, 4 or 5
 	 * an update against the game's 0 or 1. A crit that is not a punish crit pays this.
@@ -3492,10 +3499,16 @@ public final class SchoolSession implements AgentSession {
 				// Run 54: after its punish crit, T1c pays and their crit back costs, until its next hit or T1C_WINDOW.
 				sincePunishCrit++;
 				boolean afterPunish = sincePunishCrit <= T1C_WINDOW;
+				inT1cWindow = afterPunish;
 				if (afterPunish && facts.critsTaken > 0) {
 					reward -= CRIT_BACK_COST;
 					critBacks++;
-					sincePunishCrit = T1C_WINDOW + 1;
+					// Run 68: their crit while it is up in its own jump does not close the window (the document's T1: the punish critter
+					// "is falling onto you"; its crit on the way down still answers it). Agent 6: a crit taken closed the window, so the
+					// crit after it paid nothing, and a jump hit rising came to about -1.4 against +0.9 for waiting on the ground.
+					if (!(T1C_CREDIT && ownJumpAir && !facts.onGround)) {
+						sincePunishCrit = T1C_WINDOW + 1;
+					}
 				}
 				if (afterPunish && facts.hitsDealt > 0) {
 					if (liftedFor < 0 && ownJumpAir) {
@@ -3549,7 +3562,9 @@ public final class SchoolSession implements AgentSession {
 				if (facts.hitsTaken > 0 && !facts.onGround && ownJumpAir) {
 					// Run 65: not while told the jump reset in their combo (T9a) or the jump and S (C3): that moment is theirs.
 					Technique toldNow = learner.told();
-					if (prevVy > 0.0 && ownAirTicks >= AIR_HIT_FROM_TICK && toldNow != Technique.T9A && toldNow != Technique.C3) {
+					// Run 68: nor in the T1c window after its punish crit (their crit on its rising T1c jump is the expected course).
+					if (prevVy > 0.0 && ownAirTicks >= AIR_HIT_FROM_TICK && toldNow != Technique.T9A && toldNow != Technique.C3
+							&& !(T1C_CREDIT && inT1cWindow)) {
 						reward -= AIR_JUMP_HIT;
 						airJumpHits++;
 					} else {
@@ -3600,7 +3615,9 @@ public final class SchoolSession implements AgentSession {
 						comboHitsPaid++;
 						combo3Paid += rewardRow >= 3 ? 1 : 0;
 						// Run 56: held with an uppercut, a lunge or a hop (a sprint hit out of its own jump), or while strafing.
-						if (facts.sprintHit && ownJumpAir && !facts.onGround) {
+						// Run 68: not in the T1c window on one falling (K2, "while they are critting you"): there the crit is the answer.
+						if (facts.sprintHit && ownJumpAir && !facts.onGround
+								&& !(T1C_CREDIT && inT1cWindow && (reader.duel.them.falling() || truth.botFalling()))) {
 							reward += JUMP_COMBO_HIT;
 							if (prevVy > 0.0) {
 								uppercutComboHits++;
