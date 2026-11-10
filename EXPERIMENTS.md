@@ -730,3 +730,27 @@ Gates (50-60 updates):
 - If the punish crit or swings on them fall: ENTROPY_FLOOR = false first.
 
 GOING BACK: a checkpoint saved by this jar has 4 more tensors and does NOT load in an older jar. Undo 69a with SEEN_HISTORY = false, never by reinstalling an old jar. Old-format copy: swordai/school/checked-1110-2108.bin. Installing a 69a-trained network into the user's profile also needs the new jar there.
+
+## Run 70 (Fable batch 2, merged 22:15 10 Nov; deploys after the ~22:50 check): the jump along and crit in their combo (K3)
+
+Fable, problem 3, from agent 7's pickles of the user's duels: 300 jump-ins taken in THEIR combo, and who hit first within 40 ticks after each answer.
+
+| Its answer | Its hit first | Theirs first | n |
+|---|---|---|---|
+| W held, no swing (what the guard leaves it doing) | 35% | 51% | 116 |
+| its own jump, no swing | 31% | 46% | 35 |
+| S held (C3) | | 60% | 5 |
+| a swing at their ground tick 0-1 (T8, allowed) | 92% | | 12 |
+| its own jump along with theirs, then the crit (K3, allowed) | 89% | 0% (trade 11%) | 27 |
+| a swing at their air ticks 3-6 (BREAKS rule 1; mostly older duels; reported for the user only, rule 1 stays) | 82% | 7% | 102 |
+
+Change:
+- PvpPlayer.jumpAlongMoment (Style.jumpAlong, the teacher's only): their take-off from beyond 3.3 (within 6.5, coming at it), in their combo, on the ground, sword 0.4+. The teacher starts Plan.K3 (jump, no W or sprint, crit falling in reach).
+- SchoolStages.JUMP_ALONG_TAUGHT: K3 joins RUN_TAUGHT; its jump, W/S, sprint and swing are taught into K3's option layer alone (run 62's method). No rule gives way, and the guard is untouched.
+
+Gates (1-2 h):
+- "jumped along with their jump-in N, crits then M": N toward 10+ an update, M > 0 and rising.
+- K3 done rate 22% -> 60%+ when told.
+- In their combo, held by the jump-in guard (18%) falls; their third hits toward B's.
+- Punish crit chances critted not down; K2 broken not up.
+- "jumps a minute off moments" not up 2x. If it is: JUMP_ALONG_TAUGHT = false.
