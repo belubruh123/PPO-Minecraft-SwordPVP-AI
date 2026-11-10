@@ -633,3 +633,10 @@ Gates (1-2 h):
 - the win share starts low and rises;
 - the training's third hits (34-43%) fall;
 - punish crit chances critted stays >= 50%.
+
+## Run 66b (10 Nov ~17:00; deploy after the ~17:07 check): the combo-escape scene won by hitting back before their second hit
+
+Run 66's test (fewer than two of their hits in a row over the whole 60-tick scene, plus a hit of its own) lost all of ~80 combo-escape scenes, including those where it got out by hitting back and was comboed again later in the scene.
+Now a combo scene is won (and its repeat outcome is +1) when its first hit in the scene comes before their second hit in a row, with no K2 broken. It is lost when their second hit in a row comes first, or on a K2 broken.
+The update line prints "combo-escape scenes picked N (got out M)"; run 66's "won W of F" read 0 of 0 because the scene tally line resets it first.
+Gate: got out > 0 and rising over the next hours; the check's third hits (A 37% vs B 44% at 16:22) do not get worse.

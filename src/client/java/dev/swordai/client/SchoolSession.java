@@ -722,8 +722,9 @@ public final class SchoolSession implements AgentSession {
 				punishCritsForT1c, t1cCrits, critBacks, t1cJumps, t1cHits, t1cSprintHits,
 				comboReadyTicks, comboSwung, comboGuard, comboLocked, comboLockedOnBody, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, comboOtherFalling, airJumpHitsFree, counterHits, readyTicks, readySwung, readyLocked, readyLockedOnBody, readyHeldFalling, readyHeldOther, uppercutComboHits, fallingJumpComboHits, strafeComboHits)
 				// Run 63: the opponent's news held back for lag since the game started (moves; whole packets, which must not stay 0).
-				+ String.format(Locale.ROOT, " | held back for lag: moves %d, packets %d | camera taught onto them in their combo %d | combo-escape scenes picked %d (won %d of %d)",
-						SeenLag.heldBack(), SeenLag.heldPackets(), comboTrackTaught, comboScenePicks, kindWon[KIND_COMBO], kindFights[KIND_COMBO]);
+				+ String.format(Locale.ROOT, " | held back for lag: moves %d, packets %d | camera taught onto them in their combo %d | combo-escape scenes picked %d (got out %d)",
+						SeenLag.heldBack(), SeenLag.heldPackets(), comboTrackTaught, comboScenePicks, comboEscapes);
+		comboEscapes = 0;
 		comboTrackTaught = 0;
 		comboScenePicks = 0;
 		punishCritsForT1c = t1cCrits = critBacks = 0;
@@ -1223,9 +1224,16 @@ public final class SchoolSession implements AgentSession {
 	 * combo gave away (combo replays "learned" in 3 tries).
 	 */
 	private boolean sceneDealtAny;
+	/**
+	 * Run 66b: its first hit in the scene came before their second hit in a row: out of their combo by hitting back. Run 66's test
+	 * (never two of theirs in a row in the whole 60-tick scene) was lost in all of ~80 scenes, also those it got out of and was
+	 * comboed again later.
+	 */
+	private boolean sceneEscaped;
 	/** Run 66: the share of training fights that are a combo-escape scene, ahead of the repeat queue (run 57's focus never ran under it). */
 	static final float COMBO_SCENE_SHARE = 0.15f;
 	private int comboScenePicks;
+	private int comboEscapes;
 	private final int[] kindFights = new int[KINDS];
 	private final int[] kindWon = new int[KINDS];
 
@@ -1773,7 +1781,7 @@ public final class SchoolSession implements AgentSession {
 				return sceneOwnBroken ? -1 : sceneOwnHits >= 1 ? 1 : 0;
 			case KIND_COMBO:
 				// Run 66: lost at their second hit in a row (or a K2 broken), won by a hit of its own before that.
-				return sceneRowMost >= 2 || sceneK2 ? -1 : sceneDealtAny ? 1 : 0;
+				return sceneK2 ? -1 : sceneEscaped ? 1 : sceneRowMost >= 2 ? -1 : 0;
 			default:
 				return 0;
 		}
@@ -2735,6 +2743,7 @@ public final class SchoolSession implements AgentSession {
 		sceneRow = 0;
 		sceneRowMost = 0;
 		sceneDealtAny = false;
+		sceneEscaped = false;
 		IntegratedServer server = mc.getSingleplayerServer();
 		if (server == null) {
 			stop("left the world");
@@ -4722,12 +4731,15 @@ public final class SchoolSession implements AgentSession {
 					: sceneNow.kind == KIND_DEFLECT ? sceneDeflected
 					: sceneNow.kind == KIND_JUMPIN || sceneNow.kind == KIND_JUMPIN2 ? !sceneK2 && (!sceneHit || sceneAnswer)
 					// Run 66: and a hit of its own in it (out of their combo by hitting back, as real players get out of its), no K2 broken.
-					: sceneNow.kind == KIND_COMBO ? sceneRowMost < 2 && sceneDealtAny && !sceneK2
+					: sceneNow.kind == KIND_COMBO ? sceneEscaped && !sceneK2
 					: sceneNow.kind == KIND_OWN ? sceneOwnHits >= 2 && !sceneOwnBroken
 					: sceneNow.kind == KIND_OWN2 ? sceneOwnHits >= 1 && !sceneOwnBroken
 					// Run 48l: the crit replays (and any other kind judged by damage) never won by a K2 broken (a sprint hit on the
 					// falling jumper, the user's lag rule): K2 broken ran 16-31 an update with the crit replays learned on trades.
 					: fightDealt > fightTaken && !sceneK2;
+			if (sceneNow.kind == KIND_COMBO && sceneWon) {
+				comboEscapes++;
+			}
 			if (!sceneReview) {
 				sceneRoll[sceneNow.kind].add(sceneWon);
 				kindFights[sceneNow.kind]++;
@@ -5261,6 +5273,9 @@ public final class SchoolSession implements AgentSession {
 	 */
 	private void trackCombo(boolean dealt, boolean taken) {
 		if (sceneNow != null) {
+			if (dealt && !sceneDealtAny && sceneRowMost < 2) {
+				sceneEscaped = true;
+			}
 			sceneRow = taken ? sceneRow + 1 : dealt ? 0 : sceneRow;
 			sceneRowMost = Math.max(sceneRowMost, sceneRow);
 			sceneDealtAny |= dealt;
