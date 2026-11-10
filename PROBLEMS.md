@@ -15,6 +15,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
    - Status: NOT VERIFIED in real duels.
    - Training (run 54d, 29 updates): on the ground and not swinging at a NON-falling opponent on 14% of those moments; nothing paid that hit.
    - Fix 2 (run 55, live 03:14): COUNTER_HIT +0.2 for a hit that breaks into their combo on one not falling (document C4). Run 55b (about 03:41): paid only from the ground, because B1 dipped 85% -> 71% in its first 4 updates. Status: NOT VERIFIED.
+   - 3-hour rule (flat since 03:41: swung 25% at run 54b, 22-23% now). New kind of cause found 08:40: of 2956 ticks in their combo with the sword ready and them in reach (07:40-08:30), the swing was NOT OPEN on 53%. The whiff guard (since 24 Oct) locks the swing whenever the game's crosshair pick is not on them. The network swung on 22%, about 47% of the ticks it could. Run 61 (counters, live 08:36) splits it: crosshair on its body but no pick (past reach / a frame late) vs crosshair off them (tracking). The paired check now prints A's and B's swing-back and crosshair-off share. Next: fix whichever it is.
 2. **Gets comboed and stunned too easily.**
    - 3-hour rule (10 Nov 07:10, agent 1): 59% of real combo hits had no on-the-ground moment to swing first; the answers are C3 (S before the stun), T9a (jump reset on their rhythm) and B1. The "combo escape" scene practice never ran (focus stuck on the crits).
    - Fix (run 57, after the ~07:50 check): the practice focus pinned on "the combo escape" (keeps the punish scenes). Next if flat: combo scenes cut from the 701 real combo hits. Status: NOT VERIFIED.
@@ -33,6 +34,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
    - Fix 1 (run 54): T1C_CRIT +0.3 for a crit from its own jump within 30 ticks of its punish crit; CRIT_BACK_COST -0.3 for their crit in that window. After 2 h: T1c still 2% of its punish crits.
    - 02:49 (after run 54c): its own jump after 14% of its punish crits (4-11% before), T1c 2%, critted back 17% (22-34% before).
    - 04:19: its own jump after 19%, T1c 7% (first real rise), critted back 21%.
+   - 07:33-08:30 (run 58 world, 163 punish crits): T1c 2%, critted back 37%, its own jump after 7%.
    - 3-hour rule (about 10 h flat): agent 2 found the bots answer its punish crit in 24-32%, real players in 56-63% (it hits first 50-59% vs real 26%), so training gave little pressure. Fix 2 (run 59, ~08:30): bots swing back at its punish crit with a 30-60% chance, 1-3 ticks later, when their sword is ready and it is in reach. Status: NOT VERIFIED.
    - Cause found (run 54b counters): after 141 punish crits its own jump followed only 11 times. The run 43 cost (-0.3 for any hit in the air out of its own jump, paid on 31 of 69 jumps an update) taught it not to jump.
    - Fix 2 (run 54c, 00:21 10 Nov): that cost is now only paid for a hit while rising, past the jump reset's moment (document T9, K3). Status: NOT VERIFIED.
@@ -49,6 +51,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
    - Fix 1 (run 58, ~07:25): the 49c uplink off. Gates: bench swing-to-lift median back to 3-4; a re-bench should rank run35-0657 above run52-1218, as in real duels. Next: bots answer its punish crit (A4), bot hit distance (A2). Status: NOT VERIFIED.
 9. **It swings about 11% less than the 23 Oct model** in every check (383 vs 429 swings a check), so it deals less.
    - 23:42 check 375 vs 456; 01:12 check 417 vs 462 (run 54c); 04:32 check 359 vs 432. At the moments a swing is called for: A 51 vs B 62 a minute. STILL OPEN after runs 54-55b.
+   - 3-hour rule: the same 08:40 finding. Outside their combo, on the ground with the sword ready and them in reach (3291 ticks), the swing was not open on 50% (crosshair pick not on them), and it swung on 33%. Run 61's check counters compare A's and B's crosshair-off share. If A's tracking is worse, that is the missing swings.
 10. **It is in the air too much in the opponent's combo** (run52 37% of those ticks, run35 27%), where it cannot swing back.
    - Training (run 54b, 3309 ticks in their combo with the sword ready and them in reach): swung 25%, guard 8%, in the air itself 48%, other 19%. Split into lifted by their hit / falling from run 54c on.
 11. **Uppercutter and fight-jumpin bots**: behind in most checks of 9 Nov (uppercutter -18, -23, -21, -44 in the last four).
@@ -56,6 +59,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
    - The document: deflection into uppercut starts combos (T10); hops hold players in combos (T11b); lunges catch players holding S (T11a); alternate hops and lunges (T11c); strafe so they miss (T6a).
    - Seen (training, 9-10 Nov): uppercut (T10) 7-30% and hops (T11b) 12-58%, both stuck or swinging; T11c 0-15%; lunge (T11a) too few moments.
    - Fix 1 (run 56, deployed about 06:52): on top of the combo reward, a follow-up hit of its own combo pays +0.2 when it is a sprint hit out of its own jump (uppercut rising, lunge or hop falling), and +0.1 when A or D was held. Counted as "its combo held by an uppercut / a lunge or hop / strafing". Status: NOT VERIFIED.
+   - 07:33-08:30 (19 updates): its combo held by an uppercut 31, a lunge or hop 2, strafing 378. Stage T-E: T10 10%, T11a 5%, T11b 15-20%, T11c 0%; the cue's jump missed 162 times for T11c and 47 for T11b, so the jump-hit reward is almost never seen. The 3-hour mark is 09:52.
 
 ## SOLVED (with the evidence)
 
