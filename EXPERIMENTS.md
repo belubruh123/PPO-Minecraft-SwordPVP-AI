@@ -640,3 +640,13 @@ Run 66's test (fewer than two of their hits in a row over the whole 60-tick scen
 Now a combo scene is won (and its repeat outcome is +1) when its first hit in the scene comes before their second hit in a row, with no K2 broken. It is lost when their second hit in a row comes first, or on a K2 broken.
 The update line prints "combo-escape scenes picked N (got out M)"; run 66's "won W of F" read 0 of 0 because the scene tally line resets it first.
 Gate: got out > 0 and rising over the next hours; the check's third hits (A 37% vs B 44% at 16:22) do not get worse.
+
+## Run 66c (10 Nov ~18:00; deploy after the ~18:08 check): the combo scenes' hit tracking actually runs in scene fights
+
+The combo tracker (trackCombo: hits in a row in a scene fight) was called only in fights played with the rules (!ruleOff), and the scene fights are played without them.
+- So in every combo scene the counters stayed at zero. The old test "fewer than two of their hits in a row" was always met: combo replays were "learned" in 3 tries, as agent 5 saw.
+- Run 66b's "its hit before their second in a row" was never met: 0 of 130 scenes, 117 logged lost, also ones with 24.5 dealt.
+
+Change: trackCombo also runs when a scene fight is on (sceneNow != null), whatever the rules; its scene branch returns before the full-fight part.
+
+Gate: "combo-escape scenes picked N (got out M)" with M > 0; the combo scene win share well between 0 and 100%.

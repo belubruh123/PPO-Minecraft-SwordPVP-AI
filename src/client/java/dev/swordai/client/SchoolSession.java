@@ -3359,7 +3359,10 @@ public final class SchoolSession implements AgentSession {
 				sc[3] += theirRow == 2 ? 1 : 0;
 				sc[4] += theirRow == 3 ? 1 : 0;
 			}
-			if (mode == Mode.TRAIN && review < 0 && !ruleOff) {
+			// Run 66c: in a scene fight too when it is played without the rules (the scenes are): until now trackCombo never ran
+			// there, so the combo scene's "fewer than two of their hits in a row" was always met (learned in 3 tries) and run 66b's
+			// "its hit before their second" never (0 of 130).
+			if (mode == Mode.TRAIN && review < 0 && (!ruleOff || sceneNow != null)) {
 				trackCombo(facts.hitsDealt > 0, facts.hitsTaken > 0);
 			}
 		}
