@@ -204,13 +204,14 @@ public final class Style {
 		// Run 59 (10 Nov 08:30): real players answer its punish crit (the 3-hour rule's research, agent 2, 332 real punish crits: they
 		// hit back within 4 ticks in 40%, within 12 in 63%; it hit first in 26%); the bots did in 24-32% (it hit first in 50-59%).
 		// Drawn last, so the draws above are as before.
-		answerCrit = 0.3f + 0.3f * rng.nextFloat();
+		answerCrit = 0.5f + 0.3f * rng.nextFloat(); // run 59b: 0.3-0.6 before
 		// Run 60 (10 Nov): agent 2's other two gaps between the bots and the user's 200 real rounds. (a) The distance it saw at
 		// their hits: real median 1.87 (90th percentile 2.87), the bots 2.7-2.9 (about 4.0); a quarter of the bots' hits came
 		// from beyond its own longest, and it was hit with its sword ready in 56-68% of their hits against 28% real. (b) Eight
 		// ticks after its clean sprint hit, the opponent was 2+ blocks farther in 36% real, 8-12% for the bots (they walked back
 		// in). Drawn last again.
-		closeIn = 0.3f + 0.7f * rng.nextFloat();
+		// Run 59b: halved (0.3-1.0 before). The bench after run 60 had their whiffs at 10% (real 29%, 51% before run 60).
+		closeIn = 0.1f + 0.4f * rng.nextFloat();
 		flyOut = 0.2f + 0.4f * rng.nextFloat();
 		return this;
 	}

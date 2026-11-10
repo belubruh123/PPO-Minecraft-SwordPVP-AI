@@ -500,3 +500,24 @@ Gates (1-2 h):
 - "punish crit chances critted" stays 50-65%;
 - jumps a minute off its moments must not spread (now about 6-57);
 - swings and damage dealt must not drop. Revert if jumps spread or damage falls in the next check.
+
+## Run 59b (10 Nov, deploy after the ~10:40 check): the bots' answer to its punish crit, fixed; the closer swing halved
+
+The bench run35w60 (09:32, the installed model, after runs 58-60) against the user's 200 real rounds:
+- After its punish crit, the bots hit back first within 30 ticks in 19%: 36% before run 59, real 72%. It hit first in 70% (real 26%).
+- Why: the run 59 swing back was cancelled by the bots' K2 rule (the agent is still falling from its crit) and by run 60's closer swing.
+- Real answers come with them in the air (75%): lifted by its crit, they come down hitting.
+- Their whiffs fell to 10% with run 60 (real 29%, before 51%).
+
+Change:
+- When its crit lifts the bot (it was on the ground), with half of the answers the bot begins its punish crit back (Plan.B1, crit on the way down; not a sprint hit, so K2 does not hold it).
+- Otherwise the bot swings back 1-3 ticks later (60%) or 5-12 ticks later (40%), for up to 6 ticks, from reach 3.0 (no closer swing) with the sword at 0.8+.
+- answerCrit is now drawn 0.5-0.8 (was 0.3-0.6).
+- canSwing applies closeIn only on the ground.
+- closeIn is now drawn 0.1-0.5 (was 0.3-1.0).
+- Offline sim (Bout): with every lifted answer as a punish crit, "hit back first" fell in the toy (87% -> 73%), because B1 waits for the fall; with half, 78%. The toy's baseline is far from the arena's 36%, so the bench decides.
+
+Gates (next bench of run35-0657):
+- they hit back first after its punish crit toward 60-72%;
+- their whiffs toward 29%;
+- its sprint hits answered within 12 ticks toward 33%.

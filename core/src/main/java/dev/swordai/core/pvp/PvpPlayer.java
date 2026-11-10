@@ -357,7 +357,7 @@ public final class PvpPlayer {
 			ordinary(d, k);
 		}
 		// Run 59: the answer to their crit (hitTaken).
-		if (answerUntil >= tick && tick >= answerFrom && canSwing(d)) {
+		if (answerUntil >= tick && tick >= answerFrom && d.reach <= Duel.REACH && me.charge >= ANSWER_CHARGE) {
 			k.attack = true;
 			answerUntil = -1;
 		} else if (answerUntil >= 0 && tick > answerUntil) {
@@ -390,6 +390,10 @@ public final class PvpPlayer {
 	/** Run 59: the swing back at their crit, from this tick until that one (-1: none). */
 	private long answerFrom = -1, answerUntil = -1;
 	private static final int ANSWER_CRIT_TICKS = 6;
+	/** Run 59b: the answer to their crit may come a little short of a full sword (real answers were mostly not sprint hits). */
+	private static final float ANSWER_CHARGE = 0.8f;
+	/** Run 59b: of the answers to a crit that lifted it, the share made as a punish crit back (the offline sim: all of them slowed the answer). */
+	private static final float ANSWER_BY_CRIT = 0.5f;
 	/** Run 62: how much short of a full sword the hops' and lunge's take-off (sprint hit at air tick ~9) and the uppercut's (at the peak, ~6) may be. */
 	static final float HOP_EARLY = 0.72f;
 	static final float UPPERCUT_EARLY = 0.45f;
@@ -545,8 +549,19 @@ public final class PvpPlayer {
 		// Run 59: their crit (a punish crit) answered at once, as real players do: a swing back a reaction later if the sword is
 		// ready and they are in reach (see the end of tick; the golden rule K2 still holds a knockback hit on a faller).
 		if (e.theyHit == Events.CRIT && style.answerCrit > 0f && rng.nextFloat() < style.answerCrit) {
-			answerFrom = tick + 1 + rng.nextInt(3);
-			answerUntil = tick + ANSWER_CRIT_TICKS;
+			// Run 59b: on the bench run 59's swing back came in only 19% (real 72%): their K2 held it while the agent was still
+			// falling from its crit, and the closer swing (run 60) the rest. Real answers come with them in the air (75%): lifted
+			// by its crit, they come down hitting, a punish crit back (B1). Standing or already in the air: a swing back, a
+			// reaction later (60%) or 5-12 ticks later (40%; real gaps p50 3, p75 8, p90 12).
+			if (wasOnGround && plan != Plan.B1 && rng.nextFloat() < ANSWER_BY_CRIT) {
+				thrownUpAt = tick;
+				pending = Plan.NONE;
+				end();
+				begin(Plan.B1);
+				return;
+			}
+			answerFrom = tick + (rng.nextFloat() < 0.6f ? 1 + rng.nextInt(3) : 5 + rng.nextInt(8));
+			answerUntil = answerFrom + ANSWER_CRIT_TICKS;
 		}
 		boolean lifted = wasOnGround;
 		if (lifted) {
@@ -823,7 +838,8 @@ public final class PvpPlayer {
 	// ---- the plans ---------------------------------------------------------------------------------
 
 	private boolean canSwing(Duel d) {
-		return d.reach <= Duel.REACH - style.closeIn && d.me.charge >= style.swingCharge;
+		// Run 59b: the closer swing (run 60) only for a swing from the ground; in the air (crits, jump hits) as before.
+		return d.reach <= Duel.REACH - (d.me.onGround ? style.closeIn : 0f) && d.me.charge >= style.swingCharge;
 	}
 
 	private int step(Duel d, Keys k) {
