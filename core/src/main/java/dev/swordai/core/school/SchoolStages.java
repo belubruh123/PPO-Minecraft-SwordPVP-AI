@@ -243,16 +243,40 @@ public final class SchoolStages {
 	public static final int B1_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.FORWARD,
 			dev.swordai.core.rl.ActionSpace.SPRINT);
 
+	/**
+	 * Run 62 (10 Nov, PROBLEMS.md 12, the 3-hour rule's research): its own combo held with an uppercut (T10), a lunge (T11a), hops
+	 * (T11b) or hops into lunges (T11c), taught the user's way of 27 Oct: the decider picks WHEN, a gated option layer learns HOW.
+	 * Until now no teacher taught them at all (PULL_CAP 0, only B1 in RUN_TAUGHT): their moments were only counted, while the
+	 * take-over copying pulled the jump toward the 23 Oct model's keys, which never hop or lunge, and its rules (JumpIn's chase and
+	 * uppercut) took the keys in its combos. Its combo held by a lunge or hop: 2-12 an hour; T11c 0-2% of its moments.
+	 */
+	public static final boolean COMBO_JUMPS_TAUGHT = true;
+	public static final int COMBO_JUMP_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP,
+			dev.swordai.core.rl.ActionSpace.FORWARD, dev.swordai.core.rl.ActionSpace.SPRINT, dev.swordai.core.rl.ActionSpace.ATTACK);
+
+	/** An uppercut, a lunge, hops or hops into lunges: the jumps that hold its own combo (run 62). */
+	public static boolean comboJump(int technique) {
+		return technique == Technique.T10.ordinal() || technique == Technique.T11A.ordinal() || technique == Technique.T11B.ordinal()
+				|| technique == Technique.T11C.ordinal();
+	}
+
 	/** The keys of technique {@code technique} taught into its option layer alone (0: none, or GATED off). */
 	public static int gatedHeads(int technique) {
 		if (!GATED) {
 			return 0;
+		}
+		if (COMBO_JUMPS_TAUGHT && comboJump(technique)) {
+			return COMBO_JUMP_GATED_HEADS;
 		}
 		return technique == Technique.B1.ordinal() ? B1_GATED_HEADS : 0;
 	}
 
 	/** The keys a technique's teacher teaches: B1 its swing, T9 its jump, C3 its S, the rest all theirs; and the gated ones. */
 	public static int taughtHeads(int technique) {
+		// Run 62: the combo jumps' keys go into their option layers alone (nothing into the shared trunk, so nothing spreads).
+		if (COMBO_JUMPS_TAUGHT && GATED && comboJump(technique)) {
+			return COMBO_JUMP_GATED_HEADS;
+		}
 		int whole = technique == Technique.B1.ordinal() ? B1_TAUGHT_HEADS : technique == Technique.T9.ordinal() ? T9_TAUGHT_HEADS
 				: technique == Technique.C3.ordinal() ? C3_TAUGHT_HEADS : dev.swordai.core.rl.ActionSpace.ALL_HEADS;
 		return whole | gatedHeads(technique);
@@ -299,6 +323,11 @@ public final class SchoolStages {
 		// the punish crit alone, its W and sprint gated (B1_GATED_HEADS).
 		for (Technique t : new Technique[] {Technique.B1}) {
 			RUN_TAUGHT[t.ordinal()] = true;
+		}
+		if (COMBO_JUMPS_TAUGHT) {
+			for (Technique t : new Technique[] {Technique.T10, Technique.T11A, Technique.T11B, Technique.T11C}) {
+				RUN_TAUGHT[t.ordinal()] = true;
+			}
 		}
 	}
 

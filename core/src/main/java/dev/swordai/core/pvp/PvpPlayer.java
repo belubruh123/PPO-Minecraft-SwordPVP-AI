@@ -390,6 +390,9 @@ public final class PvpPlayer {
 	/** Run 59: the swing back at their crit, from this tick until that one (-1: none). */
 	private long answerFrom = -1, answerUntil = -1;
 	private static final int ANSWER_CRIT_TICKS = 6;
+	/** Run 62: how much short of a full sword the hops' and lunge's take-off (sprint hit at air tick ~9) and the uppercut's (at the peak, ~6) may be. */
+	static final float HOP_EARLY = 0.72f;
+	static final float UPPERCUT_EARLY = 0.45f;
 	/** The last plan done with its swing, and when: its hit lands a tick or more later (see hitLanded). */
 	private Plan donePlan = Plan.NONE;
 	private long doneAt = -1000;
@@ -993,6 +996,11 @@ public final class PvpPlayer {
 					if (!me.onGround) {
 						return planT < 6 ? RUN : ABORT;
 					}
+					if (me.charge < style.swingCharge - UPPERCUT_EARLY) {
+						// Run 62: the take-off waits until the sword will be back at the peak (about six ticks up); taken off at once
+						// the peak came with the sword not back and the plan gave up falling.
+						return planT < 14 ? RUN : ABORT;
+					}
 					k.jump = true;
 					phase = 1;
 					return RUN;
@@ -1184,6 +1192,14 @@ public final class PvpPlayer {
 			return ABORT;
 		}
 		if (me.onGround) {
+			if (me.charge < style.swingCharge - HOP_EARLY) {
+				// Run 62: the take-off timed so the sword is back on the way down (real players' falling follow-ups took off 2-3
+				// ticks after their hit and hit at air tick 9; this plan jumped on the first tick, sword at 0.08, and its sprint
+				// hit could only come as it touched down). Hops: W let go before the jump (the file's step 1); a lunge keeps it.
+				k.forward = plan == Plan.T11C ? 1 : 0;
+				k.sprint = k.forward > 0;
+				return RUN;
+			}
 			if (d.theyClose < -0.12 && roll(Technique.T11C)) {
 				plan = Plan.T11C;
 				k.technique = Technique.T11C;

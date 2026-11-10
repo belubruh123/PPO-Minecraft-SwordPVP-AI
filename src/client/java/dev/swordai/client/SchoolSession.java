@@ -3942,6 +3942,12 @@ public final class SchoolSession implements AgentSession {
 						: dev.swordai.core.school.SchoolStages.runTaught(learner.told().ordinal()) ? body : 0;
 				ruled &= ~give;
 			}
+			if (dev.swordai.core.school.SchoolStages.COMBO_JUMPS_TAUGHT && dev.swordai.core.school.SchoolStages.comboJump(learner.told().ordinal())
+					&& clock.ticksSinceHitDealt <= COMBO_GAP && clock.ticksSinceHitTaken > clock.ticksSinceHitDealt) {
+				// Run 62: in its own combo, told an uppercut, a lunge or hops, the rules (JumpIn's chase and uppercut) give way on the
+				// body keys, so the jump is its own (and paid as one, JUMP_COMBO_HIT) and the option layer has the keys to learn.
+				ruled &= ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
+			}
 			// A fight played without the rules: the network presses every key itself; the installed model's keys are only the target. Since run
 			// 30g that is every open body key, not only the ones a rule pressed: the screens' hit log (14:24) has the network alone jumping 79-87%
 			// of the ticks of their combos' hits against the installed model's 94-96%, pressing S 13-18% against 3-4%, and hit in the air 244-376

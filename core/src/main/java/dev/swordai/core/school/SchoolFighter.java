@@ -73,6 +73,8 @@ public final class SchoolFighter {
 	 * to the installed model's 24%, sprint hits 48% to 83% in the 09:11 check).
 	 */
 	public static final int K2_COMBO_TICKS = 15;
+	/** Run 62: its own combo, as the school counts it (SchoolSession.COMBO_GAP). */
+	static final int OWN_COMBO_TICKS = 20;
 
 	/**
 	 * The installed model's fight-time rules over this network: on a tick one of its rules sets keys, those keys are the
@@ -173,6 +175,11 @@ public final class SchoolFighter {
 		// The rules give way to a technique it learned while the decider has chosen it (SchoolStages#RULES_YIELD).
 		if (ruled != 0 && SchoolStages.RULES_YIELD && sinceHitTaken > SchoolStages.YIELD_AFTER_HIT
 				&& SchoolStages.runTaught(learner.told().ordinal())) {
+			ruled &= ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
+		}
+		// Run 62: in its own combo, while the decider has chosen an uppercut, a lunge or hops, those keys are the network's.
+		if (ruled != 0 && SchoolStages.COMBO_JUMPS_TAUGHT && SchoolStages.comboJump(learner.told().ordinal())
+				&& sinceHitDealt <= OWN_COMBO_TICKS && sinceHitTaken > sinceHitDealt) {
 			ruled &= ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
 		}
 		keys &= ~ruled;

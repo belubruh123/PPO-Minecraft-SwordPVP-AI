@@ -476,3 +476,27 @@ Gates, on the next bench of the installed model (agent 2's scratch scripts hitdi
 - fly-out at 8 ticks toward 36%;
 - punish-crit answers within 12 ticks toward about 60% (run 59);
 - 2-hit chains reaching 3 toward 12%.
+
+## Run 62 (10 Nov ~10:00): combo jumps taught the user's way (decider WHEN, gated option HOW); rules yield in its own combo; teacher take-offs retimed
+
+The 3-hour rule's research (agent 3, PROBLEMS.md 12) found:
+- No teacher taught T10, T11a, T11b or T11c: PULL_CAP 0 and only B1 in RUN_TAUGHT, so with NO_PULL_YIELDS their moments were only counted. The "pull 2.00/3.00" in the mastery line is pullShare, not the pull used.
+- In rule-off fights the take-over copying pulled the jump head toward the 23 Oct model's keys (430-2500 head-ticks an update, 97-99% agreement), and that model never hops or lunges.
+- In rule-on fights JumpIn's UPPER/CHASE took jump, W, sprint and swing in its combo, letting go of W on the way down, so the follow-up was a crit, not a lunge. Rule jumps are not ownJumpAir, so JUMP_COMBO_HIT never paid for them.
+- The jump head's entropy is 0.03-0.08: about a 1% jump chance off its learned moments.
+- The teacher's hops jumped on the first tick after its hit (sword 0.08), so a falling sprint hit could only come at touchdown. The uppercut took off 2-6 ticks after the hit, so the sword was not back at the peak.
+- Real players: falling follow-ups take off 2-3 ticks after their hit, at 2.7 blocks, hitting at air tick 9. In real duels it followed up on 41% of its 508 "lunge chances" (sword back, them 3-5 blocks away and going away); 5 of its 1074 follow-ups were falling sprint hits.
+
+Change:
+- SchoolStages.COMBO_JUMPS_TAUGHT: T10/T11A/T11B/T11C added to RUN_TAUGHT (pull up to 1.0 through RUN_PULL_CAP).
+- Their keys (JUMP, FORWARD, SPRINT, ATTACK) go into each technique's own option layer only. taughtHeads returns only those gated heads, so nothing goes into the shared trunk and nothing can spread (run 25: gated T9 went 32 -> 99%, gated C3 23 -> 97%, with no spread).
+- The AWR filter (copy only where the moment went better than expected) stays.
+- SchoolSession (training and checks) and SchoolFighter (real fights): in its own combo (its hit within 20 ticks, no hit taken since), while told one of the four, the rules give way on the body keys.
+- PvpPlayer (the teacher's plans and the bots alike): hops and lunge take off once the sword is within 0.72 of full (about 2-3 ticks after the hit). For hops, W is let go meanwhile (the document's step 1). The uppercut takes off within 0.45 of full (about 6 ticks), so the sword is back at the peak.
+
+Gates (1-2 h):
+- "its combo held by ... a lunge or hop" from 2-12 an hour to 8+ an update;
+- T11b 60%+, T11c 30%+, T11c "missed jump" under 20;
+- "punish crit chances critted" stays 50-65%;
+- jumps a minute off its moments must not spread (now about 6-57);
+- swings and damage dealt must not drop. Revert if jumps spread or damage falls in the next check.
