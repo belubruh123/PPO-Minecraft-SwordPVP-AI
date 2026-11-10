@@ -444,3 +444,18 @@ Gates:
 2. Re-bench run35-0657 and run52-1218 in this world. If run35-0657 now ranks above run52-1218 (as in real duels), trust the bench again.
 
 Next if it passes: A4 (bots answer its punish crit), then A2 (bot hit distance).
+
+## Run 59 (10 Nov ~08:30): bots answer its punish crit like real players (the 3-hour rule, problem 4; agent 2's A4)
+
+Run 58's gates:
+- Gate 1 PASSED: the bench's swing-to-lift timing is now median 4-5 (mode 4); real 3-4; old world 6-7.
+- Gate 2, run35-0657 vs run52-1218 in the corrected world: bot rounds 185 vs 194 (z -0.8), head-to-head 16 vs 12 of 60 (z +0.9), bench TOTAL -0.65 (0.92) TIE. In the old world run52 had been BETTER: bot rounds 205 vs 172, z +3.3. So the corrected world no longer ranks run52 above run35. It still does not show run35's real advantage in combo defence (real duels: 3+ combos taken 0.30 vs 0.79 a round), so more calibration is needed.
+
+Problem 4 (crit back after its punish crit) was flat for about 10 h on rewards alone. In real duels, after its 332 punish crits, the opponent hit back within 4 ticks in 40% and within 12 in 63%; it hit first in only 26%. The bots answered in 24-32%, so there was little pressure to learn T1c or C1.
+
+Change: Style.answerCrit, drawn 0.3-0.6 per fight in drawHuman (drawn last, so the other draws are unchanged). When their crit lands on the bot, with that chance it swings back 1-3 ticks later if its sword is ready and they are in reach, within 6 ticks. The bot's golden rule K2 still holds a knockback hit on a faller.
+
+Watch:
+- the training line "after its N punish crits: T1c x, critted back y, its own jump after them" (critted back should rise first, then T1c and the jump);
+- punish crit chances critted (keep 50-65%);
+- bench re-run later: the share of its punish crits answered within 12 ticks should approach real (about 56-63%).

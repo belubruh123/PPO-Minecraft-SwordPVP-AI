@@ -104,6 +104,8 @@ public final class Style {
 	 * jump reset still comes first and the decision model learns when to punish instead.
 	 */
 	public boolean punishFirst = false;
+	/** Run 59: the chance it swings back at once (a trade) when their crit lands on it, sword ready and them in reach. */
+	public float answerCrit = 0f;
 	/**
 	 * Hit selecting (part 0, and the deflection T4): the share of the times it has the other in reach with
 	 * the other's sword back that it waits for the other's swing, instead of swinging first.
@@ -161,6 +163,7 @@ public final class Style {
 		s.resetsInCombosOnly = resetsInCombosOnly;
 		s.punishJumpIns = punishJumpIns;
 		s.punishFirst = punishFirst;
+		s.answerCrit = answerCrit;
 		s.hitSelect = hitSelect;
 		System.arraycopy(believe, 0, s.believe, 0, believe.length);
 		s.heldOut = heldOut;
@@ -189,6 +192,10 @@ public final class Style {
 		wtap = rng.nextInt(4);
 		stap = rng.nextFloat() < 0.3f ? 1 + rng.nextInt(3) : 0;
 		strafe = 0.5f * rng.nextFloat();
+		// Run 59 (10 Nov 08:30): real players answer its punish crit (the 3-hour rule's research, agent 2, 332 real punish crits: they
+		// hit back within 4 ticks in 40%, within 12 in 63%; it hit first in 26%); the bots did in 24-32% (it hit first in 50-59%).
+		// Drawn last, so the draws above are as before.
+		answerCrit = 0.3f + 0.3f * rng.nextFloat();
 		return this;
 	}
 

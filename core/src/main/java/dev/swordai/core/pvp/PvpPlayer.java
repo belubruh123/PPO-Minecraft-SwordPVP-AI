@@ -356,6 +356,13 @@ public final class PvpPlayer {
 		if (plan == Plan.NONE && !done) {
 			ordinary(d, k);
 		}
+		// Run 59: the answer to their crit (hitTaken).
+		if (answerUntil >= tick && tick >= answerFrom && canSwing(d)) {
+			k.attack = true;
+			answerUntil = -1;
+		} else if (answerUntil >= 0 && tick > answerUntil) {
+			answerUntil = -1;
+		}
 		// The golden rule (K2) for every knockback hit, a technique's too: "don't knockback-hit someone who is falling,
 		// whether during a combo or while they are critting you." A falling one sticks to the floor (K1) and crits back.
 		if (k.attack && k2 && fallingByTheHit(d.them) && (me.sprinting || k.sprint) && k.technique != Technique.K2) {
@@ -380,6 +387,9 @@ public final class PvpPlayer {
 	}
 
 	private double theirLastVy;
+	/** Run 59: the swing back at their crit, from this tick until that one (-1: none). */
+	private long answerFrom = -1, answerUntil = -1;
+	private static final int ANSWER_CRIT_TICKS = 6;
 	/** The last plan done with its swing, and when: its hit lands a tick or more later (see hitLanded). */
 	private Plan donePlan = Plan.NONE;
 	private long doneAt = -1000;
@@ -529,6 +539,12 @@ public final class PvpPlayer {
 
 	/** On the tick a hit of theirs is felt. */
 	private void hitTaken(Duel d, Events e) {
+		// Run 59: their crit (a punish crit) answered at once, as real players do: a swing back a reaction later if the sword is
+		// ready and they are in reach (see the end of tick; the golden rule K2 still holds a knockback hit on a faller).
+		if (e.theyHit == Events.CRIT && style.answerCrit > 0f && rng.nextFloat() < style.answerCrit) {
+			answerFrom = tick + 1 + rng.nextInt(3);
+			answerUntil = tick + ANSWER_CRIT_TICKS;
+		}
 		boolean lifted = wasOnGround;
 		if (lifted) {
 			thrownUpAt = tick;
