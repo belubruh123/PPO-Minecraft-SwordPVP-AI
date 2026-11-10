@@ -786,3 +786,9 @@ Gates (2-3 h):
 - After ~3 h: one rules-off paired check (A without the rules vs B), the direct measure of this stage.
 
 Fable's note: 69b's swing coefficient sits at its 0.08 cap with the open-tick entropy at 0.23, under the 0.25 floor. Harmless so far; ENTROPY_FLOORS[swing] 0.20 would let it relax.
+
+Run 72 LIVE 03:46 11 Nov.
+- Its first deploy (03:21) stopped on its own new test (SchoolLearnerTest: guessed effect sizes 0.2/+0.15; measured flat -0.0066, by the outcome +0.0158, the right direction). Training was down 03:21-03:46.
+- The test now checks the direction (ad8a7d3).
+- First update: rules' keys by the outcome pulled 956, held 1776.
+- Baseline for its gate (fights without the rules, net a minute, 00:00-03:21 with runs 68b-71): bots -112, league -243, sparring -217.
