@@ -707,3 +707,26 @@ The 21:12 check (run 68): ROUNDS WON A 17/45, B 19/45 (z -0.5); damage A 353/419
 
 Not taken from it: the stage moved T-D -> T-E at about 20:53, so part of the slide may be the stage. The punish crit floor decides anyway.
 Problem 4 goes to Fable's priority list (launched 20:50, max effort).
+
+## Runs 69a/69b (Fable batch 1, merged 22:05 10 Nov; deploys with run 68b after the ~22:00 check)
+
+Fable (max effort, docs/FABLE-PLAN.md, priority P1/P2). Core only: SchoolNet, SchoolLearner, SchoolPpo, plus tests.
+
+- **69a SchoolNet.SEEN_HISTORY:** the opponent's last 8 ticks become a side input (80 numbers) through two zero-start layers. Each tick holds:
+  - head visibility, x, y and area;
+  - body area;
+  - relative speed forward and up;
+  - their sword's charge;
+  - its own camera turn.
+
+  Why: two frames (100 ms) cannot show a jump's phase, a combo's rhythm, or the tick after their swing (document part 8). Old networks load and play exactly as before.
+- **69b SchoolPpo.ENTROPY_FLOOR:** each head's entropy is measured over the ticks it was OPEN. While W/S, jump or swing is under its floor (0.12, 0.08, 0.25), that head's bonus coefficient grows 1.3x an update, up to 0.08. Steps told B1 keep the old coefficient.
+
+New in the update line: "open-tick entropy ..., entropy coef ..., seen history |w| ...".
+
+Gates (50-60 updates):
+- 69a: seen history |w| rising from 0 (0.5+ within an hour); T4 and T9a by the game up; the next two checks z >= 0.
+- 69b: open-tick swing entropy reaches 0.25 within ~10 updates; swings with the crosshair on them stay >= 90%; jumps a minute off the moments not above 2x today's; punish crit chances critted back >= 50% (with run 68b).
+- If the punish crit or swings on them fall: ENTROPY_FLOOR = false first.
+
+GOING BACK: a checkpoint saved by this jar has 4 more tensors and does NOT load in an older jar. Undo 69a with SEEN_HISTORY = false, never by reinstalling an old jar. Old-format copy: swordai/school/checked-1110-2108.bin. Installing a 69a-trained network into the user's profile also needs the new jar there.
