@@ -38,6 +38,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
    - 04:19: its own jump after 19%, T1c 7% (first real rise), critted back 21%.
    - 07:33-08:30 (run 58 world, 163 punish crits): T1c 2%, critted back 37%, its own jump after 7%.
    - 3-hour rule (about 10 h flat): agent 2 found the bots answer its punish crit in 24-32%, real players in 56-63% (it hits first 50-59% vs real 26%), so training gave little pressure. Fix 2 (run 59, ~08:30): bots swing back at its punish crit with a 30-60% chance, 1-3 ticks later, when their sword is ready and it is in reach. Status: NOT VERIFIED.
+   - Run 59 FAILED on the bench (run35w60, 09:32): after its punish crit the bots hit back first within 30 ticks in 19%, against 36% before run 59 and 72% real; it hit first in 70% (real 26%). Why: the bots' swing back is cancelled by their K2 rule (the AI is still falling right after its crit), and run 60's closer-swing rule cuts the rest. Real answers come with them in the air (75%): lifted by its crit, they come down hitting (B1 back). Fix next (run 59b): the answer as their own punish crit back when lifted, otherwise a swing with no closer-swing rule, in a window of up to 12 ticks.
    - Cause found (run 54b counters): after 141 punish crits its own jump followed only 11 times. The run 43 cost (-0.3 for any hit in the air out of its own jump, paid on 31 of 69 jumps an update) taught it not to jump.
    - Fix 2 (run 54c, 00:21 10 Nov): that cost is now only paid for a hit while rising, past the jump reset's moment (document T9, K3). Status: NOT VERIFIED.
 5. **KEEP the punish crit (B1)**, the user: "while keeping the current ability for punish crit".
@@ -50,6 +51,15 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
    - Found (10 Nov, agent 2): since run 49c the bots felt its knockback 2-4 ticks later than any real player (swing to lift: median 6-7 ticks against real 3-5). They also hit from farther away (2.7-2.9 against 1.87), rarely fly out (8-12% against 36%), and rarely answer its punish crit (24-32% against 56%).
    - Run 58 gates: the timing test PASSED (bench swing-to-lift median 4-5, real 3-4, old 6-7); the ranking test is level now (run35 vs run52: bot rounds 185 vs 194, z -0.8; head-to-head 16 vs 12; TIE), where the old world had run52 clearly better. More calibration needed (A4 punish-crit answers = run 59; next A2 hit distance, A3 fly-out).
    - Fix 2+3 (runs 59/60, one redeploy ~08:31): bots answer its punish crit (30-60%), swing only 0.3-1.0 inside their reach (real players hit from closer), and fly out of a third of the sprint-hit trades (C3). Gates on the next bench: their-hit distance median toward 1.9, hits taken with its sword empty toward 72%, fly-out 36%, punish-crit answers about 60%. Status: NOT VERIFIED.
+   - Bench run35w60 (09:32, after runs 58-60) against the user's 200 real rounds:
+     - their whiffs 10% (real 29%, before 51%);
+     - a 2-hit combo reaching 3 hits 24% (real 12%);
+     - follow-up distance 3.22 (real 2.65, before 3.64);
+     - jump hits still at air tick 7 (real 9);
+     - its sprint hits answered within 12 ticks 9% (real 33%);
+     - after its sprint hit the bots barely move back at all: distance gain in 6 ticks p50 0.10 (real 1.31), and half are still coming toward it (real: 49% knocked back at 0.15-0.3 a tick).
+     - Run 60's fly-out shows no effect in the arena, though it works in the offline bot simulation (C3 started after 100% of the hits).
+     - A research agent (10:00) is checking how the arena applies knockback to the bots.
    - Fix 1 (run 58, ~07:25): the 49c uplink off. Gates: bench swing-to-lift median back to 3-4; a re-bench should rank run35-0657 above run52-1218, as in real duels. Next: bots answer its punish crit (A4), bot hit distance (A2). Status: NOT VERIFIED.
 9. **It swings about 11% less than the 23 Oct model** in every check (383 vs 429 swings a check), so it deals less.
    - 23:42 check 375 vs 456; 01:12 check 417 vs 462 (run 54c); 04:32 check 359 vs 432. At the moments a swing is called for: A 51 vs B 62 a minute. STILL OPEN after runs 54-55b.
