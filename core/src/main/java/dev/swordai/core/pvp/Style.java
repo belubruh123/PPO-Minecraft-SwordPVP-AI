@@ -98,6 +98,11 @@ public final class Style {
 	 */
 	public boolean punishJumpIns = false;
 	/**
+	 * Run 70 (Fable): in THEIR combo, their jump-in from beyond reach is answered with its own jump along with it and the crit on
+	 * the way down (K3, PvpPlayer#jumpAlongMoment) instead of the wait for the punish crit. The teacher's; the bots keep theirs.
+	 */
+	public boolean jumpAlong = false;
+	/**
 	 * Every hit that throws it up, of any kind, is answered by the punish crit (B1) when one can come, before the jump reset
 	 * or any other answer: the drill of the user's method (27 Oct), where the decision model's output is forced to the punish
 	 * crit on the punish crit's own cases so that the network learns to land it whenever it is told to. In the full fights the
@@ -169,6 +174,7 @@ public final class Style {
 		s.onlyWhenItWorks = onlyWhenItWorks;
 		s.resetsInCombosOnly = resetsInCombosOnly;
 		s.punishJumpIns = punishJumpIns;
+		s.jumpAlong = jumpAlong;
 		s.punishFirst = punishFirst;
 		s.answerCrit = answerCrit;
 		s.closeIn = closeIn;

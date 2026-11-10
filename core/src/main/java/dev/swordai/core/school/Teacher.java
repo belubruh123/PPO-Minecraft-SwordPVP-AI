@@ -160,6 +160,8 @@ public final class Teacher {
 		s.adapts = true;
 		s.onlyWhenItWorks = true;
 		s.punishJumpIns = true;
+		// Run 70 (Fable): in their combo their jump-in is met with the jump along and the crit (K3), not the wait (PvpPlayer#jumpAlongMoment).
+		s.jumpAlong = true;
 		// Jump resets wherever the file has them (T9 on a sprint hit, T9b, T9c), not only from their second hit in a row: the
 		// user, 24 Oct 22:50, "remove jump reset barrier cause I didn't even see it manage to pull a jump reset".
 		s.resetsInCombosOnly = false;

@@ -331,6 +331,13 @@ public final class PvpPlayer {
 		if (e.theyHit != Events.NONE) {
 			hitTaken(d, e);
 		}
+		// Run 70 (Fable): their jump-in in THEIR combo: the jump along with it and the crit on the way down (K3), whatever plan was on.
+		if (style.jumpAlong && jumpAlongMoment(d)) {
+			pending = Plan.NONE;
+			jumpAt = -1;
+			end();
+			begin(Plan.K3);
+		}
 		if (plan == Plan.NONE && pending != Plan.NONE && tick >= pendingAt) {
 			begin(pending);
 			pending = Plan.NONE;
@@ -387,6 +394,26 @@ public final class PvpPlayer {
 	}
 
 	private double theirLastVy;
+
+	/**
+	 * Run 70 (Fable, PROBLEMS.md 3), the answer to their jump-in in THEIR combo: the jump along with it and the crit on the way down
+	 * (the document's K3, "make them hit you falling ... crit again"; the user's idea of 9 Nov, run 51: "jump along so both deal a
+	 * crit"). In their combo (their hit within JUMP_ALONG_COMBO_TICKS, none of mine since) a jump of theirs from beyond my reach is
+	 * the follow-up of their combo (an uppercut, a lunge, hops: T10, T11a, T11b); waiting to punish-crit it (B1_WAIT) left the AI
+	 * holding W. Of 300 such jumps in the user's duels (agent 7's split, 10 Nov), holding W with no swing lost (their hit first
+	 * 51%), its own jump along with theirs and the crit won (its hit first 89%), as did a swing at their ground tick 0-1 (92%). The
+	 * user's rule 1 (no knockback hit on a jumper after their ground tick 1) is kept: the only swing is the crit, falling. From
+	 * JUMP_ALONG_FROM blocks, the guard's own line (SchoolSession.JUMP_IN_FROM_BEYOND); only for a style that has it (the teacher's).
+	 */
+	static final double JUMP_ALONG_FROM = 3.3;
+	static final int JUMP_ALONG_COMBO_TICKS = 20;
+
+	private boolean jumpAlongMoment(Duel d) {
+		Body me = d.me;
+		return sinceTheyTookOff == 0 && d.flat > JUMP_ALONG_FROM && d.flat < 6.5 && d.theyClose > -0.05 && me.onGround && me.charge > 0.4f
+				&& sinceTheirHit <= JUMP_ALONG_COMBO_TICKS && sinceTheirHit < sinceMyHit && roll(Technique.K3);
+	}
+
 	/** Run 59: the swing back at their crit, from this tick until that one (-1: none). */
 	private long answerFrom = -1, answerUntil = -1;
 	private static final int ANSWER_CRIT_TICKS = 6;
