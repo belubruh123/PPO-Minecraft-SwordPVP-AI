@@ -261,7 +261,9 @@ public final class SchoolStages {
 	 * in 23%; a ready sword not swung, 60%; the late S (C3's "common mistake"), 27%. C4 (attack right before S / a hit breaking in)
 	 * was open in 37% of the gaps. Nothing taught them (RUN_TAUGHT held B1 and the combo jumps only).
 	 */
-	public static final boolean COMBO_ESCAPE_TAUGHT = true;
+	// Run 65b (10 Nov 13:25): OFF. In 23 updates: punish crit chances critted 53% -> 49% (the user's floor 50%), hits breaking into
+	// their combo (C4) 320 -> 86 in as many updates, jumps off the technique moments 19 -> 36 a minute, their third hits not down (39%).
+	public static final boolean COMBO_ESCAPE_TAUGHT = false;
 	public static final int T9A_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP,
 			dev.swordai.core.rl.ActionSpace.FORWARD, dev.swordai.core.rl.ActionSpace.SPRINT, dev.swordai.core.rl.ActionSpace.ATTACK);
 	public static final int C4_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.ATTACK,

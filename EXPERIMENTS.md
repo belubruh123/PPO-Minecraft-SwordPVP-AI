@@ -587,3 +587,20 @@ Gates (1-2 h):
 - "punish crit chances critted" stays >= 50%; revert if under 50% for two updates.
 
 Not done yet: agent 5's scheduling fix so the combo scenes are actually fought (a COMBO_SCENE_SHARE before repeatPick, a real win test), and bots following up on the real rhythm (p50 13 ticks) instead of the first ready tick (their 2->3 is 34-36% vs 13% real).
+
+## Run 65b (10 Nov 13:25): run 65 reverted (COMBO_ESCAPE_TAUGHT = false)
+
+In the 23 updates after runs 64 and 65 went live (12:56-13:24), against the 25 updates before:
+- "punish crit chances critted" 53% -> 49%, under the user's floor of 50% for three updates;
+- hits breaking into their combo (C4) 320 -> 86;
+- jumps off the technique moments 19 -> 36 a minute (the spread of runs 22-29);
+- their third hits in training 34-36% -> 39%, not down;
+- swing back in their combo 24% -> 23%.
+
+The gated T9a/C4 option and the rules giving way in their combo while told those took away the rules' answers (C4 hits) and moved punish-crit lifts to T9a.
+Kept:
+- run 64 (camera in their combo);
+- the bots' and teacher's T9a followed by the crit down;
+- no AIR_JUMP_HIT while told T9a/C3.
+
+Next for problem 2: agent 5's other approach, the practice world. Make the combo scenes actually fought (a share before repeatPick, a real win test), and have the bots follow up on the real rhythm (p50 13 ticks) instead of the first ready tick (2->3 34-36% vs 13% real).
