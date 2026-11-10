@@ -844,3 +844,24 @@ First camera split (6 updates, their combo, ready):
 - The network's: 894 ticks, on body no pick 15%, off body 37%.
 
 The rule fails by its aim point; the network fails by being off them.
+
+Run 73b2 live 07:43 (tests passed).
+
+## Run 74 (11 Nov 07:55; deploys after the ~08:28 check): the reach aim for A's aim rule (agent 8, the stopgap of Fable's camera item)
+
+Fighter.reachAim / AimRule.reach, flag SchoolSession.REACH_AIM, for A's rules only (training and A's checks).
+- Aim level with its eye within their body, the rule's existing "level" aim (off in the installed config since 22 Oct). Margin 0.2 of their height.
+- Where that height is above or below them (lifted: 67% of their combo's ready ticks), led by how fast it rises or falls against them: atan2(-relUp, distance + 0.3), at most 12 degrees.
+- No vertical lead while level within their body.
+- B (the installed model playing, or the teacher playing A), the sparring fighter and real fights keep the 23 Oct middle aim.
+
+Evidence:
+- With the rule's camera in their combo, "on body, no pick" was 25% of ready ticks (07:14-07:20).
+- Agent 8's simulation picked 98% of in-reach lift ticks (middle aim 85%, level alone 83%).
+
+Gates (1-2 h, then two checks):
+- The aim rule's on-body-no-pick share in their combo 25% -> 10% or less; off-body not up more than 3 points.
+- Swing in their combo in training up from 24-28%.
+- A's swing in their combo in checks 36%+ and crosshair off 28% or less; ROUNDS WON z >= 0.
+- Punish crit chances critted >= 50%; technique review B1 >= 70%.
+- Revert (REACH_AIM = false): the punish crit under 50% for 3 updates, off-body up 5+ points, or z under -1 in two checks.

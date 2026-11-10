@@ -154,6 +154,13 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final boolean REACH_TARGET = true;
 	static final float REACH_TARGET_MARGIN = 0.1f;
+	/**
+	 * Run 74 (agent 8; the stopgap of Fable's camera item): A's aim rule aims where a swing lands (AimRule#reach: level with its eye within
+	 * their body, led by its rise or fall against them), in training and in A's checks. B (the installed model playing, or as the
+	 * teacher playing A) and real fights keep the 23 Oct aim. In their combo the aim rule holds A's camera on 90%+ of the ready ticks and
+	 * its middle aim left the ray on their body beyond 3.0 on a quarter of them (07:14-07:20: 25%).
+	 */
+	static final boolean REACH_AIM = true;
 	private boolean inT1cWindow;
 	/**
 	 * Since 24 Oct 15:45 the punish crit is paid only as the game counts it (the user's table, "punish crit 0 of 89"):
@@ -3787,6 +3794,10 @@ public final class SchoolSession implements AgentSession {
 		if (mode == Mode.TRAIN && step.teacherTechnique >= 0 && (step.teacherHeads & (1 << ActionSpace.ATTACK)) != 0
 				&& step.teacher[ao + 1] > step.teacher[ao] && !ActionSpace.unlocked(keys, ActionSpace.ATTACK)) {
 			blockedSwings[step.teacherTechnique][chargeLocked ? 0 : 1]++;
+		}
+		if (installed != null) {
+			// Run 74: the reach aim for A's rules only; B keeps the 23 Oct aim.
+			installed.fighter.reachAim(REACH_AIM && !installedPlays && !teacherPlaysA);
 		}
 		if (installedPlays) {
 			observer.fillBody(installedBody, me, bot, truth.floorY());

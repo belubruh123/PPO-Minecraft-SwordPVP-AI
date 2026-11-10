@@ -73,6 +73,26 @@ public final class AimRule {
 	 */
 	public void level(boolean on) {
 		level = on;
+		configLevel = on;
+	}
+
+	/** The level setting the fighter was made with ({@link #level}); {@link #reach} puts it back when turned off. */
+	private boolean configLevel;
+	/** Run 74: {@link #reach} is on. */
+	private boolean reachLead;
+	/** Run 74: the margin within their body (a share of its height on the screen) the reach aim keeps from its top and bottom. */
+	static final float REACH_MARGIN = 0.2f;
+
+	/**
+	 * Run 74 (11 Nov, agent 8): the reach aim. Level with its own eye within their body (the {@link #level} aim), and where that height
+	 * is above or below them (lifted by their hit, 67% of the ready ticks in their combo), led by how fast it is rising or falling
+	 * against them, so the ray meets their body within the game's reach. The middle aim of the 23 Oct model put the ray on their body
+	 * beyond 3.0 on a quarter of the ready ticks in their combo; the level aim alone ran over their head for 2 ticks of a lift; level
+	 * and the lead picked them on 98% of in-reach lift ticks in agent 8's simulation, against 85% for the middle. Off: as made.
+	 */
+	public void reach(boolean on) {
+		reachLead = on;
+		level = on || configLevel;
 	}
 
 	/** Whether the camera is the rule's on this tick: hit not long ago, and not hit back since. */
@@ -102,12 +122,14 @@ public final class AimRule {
 			// The picture's y is up, the pitch is down.
 			float pitchErr = -degrees(vec[at + ObsSpec.ST_ANY_Y]);
 			float middleErr = pitchErr;
+			boolean clamped = false;
 			if (level && !far) {
 				// Level with its own eye (the horizon is as far above the crosshair as the camera looks down), kept within the opponent.
 				float top = degrees(vec[at + ObsSpec.ST_TOP]);
 				float bottom = degrees(vec[at + ObsSpec.ST_BOTTOM]);
-				float margin = LEVEL_MARGIN * Math.max(0f, top - bottom);
+				float margin = (reachLead ? REACH_MARGIN : LEVEL_MARGIN) * Math.max(0f, top - bottom);
 				float horizon = vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_PITCH] * 90f;
+				clamped = horizon < bottom + margin || horizon > top - margin;
 				pitchErr = -Math.max(bottom + margin, Math.min(top - margin, horizon));
 			}
 			if (far) {
@@ -121,7 +143,17 @@ public final class AimRule {
 			if (vec[before + ObsSpec.ST_ANY_VISIBLE] >= 0.5f) {
 				// Where it will be a tick on, if it goes on across the picture as it has.
 				yawErr += clamp(yawErr - degrees(vec[before + ObsSpec.ST_ANY_X]), 12f);
-				pitchErr += clamp(middleErr + degrees(vec[before + ObsSpec.ST_ANY_Y]), 6f);
+				if (reachLead && level) {
+					// Run 74: level within their body needs no lead (its eye height moves with it); above or below them, led by how fast it
+					// rises or falls against them (theirs minus its own, blocks a tick) at the distance between.
+					if (clamped) {
+						float relUp = vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_REL_VEL_UP] / BodyState.VELOCITY_SCALE;
+						float d = JumpIn.distance(vec) + 0.3f;
+						pitchErr += clamp((float) Math.toDegrees(Math.atan2(-relUp, d)), 12f);
+					}
+				} else {
+					pitchErr += clamp(middleErr + degrees(vec[before + ObsSpec.ST_ANY_Y]), 6f);
+				}
 			}
 			yawBin = nearest(ActionSpace.YAW_BINS, wanted(yawErr, yawPush));
 			pitchBin = nearest(ActionSpace.PITCH_BINS, wanted(pitchErr, pitchPush));

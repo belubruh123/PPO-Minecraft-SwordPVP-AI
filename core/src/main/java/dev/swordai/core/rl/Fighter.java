@@ -237,6 +237,14 @@ public final class Fighter {
 		System.arraycopy(ActionSpace.DEFAULTS, 0, action, 0, ActionSpace.HEADS);
 	}
 
+
+	/** Run 74: the aim rule's reach aim on or off ({@link AimRule#reach}); a fighter made without the aim rule ignores it. */
+	public void reachAim(boolean on) {
+		if (aimRule != null) {
+			aimRule.reach(on);
+		}
+	}
+
 	/** A new round, or the opponent was gone for a while: no memory, hand at rest, a fresh plan. */
 	public void reset() {
 		sight.reset();
