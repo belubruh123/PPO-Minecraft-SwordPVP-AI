@@ -459,3 +459,20 @@ Watch:
 - the training line "after its N punish crits: T1c x, critted back y, its own jump after them" (critted back should rise first, then T1c and the jump);
 - punish crit chances critted (keep 50-65%);
 - bench re-run later: the share of its punish crits answered within 12 ticks should approach real (about 56-63%).
+
+## Run 60 (10 Nov ~08:31, in the same redeploy as run 59): bots hit from closer and fly out of trades (agent 2's A2, A3)
+
+Agent 2's two other gaps between the bots and the user's 200 real rounds:
+- Distance it saw at their hits: real median 1.87 (p90 2.87); bots 2.7-2.9 (p90 about 4.0). It was hit with its sword ready in 56-68% of the bots' hits, but in only 28% of real ones. In training it was out-spaced far more than in real duels.
+- 8 ticks after its clean sprint hit, the opponent was 2+ blocks farther in 36% of real cases; bots 8-12% (they walked back in).
+
+Change:
+- Style.closeIn, drawn 0.3-1.0 per fight in drawHuman. The bot swings only at reach <= 3.0 - closeIn: in canSwing (every plan) and in the ordinary fight. The three-block hitter and the early swinger keep 0.
+- Style.flyOut, drawn 0.2-0.6. After a sprint hit that does not start another plan, the bot begins C3 (jump and hold S) with that chance.
+
+Gates, on the next bench of the installed model (agent 2's scratch scripts hitdist.py, realvsbots.py, punishback.py):
+- their-hit distance median toward 1.9;
+- hits taken with its sword empty toward 72%;
+- fly-out at 8 ticks toward 36%;
+- punish-crit answers within 12 ticks toward about 60% (run 59);
+- 2-hit chains reaching 3 toward 12%.

@@ -107,6 +107,13 @@ public final class Style {
 	/** Run 59: the chance it swings back at once (a trade) when their crit lands on it, sword ready and them in reach. */
 	public float answerCrit = 0f;
 	/**
+	 * Run 60: how much closer than its reach it comes before it swings (0 = the moment it is in reach). Real players hit from
+	 * closer than the bots did (agent 2, 10 Nov: the distance it saw at their hits, real median 1.87 against the bots' 2.7-2.9).
+	 */
+	public float closeIn = 0f;
+	/** Run 60: the chance it flies out of the trade (C3: jump and hold S) after a sprint hit it takes, as real players did. */
+	public float flyOut = 0f;
+	/**
 	 * Hit selecting (part 0, and the deflection T4): the share of the times it has the other in reach with
 	 * the other's sword back that it waits for the other's swing, instead of swinging first.
 	 */
@@ -164,6 +171,8 @@ public final class Style {
 		s.punishJumpIns = punishJumpIns;
 		s.punishFirst = punishFirst;
 		s.answerCrit = answerCrit;
+		s.closeIn = closeIn;
+		s.flyOut = flyOut;
 		s.hitSelect = hitSelect;
 		System.arraycopy(believe, 0, s.believe, 0, believe.length);
 		s.heldOut = heldOut;
@@ -196,6 +205,13 @@ public final class Style {
 		// hit back within 4 ticks in 40%, within 12 in 63%; it hit first in 26%); the bots did in 24-32% (it hit first in 50-59%).
 		// Drawn last, so the draws above are as before.
 		answerCrit = 0.3f + 0.3f * rng.nextFloat();
+		// Run 60 (10 Nov): agent 2's other two gaps between the bots and the user's 200 real rounds. (a) The distance it saw at
+		// their hits: real median 1.87 (90th percentile 2.87), the bots 2.7-2.9 (about 4.0); a quarter of the bots' hits came
+		// from beyond its own longest, and it was hit with its sword ready in 56-68% of their hits against 28% real. (b) Eight
+		// ticks after its clean sprint hit, the opponent was 2+ blocks farther in 36% real, 8-12% for the bots (they walked back
+		// in). Drawn last again.
+		closeIn = 0.3f + 0.7f * rng.nextFloat();
+		flyOut = 0.2f + 0.4f * rng.nextFloat();
 		return this;
 	}
 

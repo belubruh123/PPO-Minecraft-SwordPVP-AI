@@ -105,10 +105,13 @@ public final class Specialists {
 				// The mistake T6 punishes: swings early, out of reach.
 				s.swingEarly = 0.4f + 0.8f * rng.nextFloat();
 				s.swingCharge = 0.9f;
+				s.closeIn = 0f;
 			}
 			case THREE_BLOCK -> {
 				s.set(Technique.T7, p);
 				s.strafe = 0.1f * rng.nextFloat();
+				// Its hits are the three-block ones: from the edge of its reach.
+				s.closeIn = 0f;
 			}
 			case STRAIGHT_SPRINTER -> {
 				// The cue of T9c, with nothing behind it: straight in at a sprint, never a jump.

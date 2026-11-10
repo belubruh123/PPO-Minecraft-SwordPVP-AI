@@ -611,6 +611,9 @@ public final class PvpPlayer {
 		// much as the installed model, which traded on (24 Oct 17:44 check: 212 dealt a minute to its 314, taken alike).
 		if (e.theyHit == Events.SPRINT && (!style.onlyWhenItWorks || habits.theirCombo() >= 2) && roll(Technique.C3)) {
 			begin(Plan.C3);
+		} else if (e.theyHit == Events.SPRINT && style.flyOut > 0f && rng.nextFloat() < style.flyOut) {
+			// Run 60: out of the trade as real players fly out (36% two blocks farther 8 ticks after its sprint hit; bots 8-12%).
+			begin(Plan.C3);
 		}
 	}
 
@@ -817,7 +820,7 @@ public final class PvpPlayer {
 	// ---- the plans ---------------------------------------------------------------------------------
 
 	private boolean canSwing(Duel d) {
-		return d.inReach() && d.me.charge >= style.swingCharge;
+		return d.reach <= Duel.REACH - style.closeIn && d.me.charge >= style.swingCharge;
 	}
 
 	private int step(Duel d, Keys k) {
@@ -1243,10 +1246,10 @@ public final class PvpPlayer {
 		}
 		boolean inCombo = sinceMyHit <= COMBO_TICKS;
 		boolean seenLongEnough = inCombo || inReachTicks >= Math.max(1, style.reaction / 2);
-		if (style.rhythm && inCombo && ready && d.inReach()) {
+		if (style.rhythm && inCombo && ready && d.reach <= Duel.REACH - style.closeIn) {
 			// A combo to a rhythm: the hit comes as they land.
 			k.attack = them.onGround && !theyWereOnGround || them.onGround && sinceMyHit > 14;
-		} else if (ready && seenLongEnough && d.reach <= Duel.REACH + style.swingEarly) {
+		} else if (ready && seenLongEnough && d.reach <= Duel.REACH - style.closeIn + style.swingEarly) {
 			k.attack = true;
 		}
 		boolean comboing = sinceMyHit <= COMBO_TICKS && sinceMyHit < sinceTheirHit;
