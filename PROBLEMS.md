@@ -26,6 +26,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
    - Measure: 3+ combos taken per round in real duels (tools/swingback.py, rounds.csv combosTaken3).
    - 3-hour rule again (flat since run 57, 07:50): research agent 5 launched 12:25 (the combos it takes in real duels, why C3/T9a are not taught; two different kinds of approach).
    - Agent 5's findings (real duels, after a hit in their combo): jump reset + crit down -> its hit first 84%; jump reset without a swing -> theirs 23%; ready and no swing -> theirs 60%; late S -> 27%. Run 57's focus never ran (a scene queue took the fights; combo scenes fought 0). The bots combo far harder than real players (2->3 34-36% vs 13%). Fix (run 65, deploying with run 64 after the ~12:40 check): T9a (with the crit down) and C4 taught by gated option layers; the rules give way in their combo while told those. Status: NOT VERIFIED.
+   - Run 65 REVERTED 13:25 (run 65b): in 23 updates the punish crit chances critted slid 53% -> 49%, C4 hits 320 -> 86, jumps off moments 19 -> 36 a minute, and the third hits did not fall (39%). Next: agent 5's other approach, the practice world (combo scenes actually fought, bots on the real 13-tick rhythm).
    - Checks since run 62: ROUNDS WON A vs B 10:45 24-29 (z -1.4), 11:45 18-15 (z +0.7), 12:42 12-17 (z -1.5; 40% vs 40% third hits). Before run 62: +0.8, +0.7. Watch: if the 13:40 check (runs 64+65) is behind again, take run 62's rule yield out of checks and real fights (keep its lesson).
    - Checks (bots): their combos reaching a third hit, A vs B: 35% vs 23% at 23:42; 24% vs 23% at 01:12; 33% vs 26% at 02:02; 30% vs 42% at 03:02; 27% vs 30% at 04:32. New bot world (runs 58-60): 17% vs 10% at 09:26 (real duels: a 2-hit chain reaches 3 in 12%).
 3. **Cannot tell a jump-in crit from an uppercut (T10), a lunge (T11a) or hops (T11b), and gets comboed by those.**
@@ -48,6 +49,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
    - Fix 2 (run 54c, 00:21 10 Nov): that cost is now only paid for a hit while rising, past the jump reset's moment (document T9, K3). Status: NOT VERIFIED.
 5. **KEEP the punish crit (B1)**, the user: "while keeping the current ability for punish crit".
    - Guard: training "punish crit chances critted" around 50-65%, and the punish crit share in checks, must not fall.
+   - 13:24: 49% for three updates after run 65, so run 65 was reverted (run 65b).
    - 03:19: chances critted 56% (OK); the technique review's B1 71% (85% before run 55): run 55b keeps the new swing-back reward off the punish crit's air time.
 6. **KEEP no late hits on jump-ins** (the user's critical rule: no swing at a jump-in from ground tick 2 on, rising or falling).
 7. **Lost rounds were not counted in real duels** (deaths 0, losses "open").
