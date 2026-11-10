@@ -182,6 +182,11 @@ public final class SchoolFighter {
 				&& sinceHitDealt <= OWN_COMBO_TICKS && sinceHitTaken > sinceHitDealt) {
 			ruled &= ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
 		}
+		// Run 65: in their combo, while the decider has chosen the jump reset (T9a) or the hit before the S (C4).
+		if (ruled != 0 && SchoolStages.COMBO_ESCAPE_TAUGHT && SchoolStages.comboEscape(learner.told().ordinal())
+				&& sinceHitTaken <= OWN_COMBO_TICKS && sinceHitDealt > sinceHitTaken) {
+			ruled &= ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
+		}
 		keys &= ~ruled;
 		if (ruled != 0) {
 			int[] rule = rules.action();

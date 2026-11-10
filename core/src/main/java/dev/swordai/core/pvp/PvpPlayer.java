@@ -597,8 +597,13 @@ public final class PvpPlayer {
 			return;
 		}
 		if (lifted && e.theyHit != Events.CRIT && habits.theirCombo() >= 2 && sinceLanded <= 1 && roll(Technique.T9A)) {
-			// T9a: hit as it landed, in the rhythm of their combo: the jump with it.
+			// T9a: hit as it landed, in the rhythm of their combo: the jump with it. Run 65: and the crit on the way down when it
+			// can be made (the jump reset "gets crits"; T9c's "free crit as you fall"): in the user's duels the jump reset with
+			// that crit was followed by its own hit first in 84%, without a swing their next hit came in 23%.
 			timedJump(Technique.T9A);
+			if (punishable(d, e)) {
+				begin(Plan.B1);
+			}
 			return;
 		}
 		if (!style.resetsInCombosOnly && lifted && e.theyHit == Events.SPRINT && sinceMySwing <= 3 && expect(Habits.DEFLECT, tellDeflect) > 0.3f

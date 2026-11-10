@@ -254,6 +254,24 @@ public final class SchoolStages {
 	public static final int COMBO_JUMP_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP,
 			dev.swordai.core.rl.ActionSpace.FORWARD, dev.swordai.core.rl.ActionSpace.SPRINT, dev.swordai.core.rl.ActionSpace.ATTACK);
 
+	/**
+	 * Run 65 (10 Nov, PROBLEMS.md 2, the 3-hour rule's research, agent 5): the combo escape taught the same way as run 62's combo
+	 * jumps. In the user's real duels, after a hit in their combo: a jump reset with the crit on the way down (T9a, "it gets
+	 * crits", T9c's "free crit as you fall") was followed by its own hit first in 84%; a jump reset with no swing let them hit again
+	 * in 23%; a ready sword not swung, 60%; the late S (C3's "common mistake"), 27%. C4 (attack right before S / a hit breaking in)
+	 * was open in 37% of the gaps. Nothing taught them (RUN_TAUGHT held B1 and the combo jumps only).
+	 */
+	public static final boolean COMBO_ESCAPE_TAUGHT = true;
+	public static final int T9A_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP,
+			dev.swordai.core.rl.ActionSpace.FORWARD, dev.swordai.core.rl.ActionSpace.SPRINT, dev.swordai.core.rl.ActionSpace.ATTACK);
+	public static final int C4_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.ATTACK,
+			dev.swordai.core.rl.ActionSpace.FORWARD, dev.swordai.core.rl.ActionSpace.JUMP);
+
+	/** The combo escape's techniques taught by run 65: the jump reset in their rhythm (T9a) and the hit before the S (C4). */
+	public static boolean comboEscape(int technique) {
+		return technique == Technique.T9A.ordinal() || technique == Technique.C4.ordinal();
+	}
+
 	/** An uppercut, a lunge, hops or hops into lunges: the jumps that hold its own combo (run 62). */
 	public static boolean comboJump(int technique) {
 		return technique == Technique.T10.ordinal() || technique == Technique.T11A.ordinal() || technique == Technique.T11B.ordinal()
@@ -268,6 +286,9 @@ public final class SchoolStages {
 		if (COMBO_JUMPS_TAUGHT && comboJump(technique)) {
 			return COMBO_JUMP_GATED_HEADS;
 		}
+		if (COMBO_ESCAPE_TAUGHT && comboEscape(technique)) {
+			return technique == Technique.T9A.ordinal() ? T9A_GATED_HEADS : C4_GATED_HEADS;
+		}
 		return technique == Technique.B1.ordinal() ? B1_GATED_HEADS : 0;
 	}
 
@@ -276,6 +297,9 @@ public final class SchoolStages {
 		// Run 62: the combo jumps' keys go into their option layers alone (nothing into the shared trunk, so nothing spreads).
 		if (COMBO_JUMPS_TAUGHT && GATED && comboJump(technique)) {
 			return COMBO_JUMP_GATED_HEADS;
+		}
+		if (COMBO_ESCAPE_TAUGHT && GATED && comboEscape(technique)) {
+			return gatedHeads(technique);
 		}
 		int whole = technique == Technique.B1.ordinal() ? B1_TAUGHT_HEADS : technique == Technique.T9.ordinal() ? T9_TAUGHT_HEADS
 				: technique == Technique.C3.ordinal() ? C3_TAUGHT_HEADS : dev.swordai.core.rl.ActionSpace.ALL_HEADS;
@@ -328,6 +352,10 @@ public final class SchoolStages {
 			for (Technique t : new Technique[] {Technique.T10, Technique.T11A, Technique.T11B, Technique.T11C}) {
 				RUN_TAUGHT[t.ordinal()] = true;
 			}
+		}
+		if (COMBO_ESCAPE_TAUGHT) {
+			RUN_TAUGHT[Technique.T9A.ordinal()] = true;
+			RUN_TAUGHT[Technique.C4.ordinal()] = true;
 		}
 	}
 

@@ -3500,7 +3500,9 @@ public final class SchoolSession implements AgentSession {
 				// Run 43 (AIR_JUMP_HIT): hit in the air out of its own jump; since run 54c only while still rising, past the jump
 				// reset's moment (its vertical speed on the tick before the hit, before their knockback lifted it).
 				if (facts.hitsTaken > 0 && !facts.onGround && ownJumpAir) {
-					if (prevVy > 0.0 && ownAirTicks >= AIR_HIT_FROM_TICK) {
+					// Run 65: not while told the jump reset in their combo (T9a) or the jump and S (C3): that moment is theirs.
+					Technique toldNow = learner.told();
+					if (prevVy > 0.0 && ownAirTicks >= AIR_HIT_FROM_TICK && toldNow != Technique.T9A && toldNow != Technique.C3) {
 						reward -= AIR_JUMP_HIT;
 						airJumpHits++;
 					} else {
@@ -3963,6 +3965,11 @@ public final class SchoolSession implements AgentSession {
 					&& clock.ticksSinceHitDealt <= COMBO_GAP && clock.ticksSinceHitTaken > clock.ticksSinceHitDealt) {
 				// Run 62: in its own combo, told an uppercut, a lunge or hops, the rules (JumpIn's chase and uppercut) give way on the
 				// body keys, so the jump is its own (and paid as one, JUMP_COMBO_HIT) and the option layer has the keys to learn.
+				ruled &= ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
+			}
+			if (dev.swordai.core.school.SchoolStages.COMBO_ESCAPE_TAUGHT && dev.swordai.core.school.SchoolStages.comboEscape(learner.told().ordinal())
+					&& clock.ticksSinceHitTaken <= COMBO_GAP && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken) {
+				// Run 65: in their combo, told the jump reset (T9a) or the hit before the S (C4), the body keys are the network's.
 				ruled &= ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
 			}
 			// A fight played without the rules: the network presses every key itself; the installed model's keys are only the target. Since run

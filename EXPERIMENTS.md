@@ -555,3 +555,35 @@ Gates:
 - the check's "in their combo ... crosshair off them" for A falls from 33%;
 - A's swing back in their combo rises toward B's;
 - "turned to find them" and swings with the crosshair on them must not worsen.
+
+## Run 65 (10 Nov ~12:45, in the same redeploy as run 64): the combo escape taught like run 62 (decider WHEN, gated option HOW)
+
+Agent 5 (the 3-hour rule, PROBLEMS.md 2, 10, 11), on the user's 200 real rounds, after each hit taken in their combo:
+- jump reset + swing on the way down: their next hit came first in 12%, its own in 84%;
+- jump reset with no swing: 23% (run52 58%);
+- the late S (C3's "common mistake"): 27%;
+- sword ready and them in reach with no swing: 60%.
+- C4 (a ground swing at a non-falling opponent) was open in 37% of the gaps.
+- Real players get out of its combos by hitting back: 80% of its 2+ combos end that way.
+
+Nothing taught these:
+- RUN_TAUGHT held B1 and the combo jumps only; T9_TAUGHT_HEADS and C3_TAUGHT_HEADS are unused.
+- The jump reset rule holds W and sprint for 14 air ticks.
+- AIR_JUMP_HIT charged C3's moment.
+
+Run 57's focus never ran: repeatPick's queue takes the scene fights, and the update lines read "combo scenes kept 60, won 0 of 0" in 60 of 62 updates.
+
+Change:
+- SchoolStages.COMBO_ESCAPE_TAUGHT: T9A (JUMP|FORWARD|SPRINT|ATTACK) and C4 (ATTACK|FORWARD|JUMP) are gated into their own option layers alone and added to RUN_TAUGHT.
+- PvpPlayer (teacher and bots alike): the T9a jump reset is followed by the punish crit on the way down (Plan.B1) when punishable, as the punish-first branch already did for sprint hits. Offline sim, jump resetter against the rhythm comboer: B1 ticks 0 -> 251, its crits 334 -> 368.
+- SchoolSession and SchoolFighter: in their combo, told T9A or C4, the rules give way on the body keys.
+- AIR_JUMP_HIT is not charged while told T9A or C3.
+
+Gates (1-2 h):
+- the training "a third after" (their combos' third hit) falls from 34-36% toward <= 28%;
+- the next check: A's third-hit share <= B's;
+- swings and damage not down (run 25's failure);
+- K2 broken not up;
+- "punish crit chances critted" stays >= 50%; revert if under 50% for two updates.
+
+Not done yet: agent 5's scheduling fix so the combo scenes are actually fought (a COMBO_SCENE_SHARE before repeatPick, a real win test), and bots following up on the real rhythm (p50 13 ticks) instead of the first ready tick (their 2->3 is 34-36% vs 13% real).
