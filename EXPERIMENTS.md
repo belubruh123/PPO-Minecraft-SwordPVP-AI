@@ -767,3 +767,22 @@ Gates (1-2 h):
 - T9b when told 0% -> 50%+.
 - Punish crit chances critted not down; "jumps a minute off moments" not above 2x.
 - Revert: COUNTER_JUMPS_TAUGHT = false. If the punish crit falls after runs 70+71 deploy together, revert 71 first (closest to B1).
+
+## Run 72 (Fable batch 4, merged 02:58 11 Nov; deploys after the ~03:12 check): the rules' keys pulled by the outcome (SchoolPpo.RULED_AWR)
+
+Before: the rules' keys were a flat target on every ruled tick (~3400 head-ticks an update), which pins the network to the rules, mistakes and all.
+
+Now a rule's key is a target only where the fight says it was better:
+- on a tick the rule pressed it, where the advantage is above zero;
+- on a tick the network pressed its own key, where that disagreed with the rule's and the advantage is below zero.
+
+Weighed by the advantage like the technique teachers' keys since run 11. The rules' replay keeps only such examples. Agreement is still measured on every ruled tick. New in the update line: "rules' keys by the outcome: pulled N held M".
+
+Gates (2-3 h):
+- Fights without the rules: net from -100..-200 a minute toward 0.
+- Rules' agree may drift to 80-85% and the pull climb to its cap 0.6.
+- Checks not behind. Punish crit chances critted >= 50% (61% before).
+- Revert (RULED_AWR = false): agree under 80% for an hour, or jumps/S spreading off the moments.
+- After ~3 h: one rules-off paired check (A without the rules vs B), the direct measure of this stage.
+
+Fable's note: 69b's swing coefficient sits at its 0.08 cap with the open-tick entropy at 0.23, under the 0.25 floor. Harmless so far; ENTROPY_FLOORS[swing] 0.20 would let it relax.
