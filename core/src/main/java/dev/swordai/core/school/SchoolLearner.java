@@ -349,7 +349,9 @@ public final class SchoolLearner implements AutoCloseable {
 		final float[] before = new float[SchoolNet.INTENT];
 		/** The last keys it pressed (SchoolNet#HIST), newest first. */
 		final float[] hist = new float[SchoolNet.HIST];
-		
+		/** Run 69a: what it has seen of the opponent, the last SchoolNet#SEEN_FRAMES ticks, newest first (SchoolNet#SEEN). */
+		final float[] seen = new float[SchoolNet.SEEN];
+
 		/** Puts the keys of this tick in front of the history. */
 		void push(int[] action) {
 			System.arraycopy(hist, 0, hist, SchoolNet.HIST_PER, SchoolNet.HIST - SchoolNet.HIST_PER);
@@ -361,12 +363,34 @@ public final class SchoolLearner implements AutoCloseable {
 			hist[8] = action[ActionSpace.ATTACK];
 		}
 
+		/**
+		 * Run 69a: puts what this tick's observation shows of the opponent in front of the seen history: the head's visibility,
+		 * x, y and area on the screen, the body's area, their speed relative to it (forward, up), their sword as last seen to
+		 * swing, and how far its own camera turned (yaw, pitch). Only what the current frame's statistics already hold.
+		 */
+		void pushSeen(float[] vec) {
+			System.arraycopy(seen, 0, seen, SchoolNet.SEEN_PER, SchoolNet.SEEN - SchoolNet.SEEN_PER);
+			int s = ObsSpec.VEC_STATS;
+			int c = ObsSpec.VEC_SCALARS;
+			seen[0] = vec[s + ObsSpec.ST_HEAD_VISIBLE];
+			seen[1] = vec[s + ObsSpec.ST_HEAD_X];
+			seen[2] = vec[s + ObsSpec.ST_HEAD_Y];
+			seen[3] = vec[s + ObsSpec.ST_HEAD_AREA];
+			seen[4] = vec[s + ObsSpec.ST_ANY_AREA];
+			seen[5] = vec[c + ObsSpec.SC_REL_VEL_FORWARD];
+			seen[6] = vec[c + ObsSpec.SC_REL_VEL_UP];
+			seen[7] = vec[c + ObsSpec.SC_OPP_CHARGE];
+			seen[8] = vec[c + ObsSpec.SC_TURNED_YAW];
+			seen[9] = vec[c + ObsSpec.SC_TURNED_PITCH];
+		}
+
 		void reset() {
 			last = Technique.BASE.ordinal();
 			ticks = 0;
 			chosen = last;
 			java.util.Arrays.fill(before, 0f);
 			java.util.Arrays.fill(hist, 0f);
+			java.util.Arrays.fill(seen, 0f);
 			before[last] = 1f;
 		}
 	}
@@ -399,6 +423,10 @@ public final class SchoolLearner implements AutoCloseable {
 	 * training fight told the teacher's techniques, the network is told the teacher's (and the chooser learns from it).
 	 */
 	private void intend(Intent st, Chooser ch, Chooser.Workspace cw, SchoolRollout.Step step, boolean record) {
+		// Run 69a: this tick's view of the opponent goes in front of the seen history before the network reads it.
+		if (SchoolNet.SEEN_HISTORY) {
+			st.pushSeen(step.obs.base.vec);
+		}
 		System.arraycopy(st.before, 0, step.prevIntent, 0, SchoolNet.INTENT);
 		st.chosen = ch.forward(cw, step.obs.base.vec, step.obs.mem, step.pred, st.before);
 		int label = step.teacherTechnique >= 0 ? step.teacherTechnique : Technique.BASE.ordinal();
@@ -416,6 +444,7 @@ public final class SchoolLearner implements AutoCloseable {
 		step.pred[off + intent] = 1f;
 		step.pred[off + SchoolNet.INTENT_TICKS] = Math.min(1f, st.ticks / SchoolNet.INTENT_LONG);
 		System.arraycopy(st.hist, 0, step.pred, SchoolNet.HIST_AT, SchoolNet.HIST);
+		System.arraycopy(st.seen, 0, step.pred, SchoolNet.SEEN_AT, SchoolNet.SEEN);
 		System.arraycopy(step.pred, off, st.before, 0, SchoolNet.INTENT);
 	}
 

@@ -77,8 +77,24 @@ public final class SchoolNet {
 	public static final int HIST = HIST_TICKS * HIST_PER;
 	/** Where the history is in the side input. */
 	public static final int HIST_AT = Predictor.OUT + INTENT;
-	/** The side input: the {@link Predictor}'s guess, then the technique being done, then the history of its own keys. */
-	public static final int SIDE = Predictor.OUT + INTENT + HIST;
+	/**
+	 * Run 69a (Fable): what it has SEEN of the opponent over the last SEEN_FRAMES ticks, newest first, SEEN_PER numbers a tick
+	 * (SchoolLearner.Intent#pushSeen): the head's visibility, x, y and area on the screen, the body's area, the opponent's speed
+	 * relative to it (forward, up), its sword as last seen to swing (SC_OPP_CHARGE), and how far its own camera turned that tick
+	 * (yaw, pitch), so that the opponent's motion can be told from its own. The observation holds two frames (100 ms) of the
+	 * opponent and running averages over seconds (Habits), nothing in between; a jump is 12 ticks, a combo's rhythm 13, the
+	 * deflection's window the 1-3 ticks after their swing (docs/PVP-TECHNIQUES.md part 8: "it needs memory of the last few seconds
+	 * to predict"). Read through layers that start at zero, made after every other part, so that a network saved before loads
+	 * with them new and plays exactly as it did. SEEN_HISTORY off: the layers are skipped and the input stays zero (the way back).
+	 */
+	public static final boolean SEEN_HISTORY = true;
+	public static final int SEEN_FRAMES = 8;
+	public static final int SEEN_PER = 10;
+	public static final int SEEN = SEEN_FRAMES * SEEN_PER;
+	/** Where the seen history is in the side input. */
+	public static final int SEEN_AT = HIST_AT + HIST;
+	/** The side input: the {@link Predictor}'s guess, then the technique being done, then the history of its own keys, then what it has seen. */
+	public static final int SIDE = Predictor.OUT + INTENT + HIST + SEEN;
 
 	public final ParamSet params = new ParamSet();
 	private final Conv2d periConv1;
@@ -103,6 +119,9 @@ public final class SchoolNet {
 	private final Dense intentHeads;
 	private final Dense histIn;
 	private final Dense histHeads;
+	/** Run 69a: the seen history ({@link #SEEN}) into the new tower and straight into the heads, both from zero. */
+	private final Dense seenIn;
+	private final Dense seenHeads;
 	/**
 	 * The option layers (SchoolStages#GATED): for each technique, a linear map from the top to the logits of its gated keys,
 	 * added only while the network is told that technique. Its lesson's pull goes into them alone (Workspace#dOption).
@@ -144,6 +163,9 @@ public final class SchoolNet {
 		// Run 30h: after the option layers, so that a network saved before loads with them new, at zero (it plays as it did).
 		histIn = new Dense(params, "new.hist", HIST, NEW, rng, 0f);
 		histHeads = new Dense(params, "hist.heads", HIST, ActionSpace.TOTAL_LOGITS, rng, 0f);
+		// Run 69a: after the history, so that a network saved before loads with them new, at zero (it plays as it did).
+		seenIn = new Dense(params, "new.seen", SEEN, NEW, rng, 0f);
+		seenHeads = new Dense(params, "seen.heads", SEEN, ActionSpace.TOTAL_LOGITS, rng, 0f);
 		// Rows of the old tower's trunk from the memory, and rows of the heads from the new tower: zero.
 		zeroRows(oldTrunk, 3 * BRANCH, CAT);
 		zeroRows(heads, OLD, TOP);
@@ -204,6 +226,8 @@ public final class SchoolNet {
 		final float[] intentLogits = new float[ActionSpace.TOTAL_LOGITS];
 		final float[] histPre = new float[NEW];
 		final float[] histLogits = new float[ActionSpace.TOTAL_LOGITS];
+		final float[] seenPre = new float[NEW];
+		final float[] seenLogits = new float[ActionSpace.TOTAL_LOGITS];
 		/** The towers before their blocks (kept for the gates) and the top after them. */
 		final float[] oldT = new float[OLD];
 		final float[] newT = new float[NEW];
@@ -288,8 +312,13 @@ public final class SchoolNet {
 		predIn.forward(ws.pred, 0, ws.predPre, 0);
 		intentIn.forward(ws.pred, Predictor.OUT, ws.intentPre, 0);
 		histIn.forward(ws.pred, HIST_AT, ws.histPre, 0);
+		if (SEEN_HISTORY) {
+			seenIn.forward(ws.pred, SEEN_AT, ws.seenPre, 0);
+		} else {
+			Arrays.fill(ws.seenPre, 0f);
+		}
 		for (int i = 0; i < NEW; i++) {
-			ws.newT[i] = Math.max(0f, ws.newPre[i] + ws.predPre[i] + ws.intentPre[i] + ws.histPre[i]);
+			ws.newT[i] = Math.max(0f, ws.newPre[i] + ws.predPre[i] + ws.intentPre[i] + ws.histPre[i] + ws.seenPre[i]);
 		}
 		System.arraycopy(ws.oldT, 0, ws.top, 0, OLD);
 		for (int b = 0; b < oldBlocks.length; b++) {
@@ -302,8 +331,13 @@ public final class SchoolNet {
 		heads.forward(ws.top, 0, ws.base, 0);
 		intentHeads.forward(ws.pred, Predictor.OUT, ws.intentLogits, 0);
 		histHeads.forward(ws.pred, HIST_AT, ws.histLogits, 0);
+		if (SEEN_HISTORY) {
+			seenHeads.forward(ws.pred, SEEN_AT, ws.seenLogits, 0);
+		} else {
+			Arrays.fill(ws.seenLogits, 0f);
+		}
 		for (int i = 0; i < ActionSpace.TOTAL_LOGITS; i++) {
-			ws.base[i] += ws.intentLogits[i] + ws.histLogits[i];
+			ws.base[i] += ws.intentLogits[i] + ws.histLogits[i] + ws.seenLogits[i];
 		}
 		ws.option = optionOf(ws.pred);
 		if (ws.option >= 0) {
@@ -466,6 +500,9 @@ public final class SchoolNet {
 		heads.backward(ws.top, 0, ws.dLogits, 0, ws.dTop, 0, ws.grads);
 		intentHeads.backward(ws.pred, Predictor.OUT, ws.dLogits, 0, null, 0, ws.grads);
 		histHeads.backward(ws.pred, HIST_AT, ws.dLogits, 0, null, 0, ws.grads);
+		if (SEEN_HISTORY) {
+			seenHeads.backward(ws.pred, SEEN_AT, ws.dLogits, 0, null, 0, ws.grads);
+		}
 		if (ws.option >= 0) {
 			// Its weights learn from the policy's gradient and the gated lesson's; the layers under it from the policy's alone.
 			int gated = SchoolStages.gatedHeads(ws.option);
@@ -504,6 +541,9 @@ public final class SchoolNet {
 		predIn.backward(ws.pred, 0, ws.dNew, 0, null, 0, ws.grads);
 		intentIn.backward(ws.pred, Predictor.OUT, ws.dNew, 0, null, 0, ws.grads);
 		histIn.backward(ws.pred, HIST_AT, ws.dNew, 0, null, 0, ws.grads);
+		if (SEEN_HISTORY) {
+			seenIn.backward(ws.pred, SEEN_AT, ws.dNew, 0, null, 0, ws.grads);
+		}
 		newTrunk.backward(ws.cat, 0, ws.dNew, 0, ws.dCat, 0, ws.grads);
 		oldTrunk.backward(ws.cat, 0, ws.dOld, 0, ws.dCatPart, 0, ws.grads);
 		for (int i = 0; i < CAT; i++) {
@@ -527,6 +567,21 @@ public final class SchoolNet {
 		periConv2.backward(ws.p1, ws.dP2, ws.dP1, ws.grads);
 		gate(ws.dP1, ws.p1);
 		periConv1.backwardBytes(peri, ws.dP1, ws.grads);
+	}
+
+	/**
+	 * Run 69a: the size (root of the sum of squares) of the seen history's weights, both layers: 0 until the network starts to read
+	 * the history; the gate of run 69a is that it grows.
+	 */
+	public float seenWeightNorm() {
+		double s = 0;
+		for (float v : seenIn.weight.w) {
+			s += (double) v * v;
+		}
+		for (float v : seenHeads.weight.w) {
+			s += (double) v * v;
+		}
+		return (float) Math.sqrt(s);
 	}
 
 	/**

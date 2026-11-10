@@ -147,6 +147,52 @@ class SchoolNetTest {
 		assertTrue(bad <= checked / 20, bad + " of " + checked + " gradients off");
 	}
 
+	/**
+	 * Run 69a: a new network ignores the seen history (its layers start at zero, so a network saved before plays as it did); once
+	 * those layers have weights, the history changes the logits.
+	 */
+	@Test
+	void seenHistoryStartsSilentThenSpeaks() {
+		Assumptions.assumeTrue(SchoolNet.SEEN_HISTORY, "the seen history is off");
+		SchoolNet net = new SchoolNet(13L);
+		SchoolNet.Workspace ws = net.newWorkspace();
+		Random rng = new Random(21);
+		SchoolObs obs = new SchoolObs();
+		randomObs(rng, obs);
+		float[] quiet = new float[SchoolNet.SIDE];
+		float[] seen = new float[SchoolNet.SIDE];
+		for (int i = 0; i < SchoolNet.SEEN_AT; i++) {
+			quiet[i] = rng.nextFloat();
+			seen[i] = quiet[i];
+		}
+		for (int i = SchoolNet.SEEN_AT; i < SchoolNet.SIDE; i++) {
+			seen[i] = rng.nextFloat() * 2f - 1f;
+		}
+		assertEquals(SchoolNet.SEEN_AT + SchoolNet.SEEN, SchoolNet.SIDE, "the seen history ends the side input");
+		float[] a = new float[ActionSpace.TOTAL_LOGITS];
+		net.forward(ws, obs.base.peri, obs.base.fovea, obs.base.vec, obs.mem, quiet);
+		System.arraycopy(ws.logits, 0, a, 0, a.length);
+		net.forward(ws, obs.base.peri, obs.base.fovea, obs.base.vec, obs.mem, seen);
+		for (int i = 0; i < a.length; i++) {
+			assertEquals(a[i], ws.logits[i], 1e-6f, "logit " + i + " moved by a history the new network cannot read yet");
+		}
+		assertEquals(0f, net.seenWeightNorm(), 0f);
+		for (Param p : net.params.params()) {
+			if (p.name.startsWith("new.seen") || p.name.startsWith("seen.heads")) {
+				for (int i = 0; i < p.w.length; i++) {
+					p.w[i] = (float) rng.nextGaussian() * 0.1f;
+				}
+			}
+		}
+		assertTrue(net.seenWeightNorm() > 1f);
+		net.forward(ws, obs.base.peri, obs.base.fovea, obs.base.vec, obs.mem, seen);
+		float moved = 0f;
+		for (int i = 0; i < a.length; i++) {
+			moved += Math.abs(a[i] - ws.logits[i]);
+		}
+		assertTrue(moved > 0.1f, "the history has no say though its layers have weights: " + moved);
+	}
+
 	private static double loss(SchoolNet net, SchoolNet.Workspace ws, SchoolObs obs, float[] pred, byte[] act, float[] c) {
 		float[][] keep = ws.grads;
 		net.forward(ws, obs.base.peri, obs.base.fovea, obs.base.vec, obs.mem, pred);

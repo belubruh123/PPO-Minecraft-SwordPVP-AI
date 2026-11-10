@@ -334,6 +334,44 @@ class SchoolLearnerTest {
 		return sum / 50;
 	}
 
+	/** Run 69a: each act puts this tick's view of the opponent in front of the seen history of the side input, newest first. */
+	@Test
+	void theSeenHistoryHoldsTheLastFramesNewestFirst() {
+		org.junit.jupiter.api.Assumptions.assumeTrue(SchoolNet.SEEN_HISTORY, "the seen history is off");
+		SchoolLearner l = new SchoolLearner(6L, 16, 0.99f, 0.95f, 1);
+		try {
+			Random rng = new Random(11);
+			SchoolRollout.Step s = new SchoolRollout.Step();
+			int[] act = new int[ActionSpace.HEADS];
+			float[] headY = new float[3];
+			float[] oppCharge = new float[3];
+			for (int t = 0; t < 3; t++) {
+				fill(rng, s);
+				headY[t] = s.obs.base.vec[ObsSpec.VEC_STATS + ObsSpec.ST_HEAD_Y];
+				oppCharge[t] = s.obs.base.vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_OPP_CHARGE];
+				l.act(s, ActionSpace.ALL_HEADS, false, 1f, act);
+			}
+			// Frame 0 is this tick's, frame 1 the tick before's, frame 2 the one before that; older frames are still empty.
+			for (int back = 0; back < 3; back++) {
+				int at = SchoolNet.SEEN_AT + back * SchoolNet.SEEN_PER;
+				assertEquals(headY[2 - back], s.pred[at + 2], 0f, "head y, " + back + " ticks back");
+				assertEquals(oppCharge[2 - back], s.pred[at + 7], 0f, "their sword, " + back + " ticks back");
+			}
+			for (int i = SchoolNet.SEEN_AT + 3 * SchoolNet.SEEN_PER; i < SchoolNet.SIDE; i++) {
+				assertEquals(0f, s.pred[i], 0f, "an empty older frame");
+			}
+			// A new fight starts with nothing seen.
+			l.resetIntent();
+			fill(rng, s);
+			l.act(s, ActionSpace.ALL_HEADS, false, 1f, act);
+			for (int i = SchoolNet.SEEN_AT + SchoolNet.SEEN_PER; i < SchoolNet.SIDE; i++) {
+				assertEquals(0f, s.pred[i], 0f, "the history of the fight before");
+			}
+		} finally {
+			l.close();
+		}
+	}
+
 	@Test
 	void stagesSaveAndLoad(@TempDir Path dir) throws Exception {
 		SchoolStages st = new SchoolStages();

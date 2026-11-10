@@ -88,6 +88,12 @@ public final class SchoolPpo implements AutoCloseable {
 		public float explained;
 		public float actorLr;
 		public final float[] entropy = new float[ActionSpace.HEADS];
+		/** Run 69b: the entropy over the ticks each head was open, how many those were (a tick-weighted count), and the coefficients used. */
+		public final float[] entropyOpen = new float[ActionSpace.HEADS];
+		public final int[] entropyOpenN = new int[ActionSpace.HEADS];
+		public final float[] entropyCoef = new float[ActionSpace.HEADS];
+		/** Run 69a: the size of the seen history's weights (SchoolNet#seenWeightNorm); 0 until the network reads the history. */
+		public float seenNorm;
 		/** Cross-entropy to the technique teachers (where they spoke) and to the installed network; and how often the network's likeliest key was the technique teacher's. */
 		public float techCe;
 		public float oldCe;
@@ -141,10 +147,14 @@ public final class SchoolPpo implements AutoCloseable {
 			return String.format(java.util.Locale.ROOT,
 					"%d steps, %d epochs, policy %.4f, value %.4f, kl %.4f, clipped %.2f, explained %.2f, lr %.1e, entropy W/S %.2f jump %.2f swing %.2f, "
 							+ "teacher: technique ce %.3f agree %.0f%% on %d, installed ce %.3f (body %.3f), "
-							+ "punish crit swing under the rules: swung %.0f%% of %d, held %.0f%% of %d, rules' keys: ce %.3f agree %.0f%% on %d (by head: %s) (by rule: %s), %d ms",
+							+ "punish crit swing under the rules: swung %.0f%% of %d, held %.0f%% of %d, rules' keys: ce %.3f agree %.0f%% on %d (by head: %s) (by rule: %s), "
+							+ "open-tick entropy W/S %.2f (%d) jump %.2f (%d) swing %.2f (%d), entropy coef W/S %.3f jump %.3f swing %.3f, seen history |w| %.3f, %d ms",
 					samples, epochs, policyLoss, valueLoss, kl, clipFraction, explained, actorLr, entropy[ActionSpace.FORWARD],
 					entropy[ActionSpace.JUMP], entropy[ActionSpace.ATTACK], techCe, 100f * techAgree, techSteps, oldCe, oldBodyCe,
-					100f * shadowSwingAgree, shadowSwings, 100f * shadowHoldAgree, shadowHolds, ruledCe, 100f * ruledAgree, ruledSteps, ruledHeadsLine(), ruleLine(), millis);
+					100f * shadowSwingAgree, shadowSwings, 100f * shadowHoldAgree, shadowHolds, ruledCe, 100f * ruledAgree, ruledSteps, ruledHeadsLine(), ruleLine(),
+					entropyOpen[ActionSpace.FORWARD], entropyOpenN[ActionSpace.FORWARD], entropyOpen[ActionSpace.JUMP], entropyOpenN[ActionSpace.JUMP],
+					entropyOpen[ActionSpace.ATTACK], entropyOpenN[ActionSpace.ATTACK], entropyCoef[ActionSpace.FORWARD], entropyCoef[ActionSpace.JUMP],
+					entropyCoef[ActionSpace.ATTACK], seenNorm, millis);
 		}
 	}
 
@@ -158,11 +168,32 @@ public final class SchoolPpo implements AutoCloseable {
 	 */
 	public static final float HIT_TICK_WEIGHT = 4f;
 
+	/**
+	 * Run 69b (Fable): a floor under each head's entropy over the ticks the head was OPEN (not locked by the sword gate, the whiff
+	 * guard, the jump-in guard or a rule). The printed "entropy swing 0.01" averages the locked ticks in as zero, so it never said how
+	 * sure the swing is where it can be made; the open-tick entropy does. While a head's open-tick entropy is under its floor, its
+	 * bonus coefficient grows by ENTROPY_COEF_STEP an update, up to ENTROPY_COEF_MOST; above twice the floor it shrinks back towards
+	 * the setting (SAC's automatic temperature, Haarnoja et al. 2018, on a target entropy). PPO cannot reinforce a swing held for
+	 * their swing (T4), a jump right after its hit (T9b) or a jump after its punish crit (T1c) it never tries. Steps told the punish
+	 * crit (B1, the user's must-keep) keep the setting's coefficient, so that the crit's swing is not made unsure. Floors by head
+	 * (ActionSpace order): yaw, pitch, W/S, strafe, sprint, jump, swing; 0 = no floor. The jump's floor sits just above where it is
+	 * (jumps off the moments must not spread, runs 22-29).
+	 */
+	public static final boolean ENTROPY_FLOOR = true;
+	static final float[] ENTROPY_FLOORS = {0f, 0f, 0.12f, 0f, 0f, 0.08f, 0.25f};
+	static final float ENTROPY_COEF_MOST = 0.08f;
+	static final float ENTROPY_COEF_STEP = 1.3f;
+
 	private final SchoolNet actor;
 	private final SchoolCritic critic;
 	private final Worker[] workers;
 	private final ExecutorService pool;
 	private float actorLr = Float.NaN;
+	/** Run 69b: the entropy coefficients as adapted so far (NaN until the first update takes the setting's). */
+	private final float[] entCoef = new float[ActionSpace.HEADS];
+	{
+		java.util.Arrays.fill(entCoef, Float.NaN);
+	}
 
 	public SchoolPpo(SchoolNet actor, SchoolCritic critic, int threads) {
 		this.actor = actor;
@@ -200,6 +231,9 @@ public final class SchoolPpo implements AutoCloseable {
 		int clipped;
 		final double[] entSum = new double[ActionSpace.HEADS];
 		int entCount;
+		/** Run 69b: the entropy over the ticks each head was open, and how many those were. */
+		final double[] entOpenSum = new double[ActionSpace.HEADS];
+		final int[] entOpen = new int[ActionSpace.HEADS];
 		double techCe;
 		double oldCe;
 		double oldBodyCe;
@@ -228,6 +262,8 @@ public final class SchoolPpo implements AutoCloseable {
 			clipped = 0;
 			java.util.Arrays.fill(entSum, 0);
 			entCount = 0;
+			java.util.Arrays.fill(entOpenSum, 0);
+			java.util.Arrays.fill(entOpen, 0);
 			techCe = 0;
 			oldCe = 0;
 			oldBodyCe = 0;
@@ -267,7 +303,7 @@ public final class SchoolPpo implements AutoCloseable {
 					float surr2 = Math.max(1f - set.clip, Math.min(1f + set.clip, ratio)) * adv;
 					boolean inside = ratio >= 1f - set.clip && ratio <= 1f + set.clip;
 					float dLogp = (surr1 <= surr2 || inside) ? -adv * ratio * w : 0f;
-					Policy.gradient(mask, r.action[i], probs, ent, dLogp, w > 0f ? set.entropy : ZERO, aw.dLogits);
+					Policy.gradient(mask, r.action[i], probs, ent, dLogp, w > 0f ? entropyCoefficients(r, i, set) : ZERO, aw.dLogits);
 					teach(r, i, mask, set, adv);
 					actor.backward(aw, r.peri[i], r.fovea[i], r.vec[i], r.mem[i]);
 					policyLoss -= Math.min(surr1, surr2) * w;
@@ -277,6 +313,10 @@ public final class SchoolPpo implements AutoCloseable {
 					}
 					for (int h = 0; h < ActionSpace.HEADS; h++) {
 						entSum[h] += ent[h];
+						if (ActionSpace.unlocked(mask, h)) {
+							entOpenSum[h] += ent[h];
+							entOpen[h]++;
+						}
 					}
 					entCount++;
 				}
@@ -420,6 +460,36 @@ public final class SchoolPpo implements AutoCloseable {
 	}
 
 	private static final float[] ZERO = new float[ActionSpace.HEADS];
+
+	/**
+	 * Run 69b: the entropy coefficients for a step: the adapted ones ({@link #entCoef}), or the setting's on a step told the punish
+	 * crit (B1) and whenever the floor is off.
+	 */
+	private float[] entropyCoefficients(SchoolRollout r, int i, Settings set) {
+		if (!ENTROPY_FLOOR || Float.isNaN(entCoef[0])) {
+			return set.entropy;
+		}
+		return Chooser.techniqueOf(r.pred[i], Predictor.OUT) == dev.swordai.core.pvp.Technique.B1.ordinal() ? set.entropy : entCoef;
+	}
+
+	/**
+	 * Run 69b: after an update, each floored head's coefficient grows while its open-tick entropy is under the floor and shrinks
+	 * back towards the setting's above twice the floor.
+	 */
+	private void adaptEntropy(Stats st, Settings set) {
+		for (int h = 0; h < ActionSpace.HEADS; h++) {
+			float floor = ENTROPY_FLOORS[h];
+			if (floor <= 0f || st.entropyOpenN[h] == 0) {
+				continue;
+			}
+			if (st.entropyOpen[h] < floor) {
+				entCoef[h] = Math.min(ENTROPY_COEF_MOST, entCoef[h] * ENTROPY_COEF_STEP);
+			} else if (st.entropyOpen[h] > 2f * floor) {
+				entCoef[h] = Math.max(set.entropy[h], entCoef[h] / ENTROPY_COEF_STEP);
+			}
+		}
+	}
+
 	/**
 	 * A technique teacher's pull on a step, times exp(advantage / TEACH_AWR_BETA) (the advantage in deviations), at most
 	 * TEACH_AWR_MOST: a technique done where the fight then went better than the critic expected is taught harder, one where
@@ -434,6 +504,9 @@ public final class SchoolPpo implements AutoCloseable {
 		long start = System.nanoTime();
 		if (Float.isNaN(actorLr)) {
 			actorLr = set.actorLr;
+		}
+		if (Float.isNaN(entCoef[0])) {
+			System.arraycopy(set.entropy, 0, entCoef, 0, ActionSpace.HEADS);
 		}
 		Stats st = new Stats();
 		int n = r.size;
@@ -466,6 +539,8 @@ public final class SchoolPpo implements AutoCloseable {
 		double clipped = 0;
 		double[] ent = new double[ActionSpace.HEADS];
 		long entCount = 0;
+		double[] entOpen = new double[ActionSpace.HEADS];
+		long[] entOpenN = new long[ActionSpace.HEADS];
 		double techCe = 0;
 		double oldCe = 0;
 		double oldBodyCe = 0;
@@ -510,6 +585,8 @@ public final class SchoolPpo implements AutoCloseable {
 					epochKl += w.kl;
 					for (int h = 0; h < ActionSpace.HEADS; h++) {
 						ent[h] += w.entSum[h];
+						entOpen[h] += w.entOpenSum[h];
+						entOpenN[h] += w.entOpen[h];
 					}
 					entCount += w.entCount;
 					techCe += w.techCe;
@@ -561,7 +638,14 @@ public final class SchoolPpo implements AutoCloseable {
 		st.clipFraction = (float) (clipped / seen);
 		for (int h = 0; h < ActionSpace.HEADS; h++) {
 			st.entropy[h] = entCount == 0 ? 0f : (float) (ent[h] / entCount);
+			st.entropyOpen[h] = entOpenN[h] == 0 ? 0f : (float) (entOpen[h] / entOpenN[h]);
+			st.entropyOpenN[h] = (int) (entOpenN[h] / Math.max(1, st.epochs));
 		}
+		if (ENTROPY_FLOOR && !set.criticOnly) {
+			adaptEntropy(st, set);
+		}
+		System.arraycopy(entCoef, 0, st.entropyCoef, 0, ActionSpace.HEADS);
+		st.seenNorm = actor.seenWeightNorm();
 		st.techCe = techSteps == 0 ? 0f : (float) (techCe / techSteps);
 		st.techAgree = techSteps == 0 ? 0f : (float) techAgree / techSteps;
 		st.techSteps = (int) (techSteps / Math.max(1, st.epochs));
