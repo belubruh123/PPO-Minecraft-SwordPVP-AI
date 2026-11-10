@@ -131,6 +131,11 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - The nearest-point aim gives 0% no-pick.
   - The whiff guard also reads last tick's pick (stale).
   - Handed to Fable (round 2, max effort, also on P6): fresh pick for the guard (bug fix), and the camera lesson corrected plus the camera handed to the network where its aim beats the rule's (the reach aim on the rule only as an A/B stopgap). Status: in progress.
+- RULES-OFF paired check (07:03, Fable's direct measure): A WITHOUT the rules 9/44 (20%), B 18/44 (41%), z -2.3; damage A 280/442, B 351/400.
+  - Outside their combo, sword ready: A swung 32% vs B 55%, crosshair off them 43% vs 29%.
+  - In their combo: A swung 27% vs B 45%. Third hits 44% vs 42%.
+  - So the network alone is clearly behind the rules. No key can be handed over yet. Its camera is worse than the aim rule's (crosshair off 43% vs 29%).
+- Runs 73/73b (fresh pick for the whiff guard; the camera lesson aims at the nearest point of their box; camera counters by who held it), deploying 07:04. Status: NOT VERIFIED.
 
 ## SOLVED (with the evidence)
 
