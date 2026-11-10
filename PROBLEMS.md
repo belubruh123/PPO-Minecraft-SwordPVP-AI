@@ -126,6 +126,11 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - In their combo A swung 28% vs B 41%; outside their combo 49% vs 49%.
 - Run 72 at 2 h: fights without the rules net bots -102, league -272, sparring -186 (flat). Punish crit 56-57%.
 - 3-hour rule (05:55), problems 1 and 9: the crosshair off them in their combo has held at 33-36% for both A and B since the camera lesson (runs 64/67). Research agent 8 launched: why the crosshair is off, and a different kind of approach.
+- Agent 8 (06:20): in their combo the camera belongs to the AIM RULE (93% of ready ticks in real duels, 90% on the bench), not the network. So the camera lessons (runs 64/67) taught locked heads.
+  - The rule aims at their middle while it is lifted (67% of those ticks), so the ray meets their box beyond 3.0. That is "on the body, no pick", 22-28 points of the 42-46% swing-not-open.
+  - The nearest-point aim gives 0% no-pick.
+  - The whiff guard also reads last tick's pick (stale).
+  - Handed to Fable (round 2, max effort, also on P6): fresh pick for the guard (bug fix), and the camera lesson corrected plus the camera handed to the network where its aim beats the rule's (the reach aim on the rule only as an A/B stopgap). Status: in progress.
 
 ## SOLVED (with the evidence)
 
