@@ -251,6 +251,11 @@ public final class SchoolStages {
 	 * uppercut) took the keys in its combos. Its combo held by a lunge or hop: 2-12 an hour; T11c 0-2% of its moments.
 	 */
 	public static final boolean COMBO_JUMPS_TAUGHT = true;
+	/**
+	 * Run 62b (10 Nov): the rules give way in its own combo only in training, not in a check or a real fight. Since run 62 the checks
+	 * were A behind B (z -1.4, +0.7, -1.5, then the 14:20 check); the same hand-over to an untrained option layer is what failed in run 65.
+	 */
+	public static final boolean COMBO_JUMP_YIELD_IN_FIGHTS = false;
 	public static final int COMBO_JUMP_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP,
 			dev.swordai.core.rl.ActionSpace.FORWARD, dev.swordai.core.rl.ActionSpace.SPRINT, dev.swordai.core.rl.ActionSpace.ATTACK);
 

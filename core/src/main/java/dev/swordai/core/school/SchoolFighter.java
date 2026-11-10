@@ -178,7 +178,7 @@ public final class SchoolFighter {
 			ruled &= ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
 		}
 		// Run 62: in its own combo, while the decider has chosen an uppercut, a lunge or hops, those keys are the network's.
-		if (ruled != 0 && SchoolStages.COMBO_JUMPS_TAUGHT && SchoolStages.comboJump(learner.told().ordinal())
+		if (ruled != 0 && SchoolStages.COMBO_JUMPS_TAUGHT && SchoolStages.COMBO_JUMP_YIELD_IN_FIGHTS && SchoolStages.comboJump(learner.told().ordinal())
 				&& sinceHitDealt <= OWN_COMBO_TICKS && sinceHitTaken > sinceHitDealt) {
 			ruled &= ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
 		}

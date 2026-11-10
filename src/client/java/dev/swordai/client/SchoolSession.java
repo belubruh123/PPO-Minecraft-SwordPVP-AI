@@ -3961,7 +3961,8 @@ public final class SchoolSession implements AgentSession {
 						: dev.swordai.core.school.SchoolStages.runTaught(learner.told().ordinal()) ? body : 0;
 				ruled &= ~give;
 			}
-			if (dev.swordai.core.school.SchoolStages.COMBO_JUMPS_TAUGHT && dev.swordai.core.school.SchoolStages.comboJump(learner.told().ordinal())
+			if (dev.swordai.core.school.SchoolStages.COMBO_JUMPS_TAUGHT && (mode == Mode.TRAIN || dev.swordai.core.school.SchoolStages.COMBO_JUMP_YIELD_IN_FIGHTS)
+					&& dev.swordai.core.school.SchoolStages.comboJump(learner.told().ordinal())
 					&& clock.ticksSinceHitDealt <= COMBO_GAP && clock.ticksSinceHitTaken > clock.ticksSinceHitDealt) {
 				// Run 62: in its own combo, told an uppercut, a lunge or hops, the rules (JumpIn's chase and uppercut) give way on the
 				// body keys, so the jump is its own (and paid as one, JUMP_COMBO_HIT) and the option layer has the keys to learn.

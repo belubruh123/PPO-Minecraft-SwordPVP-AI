@@ -604,3 +604,14 @@ Kept:
 - no AIR_JUMP_HIT while told T9a/C3.
 
 Next for problem 2: agent 5's other approach, the practice world. Make the combo scenes actually fought (a share before repeatPick, a real win test), and have the bots follow up on the real rhythm (p50 13 ticks) instead of the first ready tick (2->3 34-36% vs 13% real).
+
+## Run 62b (10 Nov 14:50): run 62's rule hand-over in training only (not in checks or real fights)
+
+Checks since run 62 (ROUNDS WON, A vs B, same seeds): 10:45 24-29 (z -1.4), 11:45 18-15 (+0.7), 12:42 12-17 (-1.5), 14:24 14-17 (-0.8).
+- Together A 68/178 (38%), B 78/178 (44%). Before run 62: 06:22 +0.8, 09:26 +0.7.
+- 14:24: their third hits A 43% vs B 30%; in their combo A swung 31%, B 51%; damage dealt a minute A 300, B 340.
+- The same hand-over of the rules' keys to an untrained option layer is what failed in run 65.
+
+Change: SchoolStages.COMBO_JUMP_YIELD_IN_FIGHTS = false. In a check (SchoolSession, mode != TRAIN) and in a real fight (SchoolFighter), the rules keep their keys in its own combo; in training they give way as before, so the option layers keep learning (T10/T11 at 60-100% when told).
+
+Gate: the next two checks no longer behind (z >= 0) without losing the training's combo-jump done rates.
