@@ -24,6 +24,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
    - Fix (run 57, after the ~07:50 check): the practice focus pinned on "the combo escape" (keeps the punish scenes). Next if flat: combo scenes cut from the 701 real combo hits. Status: NOT VERIFIED.
    - Seen: real duels, combos of 3+ hits taken: run52 0.79 a round, run35 0.30 a round. The user: "get stunned easily".
    - Measure: 3+ combos taken per round in real duels (tools/swingback.py, rounds.csv combosTaken3).
+   - 3-hour rule again (flat since run 57, 07:50): research agent 5 launched 12:25 (the combos it takes in real duels, why C3/T9a are not taught; two different kinds of approach).
    - Checks (bots): their combos reaching a third hit, A vs B: 35% vs 23% at 23:42; 24% vs 23% at 01:12; 33% vs 26% at 02:02; 30% vs 42% at 03:02; 27% vs 30% at 04:32. New bot world (runs 58-60): 17% vs 10% at 09:26 (real duels: a 2-hit chain reaches 3 in 12%).
 3. **Cannot tell a jump-in crit from an uppercut (T10), a lunge (T11a) or hops (T11b), and gets comboed by those.**
    - The guard treats every jump from outside reach as a jump-in crit: it holds the swing and waits to punish crit. Uppercuts, lunges and hops end in a SPRINT hit (knockback, a stun), so waiting means being stunned.
@@ -38,6 +39,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
    - 02:49 (after run 54c): its own jump after 14% of its punish crits (4-11% before), T1c 2%, critted back 17% (22-34% before).
    - 04:19: its own jump after 19%, T1c 7% (first real rise), critted back 21%.
    - 07:33-08:30 (run 58 world, 163 punish crits): T1c 2%, critted back 37%, its own jump after 7%.
+   - 11:54-12:23 (runs 59b + 63, 114 punish crits): T1c 10%, critted back 21%, its own jump after 23% (7-9% before). First real rise since the bots answer like real players.
    - 3-hour rule (about 10 h flat): agent 2 found the bots answer its punish crit in 24-32%, real players in 56-63% (it hits first 50-59% vs real 26%), so training gave little pressure. Fix 2 (run 59, ~08:30): bots swing back at its punish crit with a 30-60% chance, 1-3 ticks later, when their sword is ready and it is in reach. Status: NOT VERIFIED.
    - Run 59 FAILED on the bench (run35w60, 09:32): after its punish crit the bots hit back first within 30 ticks in 19%, against 36% before run 59 and 72% real; it hit first in 70% (real 26%). Why: the bots' swing back is cancelled by their K2 rule (the AI is still falling right after its crit), and run 60's closer-swing rule cuts the rest. Real answers come with them in the air (75%): lifted by its crit, they come down hitting (B1 back). Fix next (run 59b): the answer as their own punish crit back when lifted, otherwise a swing with no closer-swing rule, in a window of up to 12 ticks.
    - Cause found (run 54b counters): after 141 punish crits its own jump followed only 11 times. The run 43 cost (-0.3 for any hit in the air out of its own jump, paid on 31 of 69 jumps an update) taught it not to jump.
