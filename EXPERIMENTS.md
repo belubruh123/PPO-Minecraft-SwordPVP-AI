@@ -650,3 +650,17 @@ The combo tracker (trackCombo: hits in a row in a scene fight) was called only i
 Change: trackCombo also runs when a scene fight is on (sceneNow != null), whatever the rules; its scene branch returns before the full-fight part.
 
 Gate: "combo-escape scenes picked N (got out M)" with M > 0; the combo scene win share well between 0 and 100%.
+
+## Run 67 (10 Nov ~18:30; deploy after the ~19:08 check): run 64's camera lesson everywhere in reach, not only in their combo
+
+The 18:12 check, sword ready and them in reach, outside their combo:
+- A: crosshair off them 43%, on its body without a pick 6%, so off their body 37% of the ticks; swung 45%.
+- B: off them 32%, on its body 16%, so off their body 16%; swung 53%.
+
+A's tracking outside their combo is the gap; run 64 taught the camera only in their combo, where A's crosshair-off share came down to the B level (36% vs 34%).
+Change: SchoolSession.TRACK_EVERYWHERE. The camera is taught onto them (BASE pull, as the find-them lesson) whenever they are in sight, within 3.5 blocks and the crosshair is off their body. Counted in "camera taught onto them in their combo" (now everywhere).
+Gates:
+- the check's outside-combo "crosshair off them" for A toward B's;
+- A's swings outside their combo toward B's 53%;
+- "turned to find them" and swings with the crosshair on them not worse;
+- the punish crit unchanged.

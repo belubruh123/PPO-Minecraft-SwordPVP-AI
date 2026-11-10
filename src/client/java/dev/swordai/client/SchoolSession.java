@@ -708,6 +708,8 @@ public final class SchoolSession implements AgentSession {
 	/** Run 64: the camera taught onto them in their combo (in sight, in reach, crosshair off their body). */
 	static final boolean COMBO_TRACK = true;
 	static final float COMBO_TRACK_REACH = 3.5f;
+	/** Run 67: the same camera lesson outside their combo (in sight, within 3.5, crosshair off their body). */
+	static final boolean TRACK_EVERYWHERE = true;
 	private int comboTrackTaught;
 	/** Run 56: A or D on the last step; its combo's follow-up hits by an uppercut (rising), a lunge or hop (falling), and strafing. */
 	private boolean lastStrafe;
@@ -3831,7 +3833,10 @@ public final class SchoolSession implements AgentSession {
 			// camera is taught onto them too (before, only beyond 25 degrees or out of sight). The swing is open only with the
 			// crosshair on them (the whiff guard), and in their combo it was off them on a third of the ready ticks (11:45 check:
 			// A swung back 26% to B's 43%, crosshair off 33%).
-			boolean trackInCombo = COMBO_TRACK && clock.ticksSinceHitTaken <= 20 && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken
+			// Run 67: outside their combo too. The 18:12 check: with the sword ready and them in reach outside their combo, A's
+			// crosshair was off their body on 37% of the ticks (off them 43%, on its body without a pick 6%), B's on 16% (32%, 16%).
+			boolean theirComboNow = clock.ticksSinceHitTaken <= 20 && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken;
+			boolean trackInCombo = COMBO_TRACK && (theirComboNow || TRACK_EVERYWHERE)
 					&& facts.enemyVisible && !facts.onBody && facts.reachDist <= COMBO_TRACK_REACH;
 			if (trackInCombo && Math.abs(yawOff) <= 25f) {
 				comboTrackTaught++;
