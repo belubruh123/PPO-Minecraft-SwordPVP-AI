@@ -663,7 +663,7 @@ public final class SchoolSession implements AgentSession {
 	 * second and third hits in a row with none of its own between (the user's real fights, 24 Oct 22:05: comboed, "like 3 sprint
 	 * hits before it even press S or do any react").
 	 */
-	private final long[][] swingCount = new long[2][9];
+	private final long[][] swingCount = new long[2][14];
 	/** Their hits in a row in this fight, none of its own between. */
 	private int theirRow;
 	/** Ticks what it sees of them is behind the game this fight. */
@@ -703,6 +703,8 @@ public final class SchoolSession implements AgentSession {
 	private int readyTicks, readySwung, readyHeldFalling, readyHeldOther;
 	/** Run 57: of those, ticks the swing was not open (crosshair off or the sword's lock). */
 	private int comboLocked, readyLocked;
+	/** Run 61 (counter only): of those, the crosshair on its body all the same (the game's pick past reach, or a frame late). */
+	private int comboLockedOnBody, readyLockedOnBody;
 	/** Run 56: A or D on the last step; its combo's follow-up hits by an uppercut (rising), a lunge or hop (falling), and strafing. */
 	private boolean lastStrafe;
 	private int uppercutComboHits, fallingJumpComboHits, strafeComboHits;
@@ -711,10 +713,10 @@ public final class SchoolSession implements AgentSession {
 	private String jumpAlongLine() {
 		String s = String.format(Locale.ROOT, " | came into reach by a jump that kept the rule %d, walking in %d; its own jumps %d, off beyond their reach and rising out of it %d, crits from those %d; jumped along with their jump-in %d, crits then %d, punish crits then %d"
 						+ " | after its %d punish crits: crit again from its own jump (T1c) %d, critted back by them %d; its own jump after them %d, hits from it %d (sprint hits %d)"
-						+ " | in their combo with the sword ready and them in reach: %d ticks, swung %d, held by the jump-in guard %d, swing not open %d, in the air itself %d (lifted by their hit %d, falling %d), other %d (them falling %d); hits in its own jump not charged (falling or the jump reset's moment) %d; hits breaking into their combo (C4) %d | outside their combo on the ground, sword ready, them in reach: %d ticks, swung %d, swing not open %d, held with them falling %d, held otherwise %d | its combo held by an uppercut %d, a lunge or hop %d, strafing %d",
+						+ " | in their combo with the sword ready and them in reach: %d ticks, swung %d, held by the jump-in guard %d, swing not open %d (crosshair on its body %d), in the air itself %d (lifted by their hit %d, falling %d), other %d (them falling %d); hits in its own jump not charged (falling or the jump reset's moment) %d; hits breaking into their combo (C4) %d | outside their combo on the ground, sword ready, them in reach: %d ticks, swung %d, swing not open %d (crosshair on its body %d), held with them falling %d, held otherwise %d | its combo held by an uppercut %d, a lunge or hop %d, strafing %d",
 				enteredByJump, enteredByWalk, ownJumps, ownJumpsRuleKept, ruleJumpCrits, jumpAlongs, jumpAlongCrits, jumpAlongPunish,
 				punishCritsForT1c, t1cCrits, critBacks, t1cJumps, t1cHits, t1cSprintHits,
-				comboReadyTicks, comboSwung, comboGuard, comboLocked, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, comboOtherFalling, airJumpHitsFree, counterHits, readyTicks, readySwung, readyLocked, readyHeldFalling, readyHeldOther, uppercutComboHits, fallingJumpComboHits, strafeComboHits);
+				comboReadyTicks, comboSwung, comboGuard, comboLocked, comboLockedOnBody, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, comboOtherFalling, airJumpHitsFree, counterHits, readyTicks, readySwung, readyLocked, readyLockedOnBody, readyHeldFalling, readyHeldOther, uppercutComboHits, fallingJumpComboHits, strafeComboHits);
 		punishCritsForT1c = t1cCrits = critBacks = 0;
 		t1cJumps = t1cHits = t1cSprintHits = 0;
 		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = comboOtherFalling = 0;
@@ -722,6 +724,7 @@ public final class SchoolSession implements AgentSession {
 		counterHits = 0;
 		readyTicks = readySwung = readyHeldFalling = readyHeldOther = 0;
 		comboLocked = readyLocked = 0;
+		comboLockedOnBody = readyLockedOnBody = 0;
 		uppercutComboHits = fallingJumpComboHits = strafeComboHits = 0;
 		enteredByJump = enteredByWalk = 0;
 		jumpAlongs = jumpAlongCrits = jumpAlongPunish = 0;
@@ -4004,6 +4007,7 @@ public final class SchoolSession implements AgentSession {
 				} else if (!ActionSpace.unlocked(keys, ActionSpace.ATTACK)) {
 					// Run 57: the swing was not open (crosshair off them or the sword's lock): no choice was the network's.
 					comboLocked++;
+					comboLockedOnBody += facts.onBody ? 1 : 0;
 				} else if (!me.onGround()) {
 					comboOwnAir++;
 					comboAirLifted += liftedFor >= 0 ? 1 : 0;
@@ -4022,6 +4026,7 @@ public final class SchoolSession implements AgentSession {
 					readySwung++;
 				} else if (!ActionSpace.unlocked(keys, ActionSpace.ATTACK)) {
 					readyLocked++;
+					readyLockedOnBody += facts.onBody ? 1 : 0;
 				} else if (reader.duel.them.falling() || truth.botFalling()) {
 					readyHeldFalling++;
 				} else {
@@ -4467,7 +4472,10 @@ public final class SchoolSession implements AgentSession {
 				+ "a third after %d (%.0f%%)", c[0], c[1], 100.0 * c[1] / Math.max(1, c[0]), c[2], 100.0 * c[2] / Math.max(1, c[0]), c[3], c[4],
 				100.0 * c[4] / Math.max(1, c[3]))
 				+ (c[5] == 0 ? "" : String.format(Locale.ROOT, "; outside their combo on the ground, sword ready, them in reach: %d ticks, swung %.0f%%, held with them falling %.0f%%, held otherwise %.0f%%",
-						c[5], 100.0 * c[6] / c[5], 100.0 * c[7] / c[5], 100.0 * c[8] / c[5]));
+						c[5], 100.0 * c[6] / c[5], 100.0 * c[7] / c[5], 100.0 * c[8] / c[5]))
+				+ (c[5] == 0 ? "" : String.format(Locale.ROOT, ", crosshair off them %.0f%% (on its body but no pick %.0f%%)", 100.0 * c[9] / c[5], 100.0 * c[10] / c[5]))
+				+ (c[11] == 0 ? "" : String.format(Locale.ROOT, "; in their combo, sword ready, them in reach: %d ticks, swung %.0f%%, crosshair off them %.0f%%",
+						c[11], 100.0 * c[12] / c[11], 100.0 * c[13] / c[11]));
 	}
 
 	/**
@@ -4480,17 +4488,35 @@ public final class SchoolSession implements AgentSession {
 			return;
 		}
 		boolean theirCombo = clock.ticksSinceHitTaken <= 20 && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken;
-		if (theirCombo || !mc.player.onGround() || charge < 0.95f || facts.reachDist > 3.0f) {
+		if (charge < 0.95f || facts.reachDist > 3.0f) {
 			return;
 		}
 		long[] c = swingCount[side];
+		boolean swung = action[ActionSpace.ATTACK] == 1;
+		if (theirCombo) {
+			// Run 61 (counter only): the swing back in their combo, A against B (PROBLEMS.md 1), and whether the crosshair was off them.
+			c[11]++;
+			if (swung) {
+				c[12]++;
+			} else if (!onOpponent()) {
+				c[13]++;
+			}
+			return;
+		}
+		if (!mc.player.onGround()) {
+			return;
+		}
 		c[5]++;
-		if (action[ActionSpace.ATTACK] == 1) {
+		if (swung) {
 			c[6]++;
 		} else if (themFalling) {
 			c[7]++;
 		} else {
 			c[8]++;
+		}
+		if (!onOpponent()) {
+			c[9]++;
+			c[10] += facts.onBody ? 1 : 0;
 		}
 	}
 
