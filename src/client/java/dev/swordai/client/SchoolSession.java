@@ -130,7 +130,12 @@ public final class SchoolSession implements AgentSession {
 	 * the camera and positions as they are now (nothing moves between this step and that pick): the entity counts when the ray meets
 	 * its box within entityInteractionRange and before any block, as GameRenderer.pick / filterHitResult do.
 	 */
-	static final boolean FRESH_PICK = true;
+	// Run 73b2 (07:25): OFF. The pick from the positions now but the camera before this tick's turn mismatched the aim: the turn is
+	// made to follow them to where they are now, so last tick's pick (old positions, the aim that went with them) was the closer
+	// guess. In 6 updates the swing was not open on 55% of the ready ticks in their combo (42-46% before), freed 35 against closed 41,
+	// and the punish crit chances critted fell 54% -> 49%. Doing it right needs this tick's turn (the aim rule's plan through a copy of
+	// the hand) before the swing is gated.
+	static final boolean FRESH_PICK = false;
 	/** Run 73: ticks where the fresh pick and last tick's disagreed: freed (fresh on them, stale not) and closed (stale on them, fresh not). */
 	private int freshFreed, freshClosed;
 	/** Run 73: this step's pick as the attack will see it (FRESH_PICK), for the camera lesson after the guard. */

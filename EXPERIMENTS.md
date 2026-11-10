@@ -829,3 +829,18 @@ Gates (1-2 h):
 - Swing in their combo in training up from 26-28%.
 - Fresh pick: freed > closed.
 - Punish crit chances critted >= 50%; swings on them >= 94%.
+
+Run 73 live 07:13 (all tests passed). Run 73b2 (07:25): FRESH_PICK OFF, run 73b (the lesson's nearest-point target and the camera counters) kept.
+
+In 6 updates with the fresh pick:
+- The swing was not open on 55% of the ready ticks in their combo (42-46% before); swung 24%.
+- Freed 35 vs closed 41.
+- Punish crit chances critted 54% -> 49%.
+
+Why (my mistake): positions now with the camera before this tick's turn mismatch the aim. The turn follows them to where they are now, so last tick's pick (old positions with their aim) was the better guess. A correct fresh pick needs this tick's turn first.
+
+First camera split (6 updates, their combo, ready):
+- The aim rule's camera: 253 ticks, on body no pick 25%, off body 17%.
+- The network's: 894 ticks, on body no pick 15%, off body 37%.
+
+The rule fails by its aim point; the network fails by being off them.
