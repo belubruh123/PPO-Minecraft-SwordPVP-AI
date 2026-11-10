@@ -212,7 +212,9 @@ public final class Style {
 		// in). Drawn last again.
 		// Run 59b: halved (0.3-1.0 before). The bench after run 60 had their whiffs at 10% (real 29%, 51% before run 60).
 		closeIn = 0.1f + 0.4f * rng.nextFloat();
-		flyOut = 0.2f + 0.4f * rng.nextFloat();
+		// Run 59b: off again (agent 4: the arena showed its knockback 3-4 ticks late, so the fly-out fired late and added a tail real
+		// players do not have). The draw is kept so the other draws stay as they were.
+		flyOut = 0f * rng.nextFloat();
 		return this;
 	}
 
