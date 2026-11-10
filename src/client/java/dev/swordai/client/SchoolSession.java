@@ -3565,8 +3565,10 @@ public final class SchoolSession implements AgentSession {
 					// Run 65: not while told the jump reset in their combo (T9a) or the jump and S (C3): that moment is theirs.
 					Technique toldNow = learner.told();
 					// Run 68: nor in the T1c window after its punish crit (their crit on its rising T1c jump is the expected course).
+					// Run 71 (Fable): nor while told T1c or T9b (SchoolStages.COUNTER_JUMPS_TAUGHT): the jump right after its own hit is the document's.
 					if (prevVy > 0.0 && ownAirTicks >= AIR_HIT_FROM_TICK && toldNow != Technique.T9A && toldNow != Technique.C3
-							&& !(T1C_CREDIT && inT1cWindow)) {
+							&& !(T1C_CREDIT && inT1cWindow)
+							&& !(dev.swordai.core.school.SchoolStages.COUNTER_JUMPS_TAUGHT && (toldNow == Technique.T1C || toldNow == Technique.T9B))) {
 						reward -= AIR_JUMP_HIT;
 						airJumpHits++;
 					} else {

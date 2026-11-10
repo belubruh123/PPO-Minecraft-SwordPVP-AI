@@ -89,4 +89,18 @@ class JumpAlongTest {
 		assertEquals(SchoolStages.K3_GATED_HEADS, SchoolStages.taughtHeads(Technique.K3.ordinal()));
 		assertTrue(SchoolStages.runTaught(Technique.K3.ordinal()));
 	}
+
+	/** Run 71: the jump and crit again after its punish crit (T1c) and the jump right after its attack (T9b) have their own layers. */
+	@Test
+	void theCounterJumpsAreTaughtIntoTheirOwnLayers() {
+		org.junit.jupiter.api.Assumptions.assumeTrue(SchoolStages.COUNTER_JUMPS_TAUGHT, "the counter jumps are not taught");
+		assertEquals(SchoolStages.T1C_GATED_HEADS, SchoolStages.gatedHeads(Technique.T1C.ordinal()));
+		assertEquals(SchoolStages.T1C_GATED_HEADS, SchoolStages.taughtHeads(Technique.T1C.ordinal()));
+		assertEquals(SchoolStages.T9B_GATED_HEADS, SchoolStages.gatedHeads(Technique.T9B.ordinal()));
+		assertEquals(SchoolStages.T9B_GATED_HEADS, SchoolStages.taughtHeads(Technique.T9B.ordinal()));
+		assertTrue(SchoolStages.runTaught(Technique.T1C.ordinal()) && SchoolStages.runTaught(Technique.T9B.ordinal()));
+		// A technique with no layer of its own keeps every head in the shared network, as before.
+		assertEquals(0, SchoolStages.gatedHeads(Technique.T7.ordinal()));
+		assertEquals(dev.swordai.core.rl.ActionSpace.ALL_HEADS, SchoolStages.taughtHeads(Technique.T7.ordinal()));
+	}
 }
