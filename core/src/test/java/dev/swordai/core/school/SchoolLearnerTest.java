@@ -141,6 +141,8 @@ class SchoolLearnerTest {
 				}
 				SchoolPpo.Settings set = new SchoolPpo.Settings();
 				set.ruledPull = pulled == 1 ? 1f : 0f;
+				// The flat pull of run 30 (run 72's by-the-outcome pull is tested below on its own).
+				set.ruledByOutcome = false;
 				last = l.update(set, 1e-3f);
 				assertTrue(Float.isFinite(last.policyLoss), last.toString());
 			}
@@ -149,6 +151,75 @@ class SchoolLearnerTest {
 			l.close();
 		}
 		assertTrue(gain[1] > 0.2f && gain[1] > gain[0] + 0.15f, "jump chance gained " + gain[0] + " without the ruled pull, " + gain[1] + " with it");
+	}
+
+	/**
+	 * Run 72: a rule's key the rule pressed (locked in the step) is pulled only where the moment went better than the critic
+	 * expected. Where the rule jumped on the moments that went well and held the jump on those that went badly, the flat pull
+	 * cancels out and the by-the-outcome pull learns the jump.
+	 */
+	@Test
+	void theRulesKeyIsPulledOnlyWhereItsMomentWentWell() {
+		float[] gain = new float[2];
+		int open = ActionSpace.ALL_HEADS & ~ActionSpace.mask(ActionSpace.JUMP);
+		int off = ActionSpace.OFFSETS[ActionSpace.JUMP];
+		for (int filtered = 0; filtered < 2; filtered++) {
+			SchoolNet net = new SchoolNet(4L);
+			SchoolCritic critic = new SchoolCritic(5L);
+			try (SchoolPpo ppo = new SchoolPpo(net, critic, 1)) {
+				Random rng = new Random(8);
+				SchoolRollout r = new SchoolRollout(512);
+				SchoolRollout.Step s = new SchoolRollout.Step();
+				for (int t = 0; t < 512; t++) {
+					fillRuledJump(rng, s);
+					boolean wentWell = t % 2 == 0;
+					// The rule's key: the jump on the moments that went well, no jump on the others.
+					s.teacher[off] = wentWell ? 0f : 1f;
+					s.teacher[off + 1] = wentWell ? 1f : 0f;
+					s.headMask = open;
+					s.policyWeight = 1f;
+					java.util.Arrays.fill(s.action, 0);
+					s.action[ActionSpace.JUMP] = wentWell ? 1 : 0;
+					s.logp = 0f;
+					s.value = 0f;
+					r.add(s, 0f, t % 100 == 99);
+				}
+				for (int i = 0; i < r.size; i++) {
+					r.advantage[i] = (i % 2 == 0 ? 1f : -1f) * (1f + rng.nextFloat());
+					r.ret[i] = r.advantage[i];
+				}
+				float before = jumpChanceOf(net, rng);
+				SchoolPpo.Settings set = new SchoolPpo.Settings();
+				set.ruledPull = 1f;
+				set.ruledByOutcome = filtered == 1;
+				SchoolPpo.Stats last = null;
+				for (int u = 0; u < 4; u++) {
+					last = ppo.update(r, rng, set);
+					assertTrue(Float.isFinite(last.policyLoss), last.toString());
+				}
+				assertTrue(last.ruledSteps > 0, last.toString());
+				assertEquals(filtered == 1, last.ruledPulled > 0 && last.ruledHeld > 0, last.toString());
+				gain[filtered] = jumpChanceOf(net, rng) - before;
+			}
+		}
+		assertTrue(gain[1] > 0.2f && gain[1] > gain[0] + 0.15f, "jump chance gained " + gain[0] + " with the flat pull, " + gain[1] + " by the outcome");
+	}
+
+	/** The network's chance of the jump on random observations with nothing on the side input. */
+	private static float jumpChanceOf(SchoolNet net, Random rng) {
+		SchoolNet.Workspace ws = net.newWorkspace();
+		SchoolRollout.Step s = new SchoolRollout.Step();
+		float[] side = new float[SchoolNet.SIDE];
+		float sum = 0f;
+		for (int i = 0; i < 50; i++) {
+			fill(rng, s);
+			net.forward(ws, s.obs.base.peri, s.obs.base.fovea, s.obs.base.vec, s.obs.mem, side);
+			int[] act = new int[ActionSpace.HEADS];
+			net.conditionJump(ws, act);
+			int off = ActionSpace.OFFSETS[ActionSpace.JUMP];
+			sum += (float) (1.0 / (1.0 + Math.exp(ws.logits[off] - ws.logits[off + 1])));
+		}
+		return sum / 50;
 	}
 
 	/** With the anchor to the frozen base on, the base's chances replace the targets of the keys nobody teaches, but not a key the rules press. */

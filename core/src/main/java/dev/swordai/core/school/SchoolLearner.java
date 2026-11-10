@@ -290,6 +290,8 @@ public final class SchoolLearner implements AutoCloseable {
 		replay.addFrom(rollout);
 		selfReplay.addSelf(rollout);
 		if (set.ruledPull > 0f) {
+			// Run 72: the rules' examples kept only where the rule's key won by the outcome (SchoolPpo.RULED_AWR).
+			ruledReplay.byOutcome = set.ruledByOutcome;
 			ruledReplay.addFrom(rollout);
 		}
 		if (set.oldPull > 0f) {
