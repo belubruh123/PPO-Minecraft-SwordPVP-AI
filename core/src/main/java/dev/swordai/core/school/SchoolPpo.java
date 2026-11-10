@@ -65,6 +65,8 @@ public final class SchoolPpo implements AutoCloseable {
 		 * step or not: the network learns what the rules do wherever they speak, which the lock kept from it until run 30.
 		 */
 		public float ruledPull;
+		/** Run 72 (Fable): the rules' keys pulled by the outcome ({@link SchoolPpo#RULED_AWR}); a setting so that a test can turn it off. */
+		public boolean ruledByOutcome = RULED_AWR;
 		/** Minibatches of the rules' keys kept (TeacherReplay#ruledOnly, drawn rule first), after the update. */
 		public int ruledBatches = 12;
 		/** Learn the critic only. */
@@ -103,6 +105,9 @@ public final class SchoolPpo implements AutoCloseable {
 		public float ruledCe;
 		public float ruledAgree;
 		public int ruledSteps;
+		/** Run 72: ruled head-ticks pulled (the rule's key won by the outcome) and held back, a tick-weighted count. */
+		public int ruledPulled;
+		public int ruledHeld;
 		/** The same per head (ActionSpace order): which of the rules' keys the network still does not read. */
 		public final float[] ruledCeHead = new float[ActionSpace.HEADS];
 		public final float[] ruledAgreeHead = new float[ActionSpace.HEADS];
@@ -147,11 +152,11 @@ public final class SchoolPpo implements AutoCloseable {
 			return String.format(java.util.Locale.ROOT,
 					"%d steps, %d epochs, policy %.4f, value %.4f, kl %.4f, clipped %.2f, explained %.2f, lr %.1e, entropy W/S %.2f jump %.2f swing %.2f, "
 							+ "teacher: technique ce %.3f agree %.0f%% on %d, installed ce %.3f (body %.3f), "
-							+ "punish crit swing under the rules: swung %.0f%% of %d, held %.0f%% of %d, rules' keys: ce %.3f agree %.0f%% on %d (by head: %s) (by rule: %s), "
+							+ "punish crit swing under the rules: swung %.0f%% of %d, held %.0f%% of %d, rules' keys: ce %.3f agree %.0f%% on %d (by head: %s) (by rule: %s), rules' keys by the outcome: pulled %d held %d, "
 							+ "open-tick entropy W/S %.2f (%d) jump %.2f (%d) swing %.2f (%d), entropy coef W/S %.3f jump %.3f swing %.3f, seen history |w| %.3f, %d ms",
 					samples, epochs, policyLoss, valueLoss, kl, clipFraction, explained, actorLr, entropy[ActionSpace.FORWARD],
 					entropy[ActionSpace.JUMP], entropy[ActionSpace.ATTACK], techCe, 100f * techAgree, techSteps, oldCe, oldBodyCe,
-					100f * shadowSwingAgree, shadowSwings, 100f * shadowHoldAgree, shadowHolds, ruledCe, 100f * ruledAgree, ruledSteps, ruledHeadsLine(), ruleLine(),
+					100f * shadowSwingAgree, shadowSwings, 100f * shadowHoldAgree, shadowHolds, ruledCe, 100f * ruledAgree, ruledSteps, ruledHeadsLine(), ruleLine(), ruledPulled, ruledHeld,
 					entropyOpen[ActionSpace.FORWARD], entropyOpenN[ActionSpace.FORWARD], entropyOpen[ActionSpace.JUMP], entropyOpenN[ActionSpace.JUMP],
 					entropyOpen[ActionSpace.ATTACK], entropyOpenN[ActionSpace.ATTACK], entropyCoef[ActionSpace.FORWARD], entropyCoef[ActionSpace.JUMP],
 					entropyCoef[ActionSpace.ATTACK], seenNorm, millis);
@@ -183,6 +188,19 @@ public final class SchoolPpo implements AutoCloseable {
 	static final float[] ENTROPY_FLOORS = {0f, 0f, 0.12f, 0f, 0f, 0.08f, 0.25f};
 	static final float ENTROPY_COEF_MOST = 0.08f;
 	static final float ENTROPY_COEF_STEP = 1.3f;
+
+	/**
+	 * Run 72 (Fable): the rules' keys pulled by the outcome, as the technique teachers' have been since run 11 (FROM_THE_FIGHT),
+	 * instead of flat on every tick a rule had keys (about 1770 head-ticks of 4184 an update, a controller holding the agreement at
+	 * CE 0.25). Flat, the pull pins the network to the rules, mistakes and all ("pinned to the teacher it can only tie it"); the
+	 * fights without the rules ran at net -100 to -480 a minute for ten days. Now a rule's key is a target only where the fight
+	 * says it was the better key: on a tick the rule PRESSED the key (locked), where the moment went better than the critic
+	 * expected (advantage above zero); on a tick the network pressed its own key (a fight without the rules), where its own key
+	 * disagreed with the rule's and the moment went worse than expected (the rule's key as the correction, as DAgger's expert).
+	 * Weighed by the advantage like the teachers' keys (TEACH_AWR_MOST). The rules' replay keeps only such examples too
+	 * (TeacherReplay#byOutcome). The agreement is still measured on every ruled tick, so the take-over's controller reads as before.
+	 */
+	public static final boolean RULED_AWR = true;
 
 	private final SchoolNet actor;
 	private final SchoolCritic critic;
@@ -248,6 +266,9 @@ public final class SchoolPpo implements AutoCloseable {
 		double ruledCe;
 		int ruledAgree;
 		int ruledSteps;
+		/** Run 72: ruled head-ticks pulled (the rule's key won by the outcome) and held back. */
+		int ruledPulled;
+		int ruledHeld;
 		final double[] ruledCeHead = new double[ActionSpace.HEADS];
 		final int[] ruledAgreeHead = new int[ActionSpace.HEADS];
 		final int[] ruledNHead = new int[ActionSpace.HEADS];
@@ -278,6 +299,8 @@ public final class SchoolPpo implements AutoCloseable {
 			ruledCe = 0;
 			ruledAgree = 0;
 			ruledSteps = 0;
+			ruledPulled = 0;
+			ruledHeld = 0;
 			java.util.Arrays.fill(ruledCeHead, 0);
 			java.util.Arrays.fill(ruledAgreeHead, 0);
 			java.util.Arrays.fill(ruledNHead, 0);
@@ -385,6 +408,19 @@ public final class SchoolPpo implements AutoCloseable {
 					// body keys' ce down fast (jump 0.57 to 0.26 in 6 updates), and a heavier positive would spread the jump (runs 22, 24).
 					// The tick of a hit taken is the exception (HIT_TICK_WEIGHT).
 					pull = set.ruledPull * (dev.swordai.core.rl.JumpReset.hitOnThisTick(r.vec[i]) ? HIT_TICK_WEIGHT : 1f);
+					// Run 72: by the outcome (RULED_AWR): the rule's key where it was pressed and the moment went well, or where the
+					// network's own key disagreed with it and the moment went badly; nowhere else.
+					if (set.ruledByOutcome) {
+						boolean lockedHere = !ActionSpace.unlocked(mask, h);
+						boolean agreed = stored[ActionSpace.OFFSETS[h] + r.action[i][h]] >= Teacher.ANY;
+						boolean ruleWon = lockedHere ? adv > 0f : !agreed && adv < 0f;
+						pull = ruleWon ? pull * (float) Math.min(TEACH_AWR_MOST, Math.exp(Math.abs(adv) / TEACH_AWR_BETA)) : 0f;
+						if (ruleWon) {
+							ruledPulled++;
+						} else {
+							ruledHeld++;
+						}
+					}
 				} else if (!byTech && !installedHere || shadowed && !byTech) {
 					continue;
 				}
@@ -555,6 +591,8 @@ public final class SchoolPpo implements AutoCloseable {
 		double ruledCe = 0;
 		long ruledAgree = 0;
 		long ruledSteps = 0;
+		long ruledPulled = 0;
+		long ruledHeld = 0;
 		double[] ruledCeHeads = new double[ActionSpace.HEADS];
 		long[] ruledAgreeHeads = new long[ActionSpace.HEADS];
 		long[] ruledNHeads = new long[ActionSpace.HEADS];
@@ -603,6 +641,8 @@ public final class SchoolPpo implements AutoCloseable {
 					ruledCe += w.ruledCe;
 					ruledAgree += w.ruledAgree;
 					ruledSteps += w.ruledSteps;
+					ruledPulled += w.ruledPulled;
+					ruledHeld += w.ruledHeld;
 					for (int h = 0; h < ActionSpace.HEADS; h++) {
 						ruledCeHeads[h] += w.ruledCeHead[h];
 						ruledAgreeHeads[h] += w.ruledAgreeHead[h];
@@ -658,6 +698,8 @@ public final class SchoolPpo implements AutoCloseable {
 		st.ruledCe = ruledSteps == 0 ? 0f : (float) (ruledCe / ruledSteps);
 		st.ruledAgree = ruledSteps == 0 ? 0f : (float) ruledAgree / ruledSteps;
 		st.ruledSteps = (int) (ruledSteps / Math.max(1, st.epochs));
+		st.ruledPulled = (int) (ruledPulled / Math.max(1, st.epochs));
+		st.ruledHeld = (int) (ruledHeld / Math.max(1, st.epochs));
 		for (int h = 0; h < ActionSpace.HEADS; h++) {
 			st.ruledCeHead[h] = ruledNHeads[h] == 0 ? 0f : (float) (ruledCeHeads[h] / ruledNHeads[h]);
 			st.ruledAgreeHead[h] = ruledNHeads[h] == 0 ? 0f : (float) ruledAgreeHeads[h] / ruledNHeads[h];

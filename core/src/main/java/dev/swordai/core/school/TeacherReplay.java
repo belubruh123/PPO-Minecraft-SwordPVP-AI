@@ -85,8 +85,33 @@ public final class TeacherReplay {
 		return size;
 	}
 
+	/** Run 72 (Fable): with {@link #ruledOnly}, keep only the examples whose rule's key won by the outcome (SchoolPpo#RULED_AWR). */
+	public boolean byOutcome;
+
 	/** Keeps every step of {@code r} on which a technique teacher spoke. */
 	public void addFrom(SchoolRollout r) {
+		float advMean = 0f;
+		float advStd = 1f;
+		if (ruledOnly && byOutcome) {
+			double mean = 0;
+			double n = 0;
+			for (int i = 0; i < r.size; i++) {
+				if (r.policyWeight[i] > 0f) {
+					mean += r.advantage[i];
+					n++;
+				}
+			}
+			mean /= Math.max(1, n);
+			double var = 0;
+			for (int i = 0; i < r.size; i++) {
+				if (r.policyWeight[i] > 0f) {
+					double d = r.advantage[i] - mean;
+					var += d * d;
+				}
+			}
+			advMean = (float) mean;
+			advStd = (float) Math.sqrt(var / Math.max(1, n)) + 1e-8f;
+		}
 		for (int i = 0; i < r.size; i++) {
 			// Only where the network was told the technique the teacher was doing: else "told X, do Y" would be taught.
 			if (!r.intentAgrees[i]) {
@@ -98,6 +123,21 @@ public final class TeacherReplay {
 				h = r.ruledHeads[i];
 				if (h == 0) {
 					continue;
+				}
+				// Run 72: only where the rule's key won by the outcome: pressed by the rule (locked) and the moment went better than
+				// expected, or the network's own key disagreed with it and the moment went worse (SchoolPpo#teach, the same test).
+				if (byOutcome) {
+					boolean locked = (h & ~r.headMask[i]) != 0;
+					float z = (r.advantage[i] - advMean) / advStd;
+					boolean disagreed = false;
+					for (int k = 0; k < ActionSpace.HEADS; k++) {
+						if ((h & (1 << k)) != 0 && r.teacher[i][ActionSpace.OFFSETS[k] + r.action[i][k]] < Teacher.ANY) {
+							disagreed = true;
+						}
+					}
+					if (!(locked ? z > 0f : disagreed && z < 0f) || r.policyWeight[i] <= 0f) {
+						continue;
+					}
 				}
 				// Steps no rule had keys on (run 30g: every open body key is a lesson in a fight without the rules) are most of them: one in four is kept,
 				// so that they do not push the rare rules' examples out of the buffer.
