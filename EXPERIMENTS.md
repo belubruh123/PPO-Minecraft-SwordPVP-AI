@@ -707,3 +707,82 @@ The 21:12 check (run 68): ROUNDS WON A 17/45, B 19/45 (z -0.5); damage A 353/419
 
 Not taken from it: the stage moved T-D -> T-E at about 20:53, so part of the slide may be the stage. The punish crit floor decides anyway.
 Problem 4 goes to Fable's priority list (launched 20:50, max effort).
+
+## Runs 69a/69b (Fable batch 1, merged 22:05 10 Nov; deploys with run 68b after the ~22:00 check)
+
+Fable (max effort, docs/FABLE-PLAN.md, priority P1/P2). Core only: SchoolNet, SchoolLearner, SchoolPpo, plus tests.
+
+- **69a SchoolNet.SEEN_HISTORY:** the opponent's last 8 ticks become a side input (80 numbers) through two zero-start layers. Each tick holds:
+  - head visibility, x, y and area;
+  - body area;
+  - relative speed forward and up;
+  - their sword's charge;
+  - its own camera turn.
+
+  Why: two frames (100 ms) cannot show a jump's phase, a combo's rhythm, or the tick after their swing (document part 8). Old networks load and play exactly as before.
+- **69b SchoolPpo.ENTROPY_FLOOR:** each head's entropy is measured over the ticks it was OPEN. While W/S, jump or swing is under its floor (0.12, 0.08, 0.25), that head's bonus coefficient grows 1.3x an update, up to 0.08. Steps told B1 keep the old coefficient.
+
+New in the update line: "open-tick entropy ..., entropy coef ..., seen history |w| ...".
+
+Gates (50-60 updates):
+- 69a: seen history |w| rising from 0 (0.5+ within an hour); T4 and T9a by the game up; the next two checks z >= 0.
+- 69b: open-tick swing entropy reaches 0.25 within ~10 updates; swings with the crosshair on them stay >= 90%; jumps a minute off the moments not above 2x today's; punish crit chances critted back >= 50% (with run 68b).
+- If the punish crit or swings on them fall: ENTROPY_FLOOR = false first.
+
+GOING BACK: a checkpoint saved by this jar has 4 more tensors and does NOT load in an older jar. Undo 69a with SEEN_HISTORY = false, never by reinstalling an old jar. Old-format copy: swordai/school/checked-1110-2108.bin. Installing a 69a-trained network into the user's profile also needs the new jar there.
+
+## Run 70 (Fable batch 2, merged 22:15 10 Nov; deploys after the ~22:50 check): the jump along and crit in their combo (K3)
+
+Fable, problem 3, from agent 7's pickles of the user's duels: 300 jump-ins taken in THEIR combo, and who hit first within 40 ticks after each answer.
+
+| Its answer | Its hit first | Theirs first | n |
+|---|---|---|---|
+| W held, no swing (what the guard leaves it doing) | 35% | 51% | 116 |
+| its own jump, no swing | 31% | 46% | 35 |
+| S held (C3) | | 60% | 5 |
+| a swing at their ground tick 0-1 (T8, allowed) | 92% | | 12 |
+| its own jump along with theirs, then the crit (K3, allowed) | 89% | 0% (trade 11%) | 27 |
+| a swing at their air ticks 3-6 (BREAKS rule 1; mostly older duels; reported for the user only, rule 1 stays) | 82% | 7% | 102 |
+
+Change:
+- PvpPlayer.jumpAlongMoment (Style.jumpAlong, the teacher's only): their take-off from beyond 3.3 (within 6.5, coming at it), in their combo, on the ground, sword 0.4+. The teacher starts Plan.K3 (jump, no W or sprint, crit falling in reach).
+- SchoolStages.JUMP_ALONG_TAUGHT: K3 joins RUN_TAUGHT; its jump, W/S, sprint and swing are taught into K3's option layer alone (run 62's method). No rule gives way, and the guard is untouched.
+
+Gates (1-2 h):
+- "jumped along with their jump-in N, crits then M": N toward 10+ an update, M > 0 and rising.
+- K3 done rate 22% -> 60%+ when told.
+- In their combo, held by the jump-in guard (18%) falls; their third hits toward B's.
+- Punish crit chances critted not down; K2 broken not up.
+- "jumps a minute off moments" not up 2x. If it is: JUMP_ALONG_TAUGHT = false.
+
+## Run 71 (Fable batch 3, merged 22:13 10 Nov; deploys with run 70 after the ~22:50 check): T1c and T9b taught as gated options
+
+Replaces run 68's reward credit (reverted). SchoolStages.COUNTER_JUMPS_TAUGHT:
+- T1c (jump at landing after its punish crit, crit falling with the sprint off) and T9b (jump the moment after its attack, against a deflector) join RUN_TAUGHT.
+- Their keys go into their own option layers alone: T1c gets jump, W/S, sprint, swing; T9b gets jump, W/S, sprint. No rule gives way.
+- No AIR_JUMP_HIT while told T1c or T9b.
+
+Gates (1-2 h):
+- T1c 7-8% -> 20%+ of its punish crits; the jump after them up from 24%; critted back not above 26%.
+- T9b when told 0% -> 50%+.
+- Punish crit chances critted not down; "jumps a minute off moments" not above 2x.
+- Revert: COUNTER_JUMPS_TAUGHT = false. If the punish crit falls after runs 70+71 deploy together, revert 71 first (closest to B1).
+
+## Run 72 (Fable batch 4, merged 02:58 11 Nov; deploys after the ~03:12 check): the rules' keys pulled by the outcome (SchoolPpo.RULED_AWR)
+
+Before: the rules' keys were a flat target on every ruled tick (~3400 head-ticks an update), which pins the network to the rules, mistakes and all.
+
+Now a rule's key is a target only where the fight says it was better:
+- on a tick the rule pressed it, where the advantage is above zero;
+- on a tick the network pressed its own key, where that disagreed with the rule's and the advantage is below zero.
+
+Weighed by the advantage like the technique teachers' keys since run 11. The rules' replay keeps only such examples. Agreement is still measured on every ruled tick. New in the update line: "rules' keys by the outcome: pulled N held M".
+
+Gates (2-3 h):
+- Fights without the rules: net from -100..-200 a minute toward 0.
+- Rules' agree may drift to 80-85% and the pull climb to its cap 0.6.
+- Checks not behind. Punish crit chances critted >= 50% (61% before).
+- Revert (RULED_AWR = false): agree under 80% for an hour, or jumps/S spreading off the moments.
+- After ~3 h: one rules-off paired check (A without the rules vs B), the direct measure of this stage.
+
+Fable's note: 69b's swing coefficient sits at its 0.08 cap with the open-tick entropy at 0.23, under the 0.25 floor. Harmless so far; ENTROPY_FLOORS[swing] 0.20 would let it relax.
