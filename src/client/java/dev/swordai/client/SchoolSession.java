@@ -722,9 +722,10 @@ public final class SchoolSession implements AgentSession {
 				punishCritsForT1c, t1cCrits, critBacks, t1cJumps, t1cHits, t1cSprintHits,
 				comboReadyTicks, comboSwung, comboGuard, comboLocked, comboLockedOnBody, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, comboOtherFalling, airJumpHitsFree, counterHits, readyTicks, readySwung, readyLocked, readyLockedOnBody, readyHeldFalling, readyHeldOther, uppercutComboHits, fallingJumpComboHits, strafeComboHits)
 				// Run 63: the opponent's news held back for lag since the game started (moves; whole packets, which must not stay 0).
-				+ String.format(Locale.ROOT, " | held back for lag: moves %d, packets %d | camera taught onto them in their combo %d", SeenLag.heldBack(),
-						SeenLag.heldPackets(), comboTrackTaught);
+				+ String.format(Locale.ROOT, " | held back for lag: moves %d, packets %d | camera taught onto them in their combo %d | combo-escape scenes picked %d (won %d of %d)",
+						SeenLag.heldBack(), SeenLag.heldPackets(), comboTrackTaught, comboScenePicks, kindWon[KIND_COMBO], kindFights[KIND_COMBO]);
 		comboTrackTaught = 0;
+		comboScenePicks = 0;
 		punishCritsForT1c = t1cCrits = critBacks = 0;
 		t1cJumps = t1cHits = t1cSprintHits = 0;
 		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = comboOtherFalling = 0;
@@ -1216,6 +1217,15 @@ public final class SchoolSession implements AgentSession {
 	private int keepComboAt;
 	/** In a scene fight: their most hits in a row from its start. */
 	private int sceneRow;
+	/**
+	 * Run 66: a hit of its own in the scene fight. Agent 5 (10 Nov): real players get out of its combos by hitting back (80% of its 2+
+	 * combos end so); a combo scene was won by fewer than two of their hits in a row, which a restored bot that did not go on with its
+	 * combo gave away (combo replays "learned" in 3 tries).
+	 */
+	private boolean sceneDealtAny;
+	/** Run 66: the share of training fights that are a combo-escape scene, ahead of the repeat queue (run 57's focus never ran under it). */
+	static final float COMBO_SCENE_SHARE = 0.15f;
+	private int comboScenePicks;
 	private final int[] kindFights = new int[KINDS];
 	private final int[] kindWon = new int[KINDS];
 
@@ -1724,6 +1734,20 @@ public final class SchoolSession implements AgentSession {
 		return repeatScene != null && rng.nextFloat() < REPEAT_SHARE;
 	}
 
+	/** Run 66: one of the combo scenes (their combo it did not get out of), COMBO_SCENE_SHARE of the time; null otherwise. */
+	private Scene comboScenePick() {
+		if (rng.nextFloat() >= COMBO_SCENE_SHARE) {
+			return null;
+		}
+		List<Scene> combos = new ArrayList<>();
+		for (Scene sc : scenes) {
+			if (sc.kind == KIND_COMBO) {
+				combos.add(sc);
+			}
+		}
+		return combos.isEmpty() ? null : combos.get(rng.nextInt(combos.size()));
+	}
+
 	private boolean repeatActive() {
 		return REPEAT_UNTIL_LEARNED && repeatScene != null;
 	}
@@ -1747,6 +1771,9 @@ public final class SchoolSession implements AgentSession {
 				return sceneOwnBroken ? -1 : sceneOwnHits >= 2 ? 1 : 0;
 			case KIND_OWN2:
 				return sceneOwnBroken ? -1 : sceneOwnHits >= 1 ? 1 : 0;
+			case KIND_COMBO:
+				// Run 66: lost at their second hit in a row (or a K2 broken), won by a hit of its own before that.
+				return sceneRowMost >= 2 || sceneK2 ? -1 : sceneDealtAny ? 1 : 0;
 			default:
 				return 0;
 		}
@@ -2707,6 +2734,7 @@ public final class SchoolSession implements AgentSession {
 		comboFrom = -1;
 		sceneRow = 0;
 		sceneRowMost = 0;
+		sceneDealtAny = false;
 		IntegratedServer server = mc.getSingleplayerServer();
 		if (server == null) {
 			stop("left the world");
@@ -2789,7 +2817,12 @@ public final class SchoolSession implements AgentSession {
 		} else {
 			boolean drill = mode == Mode.TRAIN && rng.nextFloat() < DRILL_SHARE;
 			sceneReview = false;
-			if (repeatPick(drill)) {
+			Scene comboPick = mode == Mode.TRAIN && !drill ? comboScenePick() : null;
+			if (comboPick != null) {
+				// Run 66: a combo-escape scene, ahead of the repeat queue.
+				sceneNow = comboPick;
+				comboScenePicks++;
+			} else if (repeatPick(drill)) {
 				sceneNow = repeatScene;
 			} else if (mode == Mode.TRAIN && !drill && (!scenes.isEmpty() || !mastered.isEmpty())
 					&& rng.nextFloat() < (repeatActive() ? (mastered.isEmpty() ? 0f : REPEAT_TEST_SHARE) : sceneChance())) {
@@ -4688,7 +4721,8 @@ public final class SchoolSession implements AgentSession {
 			boolean sceneWon = sceneNow.kind == KIND_PUNISH || sceneNow.kind == KIND_PUNISH2 ? !sceneK2 && sceneOwnCrit
 					: sceneNow.kind == KIND_DEFLECT ? sceneDeflected
 					: sceneNow.kind == KIND_JUMPIN || sceneNow.kind == KIND_JUMPIN2 ? !sceneK2 && (!sceneHit || sceneAnswer)
-					: sceneNow.kind == KIND_COMBO ? sceneRowMost < 2
+					// Run 66: and a hit of its own in it (out of their combo by hitting back, as real players get out of its), no K2 broken.
+					: sceneNow.kind == KIND_COMBO ? sceneRowMost < 2 && sceneDealtAny && !sceneK2
 					: sceneNow.kind == KIND_OWN ? sceneOwnHits >= 2 && !sceneOwnBroken
 					: sceneNow.kind == KIND_OWN2 ? sceneOwnHits >= 1 && !sceneOwnBroken
 					// Run 48l: the crit replays (and any other kind judged by damage) never won by a K2 broken (a sprint hit on the
@@ -5229,6 +5263,7 @@ public final class SchoolSession implements AgentSession {
 		if (sceneNow != null) {
 			sceneRow = taken ? sceneRow + 1 : dealt ? 0 : sceneRow;
 			sceneRowMost = Math.max(sceneRowMost, sceneRow);
+			sceneDealtAny |= dealt;
 			return;
 		}
 		if (secondHitAt >= 0 && (dealt || fightTicks - secondHitAt > JUMPIN_WINDOW)) {

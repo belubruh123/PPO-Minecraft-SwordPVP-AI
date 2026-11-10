@@ -615,3 +615,21 @@ Checks since run 62 (ROUNDS WON, A vs B, same seeds): 10:45 24-29 (z -1.4), 11:4
 Change: SchoolStages.COMBO_JUMP_YIELD_IN_FIGHTS = false. In a check (SchoolSession, mode != TRAIN) and in a real fight (SchoolFighter), the rules keep their keys in its own combo; in training they give way as before, so the option layers keep learning (T10/T11 at 60-100% when told).
 
 Gate: the next two checks no longer behind (z >= 0) without losing the training's combo-jump done rates.
+
+## Run 66 (10 Nov ~15:00; deploy after the ~15:20 check): the combo-escape scenes actually fought, and won only by hitting back
+
+Agent 5:
+- Run 57's focus never ran. The repeat queue (repeatPick, REPEAT_SHARE 0.6) took the scene fights, and with it active the rest were reviews of mastered scenes. The update lines read "combo scenes kept 60, won 0 of 0" in 60 of 62 updates.
+- A combo scene was "won" by fewer than two of their hits in a row, which a restored bot that did not go on with its combo gave away (learned in 3 tries).
+- Real players get out of its combos by hitting back: 80% of its 2+ combos end that way.
+
+Change:
+- COMBO_SCENE_SHARE 0.15: ahead of the repeat queue, a random KIND_COMBO scene (their combo it did not get out of; starts 20 ticks before their second hit).
+- A KIND_COMBO scene is won by fewer than 2 hits in a row AND a hit of its own AND no K2 broken; repeatOutcome is the same (-1 at their second hit in a row or a K2 broken).
+- The update line prints "combo-escape scenes picked N (won W of F)".
+
+Gates (1-2 h):
+- combo-escape scenes picked 10+ an update;
+- the win share starts low and rises;
+- the training's third hits (34-43%) fall;
+- punish crit chances critted stays >= 50%.
