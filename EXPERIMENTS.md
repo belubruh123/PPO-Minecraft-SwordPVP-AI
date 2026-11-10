@@ -754,3 +754,16 @@ Gates (1-2 h):
 - In their combo, held by the jump-in guard (18%) falls; their third hits toward B's.
 - Punish crit chances critted not down; K2 broken not up.
 - "jumps a minute off moments" not up 2x. If it is: JUMP_ALONG_TAUGHT = false.
+
+## Run 71 (Fable batch 3, merged 22:13 10 Nov; deploys with run 70 after the ~22:50 check): T1c and T9b taught as gated options
+
+Replaces run 68's reward credit (reverted). SchoolStages.COUNTER_JUMPS_TAUGHT:
+- T1c (jump at landing after its punish crit, crit falling with the sprint off) and T9b (jump the moment after its attack, against a deflector) join RUN_TAUGHT.
+- Their keys go into their own option layers alone: T1c gets jump, W/S, sprint, swing; T9b gets jump, W/S, sprint. No rule gives way.
+- No AIR_JUMP_HIT while told T1c or T9b.
+
+Gates (1-2 h):
+- T1c 7-8% -> 20%+ of its punish crits; the jump after them up from 24%; critted back not above 26%.
+- T9b when told 0% -> 50%+.
+- Punish crit chances critted not down; "jumps a minute off moments" not above 2x.
+- Revert: COUNTER_JUMPS_TAUGHT = false. If the punish crit falls after runs 70+71 deploy together, revert 71 first (closest to B1).
