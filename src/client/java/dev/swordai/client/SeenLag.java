@@ -22,17 +22,21 @@ import java.util.UUID;
  * either side and turns the server's away first.
  */
 public final class SeenLag {
-	/** News of a move, exactly as the game was about to take it in. */
-	private record Move(Entity entity, Optional<Vec3> pos, Optional<Float> yRot, Optional<Float> xRot) {
-	}
-
-	private static final LagLink<Move> LINK = new LagLink<>();
+	/**
+	 * What is held back, in the order it came: a move as the game was about to take it in, or (run 63) a whole packet about the
+	 * opponent. Until run 63 only the moves were held, and the opponent's ground flag, arm swing, hurt flash and health came at
+	 * once: the network saw its arm and its hit's flash 1-4 ticks before its body (agent 4, 10 Nov: real flag-to-rise 1 tick in
+	 * 99% of hits, the arena 2-5; flash-to-rise real p50 2-3, the arena 6). On a server they all come in the same packets.
+	 */
+	private static final LagLink<Runnable> LINK = new LagLink<>();
 	private static final Random RNG = new Random();
 	/** Null: nobody's moves are held back. */
 	private static volatile UUID opponent;
 	private static volatile boolean fighting;
 	private static boolean delivering;
 	private static long heldBack;
+	private static long heldPackets;
+	private static boolean deliverFailed;
 
 	private SeenLag() {
 	}
@@ -93,19 +97,57 @@ public final class SeenLag {
 		if (delivering || !who.equals(entity.getUUID()) || LINK.straight() || !LINK.holding()) {
 			return false;
 		}
-		LINK.send(new Move(entity, pos, yRot, xRot));
+		LINK.send(() -> {
+			Minecraft mc = Minecraft.getInstance();
+			if (!entity.isRemoved() && entity.level() == mc.level) {
+				entity.moveOrInterpolateTo(pos, yRot, xRot);
+			}
+		});
 		heldBack++;
 		return true;
 	}
 
-	private static void deliver(Move move) {
-		Minecraft mc = Minecraft.getInstance();
-		if (move.entity.isRemoved() || move.entity.level() != mc.level) {
-			return;
+	/** Run 63: for the report, how many whole packets about the opponent have been held back. */
+	public static long heldPackets() {
+		return heldPackets;
+	}
+
+	/**
+	 * Run 63: asked on the client thread as a packet about entity {@code entityId} is handled. True: the packet has been kept and
+	 * {@code handle} will hand it to the game later, in order with the opponent's moves; the game is to do nothing with it now.
+	 */
+	public static boolean holdPacket(int entityId, Runnable handle) {
+		UUID who = opponent;
+		if (who == null || !fighting || delivering || LINK.straight() || !LINK.holding()) {
+			return false;
 		}
+		Minecraft mc = Minecraft.getInstance();
+		if (!mc.isSameThread() || mc.level == null) {
+			return false;
+		}
+		Entity e = mc.level.getEntity(entityId);
+		if (e == null || !who.equals(e.getUUID())) {
+			return false;
+		}
+		LINK.send(handle);
+		heldPackets++;
+		return true;
+	}
+
+	/** {@link #holdPacket(int, Runnable)} for a packet that names its entity through the level. */
+	public static boolean holdPacket(Entity entity, Runnable handle) {
+		return entity != null && holdPacket(entity.getId(), handle);
+	}
+
+	private static void deliver(Runnable item) {
 		delivering = true;
 		try {
-			move.entity.moveOrInterpolateTo(move.pos, move.yRot, move.xRot);
+			item.run();
+		} catch (RuntimeException ex) {
+			if (!deliverFailed) {
+				deliverFailed = true;
+				System.err.println("[swordai] SeenLag: a held packet failed on delivery (shown once): " + ex);
+			}
 		} finally {
 			delivering = false;
 		}

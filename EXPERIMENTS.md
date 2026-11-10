@@ -521,3 +521,24 @@ Gates (next bench of run35-0657):
 - they hit back first after its punish crit toward 60-72%;
 - their whiffs toward 29%;
 - its sprint hits answered within 12 ticks toward 33%.
+
+## Run 63 (10 Nov, written ~12:00): every packet about the opponent held back together (a connection), not only its moves
+
+Agent 4 (the 3-hour rule, problem 8) found:
+- The arena bots ARE knocked back as hard as real players: peak away speed 0.37 both. From the visible rise, the 6-tick gain is real 1.23, bench 1.18-1.62.
+- The AI just saw it late. SeenLag held back only the opponent's moves (EntityMixin -> moveOrInterpolateTo). Its ground flag (set in handleMoveEntity/handleEntityPositionSync outside that), arm swing (handleAnimate, which the network reads), hurt flash and health came at once.
+- So the network saw the bot's arm and hit flash 1-4 ticks before its body. Real flag-to-rise is 1 tick in 99% of hits; the arena's was 2-5. Flash-to-rise is real p50 2-3, arena 6.
+- The "bots barely knocked back" metrics (6-tick gain 0.10 vs 1.31, KB hist) were reading that offset. Run 60's fly-out fired about 13 ticks late and added a backing-off tail real players do not have (now off in run 59b).
+
+Change:
+- New mixin ClientPacketLagMixin, every injection require = 0. The opponent's handleMoveEntity, handleEntityPositionSync, handleTeleportEntity, handleRotateMob, handleAnimate, handleHurtAnimation, handleEntityEvent, handleDamageEvent, handleSetEntityData and handleSetEntityMotion are held on the client thread through SeenLag's LagLink, in order with its moves, and handed in later.
+- LagLink<Runnable> instead of LagLink<Move>.
+- The update line prints "held back for lag: moves N, packets M"; packets must not stay 0.
+
+Gates (agent 4, next bench; scratchpad agentD timing.py, align.py; realvsbots, kbgain):
+- flag off to visible rise 1 tick in 90%+ of hits;
+- realvsbots "dist gain 6 ticks" p50 >= 0.9;
+- KB hist at least 40% in -0.3..-0.15 and at most 20% at >= 0;
+- control: from the visible rise, 6-tick gain still 1.1-1.6.
+
+Next: recalibrate the SeenLag draw (1 + nextInt(4)) against real swing-to-DEALT (1 tick 29%, 2 ticks 56%, 4 ticks 14%), and take the bench's DEALT from the hurt flash as real duels do.

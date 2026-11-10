@@ -716,7 +716,9 @@ public final class SchoolSession implements AgentSession {
 						+ " | in their combo with the sword ready and them in reach: %d ticks, swung %d, held by the jump-in guard %d, swing not open %d (crosshair on its body %d), in the air itself %d (lifted by their hit %d, falling %d), other %d (them falling %d); hits in its own jump not charged (falling or the jump reset's moment) %d; hits breaking into their combo (C4) %d | outside their combo on the ground, sword ready, them in reach: %d ticks, swung %d, swing not open %d (crosshair on its body %d), held with them falling %d, held otherwise %d | its combo held by an uppercut %d, a lunge or hop %d, strafing %d",
 				enteredByJump, enteredByWalk, ownJumps, ownJumpsRuleKept, ruleJumpCrits, jumpAlongs, jumpAlongCrits, jumpAlongPunish,
 				punishCritsForT1c, t1cCrits, critBacks, t1cJumps, t1cHits, t1cSprintHits,
-				comboReadyTicks, comboSwung, comboGuard, comboLocked, comboLockedOnBody, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, comboOtherFalling, airJumpHitsFree, counterHits, readyTicks, readySwung, readyLocked, readyLockedOnBody, readyHeldFalling, readyHeldOther, uppercutComboHits, fallingJumpComboHits, strafeComboHits);
+				comboReadyTicks, comboSwung, comboGuard, comboLocked, comboLockedOnBody, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, comboOtherFalling, airJumpHitsFree, counterHits, readyTicks, readySwung, readyLocked, readyLockedOnBody, readyHeldFalling, readyHeldOther, uppercutComboHits, fallingJumpComboHits, strafeComboHits)
+				// Run 63: the opponent's news held back for lag since the game started (moves; whole packets, which must not stay 0).
+				+ String.format(Locale.ROOT, " | held back for lag: moves %d, packets %d", SeenLag.heldBack(), SeenLag.heldPackets());
 		punishCritsForT1c = t1cCrits = critBacks = 0;
 		t1cJumps = t1cHits = t1cSprintHits = 0;
 		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = comboOtherFalling = 0;

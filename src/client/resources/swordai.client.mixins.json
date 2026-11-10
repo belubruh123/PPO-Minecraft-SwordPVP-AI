@@ -4,6 +4,7 @@
 	"compatibilityLevel": "JAVA_21",
 	"client": [
 		"AvatarRendererMixin",
+		"ClientPacketLagMixin",
 		"EntityMixin",
 		"FramerateLimitTrackerMixin",
 		"GameRendererMixin",
