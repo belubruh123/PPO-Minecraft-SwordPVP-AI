@@ -284,6 +284,26 @@ public final class SchoolStages {
 	public static final int K3_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP,
 			dev.swordai.core.rl.ActionSpace.FORWARD, dev.swordai.core.rl.ActionSpace.SPRINT, dev.swordai.core.rl.ActionSpace.ATTACK);
 
+	/**
+	 * Run 71 (Fable, PROBLEMS.md 4 and the sword-spent chain): the two jumps the document asks for right after its own hit, taught the
+	 * user's way (the decider picks WHEN, a gated option layer learns HOW) instead of run 68's reward credit (reverted: T1c flat at
+	 * 7-8% of its punish crits, critted back up). T1c: "after you punish-crit them, immediately jump and crit again" (Plan.T1C: the
+	 * jump at landing, the crit falling with the sprint off). T9b: "press jump the moment after you attack them, so you jump-reset
+	 * their deflection" (the teacher's timed jump after its own swing against one that deflects; T9b did 0% of its moments). Their
+	 * keys go into their own option layers alone; no rule gives way. The AIR_JUMP_HIT cost is not charged while told them (as for T9a
+	 * and C3 since run 65b): their risk is the document's, and the decider learns from the fight when they pay.
+	 */
+	public static final boolean COUNTER_JUMPS_TAUGHT = true;
+	public static final int T1C_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP,
+			dev.swordai.core.rl.ActionSpace.FORWARD, dev.swordai.core.rl.ActionSpace.SPRINT, dev.swordai.core.rl.ActionSpace.ATTACK);
+	public static final int T9B_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP,
+			dev.swordai.core.rl.ActionSpace.FORWARD, dev.swordai.core.rl.ActionSpace.SPRINT);
+
+	/** The jump and crit again after its punish crit (T1c), the jump right after its attack (T9b): run 71's counter jumps. */
+	public static boolean counterJump(int technique) {
+		return technique == Technique.T1C.ordinal() || technique == Technique.T9B.ordinal();
+	}
+
 	/** The combo escape's techniques taught by run 65: the jump reset in their rhythm (T9a) and the hit before the S (C4). */
 	public static boolean comboEscape(int technique) {
 		return technique == Technique.T9A.ordinal() || technique == Technique.C4.ordinal();
@@ -309,6 +329,9 @@ public final class SchoolStages {
 		if (JUMP_ALONG_TAUGHT && technique == Technique.K3.ordinal()) {
 			return K3_GATED_HEADS;
 		}
+		if (COUNTER_JUMPS_TAUGHT && counterJump(technique)) {
+			return technique == Technique.T1C.ordinal() ? T1C_GATED_HEADS : T9B_GATED_HEADS;
+		}
 		return technique == Technique.B1.ordinal() ? B1_GATED_HEADS : 0;
 	}
 
@@ -324,6 +347,10 @@ public final class SchoolStages {
 		// Run 70: the jump along's keys go into K3's option layer alone.
 		if (JUMP_ALONG_TAUGHT && GATED && technique == Technique.K3.ordinal()) {
 			return K3_GATED_HEADS;
+		}
+		// Run 71: the counter jumps' keys (T1c, T9b) into their own layers alone.
+		if (COUNTER_JUMPS_TAUGHT && GATED && counterJump(technique)) {
+			return gatedHeads(technique);
 		}
 		int whole = technique == Technique.B1.ordinal() ? B1_TAUGHT_HEADS : technique == Technique.T9.ordinal() ? T9_TAUGHT_HEADS
 				: technique == Technique.C3.ordinal() ? C3_TAUGHT_HEADS : dev.swordai.core.rl.ActionSpace.ALL_HEADS;
@@ -383,6 +410,10 @@ public final class SchoolStages {
 		}
 		if (JUMP_ALONG_TAUGHT) {
 			RUN_TAUGHT[Technique.K3.ordinal()] = true;
+		}
+		if (COUNTER_JUMPS_TAUGHT) {
+			RUN_TAUGHT[Technique.T1C.ordinal()] = true;
+			RUN_TAUGHT[Technique.T9B.ordinal()] = true;
 		}
 	}
 
