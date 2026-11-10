@@ -792,3 +792,40 @@ Run 72 LIVE 03:46 11 Nov.
 - The test now checks the direction (ad8a7d3).
 - First update: rules' keys by the outcome pulled 956, held 1776.
 - Baseline for its gate (fights without the rules, net a minute, 00:00-03:21 with runs 68b-71): bots -112, league -243, sparring -217.
+
+## Run 72 at 3 h (06:45 11 Nov): its gate FAILED, kept on (no harm)
+
+Fights without the rules, net a minute, 03:46-06:45 vs before:
+- bots -102 vs -112;
+- league -269 vs -243;
+- sparring -192 vs -217.
+
+Flat. Checks during run 72: 04:35 19-16, 05:24 17-17, 06:13 17-20 (A 53/133, B 53/133). Rules' agree 87%; punish crit 54-57%.
+
+The honest tally of Fable's runs 69-72, as checks:
+- before (10 Nov 15:00-22:05, 8 checks): A 141/357, B 145/357;
+- after (22:17-06:13, 9 checks): A 163/401, B 162/401.
+
+No change in rounds won. Third hits A 35% -> 40% (worse). Swing in their combo 32% -> 31%. The user (06:45): Fable is not to be used again; continue its approach with the normal model.
+
+The rules-off paired check (Fable's direct measure of A without the rules vs B) was armed for the ~07:00 check (run/swordai/school/rules-off-check, removed after it).
+
+## Runs 73/73b (11 Nov 07:10, the camera item of Fable's plan; agent 8's finding): deploys after the rules-off check
+
+Agent 8 (normal model):
+- In their combo the camera is the AIM RULE's (93% of ready ticks in real duels, 90% on the bench), not the network's, so the camera lessons of runs 64/67 taught locked heads.
+- The rule aims at their middle while it is lifted (67% of those ticks), so the ray meets their box beyond 3.0. That is "on the body, no pick", 22-28 points of the 42-46% swing-not-open. The nearest-point aim gives 0%.
+- The whiff guard read last tick's pick.
+
+Changes:
+- **73 SchoolSession.FRESH_PICK:** the whiff guard reads the game's pick as this tick's attack will see it, with both bodies where they are now. The step runs at START_CLIENT_TICK; mc.hitResult was last tick's pick, made before both bodies moved (its lift is 0.4 blocks a tick). This tick's own turn is still not in it: it is chosen with the swing. Counter: "fresh pick: freed N, closed M".
+- **73b REACH_TARGET:** the camera lesson aims level with its eye kept within their box (the nearest point in height, 10% margin), not their middle. In the tracking case the wanted speed allows for the hand's half response (speed + error / aimResponse). On-body-no-pick ticks within 3.0 are taught too.
+- **Counter (P6 evidence for the camera):** "camera in their combo, the aim rule's: ticks, on body no pick, off body; the network's: ...".
+
+The camera is handed to the network in their combo only if its no-pick share beats the rule's. That would be the next run, by a flag, as in Fable's P6.
+
+Gates (1-2 h):
+- The network's on-body-no-pick share in their combo falls below the rule's.
+- Swing in their combo in training up from 26-28%.
+- Fresh pick: freed > closed.
+- Punish crit chances critted >= 50%; swings on them >= 94%.

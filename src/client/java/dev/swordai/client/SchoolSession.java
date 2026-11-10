@@ -123,6 +123,32 @@ public final class SchoolSession implements AgentSession {
 	// Run 68b (10 Nov 21:55): OFF. In 64 updates T1c stayed 7-8% of its punish crits, critted back went 15% -> 26%, its own jump after
 	// them fell back 37% -> 24%, and the punish crit chances critted slid 54% -> 45-47% (under the user's 50% floor for an hour).
 	static final boolean T1C_CREDIT = false;
+	/**
+	 * Run 73 (11 Nov, agent 8; Fable's plan, the camera item): the whiff guard reads the pick this tick's attack will use. The step runs
+	 * at START_CLIENT_TICK, before the game's pick(1.0) of the same tick, so mc.hitResult was the LAST tick's pick, one camera turn
+	 * behind the one startAttack() then uses (MinecraftMixin, at GameRenderer.tick). freshOnOpponent() makes the game's own pick from
+	 * the camera and positions as they are now (nothing moves between this step and that pick): the entity counts when the ray meets
+	 * its box within entityInteractionRange and before any block, as GameRenderer.pick / filterHitResult do.
+	 */
+	static final boolean FRESH_PICK = true;
+	/** Run 73: ticks where the fresh pick and last tick's disagreed: freed (fresh on them, stale not) and closed (stale on them, fresh not). */
+	private int freshFreed, freshClosed;
+	/** Run 73: this step's pick as the attack will see it (FRESH_PICK), for the camera lesson after the guard. */
+	private boolean pickNow;
+	/**
+	 * Run 73b (Fable's plan, P6 evidence for the camera): in their combo with the sword ready and them in reach, by who held the camera
+	 * (0 the rules' aim rule, 1 the network: a fight without the rules or no rule on the camera): ticks, on their body but no pick,
+	 * off their body. The camera is handed over in their combo only if the network's no-pick share beats the rule's.
+	 */
+	private final long[][] comboCam = new long[2][3];
+	/**
+	 * Run 73b: the camera lesson aims where a swing lands (agent 8): level with its own eye kept within their box (the nearest point,
+	 * so the ray meets the box within reach whenever the box is within reach), not their middle, which with it lifted (67% of their
+	 * combo's ready ticks) put the ray on the box beyond 3.0; the wanted speed allows for the hand closing half the gap a tick
+	 * (cfg.aimResponse); and the ticks on their body without a pick are taught too.
+	 */
+	static final boolean REACH_TARGET = true;
+	static final float REACH_TARGET_MARGIN = 0.1f;
 	private boolean inT1cWindow;
 	/**
 	 * Since 24 Oct 15:45 the punish crit is paid only as the game counts it (the user's table, "punish crit 0 of 89"):
@@ -734,7 +760,16 @@ public final class SchoolSession implements AgentSession {
 				comboReadyTicks, comboSwung, comboGuard, comboLocked, comboLockedOnBody, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, comboOtherFalling, airJumpHitsFree, counterHits, readyTicks, readySwung, readyLocked, readyLockedOnBody, readyHeldFalling, readyHeldOther, uppercutComboHits, fallingJumpComboHits, strafeComboHits)
 				// Run 63: the opponent's news held back for lag since the game started (moves; whole packets, which must not stay 0).
 				+ String.format(Locale.ROOT, " | held back for lag: moves %d, packets %d | camera taught onto them in their combo %d | combo-escape scenes picked %d (got out %d)",
-						SeenLag.heldBack(), SeenLag.heldPackets(), comboTrackTaught, comboScenePicks, comboEscapes);
+						SeenLag.heldBack(), SeenLag.heldPackets(), comboTrackTaught, comboScenePicks, comboEscapes)
+				// Run 73: the whiff guard on this tick's pick: swings freed (last tick's pick was off them) and closed (it was on them).
+				+ String.format(Locale.ROOT, " | fresh pick: freed %d, closed %d", freshFreed, freshClosed)
+				// Run 73b: the camera in their combo by who held it: ready ticks, on their body without a pick, off their body.
+				+ String.format(Locale.ROOT, " | camera in their combo, the aim rule's: %d ticks, on body no pick %d, off body %d; the network's: %d ticks, on body no pick %d, off body %d",
+						comboCam[0][0], comboCam[0][1], comboCam[0][2], comboCam[1][0], comboCam[1][1], comboCam[1][2]);
+		freshFreed = freshClosed = 0;
+		for (long[] c : comboCam) {
+			java.util.Arrays.fill(c, 0);
+		}
 		comboEscapes = 0;
 		comboTrackTaught = 0;
 		comboScenePicks = 0;
@@ -2696,6 +2731,38 @@ public final class SchoolSession implements AgentSession {
 		return mc.hitResult instanceof EntityHitResult hit && hit.getEntity() == currentBot;
 	}
 
+	/**
+	 * Run 73: whether the game's pick of this tick (made right after this step, before the attack) will be the opponent: the ray from
+	 * the eyes along the view, as GameRenderer.pick(1.0) casts it, meets the opponent's box within the entity reach and before the
+	 * first block within the larger of the two reaches.
+	 */
+	private boolean freshOnOpponent() {
+		if (mc.player == null || currentBot == null || currentBot.isRemoved()) {
+			return false;
+		}
+		net.minecraft.world.phys.Vec3 eye = mc.player.getEyePosition(1f);
+		net.minecraft.world.phys.Vec3 view = mc.player.getViewVector(1f);
+		double entityRange = mc.player.entityInteractionRange();
+		double blockRange = mc.player.blockInteractionRange();
+		double far = Math.max(entityRange, blockRange);
+		net.minecraft.world.phys.AABB box = currentBot.getBoundingBox().inflate(currentBot.getPickRadius());
+		double dist;
+		if (box.contains(eye)) {
+			dist = 0;
+		} else {
+			java.util.Optional<net.minecraft.world.phys.Vec3> at = box.clip(eye, eye.add(view.scale(far)));
+			if (at.isEmpty()) {
+				return false;
+			}
+			dist = eye.distanceTo(at.get());
+		}
+		if (dist > entityRange) {
+			return false;
+		}
+		net.minecraft.world.phys.HitResult block = mc.player.pick(far, 1f, false);
+		return block.getType() == net.minecraft.world.phys.HitResult.Type.MISS || eye.distanceTo(block.getLocation()) > dist;
+	}
+
 	private void keepView() {
 		if (mc.options.getCameraType() != CameraType.FIRST_PERSON) {
 			mc.options.setCameraType(CameraType.FIRST_PERSON);
@@ -3681,7 +3748,13 @@ public final class SchoolSession implements AgentSession {
 		// Since 22:15 no swing at all without the opponent under the crosshair in reach, as the game picks it: the distance read
 		// off the screen let through swings at an opponent aimed at but out of reach, again and again in the user's real fights
 		// (24 Oct 22:05: "constantly hit opponent when aim and not in reach"). A swing that would hit nothing is not made.
-		if (cfg.whiffGuard && !onOpponent()) {
+		pickNow = FRESH_PICK ? freshOnOpponent() : onOpponent();
+		if (FRESH_PICK && mode == Mode.TRAIN && review < 0) {
+			boolean stale = onOpponent();
+			freshFreed += pickNow && !stale ? 1 : 0;
+			freshClosed += !pickNow && stale ? 1 : 0;
+		}
+		if (cfg.whiffGuard && !pickNow) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 		}
 		if (review >= 0) {
@@ -3842,10 +3915,16 @@ public final class SchoolSession implements AgentSession {
 				seenSide = facts.yawErrDeg > 0f ? 1 : -1;
 			}
 		}
-		if (mode == Mode.TRAIN && OVERLAY && !onOpponent() && pulled(pulls, step.teacherTechnique >= 0 ? step.teacherTechnique : base)) {
+		if (mode == Mode.TRAIN && OVERLAY && !(REACH_TARGET ? pickNow : onOpponent()) && pulled(pulls, step.teacherTechnique >= 0 ? step.teacherTechnique : base)) {
 			double dx = bot.getX() - me.getX();
 			double dz = bot.getZ() - me.getZ();
 			double dy = bot.getY() + bot.getBbHeight() * 0.5 - me.getEyeY();
+			if (REACH_TARGET) {
+				// Run 73b: level with its eye, kept within their box: the nearest point of the box in height.
+				double lo = bot.getY() + REACH_TARGET_MARGIN * bot.getBbHeight();
+				double hi = bot.getY() + (1f - REACH_TARGET_MARGIN) * bot.getBbHeight();
+				dy = Math.max(lo, Math.min(hi, me.getEyeY())) - me.getEyeY();
+			}
 			float wantYaw = (float) Math.toDegrees(Math.atan2(dz, dx)) - 90f;
 			float wantPitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
 			float yawOff = (wantYaw - me.getYRot()) % 360f;
@@ -3858,7 +3937,7 @@ public final class SchoolSession implements AgentSession {
 			// crosshair was off their body on 37% of the ticks (off them 43%, on its body without a pick 6%), B's on 16% (32%, 16%).
 			boolean theirComboNow = clock.ticksSinceHitTaken <= 20 && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken;
 			boolean trackInCombo = COMBO_TRACK && (theirComboNow || TRACK_EVERYWHERE)
-					&& facts.enemyVisible && !facts.onBody && facts.reachDist <= COMBO_TRACK_REACH;
+					&& facts.enemyVisible && (!facts.onBody || REACH_TARGET && facts.reachDist <= 3.0f) && facts.reachDist <= COMBO_TRACK_REACH;
 			if (trackInCombo && Math.abs(yawOff) <= 25f) {
 				comboTrackTaught++;
 			}
@@ -3871,8 +3950,17 @@ public final class SchoolSession implements AgentSession {
 					nearestBin(step.teacher, ActionSpace.PITCH, ActionSpace.PITCH_BINS, -me.getXRot());
 					findBlind++;
 				} else {
-					nearestBin(step.teacher, ActionSpace.YAW, ActionSpace.YAW_BINS, yawOff);
-					nearestBin(step.teacher, ActionSpace.PITCH, ActionSpace.PITCH_BINS, wantPitch - me.getXRot());
+					float yawWant = yawOff;
+					float pitchWant = wantPitch - me.getXRot();
+					if (REACH_TARGET && trackInCombo) {
+						// Run 73b: the hand closes cfg.aimResponse of the gap between its speed and the one chosen a tick, so the speed
+						// that turns the whole error this tick is speed + error / response.
+						float r = Math.max(0.05f, cfg.aimResponse);
+						yawWant = motor.yawRate() + (yawOff - motor.yawRate()) / r;
+						pitchWant = motor.pitchRate() + (pitchWant - motor.pitchRate()) / r;
+					}
+					nearestBin(step.teacher, ActionSpace.YAW, ActionSpace.YAW_BINS, yawWant);
+					nearestBin(step.teacher, ActionSpace.PITCH, ActionSpace.PITCH_BINS, pitchWant);
 				}
 				step.teacherHeads |= (1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH);
 				if (step.teacherTechnique < 0) {
@@ -4102,6 +4190,14 @@ public final class SchoolSession implements AgentSession {
 			inTheirCombo = theirCombo;
 			if (theirCombo && charge >= 0.95f && facts.reachDist <= 3.0f) {
 				comboReadyTicks++;
+				{
+					// Run 73b: who held the camera, and where the crosshair was.
+					int who = ruleOff || (ruled & ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH)) == 0 ? 1 : 0;
+					comboCam[who][0]++;
+					if (!pickNow) {
+						comboCam[who][facts.onBody ? 1 : 2]++;
+					}
+				}
 				if (action[ActionSpace.ATTACK] == 1) {
 					comboSwung++;
 				} else if (k2Hold) {
