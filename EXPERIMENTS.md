@@ -542,3 +542,16 @@ Gates (agent 4, next bench; scratchpad agentD timing.py, align.py; realvsbots, k
 - control: from the visible rise, 6-tick gain still 1.1-1.6.
 
 Next: recalibrate the SeenLag draw (1 + nextInt(4)) against real swing-to-DEALT (1 tick 29%, 2 ticks 56%, 4 ticks 14%), and take the bench's DEALT from the hurt flash as real duels do.
+
+## Run 64 (10 Nov, written ~12:00; deploy after the ~12:40 check): the camera taught onto them in their combo
+
+The 11:45 check: in their combo, with the sword ready and them in reach, A swung back 26% to B's 43%, with the crosshair off them on 33% of those ticks (B 41%).
+- A's swing is open only with the crosshair on them (the whiff guard since 24 Oct). B's looser guard swings with it off too: its swings were 89% on them, A's 97%. So A's swing back is limited by tracking in their combo.
+- Until now the camera teacher (find them) acted only out of sight or beyond 25 degrees.
+
+Change: SchoolSession.COMBO_TRACK. In their combo, with them in sight, within 3.5 blocks and the crosshair off their body (facts.onBody false), the camera (yaw, pitch) is taught onto them the same way as the find-them lesson (BASE pull, not gated by advantage). Counted as "camera taught onto them in their combo".
+
+Gates:
+- the check's "in their combo ... crosshair off them" for A falls from 33%;
+- A's swing back in their combo rises toward B's;
+- "turned to find them" and swings with the crosshair on them must not worsen.

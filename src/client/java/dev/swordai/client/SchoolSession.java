@@ -705,6 +705,10 @@ public final class SchoolSession implements AgentSession {
 	private int comboLocked, readyLocked;
 	/** Run 61 (counter only): of those, the crosshair on its body all the same (the game's pick past reach, or a frame late). */
 	private int comboLockedOnBody, readyLockedOnBody;
+	/** Run 64: the camera taught onto them in their combo (in sight, in reach, crosshair off their body). */
+	static final boolean COMBO_TRACK = true;
+	static final float COMBO_TRACK_REACH = 3.5f;
+	private int comboTrackTaught;
 	/** Run 56: A or D on the last step; its combo's follow-up hits by an uppercut (rising), a lunge or hop (falling), and strafing. */
 	private boolean lastStrafe;
 	private int uppercutComboHits, fallingJumpComboHits, strafeComboHits;
@@ -718,7 +722,9 @@ public final class SchoolSession implements AgentSession {
 				punishCritsForT1c, t1cCrits, critBacks, t1cJumps, t1cHits, t1cSprintHits,
 				comboReadyTicks, comboSwung, comboGuard, comboLocked, comboLockedOnBody, comboOwnAir, comboAirLifted, comboAirFalling, comboOther, comboOtherFalling, airJumpHitsFree, counterHits, readyTicks, readySwung, readyLocked, readyLockedOnBody, readyHeldFalling, readyHeldOther, uppercutComboHits, fallingJumpComboHits, strafeComboHits)
 				// Run 63: the opponent's news held back for lag since the game started (moves; whole packets, which must not stay 0).
-				+ String.format(Locale.ROOT, " | held back for lag: moves %d, packets %d", SeenLag.heldBack(), SeenLag.heldPackets());
+				+ String.format(Locale.ROOT, " | held back for lag: moves %d, packets %d | camera taught onto them in their combo %d", SeenLag.heldBack(),
+						SeenLag.heldPackets(), comboTrackTaught);
+		comboTrackTaught = 0;
 		punishCritsForT1c = t1cCrits = critBacks = 0;
 		t1cJumps = t1cHits = t1cSprintHits = 0;
 		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = comboOtherFalling = 0;
@@ -3774,7 +3780,16 @@ public final class SchoolSession implements AgentSession {
 			float wantPitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
 			float yawOff = (wantYaw - me.getYRot()) % 360f;
 			yawOff = yawOff > 180f ? yawOff - 360f : yawOff < -180f ? yawOff + 360f : yawOff;
-			if (!facts.enemyVisible || Math.abs(yawOff) > 25f) {
+			// Run 64 (PROBLEMS.md 1, 9): in their combo, with them in sight and in reach but the crosshair off their body, the
+			// camera is taught onto them too (before, only beyond 25 degrees or out of sight). The swing is open only with the
+			// crosshair on them (the whiff guard), and in their combo it was off them on a third of the ready ticks (11:45 check:
+			// A swung back 26% to B's 43%, crosshair off 33%).
+			boolean trackInCombo = COMBO_TRACK && clock.ticksSinceHitTaken <= 20 && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken
+					&& facts.enemyVisible && !facts.onBody && facts.reachDist <= COMBO_TRACK_REACH;
+			if (trackInCombo && Math.abs(yawOff) <= 25f) {
+				comboTrackTaught++;
+			}
+			if (!facts.enemyVisible || Math.abs(yawOff) > 25f || trackInCombo) {
 				if (!facts.enemyVisible) {
 					if (sweep == 0) {
 						sweep = seenSide != 0 ? seenSide : 1;
