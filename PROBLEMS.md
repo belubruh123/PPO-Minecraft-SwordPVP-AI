@@ -121,6 +121,11 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - rules' agree 85-88%;
   - punish crit chances critted dipped to 49-50% at 04:38-04:46, then 54%.
   - Judge at about 06:45.
+- 05:24 check: A 17/44, B 17/44 (z 0.0); damage A 347/413, B 366/406.
+  - Third hits A 41% vs B 35%.
+  - In their combo A swung 28% vs B 41%; outside their combo 49% vs 49%.
+- Run 72 at 2 h: fights without the rules net bots -102, league -272, sparring -186 (flat). Punish crit 56-57%.
+- 3-hour rule (05:55), problems 1 and 9: the crosshair off them in their combo has held at 33-36% for both A and B since the camera lesson (runs 64/67). Research agent 8 launched: why the crosshair is off, and a different kind of approach.
 
 ## SOLVED (with the evidence)
 
