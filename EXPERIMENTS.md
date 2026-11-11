@@ -974,3 +974,16 @@ Gates (1-2 h, two checks):
 - Punish crit within the stage's band (revert under 40% for 3 updates).
 - Checks: A's rising 2nd hits 10% or less (22% now); jump resets at their 2nd hit 70%+ (62%); third hits 30% or less; ROUNDS WON z >= 0; late hits on jump-ins not up.
 - Revert: READY_JUMP_COST = 0.
+
+### Run 77b (11 Nov 15:55; deploys after the ~16:00 check): which part of run 77's test keeps its cost off
+
+In 23 updates of run 77, nothing was charged: "take-offs an update 0-1 26.9, 2-12 4.7, 13-20 10.1, charged 0.0". About 10 take-offs an update come 13-20 ticks after their hit, so one part of the test must fail on every one.
+
+Change: counters only, no change to training. For each take-off 2-20 ticks after their hit, it counts which parts of the test failed, each on its own:
+- their sword under 0.9;
+- out of 3.5;
+- their jump-in in the air;
+- told K3/T1c/T9b;
+- the T1c window.
+
+They are printed after the run 77 counter as "(not charged: …)". The fix follows from the first update: the part that fails on every take-off.
