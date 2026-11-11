@@ -202,6 +202,15 @@ public final class SchoolSession implements AgentSession {
 	 * taught only where the network's own key differed and the moment went worse than the critic expected (DAgger's expert).
 	 */
 	static final boolean OWN_FOLLOWUP_AWR = true;
+	/**
+	 * Run 82 (agent 15, 12 Nov 01:30): T9 own 5% (1/20; 37 of its moments rule-held). In rules-off scenes the network jumped on 98%
+	 * of their 2nd+ sprint hits but 6% of their 1st, because the only key taught there is B's (RULED_AWR) and B's JumpReset fires
+	 * only in a combo. The document's T9 has no such limit, and the user removed the jump-reset limit on 24 Oct ("remove jump reset
+	 * barrier"). In TRAINING, on A's side, A's rule also jump-resets a first sprint hit taken on the ground, so the network learns
+	 * it by the outcome through the same path that taught the 2nd-hit reset. Checks, real fights and B unchanged.
+	 */
+	static final boolean RESET_FIRST_HIT_TRAIN = true;
+	private int firstHitResetTicks;
 	private int ownFollowTaught;
 	/** Run 78's counters, [0] training, [1] checks: ticks given back, and of those the network swung. */
 	private final int[] ownKeepYield = new int[2], ownKeepYieldSwung = new int[2];
@@ -885,6 +894,7 @@ public final class SchoolSession implements AgentSession {
 						t1cJumpByLanding[0], t1cJumpByLanding[1], t1cJumpByLanding[2])
 				+ String.format(Locale.ROOT, " | its follow-ups' pay held %d ticks: paid %d, dropped by their hit %d", HELD_TICKS, heldPaid, heldDropped)
 				+ String.format(Locale.ROOT, " | after its own ground hit, B's movement as an outcome target: %d ticks", ownFollowTaught)
+				+ String.format(Locale.ROOT, " | sprint hits taken with the first-hit jump reset open: %d", firstHitResetTicks)
 				// Run 76: "no jump" taught between their hits; its own take-offs in their combo, by the technique it was told.
 				+ String.format(Locale.ROOT, " | their combo: no-jump taught %d, its own take-offs %d (told:%s)", comboGroundTaught, comboTakeoffs, toldLine(comboTakeoffsByTold))
 				// Run 77: those take-offs by ticks since their hit, and the ones charged with their sword ready in reach.
@@ -916,6 +926,7 @@ public final class SchoolSession implements AgentSession {
 		java.util.Arrays.fill(t1cJumpByLanding, 0);
 		heldPaid = heldDropped = 0;
 		ownFollowTaught = 0;
+		firstHitResetTicks = 0;
 		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = comboOtherFalling = 0;
 		airJumpHitsFree = 0;
 		counterHits = 0;
@@ -3969,6 +3980,9 @@ public final class SchoolSession implements AgentSession {
 		if (installed != null) {
 			// Run 74: the reach aim for A's rules only; B keeps the 23 Oct aim.
 			installed.fighter.reachAim(REACH_AIM && !installedPlays && !teacherPlaysA);
+			boolean firstReset = RESET_FIRST_HIT_TRAIN && mode == Mode.TRAIN && !installedPlays && !teacherPlaysA && facts.sprintsTaken > 0;
+			installed.fighter.firstSprintHitReset(firstReset);
+			firstHitResetTicks += firstReset ? 1 : 0;
 		}
 		if (installedPlays) {
 			observer.fillBody(installedBody, me, bot, truth.floorY());

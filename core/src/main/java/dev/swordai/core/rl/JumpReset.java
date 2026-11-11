@@ -93,6 +93,17 @@ public final class JumpReset {
 		counters = share;
 	}
 
+	/**
+	 * Run 82 (agent 15, 12 Nov): on this tick a sprint hit was taken, and the first hit is jumped with too (T9, "press jump at the
+	 * same moment you take damage"; the user removed the jump-reset limit on 24 Oct). Set every tick by the school, in training on
+	 * A's side only; never in a check, a real fight or B.
+	 */
+	public void firstSprintHit(boolean on) {
+		firstSprintHit = on;
+	}
+
+	private boolean firstSprintHit;
+
 	/** Whether the opponent has lately followed a hit with one made from the air. */
 	public boolean chased() {
 		return chased > 0;
@@ -154,7 +165,7 @@ public final class JumpReset {
 			float sinceDealt = vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_SINCE_HIT_DEALT];
 			boolean counter = counters > 0f && sinceDealt >= 1f - (COUNTER_TICKS + 0.5f) / BodyState.EVENT_FADE_TICKS
 					&& vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_ATTACK_CHARGE] < COUNTER_CHARGE && rng.nextFloat() < counters;
-			if (chance > 0f && ground && (combo || counter || chasers && chased > 0) && ActionSpace.unlocked(keys, ActionSpace.JUMP)
+			if (chance > 0f && ground && (combo || counter || chasers && chased > 0 || firstSprintHit) && ActionSpace.unlocked(keys, ActionSpace.JUMP)
 					&& ActionSpace.unlocked(keys, ActionSpace.FORWARD) && ActionSpace.unlocked(keys, ActionSpace.SPRINT)
 					&& rng.nextFloat() < chance) {
 				left = AIR_TICKS;

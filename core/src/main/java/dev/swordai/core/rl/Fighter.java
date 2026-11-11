@@ -245,6 +245,13 @@ public final class Fighter {
 		}
 	}
 
+	/** Run 82: the jump reset on a first sprint hit too, for this tick (training on A's side only, see JumpReset#firstSprintHit). */
+	public void firstSprintHitReset(boolean on) {
+		if (jumpReset != null) {
+			jumpReset.firstSprintHit(on);
+		}
+	}
+
 	/** A new round, or the opponent was gone for a while: no memory, hand at rest, a fresh plan. */
 	public void reset() {
 		sight.reset();
