@@ -194,6 +194,15 @@ public final class SchoolSession implements AgentSession {
 	static final boolean CHECK_B_FOLLOWUP = true; // on 11 Nov 21:25 for two checks (to 23:xx), then off either way
 	static final int B_FOLLOWUP_TICKS = 12;
 	private int ownGroundHitAt = -1, bFollowTicks;
+	/**
+	 * Run 81 (agent 14's plan item 2, after its test: 22:23 check with B's movement after A's own ground hits, A 24-17 z +1.7,
+	 * its next hit 42% vs 24-34% before, theirs 33% vs 36-54%, take-offs 2% vs 39%): in TRAINING, in the same window
+	 * (B_FOLLOWUP_TICKS after its own ground hit, no hit taken since), B's W/S, sprint and jump become a target on the heads no
+	 * teacher teaches, through run 72's outcome path (SchoolPpo#RULED_AWR): the network presses these keys itself, so B's key is
+	 * taught only where the network's own key differed and the moment went worse than the critic expected (DAgger's expert).
+	 */
+	static final boolean OWN_FOLLOWUP_AWR = true;
+	private int ownFollowTaught;
 	/** Run 78's counters, [0] training, [1] checks: ticks given back, and of those the network swung. */
 	private final int[] ownKeepYield = new int[2], ownKeepYieldSwung = new int[2];
 	private boolean ownKeepYieldNow;
@@ -875,6 +884,7 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | T1c take-offs by ticks after landing from its punish crit: 0-1 %d, 2-4 %d, 5+ %d",
 						t1cJumpByLanding[0], t1cJumpByLanding[1], t1cJumpByLanding[2])
 				+ String.format(Locale.ROOT, " | its follow-ups' pay held %d ticks: paid %d, dropped by their hit %d", HELD_TICKS, heldPaid, heldDropped)
+				+ String.format(Locale.ROOT, " | after its own ground hit, B's movement as an outcome target: %d ticks", ownFollowTaught)
 				// Run 76: "no jump" taught between their hits; its own take-offs in their combo, by the technique it was told.
 				+ String.format(Locale.ROOT, " | their combo: no-jump taught %d, its own take-offs %d (told:%s)", comboGroundTaught, comboTakeoffs, toldLine(comboTakeoffsByTold))
 				// Run 77: those take-offs by ticks since their hit, and the ones charged with their sword ready in reach.
@@ -905,6 +915,7 @@ public final class SchoolSession implements AgentSession {
 		t1cJumps = t1cHits = t1cSprintHits = 0;
 		java.util.Arrays.fill(t1cJumpByLanding, 0);
 		heldPaid = heldDropped = 0;
+		ownFollowTaught = 0;
 		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = comboOtherFalling = 0;
 		airJumpHitsFree = 0;
 		counterHits = 0;
@@ -4386,6 +4397,15 @@ public final class SchoolSession implements AgentSession {
 		// agreement, while the network without the rules already lands 97% of its swings to the installed model's 89%.
 		int bodyKeys = ActionSpace.ALL_HEADS & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
 		step.ruledHeads = mode == Mode.TRAIN && review < 0 ? ruledTaught & bodyKeys & ~step.teacherHeads : 0;
+		if (OWN_FOLLOWUP_AWR && mode == Mode.TRAIN && review < 0 && installedDecided && installed != null
+				&& ownGroundHitAt >= 0 && fightTicks - ownGroundHitAt <= B_FOLLOWUP_TICKS && clock.ticksSinceHitTaken > fightTicks - ownGroundHitAt) {
+			// Run 81: B's movement keys after its own ground hit, by the outcome.
+			int follow = ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT, ActionSpace.JUMP) & ~step.teacherHeads;
+			if (follow != 0) {
+				step.ruledHeads |= follow;
+				ownFollowTaught++;
+			}
+		}
 		step.ruleBits = step.ruledHeads != 0 ? installed.fighter.rules() : 0;
 		if (step.ruledHeads != 0) {
 			// The rule's key, a sure target on each head it pressed (SchoolPpo#teach with Settings#ruledPull).
