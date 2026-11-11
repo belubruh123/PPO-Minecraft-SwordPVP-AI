@@ -874,3 +874,24 @@ With 73b (07:43-08:21, 29 updates):
 - Camera in their combo: the aim rule's 937 ticks (on body no pick 21%, off body 13%); the network's 3800 (18%, 32%).
 
 REACH_TARGET = false. REACH_AIM (run 74) is held false for this deploy, so the deploy goes back to the known state (runs 69-72 and the counters). Run 74 will go alone at the next window if the punish crit is back over 50%.
+
+## 09:25 11 Nov: the punish crit's slide is the practice stage, not run 73b; run 74 alone after the ~09:31 check
+
+"Punish crit chances critted" (rolling 300) against the stage:
+
+| Time | Stage | Share |
+|---|---|---|
+| 20:24-21:30 | T-D | 53 -> 46% (run 68) |
+| 22:19-23:28 | T-E | 47-50% |
+| 23:38-01:09 | T-B | 49-54% |
+| 01:19-02:50 | T-C | 53-62% |
+| 03:01-04:51 | T-D | 63 -> 49 -> 54% |
+| 05:01-06:32 | T-E | 54-57% |
+| 06:42-08:16 | T-C | 55 -> 46% (it fell to 51% by 07:08, BEFORE run 73 went live at 07:13) |
+| 08:27-09:20 | T-D | 45 -> 42-44% (run 73c, my camera changes all off) |
+
+So run 73b's revert at 08:25 was probably a stage confound. 73b is to be tested again on its own.
+
+The punish crit floor needs reading within a stage. T-D runs low (46-53% before, 42-47% now). From here a run's gate is the same stage's earlier level, and a revert needs a drop against it.
+
+REACH_AIM back on (run 74 alone). Gates as at 07:55, with the punish crit compared within the stage: T-D now 42-47%; revert if under 40% for 3 updates.

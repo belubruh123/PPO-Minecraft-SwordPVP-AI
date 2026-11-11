@@ -162,8 +162,9 @@ public final class SchoolSession implements AgentSession {
 	 * teacher playing A) and real fights keep the 23 Oct aim. In their combo the aim rule holds A's camera on 90%+ of the ready ticks and
 	 * its middle aim left the ray on their body beyond 3.0 on a quarter of them (07:14-07:20: 25%).
 	 */
-	// Held OFF for the 08:30 deploy (run 73c): back to the known state first, then run 74 alone so the punish crit can be read.
-	static final boolean REACH_AIM = false;
+	// On again 09:25 (run 74 alone): the punish crit's slide follows the practice stage (T-D 42-53%, T-C/T-E/T-B 50-63%; it fell from 57%
+	// at 06:21 to 51% at 07:08, before run 73), so it is judged against the same stage.
+	static final boolean REACH_AIM = true;
 	private boolean inT1cWindow;
 	/**
 	 * Since 24 Oct 15:45 the punish crit is paid only as the game counts it (the user's table, "punish crit 0 of 89"):
