@@ -1144,3 +1144,11 @@ Gates:
 - Punish crit chances critted 50-65%.
 - Revert: HELD_COMBO_CREDIT = false if the punish crit is under 50% for 3 updates, or after 2 checks A's 3rd out of the 2s has not risen and z < 0 in both.
 
+### Counter (11 Nov 18:35; deploys with the next batch): late hits on jump-ins by the user's rule, per side
+
+The checks' "hits on them rising close/further" counted every hit on a rising opponent. That includes its own combo's hits on one its last hit lifted, and it has no ground tick, so it cannot say whether the user's rule held. The rule (memory "jump-in ticks"): no hit on a jump-in from ground tick 2 on, rising or falling, before their hit lands.
+
+The new counter covers jump-ins as the guard watches them (jumpInWatched, jumpInTookOff; ticks from the ground flag). It is counted per side, so A and B compare in every check. It is printed first in the "A/B jumping in:" lines as "its hits on their jump-in at ground tick 0-1 N, LATE (tick 2+, before their hit) rising N, falling N".
+
+Run 80 went live 18:24. First update: follow-ups paid 14, dropped by their hit 9.
+
