@@ -408,6 +408,32 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - A's own play since 17:23: 9 checks, +13.
   - Not done: agent 16's fix 2 (COMBO_JUMP_AWR, relabel the decider's T10/T11 to none where the outcome was worse). It would also cut T10/T11b in its own combo, which item 12 asks for: T10 done A 42% vs B 8%, T11b rising 55 -> 78%.
 - 05:26 redeploy: agent 17's counter only (who held the swing in their combo). No training change.
+- 06:22 check (T-D), run 83's third: A 21/44, B 21/44 (z 0.0; only A won 5, only B won 5); damage A 399/404, B 373/373 (net -0.8 vs -0.1).
+  - RUN 83 VERDICT, 3 checks: A 58, B 52 (z +2.3, -0.8, 0.0). KEPT. It cut take-offs after its own ground hit (40% -> 28%, 22%, 28%).
+  - The new counter (agent 17's mechanism test) CONFIRMS agent 17. In their combo, held with the crosshair on them:
+    - A: by the jump-in guard 8%, in the air 22%, on the ground 2%. Swung 34%.
+    - B: guard 0%, in the air 14%, on the ground 7%. Swung 42%.
+    - So A's gap is the user's guard plus air time. On the ground A holds LESS than B.
+  - Agent 17's free test, catches rising on its own jump a fight:
+    - neutral 0.38 (<=0.4 OK);
+    - its combo 0.82 (0.47 in the two checks before).
+    - Not a steady fall, so the take-off hypothesis is not proven.
+  - After its own ground hit, by its W/S key on the hit tick (tools/a17/groundkey.py; last 3 checks, then 9):
+
+    | key on the hit tick | A: its next / their hit | B: its next / their hit |
+    |---|---|---|
+    | ground + S (A 45%, B 92%), last 3 | 39 / 56% | 39 / 42% |
+    | ground + S, last 9 | 37 / 50% | 35 / 45% |
+    | ground + W (A 20%, B 1%), last 3 | 29 / 37% | |
+    | ground + no W/S (A 9%, B 6%), last 9 | 24 / 65% | 48 / 36% |
+    | jump + S (A 20%), last 3 | 50 / 34% | |
+    | jump + S, last 9 | 40 / 37% | |
+
+    - W on the hit tick is NOT the cause (their hit 37%).
+    - A's loss is AFTER the hit, on the ground: with the same S its opponent hits first 56% vs 42%, and with no W/S 65% vs 36%.
+  - Third hits A 22% vs B 31%. Outside their combo A swung 57% vs 53% (A ahead for once).
+  - K2 broken A 22 vs B 49. Late knock-aways rising A 7 vs B 13, at ground tick 0-1 0 and 0.
+- 3-hour rule (06:30), item 2 / run 81's target: A's ground follow-up after its own hit has been flat since about 22:00. Their hit first 49-60% vs B 38-49% in 7 checks; runs 81 and 83 did not move it. Research agent 18 launched on the ticks AFTER its own ground hit while it stays down: its keys, the distance, who presses them, and the bots' reply.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
