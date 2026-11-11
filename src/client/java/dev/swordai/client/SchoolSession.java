@@ -175,6 +175,19 @@ public final class SchoolSession implements AgentSession {
 	static final boolean GUARD_GIVE_WAY = true;
 	/** Run 75: ticks the rules gave way under the guard in their combo, and those taught to back off. */
 	private int guardGaveWay, guardBackTaught;
+	/**
+	 * Run 76 (11 Nov, agent 9's follow-up): in their combo, on the ground, between their hits (from the 2nd tick after their hit, so the
+	 * jump reset at the hit, T9/T9a, is not touched) and not with their jump-in in the air (K3's jump along), the jump is taught "no",
+	 * by the outcome (the JUMP_PULL path). Its own take-offs in their combo are the network's, not a rule's (bench: 155-400 against
+	 * the rules' 16-21), older than run 62 and doubled by it; it was in the air at their hits 50% against B's 8%, and its extra third
+	 * hits were nearly all taken in the air (131 against 7). A jump between their hits leaves it rising when the next one lands: no
+	 * jump reset (T9 needs the jump as the hit lands), more knockback. Not while told K3, T1c or T9b (their own jumps).
+	 */
+	static final boolean COMBO_GROUND_LESSON = true;
+	static final float COMBO_GROUND_PULL = 0.5f;
+	/** Run 76: ticks taught "no jump" in their combo; its own take-offs in their combo, and those by the technique it was told. */
+	private int comboGroundTaught, comboTakeoffs;
+	private final int[] comboTakeoffsByTold = new int[Technique.COUNT];
 	private boolean inT1cWindow;
 	/**
 	 * Since 24 Oct 15:45 the punish crit is paid only as the game counts it (the user's table, "punish crit 0 of 89"):
@@ -791,11 +804,15 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | fresh pick: freed %d, closed %d", freshFreed, freshClosed)
 				// Run 75: the guard's ticks in their combo where the rules gave way on W and the sprint, and those taught to back off.
 				+ String.format(Locale.ROOT, " | guard in their combo: rules gave way %d, taught to back off %d", guardGaveWay, guardBackTaught)
+				// Run 76: "no jump" taught between their hits; its own take-offs in their combo, by the technique it was told.
+				+ String.format(Locale.ROOT, " | their combo: no-jump taught %d, its own take-offs %d (told:%s)", comboGroundTaught, comboTakeoffs, toldLine(comboTakeoffsByTold))
 				// Run 73b: the camera in their combo by who held it: ready ticks, on their body without a pick, off their body.
 				+ String.format(Locale.ROOT, " | camera in their combo, the aim rule's: %d ticks, on body no pick %d, off body %d; the network's: %d ticks, on body no pick %d, off body %d",
 						comboCam[0][0], comboCam[0][1], comboCam[0][2], comboCam[1][0], comboCam[1][1], comboCam[1][2]);
 		freshFreed = freshClosed = 0;
 		guardGaveWay = guardBackTaught = 0;
+		comboGroundTaught = comboTakeoffs = 0;
+		java.util.Arrays.fill(comboTakeoffsByTold, 0);
 		for (long[] c : comboCam) {
 			java.util.Arrays.fill(c, 0);
 		}
@@ -2139,6 +2156,17 @@ public final class SchoolSession implements AgentSession {
 		}
 		if (LET_GO_PULL > 0f) {
 			b.append(" let-go");
+		}
+		return b.length() == 0 ? " none" : b.toString();
+	}
+
+	/** Run 76: " BASE 12 T10 3" for the techniques with a count. */
+	private static String toldLine(int[] counts) {
+		StringBuilder b = new StringBuilder();
+		for (int t = 0; t < counts.length; t++) {
+			if (counts[t] > 0) {
+				b.append(' ').append(Technique.values()[t].name()).append(' ').append(counts[t]);
+			}
 		}
 		return b.length() == 0 ? " none" : b.toString();
 	}
@@ -4107,6 +4135,21 @@ public final class SchoolSession implements AgentSession {
 		// Run 75: the guard holding the swing in their combo, on the ground.
 		boolean guardHeldTheirCombo = GUARD_GIVE_WAY && k2Hold && clock.ticksSinceHitTaken <= COMBO_GAP
 				&& clock.ticksSinceHitDealt > clock.ticksSinceHitTaken && me.onGround();
+		if (COMBO_GROUND_LESSON && mode == Mode.TRAIN && review < 0 && me.onGround() && clock.ticksSinceHitTaken >= 2
+				&& clock.ticksSinceHitTaken <= COMBO_GAP && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken && !jumpInAir
+				&& (step.teacherHeads & (1 << ActionSpace.JUMP)) == 0 && learner.told() != Technique.K3 && learner.told() != Technique.T1C
+				&& learner.told() != Technique.T9B) {
+			// Run 76: no jump between their hits, by the outcome.
+			int jo = ActionSpace.OFFSETS[ActionSpace.JUMP];
+			step.teacher[jo] = 1f;
+			step.teacher[jo + 1] = 0f;
+			step.teacherHeads |= 1 << ActionSpace.JUMP;
+			step.jumpPull = COMBO_GROUND_PULL;
+			if (step.teacherTechnique < 0) {
+				step.teacherTechnique = Technique.BASE.ordinal();
+			}
+			comboGroundTaught++;
+		}
 		if (k2Hold) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 			// Neither "swing" nor "don't" is taught on a tick the rule holds.
@@ -4250,6 +4293,12 @@ public final class SchoolSession implements AgentSession {
 		// Run 43: a take-off on the ground by the network (not a rule's jump) marks the air until it stands again.
 		if (me.onGround()) {
 			ownJumpAir = action[ActionSpace.JUMP] == 1 && (ruled & (1 << ActionSpace.JUMP)) == 0;
+			if (ownJumpAir && mode == Mode.TRAIN && review < 0 && clock.ticksSinceHitTaken <= COMBO_GAP
+					&& clock.ticksSinceHitDealt > clock.ticksSinceHitTaken) {
+				// Run 76: its own take-off in their combo, and the technique it was told.
+				comboTakeoffs++;
+				comboTakeoffsByTold[learner.told().ordinal()]++;
+			}
 		}
 		countReady(0, charge, reader.duel.them.falling() || truth.botFalling());
 		// Run 54b: counters for PROBLEMS.md 1, 2, 10 (the swing back in their combo) and 4 (the T1c funnel after its punish crit).

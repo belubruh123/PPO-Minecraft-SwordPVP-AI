@@ -917,3 +917,29 @@ Gates (1-2 h, two checks):
 - Revert: GUARD_GIVE_WAY = false.
 
 The 10:33 check (run 74's first): A 19/45, B 19/45 (z 0.0); damage A 351/399, B 386/400. Third hits A 36% vs B 18%. In their combo A swung 30% vs 39%; outside their combo 34% vs 54%.
+
+## Run 76 (11 Nov 11:05; deploys after run 75's first check, ~11:37): no jump between their hits, taught by the outcome (agent 9's follow-up)
+
+Agent 9:
+- A's own take-offs in their combo are the network's, not a rule's (bench, not on their hit tick: network 155-400 vs the rules' JumpIn 16-21; JumpReset's are on the hit tick).
+- They are older than run 62 (the run35 and run52 networks did them); run 62 doubled its own-combo jumps.
+- Their first hit lands with A in the air: after its own hit 17% -> 49% since run 62; in neutral 34% -> 52% (B 3-11%).
+- Real-duel link: run52 took off in their combo 400 times on the bench vs run35's 155, and took 0.79 3+ combos a round vs 0.30.
+- What A is told at take-off was not logged.
+
+Change, SchoolSession.COMBO_GROUND_LESSON. In training, when all of these hold:
+- in their combo, on the ground;
+- from the 2nd tick after their hit (the jump reset at the hit, T9/T9a, untouched);
+- not with their jump-in in the air (K3);
+- no jump teacher already;
+- not told K3, T1c or T9b.
+
+Then the jump is taught "no" at pull 0.5 by the outcome (the JUMP_PULL path, AWR-weighted). No rule presses a key.
+
+New counter: "their combo: no-jump taught N, its own take-offs M (told: ...)", which also sizes how much of it comes from the T10/T11 options.
+
+Gates (1-2 h, two checks):
+- Its own take-offs in their combo per update fall. T9 at the hit and K3 jumped along do not fall.
+- Checks: their 2nd hits taken in the air 54% -> 30% or less; third hits 36-42% -> 33% or less; ROUNDS WON z >= 0.
+- Punish crit within the stage's band (revert under 40% for 3 updates).
+- Revert: COMBO_GROUND_LESSON = false.
