@@ -209,6 +209,11 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Real players answer at c+5, as it lands (their hit first 69%); the bots at c+10.
   - A's take-offs at c+1..4 net +0.54; at c+5..8, -0.59.
   - Run 79: the teacher's T1c jump on its first ground tick after the punish crit. It deploys with 77c and 78.
+- 17:12 check (T-E; runs 75/76, run 77 not charging): A 14/44, B 18/44 (z -1.2); damage A 343/407, B 381/406.
+  - Third hits A 40% vs B 26%: the old pattern again. In their combo A swung 34% vs 45%. Outside their combo 36% vs 55% (held otherwise 42% vs 30%).
+  - K2 broken A 40 vs B 52.
+  - Since runs 75/76 (6 checks): A 101/266, B 99/266; third hits 26/19/44/33/31/40% vs 37/36/33/37/31/26%.
+- Runs 77c + 78 + 79 deploying 17:13.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
