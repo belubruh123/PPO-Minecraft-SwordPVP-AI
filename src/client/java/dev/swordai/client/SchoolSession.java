@@ -197,11 +197,16 @@ public final class SchoolSession implements AgentSession {
 	 * the moment's outcome whatever key was pressed, weakest after a jump that went badly. The size is a guess (not the document's).
 	 */
 	static final float READY_JUMP_COST = 0.25f;
+	/** Run 77c: run 77's reach for the charge (3.5 kept 18 of 20 take-offs off: it jumps from farther as they close in). */
+	static final float READY_JUMP_REACH = 4.5f;
+	/** Run 77c: K3 is not let off by the told label alone (15 of 20 were told K3/T1c/T9b): K3's teacher jumps only when they
+	 * take off (PvpPlayer#jumpAlongMoment), and that moment is already let off by their jump-in in the air (jumpInAir). */
+	static final boolean READY_JUMP_K3_CHARGED = true;
 	/** Run 77: its own take-offs in their combo by ticks since their hit (0-1, 2-12, 13-20), and those charged READY_JUMP_COST. */
 	private final int[] takeoffWindow = new int[3];
 	private int readyJumpCharged;
 	/** Run 77b: of the take-offs 2-20 ticks after their hit, how many failed each part of the charge's test (each counted on its own). */
-	private final int[] readyJumpMiss = new int[5];
+	private final int[] readyJumpMiss = new int[7];
 	private boolean inT1cWindow;
 	/**
 	 * Since 24 Oct 15:45 the punish crit is paid only as the game counts it (the user's table, "punish crit 0 of 89"):
@@ -823,8 +828,9 @@ public final class SchoolSession implements AgentSession {
 				// Run 77: those take-offs by ticks since their hit, and the ones charged with their sword ready in reach.
 				+ String.format(Locale.ROOT, " | their combo take-offs by ticks since their hit: 0-1 %d, 2-12 %d, 13-20 %d; charged with their sword ready %d",
 						takeoffWindow[0], takeoffWindow[1], takeoffWindow[2], readyJumpCharged)
-				+ String.format(Locale.ROOT, " (not charged: their sword under 0.9 %d, out of 3.5 %d, their jump-in up %d, told K3/T1c/T9b %d, T1c window %d)",
-						readyJumpMiss[0], readyJumpMiss[1], readyJumpMiss[2], readyJumpMiss[3], readyJumpMiss[4])
+				+ String.format(Locale.ROOT, " (not charged: their sword under 0.9 %d, out of %.1f %d, their jump-in up %d, told T1c/T9b %d, T1c window %d; told K3 %d, at 3.5-%.1f %d)",
+						readyJumpMiss[0], READY_JUMP_REACH, readyJumpMiss[1], readyJumpMiss[2], readyJumpMiss[3], readyJumpMiss[4], readyJumpMiss[5],
+						READY_JUMP_REACH, readyJumpMiss[6])
 				// Run 73b: the camera in their combo by who held it: ready ticks, on their body without a pick, off their body.
 				+ String.format(Locale.ROOT, " | camera in their combo, the aim rule's: %d ticks, on body no pick %d, off body %d; the network's: %d ticks, on body no pick %d, off body %d",
 						comboCam[0][0], comboCam[0][1], comboCam[0][2], comboCam[1][0], comboCam[1][1], comboCam[1][2]);
@@ -4328,13 +4334,16 @@ public final class SchoolSession implements AgentSession {
 					// Run 77b: which part of the test kept the charge off: their sword under 0.9, out of 3.5, their jump-in in the air,
 					// told K3/T1c/T9b, the T1c window. In 23 updates of run 77 nothing was charged with 10 take-offs an update at 13-20.
 					readyJumpMiss[0] += truth.botCharge() < 0.9f ? 1 : 0;
-					readyJumpMiss[1] += facts.reachDist > 3.5f ? 1 : 0;
+					readyJumpMiss[1] += facts.reachDist > READY_JUMP_REACH ? 1 : 0;
 					readyJumpMiss[2] += jumpInAir ? 1 : 0;
-					readyJumpMiss[3] += toldNow == Technique.K3 || toldNow == Technique.T1C || toldNow == Technique.T9B ? 1 : 0;
+					readyJumpMiss[3] += toldNow == Technique.T1C || toldNow == Technique.T9B || !READY_JUMP_K3_CHARGED && toldNow == Technique.K3 ? 1 : 0;
 					readyJumpMiss[4] += inT1cWindow ? 1 : 0;
+					readyJumpMiss[5] += toldNow == Technique.K3 ? 1 : 0;
+					readyJumpMiss[6] += facts.reachDist > 3.5f && facts.reachDist <= READY_JUMP_REACH ? 1 : 0;
 				}
-				if (READY_JUMP_COST > 0f && since >= 2 && truth.botCharge() >= 0.9f && facts.reachDist <= 3.5f && !jumpInAir
-						&& toldNow != Technique.K3 && toldNow != Technique.T1C && toldNow != Technique.T9B && !inT1cWindow) {
+				boolean toldLetOff = toldNow == Technique.T1C || toldNow == Technique.T9B || !READY_JUMP_K3_CHARGED && toldNow == Technique.K3;
+				if (READY_JUMP_COST > 0f && since >= 2 && truth.botCharge() >= 0.9f && facts.reachDist <= READY_JUMP_REACH && !jumpInAir
+						&& !toldLetOff && !inT1cWindow) {
 					enterReward -= READY_JUMP_COST;
 					readyJumpCharged++;
 				}
