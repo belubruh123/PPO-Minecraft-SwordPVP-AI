@@ -149,6 +149,9 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Outside their combo 48% vs 51%.
   - Two checks in a row ahead (08:33 +1.5, 09:36 +1.3), as the counters stayed flat.
 - Run 74 (the reach aim, alone) live 09:44.
+  - Run 74, 29 updates: the aim rule's camera in their combo on body no pick 16% (20-23% before), off body 20% (13-22%); total not open 34-36% (38-42%).
+  - Swing in their combo 26-27% (flat). Punish crit 48-50% (T-D to T-E). Kept.
+- 3-hour rule (10:25), items 1, 2, 9: the camera approach has been flat 3 h on the swing-back. Research agent 9 launched: why A holds with the crosshair ON them in their combo (checks: A 30%, B 19%), a different kind of fix.
 
 ## SOLVED (with the evidence)
 
