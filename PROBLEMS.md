@@ -393,6 +393,21 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
     1. Branching replays at its own take-offs (K3/T8/K2): replay from 3 ticks before with the jump held off for 4 ticks, and use the 25-tick net damage as the jump head's target.
     2. A next-swing-timing predictor as a policy input (T9). This changes the observation; speculative.
   - Built now, counter only (deploys with the next redeploy, after run 83's second check): the check line "in their combo ... held with the crosshair on them: by the jump-in guard x%, in the air y%, on the ground z%" for A and B (agent 17's mechanism test).
+- 05:23 check (T-C), run 83's second: A 17/44, B 20/44 (z -0.8; only A won 6, only B won 9); damage A 363/415, B 348/384 (net -8.2 vs -6.0).
+  - Run 83 over its two checks: A 37, B 31. KEPT; the revert rule (both checks z<0) is not met.
+  - After its own ground hit: A takes off 22% (40% before run 83, then 28%). On the ground: its next 38%, theirs 49%. B: 40/38%.
+    - Gate "their hit first <=41%": FAILED (about 50% overall).
+    - "its next >=30%": OK. T3 stuns 28% (OK).
+  - Agent 17's free test, catches of A rising on its own jump a fight, run 83's 2 checks vs the 9 before:
+    - neutral 0.44 vs 0.58;
+    - its combo 0.47 vs 0.66.
+    - Falling, not yet at 0.4 each; the third check decides.
+  - Third hits A 30% vs B 37%. In their combo A swung 28% vs 42% (round-neutral per agent 17).
+  - Late knock-aways on jump-ins rising A 4 vs B 20. K2 broken A 35 vs B 47.
+  - A's ground sprint/plain hits are far fewer than B's in every check: 129 vs 235, 149 vs 208.
+  - A's own play since 17:23: 9 checks, +13.
+  - Not done: agent 16's fix 2 (COMBO_JUMP_AWR, relabel the decider's T10/T11 to none where the outcome was worse). It would also cut T10/T11b in its own combo, which item 12 asks for: T10 done A 42% vs B 8%, T11b rising 55 -> 78%.
+- 05:26 redeploy: agent 17's counter only (who held the swing in their combo). No training change.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
