@@ -1152,3 +1152,18 @@ The new counter covers jump-ins as the guard watches them (jumpInWatched, jumpIn
 
 Run 80 went live 18:24. First update: follow-ups paid 14, dropped by their hit 9.
 
+### Judged 11 Nov 20:25: runs 77c, 78, 79, 80
+
+Checks since runs 77c/78/79 went live (17:23; run 80 from 18:24):
+- 18:15: A 21-17 (z +1.2);
+- 20:22: A 20-17 (z +0.7), third hits A 26% vs B 33%, outside their combo swing 49% vs 49%.
+
+Training gates:
+- 77c: take-offs 13-20 ticks after their hit 7.3 an update vs about 10, met.
+- 80: hits taken in the air from its own jump 14.9 vs <= 12, not yet; chase crits 2.3 vs <= 2, nearly.
+- 79: T1c 12-17% vs 18%, not yet, but up from 6-11%.
+- 78: the swing given back is used only 7% of the time.
+- Punish crit 53-58%, in the band.
+
+All four are kept. Two checks are not proof, and real duels decide.
+

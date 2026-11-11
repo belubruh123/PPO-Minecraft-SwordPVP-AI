@@ -257,6 +257,18 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Plainly: against these bots, the hits the user's rules give up cost A nothing it can win back, so the bot checks may never show A clearly ahead. Real duels decide.
   - Test (checks only): CHECK_B_FOLLOWUP, B's network's W/S, sprint and jump for 12 ticks after A's own ground hit. It runs after run 80 is judged at the next check.
   - Proposal for the user: a real-duel A/B arm vs the installed run35-0657. It needs a new jar, so it waits for the user's word.
+- Training back 19:34 (redeploy restart). 36 updates to 20:18:
+  - Its own take-offs 13-20 ticks after their hit 7.3 an update (about 10 before: run 77c's -30% gate met).
+  - Hits taken in the air from its own jump 14.9 an update (17.5-20.5); chase crits 2.3.
+  - Punish crit 53% (near the floor: watch). T1c 12%, critted back 17%.
+- 20:22 check (T-B; runs 77c/78/79/80): A 20/45, B 17/45 (z +0.7); damage A 372/417, B 353/415 (net -7.1 vs -10.1).
+  - Third hits A 26% vs B 33%: A better.
+  - Outside their combo A swung 49% vs B 49% (even, up from 36-43%). In their combo 36% vs 40%.
+  - New late-hit counter: at ground tick 0-1 A 0, B 0. LATE (tick 2+, before their hit) A rising 9, falling 2; B rising 15, falling 5. This is before the split of its own jump-along crits, which deploys 20:24.
+  - K2 broken A 32 vs B 52. Their jump-ins punished with its crit A 23/71 vs B 14/70.
+  - Two checks in a row ahead since runs 77c/78/79 (18:15 z +1.2, 20:22 z +0.7): A 41/89 vs B 34/89.
+  - Run 80 KEPT.
+- Agent 14's CHECK_B_FOLLOWUP test waits one more check (a third check of the current A first).
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
