@@ -278,6 +278,19 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - A keeps the user's rules far better and takes fewer third hits, and still lost the rounds on damage taken (438 vs 402). This is agent 14's picture: what A gives up is not paid back against the bots.
   - Three checks since runs 77c-80: A 53/135, B 51/135, level. Since 11:42: A 172, B 171.
 - Agent 14's CHECK_B_FOLLOWUP test on 21:25 for two checks (checks only; training unchanged). Then off.
+- 21:25 the user rebooted with the iGPU at 3 GB (13.0 GB visible, was 9.7). Training was back 21:35 (deploy with the test on), about 2.8 GB free.
+- 22:23 check (T-C), agent 14's TEST ON (A's W/S, sprint and jump were B's for 12 ticks after its own ground hits, 667 ticks): A 24/44, B 17/44 (z +1.7); damage A 371/358, B 336/387 (net +2.2 vs -8.4).
+  - After its own ground hit (agent 14's groundnext):
+
+    | | A, test on | A, 3 checks before | B, test check | B, 3 checks before |
+    |---|---|---|---|---|
+    | Takes off within 10 ticks | 2% | 39% | 1% | 1% |
+    | Its next hit | 42% | 24% (ground), 34% (jump) | 39% | 36% |
+    | Their hit | 33% | 54% (ground), 36% (jump) | 37% | 45% |
+
+  - Third hits A 33% vs B 30%. Outside their combo A swung 36% vs 46%.
+  - Late knock-away hits on jump-ins: A 8 (7 rising, 1 falling) vs B 16. K2 broken A 43 vs B 34: B's sprint key in that window may add A's sprint hits on fallers. Watch.
+  - One check supports agent 14's hypothesis: A's own movement after its own ground hit is where it loses the next hit. Even A's ground ticks were worse than B's (their hit 54% vs 45%). The second test check (~23:10) decides. Then the training fix.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
