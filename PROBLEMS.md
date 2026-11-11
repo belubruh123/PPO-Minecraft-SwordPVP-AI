@@ -269,6 +269,15 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Two checks in a row ahead since runs 77c/78/79 (18:15 z +1.2, 20:22 z +0.7): A 41/89 vs B 34/89.
   - Run 80 KEPT.
 - Agent 14's CHECK_B_FOLLOWUP test waits one more check (a third check of the current A first).
+- 21:22 check (T-C): A 12/46, B 17/46 (z -1.3); damage A 326/438, B 360/402 (net -17.6 vs -6.7).
+  - Third hits A 29% vs B 42% (A still better there). Outside their combo A swung 44% vs 54%; in their combo 32% vs 42%.
+  - Late hits on jump-ins (split counter):
+    - A: knock-away 4 rising, 0 falling; its own jump-along crits 5; at tick 0-1, 1.
+    - B: 21 rising, 1 falling.
+  - K2 broken A 33 vs B 47. Their jump-ins punished with its crit A 21/68 vs B 11/64.
+  - A keeps the user's rules far better and takes fewer third hits, and still lost the rounds on damage taken (438 vs 402). This is agent 14's picture: what A gives up is not paid back against the bots.
+  - Three checks since runs 77c-80: A 53/135, B 51/135, level. Since 11:42: A 172, B 171.
+- Agent 14's CHECK_B_FOLLOWUP test on 21:25 for two checks (checks only; training unchanged). Then off.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
