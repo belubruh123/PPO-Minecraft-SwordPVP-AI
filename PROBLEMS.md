@@ -24,6 +24,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
    - Fix (run 57, after the ~07:50 check): the practice focus pinned on "the combo escape" (keeps the punish scenes). Next if flat: combo scenes cut from the 701 real combo hits. Status: NOT VERIFIED.
    - Seen: real duels, combos of 3+ hits taken: run52 0.79 a round, run35 0.30 a round. The user: "get stunned easily".
    - Measure: 3+ combos taken per round in real duels (tools/swingback.py, rounds.csv combosTaken3).
+   - Measure the follow-up after its own ground hit (agent 18, 12 Nov 06:50): use tools/a18/gk2.py, which separates trades (their hit 1-5 ticks after its hit) from the untraded hits where it stays down, plus the take-off cost (takeoff2.py). The old gates ('their hit first <=41%', 'take-offs <=20%') counted trades, which B has as often (B 42-44% itself), so they could not be reached.
    - 3-hour rule again (flat since run 57, 07:50): research agent 5 launched 12:25 (the combos it takes in real duels, why C3/T9a are not taught; two different kinds of approach).
    - Agent 5's findings (real duels, after a hit in their combo): jump reset + crit down -> its hit first 84%; jump reset without a swing -> theirs 23%; ready and no swing -> theirs 60%; late S -> 27%. Run 57's focus never ran (a scene queue took the fights; combo scenes fought 0). The bots combo far harder than real players (2->3 34-36% vs 13%). Fix (run 65, deploying with run 64 after the ~12:40 check): T9a (with the crit down) and C4 taught by gated option layers; the rules give way in their combo while told those. Status: NOT VERIFIED.
    - Run 66 (deploy after the ~15:20 check): agent 5's practice-world approach. Combo-escape scenes get 15% of the training fights ahead of the repeat queue, and are won only by a hit of its own before their second in a row (no K2 broken). Status: NOT VERIFIED.
@@ -434,6 +435,21 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Third hits A 22% vs B 31%. Outside their combo A swung 57% vs 53% (A ahead for once).
   - K2 broken A 22 vs B 49. Late knock-aways rising A 7 vs B 13, at ground tick 0-1 0 and 0.
 - 3-hour rule (06:30), item 2 / run 81's target: A's ground follow-up after its own hit has been flat since about 22:00. Their hit first 49-60% vs B 38-49% in 7 checks; runs 81 and 83 did not move it. Research agent 18 launched on the ticks AFTER its own ground hit while it stays down: its keys, the distance, who presses them, and the bots' reply.
+- Agent 18 (06:50, 12 checks, A 1697 / B 2731 ground hits): the follow-up gap after its own ground hit is mostly how it was MEASURED.
+  - Trades (their hit 1-5 ticks after its hit): A 25.4% vs B 24.2% (z 0.9).
+  - Untraded and staying down, their hit first: A 24.9% vs B 26.4%; its next hit: A 48.5% vs B 47.7%.
+  - Why the old split showed a gap: a hit back within 4 ticks rules out a take-off, so trades always count as 'ground'. A's untraded hits leave that class by taking off (A 36%, B 1.5%).
+  - The take-off cost (take-off at tick t vs staying down at the same t): about 1.1 HP each before run 83 (569 take-offs), about 0.1 HP in run 83's 3 checks (190). RUN 83 REMOVED THE WINDOW'S ONLY REAL COST.
+  - Keys: the rules press no W/S/sprint/jump on either side's hit tick. The deciding keys are A's network vs B's.
+    - Close hits with neither W nor S (13% of A's, 2.22 blocks; T4 "too close, they hit you through") trade 37% vs B 15%. About 0.3 rounds a check; not worth a run.
+  - Rounds flow of the whole window with B's rates: +1.1 HP a fight (+1.8 in the last 3 checks), about 0.4-0.6 rounds a check; noise is +-4.
+  - The upstream difference: A lands 3.2 ground hits a fight vs B 5.1.
+    - Ready on the ground outside their combo: about 220 vs 355 ticks a check; it swings 45% vs 52% there.
+    - This is a trade for crits: A deals more damage a minute than B in 5 of the last 6 checks.
+  - Its rounds are lost on damage TAKEN: their crit openers cost A 137 vs B 99 (-1.8 HP a fight), plain openers -0.9, partly from the user's jump-in rule.
+  - Test that could prove it wrong (3 checks, no training change): A's untraded staying-down 'their hit first' at least B's + 6 points with z >= 2, or the take-off cost back above 0.7 HP.
+  - Done: the gates are rewritten (item 2's measure line), scripts are in tools/a18, and no new training run on item 2.
+  - Next: their crit openers (A -1.8 HP a fight). Agent 18 is asked to split them (jump-ins under the user's rule, others, made to miss by T6, answered by B1).
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
