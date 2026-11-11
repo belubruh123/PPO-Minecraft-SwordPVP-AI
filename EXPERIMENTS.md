@@ -943,3 +943,34 @@ Gates (1-2 h, two checks):
 - Checks: their 2nd hits taken in the air 54% -> 30% or less; third hits 36-42% -> 33% or less; ROUNDS WON z >= 0.
 - Punish crit within the stage's band (revert under 40% for 3 updates).
 - Revert: COMBO_GROUND_LESSON = false.
+
+## Run 77 (11 Nov 15:05; deploys after the ~15:10 check): a cost on its own take-off in their combo with their sword ready (agent 10)
+
+Agent 10: run 76 DID work in the checks; the training counter hid it by counting the jump resets at the hit (told T9).
+
+| In the checks | 3 before run 76 | 3 after |
+|---|---|---|
+| A's take-offs in their combo | 220 | 114 |
+| Of those, 4-12 ticks after their hit | 78 | 19 |
+| In the air at their 2nd hit | 52% | 36% |
+| Jump resets at their 2nd hit | 88/237 | 148/237 |
+
+What is left:
+- 95 of the 114 take-offs come 13-20 ticks after their hit, as their next hit lands, and 65% of those are hit rising.
+- After a hit taken: their next hit follows 52-56% when hit rising, 23-37% falling, 18-21% after a jump reset on the ground.
+- At their 1st hit: A hit rising 164/663 vs B 21/613, from its own-combo take-offs (569 vs 61).
+- No reward paid or cost those jumps.
+- The run 76 lesson's AWR weight points the wrong way: weakest after a jump that went badly.
+
+Change: SchoolSession.READY_JUMP_COST = 0.25 (the size is a guess), paid through enterReward to the take-off's own step. Charged when all of these hold:
+- its own take-off in their combo, 2-20 ticks after their hit;
+- their sword at 0.9+, within 3.5;
+- not with their jump-in in the air; not told K3/T1c/T9b; not in the T1c window.
+
+Run 76 stays on. Counter: "their combo take-offs by ticks since their hit: 0-1, 2-12, 13-20; charged with their sword ready N".
+
+Gates (1-2 h, two checks):
+- Training: take-offs 13-20 ticks after their hit down 30%+. T9 by the game 90%+. K3 jumped along, T1c 9%+ and its jump after a punish crit 23%+ not down. Own-combo holds down no more than 30%.
+- Punish crit within the stage's band (revert under 40% for 3 updates).
+- Checks: A's rising 2nd hits 10% or less (22% now); jump resets at their 2nd hit 70%+ (62%); third hits 30% or less; ROUNDS WON z >= 0; late hits on jump-ins not up.
+- Revert: READY_JUMP_COST = 0.

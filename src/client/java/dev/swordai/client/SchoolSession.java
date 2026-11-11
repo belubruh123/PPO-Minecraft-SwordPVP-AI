@@ -188,6 +188,18 @@ public final class SchoolSession implements AgentSession {
 	/** Run 76: ticks taught "no jump" in their combo; its own take-offs in their combo, and those by the technique it was told. */
 	private int comboGroundTaught, comboTakeoffs;
 	private final int[] comboTakeoffsByTold = new int[Technique.COUNT];
+	/**
+	 * Run 77 (11 Nov, agent 10): a cost on its own take-off in their combo when their sword is ready and it is in their reach (2-20
+	 * ticks after their hit; not the jump reset at the hit, not K3's jump along, not T1c/T9b, not in the T1c window). In the checks
+	 * after run 76 its take-offs in their combo fell 220 -> 114, but 95 of the 114 came 13-20 ticks after their hit, as their next
+	 * hit lands, and 65% of those were hit rising; a hit while rising was followed by their next hit 52-56% of the time, falling
+	 * 23-37%, a jump reset on the ground 18-21%. No reward paid those jumps and none cost them: the no-jump lesson's pull is weighed by
+	 * the moment's outcome whatever key was pressed, weakest after a jump that went badly. The size is a guess (not the document's).
+	 */
+	static final float READY_JUMP_COST = 0.25f;
+	/** Run 77: its own take-offs in their combo by ticks since their hit (0-1, 2-12, 13-20), and those charged READY_JUMP_COST. */
+	private final int[] takeoffWindow = new int[3];
+	private int readyJumpCharged;
 	private boolean inT1cWindow;
 	/**
 	 * Since 24 Oct 15:45 the punish crit is paid only as the game counts it (the user's table, "punish crit 0 of 89"):
@@ -806,12 +818,17 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | guard in their combo: rules gave way %d, taught to back off %d", guardGaveWay, guardBackTaught)
 				// Run 76: "no jump" taught between their hits; its own take-offs in their combo, by the technique it was told.
 				+ String.format(Locale.ROOT, " | their combo: no-jump taught %d, its own take-offs %d (told:%s)", comboGroundTaught, comboTakeoffs, toldLine(comboTakeoffsByTold))
+				// Run 77: those take-offs by ticks since their hit, and the ones charged with their sword ready in reach.
+				+ String.format(Locale.ROOT, " | their combo take-offs by ticks since their hit: 0-1 %d, 2-12 %d, 13-20 %d; charged with their sword ready %d",
+						takeoffWindow[0], takeoffWindow[1], takeoffWindow[2], readyJumpCharged)
 				// Run 73b: the camera in their combo by who held it: ready ticks, on their body without a pick, off their body.
 				+ String.format(Locale.ROOT, " | camera in their combo, the aim rule's: %d ticks, on body no pick %d, off body %d; the network's: %d ticks, on body no pick %d, off body %d",
 						comboCam[0][0], comboCam[0][1], comboCam[0][2], comboCam[1][0], comboCam[1][1], comboCam[1][2]);
 		freshFreed = freshClosed = 0;
 		guardGaveWay = guardBackTaught = 0;
 		comboGroundTaught = comboTakeoffs = 0;
+		java.util.Arrays.fill(takeoffWindow, 0);
+		readyJumpCharged = 0;
 		java.util.Arrays.fill(comboTakeoffsByTold, 0);
 		for (long[] c : comboCam) {
 			java.util.Arrays.fill(c, 0);
@@ -4298,6 +4315,15 @@ public final class SchoolSession implements AgentSession {
 				// Run 76: its own take-off in their combo, and the technique it was told.
 				comboTakeoffs++;
 				comboTakeoffsByTold[learner.told().ordinal()]++;
+				// Run 77: by ticks since their hit; charged when their sword is ready and it is in their reach.
+				int since = clock.ticksSinceHitTaken;
+				takeoffWindow[since <= 1 ? 0 : since <= 12 ? 1 : 2]++;
+				Technique toldNow = learner.told();
+				if (READY_JUMP_COST > 0f && since >= 2 && truth.botCharge() >= 0.9f && facts.reachDist <= 3.5f && !jumpInAir
+						&& toldNow != Technique.K3 && toldNow != Technique.T1C && toldNow != Technique.T9B && !inT1cWindow) {
+					enterReward -= READY_JUMP_COST;
+					readyJumpCharged++;
+				}
 			}
 		}
 		countReady(0, charge, reader.duel.them.falling() || truth.botFalling());
