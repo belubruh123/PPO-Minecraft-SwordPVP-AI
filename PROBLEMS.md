@@ -297,6 +297,20 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Late knock-aways on jump-ins: A 6 vs B 21. K2 broken A 28 vs B 37.
   - The two test checks: A 43/88 vs B 34/88. In both, A's follow-up beat B's. HYPOTHESIS SUPPORTED: A's own movement after its ground hit cost it the next hit.
 - 23:22: test off. Run 81 (OWN_FOLLOWUP_AWR: B's movement keys in that window as an outcome target in training) deploying.
+- Run 81 live 23:31.
+- Agent 15 (23:40), T9 stuck at 48-62% for 5+ h, always off on the jump. Two causes:
+  - (a) A COUNTING ARTEFACT. A moment where a rule (or the sword gate) held the deciding key counts as done with nothing judged. Of 254 T9 moments, about 141 were rule-held. On the rest, the network itself jumped about 2%. T9a's 80%+ is the same (the rule jumped on 22 of A's 24 T9a ticks). So every technique percentage reported so far mixes in rule-held moments.
+  - (b) A TEACHER CONFLICT on their FIRST hit:
+    - The T9 teacher asks for the jump reset on every ground sprint hit taken, which is the document's ("press jump at the same moment you take damage"; Part 7: sprint hit -> jump reset).
+    - T9's pull is 0, so only B's key teaches that tick (RULED_AWR, weighted x4 on the hit tick).
+    - B's JumpReset rule fires only from their 2nd hit (JumpReset.java:23-25, 157). That limit is the 23 Oct rule's, not the document's.
+    - In rules-off scenes the network jumps 98% on their 2nd+ hit but 6% on their 1st.
+  - The timing is reachable (its own hurt is not delayed by SeenLag).
+  - After a first-hit jump the next hit was its own 61% (n 18) vs 37% without.
+  - Measurement fix (F0): rule-held moments are counted apart in the technique lines, and tech-review shows the network's own share. Committed 7cbace9; it deploys with the next batch. THE TECHNIQUE VERDICTS WILL CHANGE (lower) from then on: that is the honest number, not a regression.
+  - Training fix for the first-hit jump reset: after run 81 is judged.
+    - Preferred: F2 (B's JumpReset also on a first sprint hit, training only, A's side), taught by outcome through RULED_AWR, the path that reached 98%.
+    - Not first: F1 (T9 run-taught and gated). Teaching T9's jump spread jumps everywhere on 29 Oct, and run 25 cost -10.2 in a check.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
