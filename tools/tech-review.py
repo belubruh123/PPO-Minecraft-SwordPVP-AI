@@ -102,7 +102,7 @@ def main():
         print('--- under %d%% ---' % bar if bar == 60 else '--- 60-80% ---')
         for r, t, x, k, r0, worst, verdict in sel:
             print('%-5s %3.0f%% (%d/%d)  before %s  off: %-32s %s' % (t, r, x, k, '-' if r0 is None else '%3.0f%%' % r0, worst or '-', verdict))
-    print('80%%+: %s' % ', '.join('%s %.0f%%' % (t, r) for r, t, *_ in rows if r >= 80))
+    print('80%%+: %s' % ', '.join('%s %.0f%%%s' % (t, r, (' (' + v.split('  own ')[1] + ')') if '  own ' in v else '') for r, t, x, k, r0, worst, v in rows if r >= 80))
 
 
 if __name__ == '__main__':
