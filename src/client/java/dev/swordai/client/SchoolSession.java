@@ -176,6 +176,18 @@ public final class SchoolSession implements AgentSession {
 	/** Run 75: ticks the rules gave way under the guard in their combo, and those taught to back off. */
 	private int guardGaveWay, guardBackTaught;
 	/**
+	 * Run 78 (agent 11, 16:50): in their combo, rising on its OWN jump (not lifted by their hit), the 23 Oct rule's keep of the
+	 * swing for the way down (AnswerRule, rules() bit 2) gives the swing to the network. The document's B1 is "Crit on the way
+	 * down after their hit lifted you"; its own take-off is not that. In 6 checks (11:42-16:12) A was in the air at their 2nd hit
+	 * 40% against B 6%, from its own take-offs 4-20 ticks after their hit (A 278, B 23), their hit first on 166 (95 rising);
+	 * the held-with-the-crosshair-on ticks in their combo were A 33% vs B 27%, and on the ground A did not hold more than B.
+	 * Lifts and falling ticks keep the B1 logic; the jump-in guard took the swing out of keys before (k2Hold), so it stays held.
+	 */
+	static final boolean OWN_JUMP_KEEP_YIELD = true;
+	/** Run 78's counters, [0] training, [1] checks: ticks given back, and of those the network swung. */
+	private final int[] ownKeepYield = new int[2], ownKeepYieldSwung = new int[2];
+	private boolean ownKeepYieldNow;
+	/**
 	 * Run 76 (11 Nov, agent 9's follow-up): in their combo, on the ground, between their hits (from the 2nd tick after their hit, so the
 	 * jump reset at the hit, T9/T9a, is not touched) and not with their jump-in in the air (K3's jump along), the jump is taught "no",
 	 * by the outcome (the JUMP_PULL path). Its own take-offs in their combo are the network's, not a rule's (bench: 155-400 against
@@ -823,6 +835,8 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | fresh pick: freed %d, closed %d", freshFreed, freshClosed)
 				// Run 75: the guard's ticks in their combo where the rules gave way on W and the sprint, and those taught to back off.
 				+ String.format(Locale.ROOT, " | guard in their combo: rules gave way %d, taught to back off %d", guardGaveWay, guardBackTaught)
+				+ String.format(Locale.ROOT, " | its own jump in their combo, the keep given back: training %d (swung %d), checks %d (swung %d)",
+						ownKeepYield[0], ownKeepYieldSwung[0], ownKeepYield[1], ownKeepYieldSwung[1])
 				// Run 76: "no jump" taught between their hits; its own take-offs in their combo, by the technique it was told.
 				+ String.format(Locale.ROOT, " | their combo: no-jump taught %d, its own take-offs %d (told:%s)", comboGroundTaught, comboTakeoffs, toldLine(comboTakeoffsByTold))
 				// Run 77: those take-offs by ticks since their hit, and the ones charged with their sword ready in reach.
@@ -836,6 +850,8 @@ public final class SchoolSession implements AgentSession {
 						comboCam[0][0], comboCam[0][1], comboCam[0][2], comboCam[1][0], comboCam[1][1], comboCam[1][2]);
 		freshFreed = freshClosed = 0;
 		guardGaveWay = guardBackTaught = 0;
+		java.util.Arrays.fill(ownKeepYield, 0);
+		java.util.Arrays.fill(ownKeepYieldSwung, 0);
 		comboGroundTaught = comboTakeoffs = 0;
 		java.util.Arrays.fill(takeoffWindow, 0);
 		readyJumpCharged = 0;
@@ -4189,6 +4205,7 @@ public final class SchoolSession implements AgentSession {
 		// The heads the rules press on this tick (or would, in a fight played without them): the target of RULED_PULL.
 		int ruledTaught = 0;
 		benchRules = 0;
+		ownKeepYieldNow = false;
 		if (RULE_OVERLAY && installed != null && (review < 0 || basics[review].bot.attacks) && !(ruleOff && mode == Mode.CHECK)) {
 			if (!installedDecided) {
 				observer.fillBody(installedBody, me, bot, truth.floorY());
@@ -4250,6 +4267,15 @@ public final class SchoolSession implements AgentSession {
 				// Run 75: the rules give way on W and the sprint while the guard holds the swing in their combo.
 				ruled &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
 				guardGaveWay++;
+			}
+			if (OWN_JUMP_KEEP_YIELD && ownJumpAir && liftedFor < 0 && !me.onGround() && me.getDeltaMovement().y > 0
+					&& clock.ticksSinceHitTaken <= COMBO_GAP && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken
+					&& (installed.fighter.rules() & 2) != 0 && (ruled & ActionSpace.mask(ActionSpace.ATTACK)) != 0
+					&& installed.fighter.action()[ActionSpace.ATTACK] == 0) {
+				// Run 78: rising on its own jump in their combo, the rule's keep for the way down gives the swing to the network.
+				ruled &= ~ActionSpace.mask(ActionSpace.ATTACK);
+				ownKeepYieldNow = true;
+				ownKeepYield[mode == Mode.CHECK ? 1 : 0]++;
 			}
 			ruledTaught = ruleOff ? (sceneNow != null && mode == Mode.TRAIN ? 0 : keys & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH)) : ruled;
 			if (ruleOff) {
@@ -4318,6 +4344,9 @@ public final class SchoolSession implements AgentSession {
 				&& (step.teacherHeads & ActionSpace.mask(ActionSpace.ATTACK)) != 0
 				? ruled & dev.swordai.core.school.SchoolStages.PUNISH_SHADOW_KEYS : 0;
 		learner.act(step, keys, ruled, mode == Mode.TRAIN, cfg.playTemperature, action);
+		if (ownKeepYieldNow && action[ActionSpace.ATTACK] == 1) {
+			ownKeepYieldSwung[mode == Mode.CHECK ? 1 : 0]++;
+		}
 		// Run 43: a take-off on the ground by the network (not a rule's jump) marks the air until it stands again.
 		if (me.onGround()) {
 			ownJumpAir = action[ActionSpace.JUMP] == 1 && (ruled & (1 << ActionSpace.JUMP)) == 0;
