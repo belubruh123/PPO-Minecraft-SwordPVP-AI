@@ -236,6 +236,27 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Run 79 still up: T1c 15%, critted back 10%, its own jump after its punish crit 81%.
   - Punish crit 58%.
   - If the ~19:10 check is not ahead, revert run 80 first (its air counters went the wrong way), then judge 77c/78.
+- 18:49-19:3x: training stood still. Claude crashed, and the PC had 130-300 MB available, so the server ran up to 63 s behind and the watchdog waited for 1.2 GB. At the user's word (19:25) I closed Chrome, Roblox, the Razer/Radeon/WARP windows, and later the VS Installer background download. A redeploy restart was asked for 19:24.
+- STRUCTURAL DIAGNOSIS (agent 14, 19:30; 10 checks 09:36-18:15, 444 pairs; Fable-style brief): Fable's "A and B are the same machine" is WRONG.
+  - In 15 of 15 checks A and B differ by 2-5 HP a fight at a dozen moments (same signs every check), and the differences cancel. Rounds A 179, B 171.
+  - A ahead:
+    - its punish crit +4.56 a fight;
+    - its crit opener +3.17;
+    - their combo +2.75: its sword is ready at 99% of their combo hits vs 95%, which feeds the punish.
+  - B ahead:
+    - its hits on jump-ins: -3.93 for A, much of it the user's rule (B hits late, the bots don't punish it);
+    - its own combo -2.75 (3+ chains A 7.1% vs B 10.3%);
+    - their neutral openers -2.93.
+  - 86% of the gross A-B difference is at moments where the body keys belong to the NETWORK on both sides, and only 14% at rule-held ones.
+  - The network alone is worse than the rules at every defensive moment and equal on offense, so there is no key to hand over yet (Fable's P6 has nothing to take).
+  - Bottleneck hypothesis: A's swing REPLACES hits instead of adding them.
+    - Crits: A 21.0 vs B 10.7 HP a fight.
+    - Plain hits: A fewer on fallers (K2) 9.6 vs 13.8, on risers (the jump-in rule) 5.8 vs 8.5, on the ground 18.6 vs 21.9.
+    - Damage dealt: 55.0 vs 54.9 a fight. Across 18 checks crits +65 vs plain hits -69 a minute, correlation -0.52.
+  - After its own ground hit, A's next hit comes first 24% vs B 33%; theirs comes first 56% vs 46%.
+  - Plainly: against these bots, the hits the user's rules give up cost A nothing it can win back, so the bot checks may never show A clearly ahead. Real duels decide.
+  - Test (checks only): CHECK_B_FOLLOWUP, B's network's W/S, sprint and jump for 12 ticks after A's own ground hit. It runs after run 80 is judged at the next check.
+  - Proposal for the user: a real-duel A/B arm vs the installed run35-0657. It needs a new jar, so it waits for the user's word.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
