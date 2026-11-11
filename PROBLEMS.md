@@ -361,6 +361,13 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Late knock-aways on jump-ins: rising A 8 vs B 25, falling 0 vs 2, at ground tick 0-1 0 and 0.
   - Uppercutter A 1-2 vs B 0-3; fight-jumpin 0-3 both.
   - A's own play since 17:23: +4, +3, -5, +5, +1, +4, -5, +9 (8 checks, +16).
+- 3-hour rule (04:55), item 1: swing-back in their combo has been flat in checks since 20:17 on 11 Nov (8+ checks).
+  - A swung 33-44%, B 40-45%. With the crosshair on them (04:34), A about 53% vs B 70%.
+  - Research agent 17 launched with a structural brief:
+    - who holds the swing in their combo for A vs B (B1 keep, jump-in guard, crosshair guard, network);
+    - how many rounds flow through it (A's B1 80% vs B 54% may be the trade that wins rounds);
+    - one bottleneck, with a test that could prove it wrong;
+    - 1-2 fixes of a different kind than runs 72-83.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
