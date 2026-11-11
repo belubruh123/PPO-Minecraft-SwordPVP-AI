@@ -185,6 +185,11 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Third hits A 44% vs B 33%: back to the old pattern. In their combo A swung 33% vs 46%.
   - So since runs 75/76: A 55/134, B 49/134; third hits 26/19/44% vs 37/36/33%.
   - The gain is not stable yet (the two good checks were stage T-B). The real-duel port waits for more checks.
+- 15:10 check (T-C): A 15/44, B 15/44 (z 0.0); damage A 329/403, B 339/410.
+  - Third hits A 33% vs B 37%. In their combo A swung 30% vs 39%.
+  - Outside their combo A swung only 26% vs 51% (held otherwise 49%): watch.
+  - Since runs 75/76 (4 checks): A 70/178, B 64/178; third hits 26/19/44/33% vs 37/36/33/37%.
+- Run 77 (READY_JUMP_COST, agent 10) deploying 15:21.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
