@@ -895,3 +895,25 @@ So run 73b's revert at 08:25 was probably a stage confound. 73b is to be tested 
 The punish crit floor needs reading within a stage. T-D runs low (46-53% before, 42-47% now). From here a run's gate is the same stage's earlier level, and a revert needs a drop against it.
 
 REACH_AIM back on (run 74 alone). Gates as at 07:55, with the punish crit compared within the stage: T-D now 42-47%; revert if under 40% for 3 updates.
+
+## Run 75 (11 Nov 10:50): under the jump-in guard in their combo, the rules give way on W and the sprint; the network is taught to back off (agent 9)
+
+Agent 9 (normal model):
+- In their combo with the crosshair on them, A's swing is the rules', not the network's (1285 of 1291 swings).
+- A held with the crosshair on them 35% vs B 26% (25 checks pooled).
+- On the bench the holds split into the rules' B1 keeps (about 30%, which win 73-87% in real duels) and the jump-in guard (6-7%, A only).
+- Under the guard, MeetJump still pressed W (553 of 557 ticks) and the sprint (90%) toward the jumper with its swing removed. Their jump hit came first 70% (bench) and 75% (real duels).
+- Also: A is in the air at their hits 50% vs B 8% (since run 62), which accounts for about all of A's extra third hits. Agent 9 is asked why, as a follow-up.
+
+Change, SchoolSession.GUARD_GIVE_WAY: k2Hold, their combo, on the ground.
+- ruled loses FORWARD and SPRINT (no rule presses them there).
+- In training the teacher targets S within 3.2 (else stand) and no sprint, where no teacher already has those keys. K3's jump along keeps its own.
+- The swing mask and the jump-in rule are untouched. No key is pressed by code: the network learns it (the document's T6/C3/K2).
+- Counter: "guard in their combo: rules gave way N, taught to back off M".
+
+Gates (1-2 h, two checks):
+- Held with the crosshair on them in their combo, A in checks, down from 30-35%. Third hits from 36-42% toward 33% or less.
+- Punish crit within the stage's band (revert under 40% for 3 updates). Late hits on jump-ins and K2 broken not up. K3 jumped along not down.
+- Revert: GUARD_GIVE_WAY = false.
+
+The 10:33 check (run 74's first): A 19/45, B 19/45 (z 0.0); damage A 351/399, B 386/400. Third hits A 36% vs B 18%. In their combo A swung 30% vs 39%; outside their combo 34% vs 54%.

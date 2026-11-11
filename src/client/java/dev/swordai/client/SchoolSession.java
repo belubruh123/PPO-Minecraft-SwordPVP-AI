@@ -165,6 +165,16 @@ public final class SchoolSession implements AgentSession {
 	// On again 09:25 (run 74 alone): the punish crit's slide follows the practice stage (T-D 42-53%, T-C/T-E/T-B 50-63%; it fell from 57%
 	// at 06:21 to 51% at 07:08, before run 73), so it is judged against the same stage.
 	static final boolean REACH_AIM = true;
+	/**
+	 * Run 75 (11 Nov, agent 9): in their combo, on the ground, while the jump-in guard holds its swing (the user's rule), the rules give
+	 * way on W and the sprint, and the camera-free body keys are taught to stop and back off (the document's T6 "stop moving or hold S, so
+	 * their swing misses", C3 against hops, K2 "let it land"). The guard removes MeetJump's swing, but MeetJump still pressed W and the
+	 * sprint (W on 553 of 557 guard-held ticks, the sprint on 90%), running it into the jumper with its sword held: their jump hit came
+	 * first 70% (223, bench) and 75% in the user's duels. No key is pressed for it by a rule: the network decides, from the lesson.
+	 */
+	static final boolean GUARD_GIVE_WAY = true;
+	/** Run 75: ticks the rules gave way under the guard in their combo, and those taught to back off. */
+	private int guardGaveWay, guardBackTaught;
 	private boolean inT1cWindow;
 	/**
 	 * Since 24 Oct 15:45 the punish crit is paid only as the game counts it (the user's table, "punish crit 0 of 89"):
@@ -779,10 +789,13 @@ public final class SchoolSession implements AgentSession {
 						SeenLag.heldBack(), SeenLag.heldPackets(), comboTrackTaught, comboScenePicks, comboEscapes)
 				// Run 73: the whiff guard on this tick's pick: swings freed (last tick's pick was off them) and closed (it was on them).
 				+ String.format(Locale.ROOT, " | fresh pick: freed %d, closed %d", freshFreed, freshClosed)
+				// Run 75: the guard's ticks in their combo where the rules gave way on W and the sprint, and those taught to back off.
+				+ String.format(Locale.ROOT, " | guard in their combo: rules gave way %d, taught to back off %d", guardGaveWay, guardBackTaught)
 				// Run 73b: the camera in their combo by who held it: ready ticks, on their body without a pick, off their body.
 				+ String.format(Locale.ROOT, " | camera in their combo, the aim rule's: %d ticks, on body no pick %d, off body %d; the network's: %d ticks, on body no pick %d, off body %d",
 						comboCam[0][0], comboCam[0][1], comboCam[0][2], comboCam[1][0], comboCam[1][1], comboCam[1][2]);
 		freshFreed = freshClosed = 0;
+		guardGaveWay = guardBackTaught = 0;
 		for (long[] c : comboCam) {
 			java.util.Arrays.fill(c, 0);
 		}
@@ -4091,6 +4104,9 @@ public final class SchoolSession implements AgentSession {
 				&& !((JUMP_IN_HOLD_THROUGH_HIT || JUMP_IN_LET_CRIT) && critSwingNow(me))
 				|| K2_GUARD && !inCombo && ((me.isSprinting() || reader.duel.me.sprinting)
 				&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, fightLag + K2_MARGIN) || step.teacherTechnique == Technique.K2.ordinal());
+		// Run 75: the guard holding the swing in their combo, on the ground.
+		boolean guardHeldTheirCombo = GUARD_GIVE_WAY && k2Hold && clock.ticksSinceHitTaken <= COMBO_GAP
+				&& clock.ticksSinceHitDealt > clock.ticksSinceHitTaken && me.onGround();
 		if (k2Hold) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 			// Neither "swing" nor "don't" is taught on a tick the rule holds.
@@ -4159,11 +4175,43 @@ public final class SchoolSession implements AgentSession {
 			// not the installed model's own network.
 			// Run 47c: no copying pull in a replay. The replays are the failures of the rules and the network together, and the pull
 			// to the installed model's keys (RULED_PULL) dragged it back to the answer that failed there; a replay learns by its reward.
+			if (guardHeldTheirCombo) {
+				// Run 75: the rules give way on W and the sprint while the guard holds the swing in their combo.
+				ruled &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT);
+				guardGaveWay++;
+			}
 			ruledTaught = ruleOff ? (sceneNow != null && mode == Mode.TRAIN ? 0 : keys & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH)) : ruled;
 			if (ruleOff) {
 				ruled = 0;
 			}
 			keys &= ~ruled;
+		}
+		if (guardHeldTheirCombo && mode == Mode.TRAIN && review < 0 && pulled(pulls, step.teacherTechnique >= 0 ? step.teacherTechnique : base)) {
+			// Run 75: stop and back off (S within 3.2, else stand), no sprint, where no teacher has those keys already (K3's jump along
+			// keeps its own: no W, no sprint).
+			int teach = 0;
+			if ((step.teacherHeads & (1 << ActionSpace.FORWARD)) == 0) {
+				int fo = ActionSpace.OFFSETS[ActionSpace.FORWARD];
+				int want = facts.reachDist <= 3.2f ? dev.swordai.core.rl.BackNudge.BACK : 0;
+				for (int k = 0; k < ActionSpace.SIZES[ActionSpace.FORWARD]; k++) {
+					step.teacher[fo + k] = k == want ? 1f : 0f;
+				}
+				teach |= 1 << ActionSpace.FORWARD;
+			}
+			if ((step.teacherHeads & (1 << ActionSpace.SPRINT)) == 0) {
+				int so = ActionSpace.OFFSETS[ActionSpace.SPRINT];
+				for (int k = 0; k < ActionSpace.SIZES[ActionSpace.SPRINT]; k++) {
+					step.teacher[so + k] = k == 0 ? 1f : 0f;
+				}
+				teach |= 1 << ActionSpace.SPRINT;
+			}
+			if (teach != 0) {
+				step.teacherHeads |= teach;
+				if (step.teacherTechnique < 0) {
+					step.teacherTechnique = base;
+				}
+				guardBackTaught++;
+			}
 		}
 		// The body's keys only (run 30b): the camera is a fine choice among 15 and 11 bins (the aim rule picks one from the camera's
 		// push), and in the first updates of run 30b it was 53% of the rules' head-ticks at cross-entropy 3.4 to 5.1 and 20%

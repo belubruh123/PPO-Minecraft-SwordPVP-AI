@@ -152,6 +152,12 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Run 74, 29 updates: the aim rule's camera in their combo on body no pick 16% (20-23% before), off body 20% (13-22%); total not open 34-36% (38-42%).
   - Swing in their combo 26-27% (flat). Punish crit 48-50% (T-D to T-E). Kept.
 - 3-hour rule (10:25), items 1, 2, 9: the camera approach has been flat 3 h on the swing-back. Research agent 9 launched: why A holds with the crosshair ON them in their combo (checks: A 30%, B 19%), a different kind of fix.
+- Agent 9 (10:45): with the crosshair on them in their combo the swing is the rules' (1285 of 1291).
+  - The holds are the B1 keeps (they win the punish crit 73-87% in real duels, so they stay) and the jump-in guard (6-7%).
+  - Under the guard MeetJump ran it into the jumper with W and the sprint: their hit first 70-75%.
+  - A is in the air at their hits 50% vs B 8% (since run 62), which is about all of its extra third hits (follow-up running).
+  - Run 75 (rules give way on W/sprint under the guard in their combo; the network taught to back off) deploying 10:50.
+- 10:33 check (run 74 first): A 19/45, B 19/45 (z 0.0); third hits 36% vs 18%; in their combo 30% vs 39%.
 
 ## SOLVED (with the evidence)
 
