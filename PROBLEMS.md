@@ -329,6 +329,13 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Third hits A 34% vs B 30%. Outside their combo 51% vs 55%; in their combo 36% vs 40%.
   - Late knock-aways on jump-ins A 4 vs B 11. K2 broken A 33 vs B 41.
   - A's own play since 17:23: +4, +3, -5, +5, +1, +4 rounds (6 checks, +12). With the two test checks (+7, +2), A was ahead in 7 of 8.
+- 02:54 REAL-DUEL A/B ARM ON (standing order: reversible A/B arms with a backup).
+  - The profile jar is replaced by the 01:34 build. The backup is swordai/backup-before-ab-20261112-025404.
+  - Pool: installed run35-0657 1 : run82 (checked-1112-0220, the 02:24 check's network) 1, both rules on.
+  - The installed arm plays as before: run 62/65 fight hand-overs off, old networks load unchanged.
+  - The run82 arm has no runs 74/75/78 in real fights (those are in training and check code only).
+  - Judge by the user's real rounds: tools/duels.py '[A/B arm' lines; rounds won, their 3+ combos, late jump-in hits.
+  - Undo: tools/install-ab.sh --off, and the jar from the backup.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
