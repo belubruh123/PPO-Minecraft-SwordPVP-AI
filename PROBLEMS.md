@@ -342,6 +342,10 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - After its own ground hit: A takes off 40%. On the ground: its next hit 26%, theirs 60%. After a jump: 46% / 39%. B: 35% / 44%.
   - A's own play since 17:23: +4, +3, -5, +5, +1, +4, -5 (7 checks, +7).
 - 3-hour rule (03:25), run 81's target: after A's own ground hit, their hit first on the ground was 54/63/51/60% vs B 44-47% in 4 checks, with take-offs 33-41%. Flat for about 3.5 h. Research agent 16 launched: who presses A's W/S and jump there (rules, teacher, network), why B's identical rules do better on B's state, whether run 81's outcome target is even reached and pulled; 1-2 fixes of a different kind.
+- Agent 16 (03:35): A is not worse on the ground. It loses the next hit by TAKING OFF (56% vs B 4% with no hit in ticks 1-4; after its take-off their hit first 35% vs 18% staying down).
+  - The jumps are the network's, taught by run 62's hops: the teacher began T11b after every own sprint hit without checking for a stun, against the document's T11b/T3/T10.
+  - Run 81 is masked off on those ticks.
+  - Run 83 (TEACH_STUN_GATE) deploying 03:38.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 

@@ -1217,3 +1217,40 @@ Gates (1-2 h, then two checks):
 
 Revert: RESET_FIRST_HIT_TRAIN = false if the punish crit is under 50% for 3 updates, swings fall 10%, or T9 own is flat after 2 h.
 
+## Run 83 (12 Nov 03:38): the teacher's hops and uppercut after its own sprint hit only once it stunned (agent 16)
+
+Agent 16, 4 run-81 checks, own ground non-crit hits (A 552, B 920):
+- A is not worse on the ground. Their hit within 1-4 ticks (trades, their sword ready) A 26%, B 23%, equal.
+- With no hit in ticks 1-4:
+  - A takes off 56% by tick 12 (B 4%), at ticks 2-5, 88% within 3.0 blocks with their sword ready.
+  - After A's take-off: its next hit 35%, theirs 35%. Staying down: 37% / 18%. B: 38% / 24%.
+- The keys are the network's (rule-held 0 of 552), learned from run 62's taught hops. PvpPlayer began T11b (T10 later) after EVERY own sprint hit that was not a T2/C6, never checking for a stun, and the decider copies the label 89-95%.
+- A's stuns (T3) 17% vs B 32%.
+- Run 81 cannot reach these ticks: its target excludes step.teacherHeads, and the hop moments' teacher holds the jump, W/S, sprint and swing (COMBO_JUMP_GATED_HEADS).
+
+The document:
+- T11b: "You stay *outside their reach* while holding them in a combo".
+- T3: a sprint hit "that knocks the opponent far enough away that they *can't hit you back*".
+- T10: "Best time: right after you stun them".
+
+Change: PvpPlayer.TEACH_STUN_GATE = true, for the teacher's style only (Style.hopsAfterStun, set in Teacher; the bots keep theirs).
+- After its own sprint hit, the hops/uppercut choice waits HOP_CHECK_TICKS = 2.
+- It is made only if the hit put them out of their reach (theirReach > REACH) or they fly out (theyClose < -0.1), with no hit of theirs since.
+- Otherwise the moment stays the ordinary fight: its S-tap while the sword comes back. There run 81's B target now reaches.
+- The deflection-stun uppercut (T4/T5/T6 then T10) is unchanged.
+
+Gates (2 checks):
+- Take-offs after its own ground hit with no hit in ticks 1-4 <= 20% (56%).
+- Their hit first overall <= 41%, its next >= 30%.
+- T3 stuns >= 25%.
+- ROUNDS WON z >= 0 summed.
+- Punish crit 50-65%. Late knock-aways and K2 broken not up.
+- Its own combo's 3rd hit out of the 2s not down more than 5 points.
+- Training: run 81's target ticks up.
+
+Revert: TEACH_STUN_GATE = false if both checks have z < 0 and their hit first >= 46%, or the punish crit is under 50% for 3 updates.
+
+Next if needed: agent 16's fix 2, COMBO_JUMP_AWR (the decider's T10/T11 labels weighted by the outcome, hindsight relabel to BASE where adv < 0, Chooser.java:278).
+
+Run 82's own judgement shares these checks: T9's own share in training (75-79%) and A's first-hit jump resets in the checks.
+
