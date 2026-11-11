@@ -1012,3 +1012,49 @@ Gates: as run 77's.
 - Training: take-offs 13-20 ticks after their hit down 30%+; K3 jumped along and its crits not down; T9 by the game 90%+.
 - Punish crit within the stage's band.
 - Revert: READY_JUMP_COST = 0, or READY_JUMP_K3_CHARGED = false if K3's crits fall.
+
+## Run 78 (11 Nov 16:55; deploys with run 77c after the ~17:08 check): on its own rising jump in their combo, the keep gives the swing back (agent 11)
+
+Agent 11 pooled 6 checks (11:42-16:12) and joined school/hits.csv with jumps.csv.
+
+In their combo, sword ready, them in reach:
+
+| | A (3015 ticks) | B (2669 ticks) |
+|---|---|---|
+| Swung | 34.9% | 41.7% |
+| Crosshair off | 31.9% | 31.1% |
+| Held with the crosshair on | 33.2% | 27.2% |
+
+- B's swings include more at nothing: 11.4% of all B's swings missed, against 2.5% of A's.
+- On the ground, A is not worse: "ready in reach and never swung since their 1st hit" A 8% vs B 11%. The network holds about 0 with the pick on, because the 23 Oct AnswerRule presses NOW.
+- The gap is in the air:
+  - A is airborne at their 2nd hit in a row 40% vs B 6%.
+  - Its own take-offs 4-20 ticks after their hit: A 278 vs B 23. They peak 13-17 ticks after their hit, from a median 4.6 blocks.
+  - Their hit came first 166 times (95 rising); A's hit first 62 (55 crits).
+  - From 4.5 or less: hit rising 49%. From beyond 4.5: 21%.
+- While A rises on its own jump, the rule's keep for the way down (AnswerRule; Fighter.rules() bit 2) holds the swing.
+- Caveat: third hits A 31.6% vs B 33.5%, rounds A 105 vs B 102 of 267. So the swing-tick gap is not yet costing third hits.
+- The training counter's "swing not open (crosshair on its body)" includes the rules' own holds (counted after keys &= ~ruled). Do not read it as an aim failure.
+
+B1 in docs/PVP-TECHNIQUES.md: "Crit on the way down after their hit lifted you". Its own take-off is not a lift.
+
+Change: SchoolSession.OWN_JUMP_KEEP_YIELD = true. Training and checks (A only; B returns earlier). The rule's ATTACK leaves `ruled`, so the network chooses, and the keep is no longer copied there (ruledTaught), when all of these hold:
+- in their combo;
+- its own jump (ownJumpAir), not lifted (liftedFor < 0);
+- rising;
+- the rule's keep active and holding the swing.
+
+Unchanged:
+- Lifts and falling ticks: B1 as before.
+- The jump-in guard: it takes the swing out of keys first (k2Hold), so it still holds.
+
+Counter: "its own jump in their combo, the keep given back: training N (swung M), checks N (swung M)".
+
+Not changed: ENTER_BY_JUMP (+0.2) pays only jumps that took off beyond reach and entered it falling (jumpRuleKept), which is K3 done right. With run 77c's -0.25 those net -0.05. A jump hit rising nets -0.25 - 0.3 (AIR_JUMP_HIT) plus the damage. So the cost still separates good jumps from bad.
+
+Gates (2 checks, judged with run 77c):
+- Checks: its own take-offs hit rising 34% -> 25% or less; A's hit first 22% -> 30%+; swing in their combo +3 points; ROUNDS WON z >= 0.
+- B1 / punish crit: chances critted within the stage's band; check B1 not down.
+- K2 broken (hits on a falling jumper, A 41 vs B 32 at 16:12) not up.
+- Revert: OWN_JUMP_KEEP_YIELD = false if z < -1 twice, chances critted under 40% for 3 updates, or hit-rising not down after 2 checks.
+
