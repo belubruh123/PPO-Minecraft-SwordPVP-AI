@@ -177,6 +177,11 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
 
   - Training: its own take-offs in their combo 37 -> 52 an update (not falling yet). Told at take-off: BASE 226, T9 214, K3 188, T7 73, T9a 57: early jump resets, not run 62's options.
   - One check is not proof: watch the next two. Real duels decide.
+- 13:31 check (runs 75 + 76): A 24/44, B 19/44 (z +1.4); damage A 389/395, B 363/417 (net -6 vs -54 a fight's sum).
+  - Third hits A 19% vs B 36%. In their combo A swung 39% vs 43%; outside their combo 52% vs 56%. Punish crit 62-64%.
+  - Since runs 75/76: A 41/89 rounds vs B 34/89; third hits 26%/19% vs B 37%/36%.
+  - Before, A's third hits ran 36-42% against B's 18-27% in every check.
+- NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
 ## SOLVED (with the evidence)
 
