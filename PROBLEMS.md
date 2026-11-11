@@ -453,6 +453,28 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 - 06:50 BENCHMARK (docs/BENCHMARK.md, per-skill tests vs the installed model; the user: "make sure to run benchmark"; none since 10 Nov): R re-measured under the current code as run35w83 (run35-0657, suite-v2), then the candidate run83n0618 (checked-1112-0618 = run 83 after its 3 checks, kept as run/best-candidates/run83-0618.bin). Scored with tools/bench.py compare; then about every 3 h on the newest candidate.
+- 07:27 BENCHMARK RESULT, run83n0618 (run 83 after 3 checks) vs run35w83 (the installed run35-0657, re-measured today, suite-v2): TOTAL -0.02 (1.04) -> TIE.
+  - Skills part +2.16 (1.89) HP per real fight.
+
+    | Test | HP per fight (se) |
+    |---|---|
+    | Three-block hit (T7) | +4.89 (1.70) |
+    | Crits | +4.18 (2.32) |
+    | Make them miss (T6) | +2.82 (2.09) |
+    | Punish crit (B1) | +2.13 (3.65); rate 17% vs 12% |
+    | Reverse deflection | +2.41 (6.55) |
+    | Jump reset | +0.56 |
+    | Holding a combo | +0.24 |
+    | Jump-in defence (K2/T8) | -2.95 (1.94); crits taken per jump-in 0.04 vs 0.02 |
+    | Getting out of combos | -1.59 (0.98) |
+    | Deflection (T4) | -1.45 (3.19) |
+
+    No test is worse by more than 2 se.
+  - HEAD-TO-HEAD (C against the installed model itself): C-R -4.87 (1.62) HP per fight, 3 se WORSE. Rounds C 22 vs R 31 of 60 (z -1.7). This alone blocks BETTER.
+  - Bot fights +0.46 (0.45); rounds 159 vs 149 of 300 (z +1.0). Of these the mixer bot -2.00 (1.34).
+  - The hourly checks (A slightly ahead of the 23 Oct model) did not show this: against the INSTALLED model it loses the head-to-head. run52-1218 also lost it, 19-22 on 9 Nov.
+  - The h2h episodes are run/swordai/bench/run83n0618/NNNN-h2h.txt.gz (real-fight format, per tick).
+  - Next: WHY it loses the head-to-head, which is the biggest and the blocking part. The queued Sonnet agent (08:30 or later) takes this instead of the crit-opener split; jump-in defence -2.95 may be the same thing.
 
 ## SOLVED (with the evidence)
 
