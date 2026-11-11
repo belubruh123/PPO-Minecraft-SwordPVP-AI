@@ -219,6 +219,12 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - 42% of A's follow-ups come in the air (B 5%). When their hit ended its combo, A was in the air 55% (B 8%).
   - The teacher tells T10/T11 on their knockback flight, and the pay favours air follow-ups 2-3x.
   - Run 80 (its follow-ups paid only once held 8 ticks; chase crit's going-away on the ground only) is committed and deploys after the ~18:08 check unless that check is clearly worse.
+- 17:52, 20 updates of runs 77c/78/79:
+  - Run 79: T1c 14/87 (16%; it was 6-11%); critted back 15/87 (17%; 18-23%); its own jump after its punish crit 56% (31-41%). T1c take-offs at 0-1/2-4/5+ ticks after landing: 26/14/9.
+  - Run 77c: charged 78 of 288 take-offs 2-20 ticks after their hit; take-offs at 13-20 are 8.7 an update (about 10 before, gate -30%).
+  - Run 78: the keep given back on 138 ticks, swung on 6.
+  - In their combo: swung 30%, air 15%.
+  - Punish crit 60%.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
