@@ -158,6 +158,14 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - A is in the air at their hits 50% vs B 8% (since run 62), which is about all of its extra third hits (follow-up running).
   - Run 75 (rules give way on W/sprint under the guard in their combo; the network taught to back off) deploying 10:50.
 - 10:33 check (run 74 first): A 19/45, B 19/45 (z 0.0); third hits 36% vs 18%; in their combo 30% vs 39%.
+- Run 75, 23 updates (to 11:22):
+  - Under the guard in their combo the rules gave way 566 times; taught to back off 39.
+  - Swing in their combo 30% (25-27%), outside 46% (29-36%).
+  - The network's camera off them in their combo 19% (27-32%). Punish crit 53-54% (T-E).
+- 11:42 check (run 75 first): A 18/45, B 21/45 (z -0.7); damage A 383/413, B 387/396.
+  - Third hits A 34% vs B 27% (A 36-42% before).
+  - In their combo A swung 34% vs 39%, crosshair off 24% vs 27%. Outside their combo 44% vs 52%.
+- Run 76 (no jump between their hits) deploying 11:51.
 
 ## SOLVED (with the evidence)
 
