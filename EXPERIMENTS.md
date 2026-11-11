@@ -987,3 +987,28 @@ Change: counters only, no change to training. For each take-off 2-20 ticks after
 - the T1c window.
 
 They are printed after the run 77 counter as "(not charged: …)". The fix follows from the first update: the part that fails on every take-off.
+
+### Run 77c (11 Nov 16:40; deploys after the ~17:08 check): the charge's reach and the K3 label
+
+The first 77b update (16:25) covered 20 take-offs 2-20 ticks after their hit, with 0 charged. Each part of the test, counted on its own, failed on:
+- out of 3.5: 18;
+- told K3/T1c/T9b: 15;
+- their jump-in up: 6;
+- their sword under 0.9: 4;
+- T1c window: 0.
+
+So it jumps from beyond 3.5 as they close in, and their next hit lands while it rises. That is agent 10's finding: 95 of 114 take-offs at 13-20 ticks, 65% of them hit rising.
+
+K3 (docs/PVP-TECHNIQUES.md): "Space yourself so that when you jump, the opponent is forced to hit you as you are falling". A take-off they hit rising is K3 gone wrong. K3's teacher jumps only on THEIR take-off (PvpPlayer.jumpAlongMoment: sinceTheyTookOff == 0, from 3.3-6.5), and that moment is already let off by jumpInAir. The told label alone let off the network's own jumps under K3 when they had not jumped.
+
+Change:
+- READY_JUMP_REACH = 4.5 (was 3.5).
+- READY_JUMP_K3_CHARGED = true: told K3 is no longer let off (T1c/T9b still are).
+- Counters split: told K3, and take-offs at 3.5-4.5.
+
+Note: AIR_JUMP_HIT (0.3, run 43/54c) already charges hits taken while rising out of its own jump (24 in one update), on the hit's step. Run 77 charges the take-off's own step.
+
+Gates: as run 77's.
+- Training: take-offs 13-20 ticks after their hit down 30%+; K3 jumped along and its crits not down; T9 by the game 90%+.
+- Punish crit within the stage's band.
+- Revert: READY_JUMP_COST = 0, or READY_JUMP_K3_CHARGED = false if K3's crits fall.
