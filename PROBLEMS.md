@@ -139,6 +139,10 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Run 73's fresh pick: reverted 07:43 (mismatched positions now with the camera before the turn; punish crit 49%).
   - Run 73b's lesson: reverted 08:25 (punish crit 50% -> 44%).
   - Run 74 (the reach aim for A's aim rule) waits for the punish crit to come back over 50%; then it goes alone.
+- 08:33 check (run 73b's lesson on): A 19/44, B 12/44 (z +1.5); damage A 336/404, B 369/408.
+  - Third hits A 42% vs B 18%.
+  - In their combo A swung 32% vs 35%; outside their combo 44% vs 58%.
+  - Restart 08:46 with 73c (the known state plus the counters).
 
 ## SOLVED (with the evidence)
 
