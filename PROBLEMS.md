@@ -193,7 +193,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
 - 16:12 check (T-D, run 77 live but its cost never charged): A 17/44, B 17/44 (z 0.0); damage A 355/404, B 338/391.
   - Third hits A 31% vs B 31%. In their combo A swung 32% vs 43%.
   - Outside their combo A swung 43% vs 50% (held otherwise 47% vs 29%), up from 26% at 15:10.
-  - Hits on them rising close (crits taken after): A 27 vs B 13. Critical rule: watch.
+  - Its knockback hits on a falling jumper (K2 broken, the late hits): A 41 vs B 32; crits taken within ten ticks 9 vs 10. Its own T8 hits on a rising jumper close: A 27 vs B 13 (crits taken after them 10 vs 6).
   - Since runs 75/76 (5 checks): A 87/222, B 81/222; third hits 26/19/44/33/31% vs 37/36/33/37/31%.
 - Run 77's cost charged 0 in 23 updates. Run 77b (counters for which part of its test fails) deploying 16:13.
 - 3-hour rule (16:25), items 1 and 9: since run 75 (10:50), A swung in their combo 30-39% against B 39-46% in six checks; outside their combo 26-55% against 50-56%. Research agent 11 launched: split A's non-swing ticks against B's by cause (swing not open, rule held, in the air, the network's choice), then 2-3 fixes of a different kind.
