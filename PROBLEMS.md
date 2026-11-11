@@ -204,6 +204,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Run 77b's first update: of 20 take-offs, 18 were out of 3.5 and 15 told K3. Run 77c: the charge to 4.5, and told K3 no longer let off.
   - Run 78: on its own rising jump in their combo, the keep gives the swing to the network.
   - 77c and 78 deploy together after the ~17:08 check.
+- 3-hour rule (17:00), item 4: T1c 9% and critted back 18% after its punish crit (43 updates), flat at 6-19% for days. Research agent 12 launched: the ~20 ticks after its punish crit in real duels vs checks vs training, the cause chain, 2 fixes of a different kind. Item 12 is queued next.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
