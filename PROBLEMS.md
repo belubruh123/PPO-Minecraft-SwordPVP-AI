@@ -165,7 +165,18 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
 - 11:42 check (run 75 first): A 18/45, B 21/45 (z -0.7); damage A 383/413, B 387/396.
   - Third hits A 34% vs B 27% (A 36-42% before).
   - In their combo A swung 34% vs 39%, crosshair off 24% vs 27%. Outside their combo 44% vs 52%.
-- Run 76 (no jump between their hits) deploying 11:51.
+- Run 76 (no jump between their hits) live 11:53.
+- 12:42 check (runs 75 + 76, first with 76): A 17/45, B 15/45 (z +0.5); damage A 385/426, B 359/427. FIRST CHECK WITH A AHEAD OF B ON ALL THE COMBO NUMBERS:
+
+  | | A | B |
+  |---|---|---|
+  | Their third hits | 26% | 37% |
+  | Swung in their combo | 45% | 41% |
+  | Swung outside their combo | 55% | 51% |
+  | Crosshair off in their combo | 31% | 32% |
+
+  - Training: its own take-offs in their combo 37 -> 52 an update (not falling yet). Told at take-off: BASE 226, T9 214, K3 188, T7 73, T9a 57: early jump resets, not run 62's options.
+  - One check is not proof: watch the next two. Real duels decide.
 
 ## SOLVED (with the evidence)
 
