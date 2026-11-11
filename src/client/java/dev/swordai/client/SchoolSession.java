@@ -191,7 +191,7 @@ public final class SchoolSession implements AgentSession {
 	 * 33%, theirs 56% vs 46%. If those rates do not move, the gap is not the movement (swing guards or aim); if they move but its
 	 * crits fall as much, the bots cannot tell and real duels decide. Two checks, then off either way.
 	 */
-	static final boolean CHECK_B_FOLLOWUP = false;
+	static final boolean CHECK_B_FOLLOWUP = true; // on 11 Nov 21:25 for two checks (to 23:xx), then off either way
 	static final int B_FOLLOWUP_TICKS = 12;
 	private int ownGroundHitAt = -1, bFollowTicks;
 	/** Run 78's counters, [0] training, [1] checks: ticks given back, and of those the network swung. */
