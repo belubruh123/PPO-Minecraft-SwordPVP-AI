@@ -230,6 +230,12 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - K2 broken (hits on a falling jumper): A 27 vs B 53.
   - Third hits A 38% vs B 29% (still behind). In their combo A swung 33% vs 40%. Outside their combo 43% vs 53% (held otherwise 29% vs 32%).
 - Run 80 deploying 18:15.
+- 18:52, 20 updates of run 80 (live 18:24): moved the wrong way on the air.
+  - Its own take-offs 13-20 ticks after their hit: 17.2 an update (about 10 before; already 7 -> 13.5 across the 77c/78/79 hour). Hits taken in the air from its own jump: 24 an update (17-19). In their combo, air 18% (13-15%).
+  - Better: chase crits 2.6 an update (5). Follow-ups' held pay: paid 299, dropped 128 (30%).
+  - Run 79 still up: T1c 15%, critted back 10%, its own jump after its punish crit 81%.
+  - Punish crit 58%.
+  - If the ~19:10 check is not ahead, revert run 80 first (its air counters went the wrong way), then judge 77c/78.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
