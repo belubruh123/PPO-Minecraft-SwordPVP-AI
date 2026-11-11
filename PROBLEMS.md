@@ -368,6 +368,31 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
     - how many rounds flow through it (A's B1 80% vs B 54% may be the trade that wins rounds);
     - one bottleneck, with a test that could prove it wrong;
     - 1-2 fixes of a different kind than runs 72-83.
+- Agent 17 (05:15). 9 checks from 20:22 to 04:34: 402 pairs, A 175 rounds, B 154. Scripts are in tools/a17.
+  - Verdict: the swing-back gap in their combo is the B1 trade plus the jump-in guard plus C3 fly-outs. It is NOT costing rounds.
+  - Holds per check:
+    - A has more ready ticks than B (494 vs 444) but swings almost as often (170 vs 184).
+    - Held with the crosshair on them: A 170, B 115.
+    - In training, A's jump-in guard holds 7.1% of those ticks, about 35 of A's 55 extra held ticks. That guard is the user's rule; B breaks it with 25+2 late knock-aways a check vs A's 8.
+    - The rest is state: A is in the air at their first hit 48% vs B 7%, so the same rules keep the swing.
+  - Rounds flow (20 checks, about 4,300 hits each):
+    - After their FIRST hit, their next hit comes first: A 31.8%, B 31.4%.
+    - After their SECOND hit or later: A 23.7%, B 42.6% (A better).
+    - Third hits taken A 225 vs B 219.
+    - A replies with a crit 17.6% vs 12.4%, with a plain hit 24.0% vs 32.5%.
+    - Net of the whole bundle: +0.20 +- 1.28 damage a fight.
+  - Measure item 1 from now on by "their next hit first after their hit" and "replies per hit taken", not by swung% of ticks. Do not weaken the B1 keep or the guard to raise swung%.
+  - Hypothesis: A's own take-offs caught rising outside their combo.
+    - A takes off 241 times a check vs B 30.
+    - Their hit lands on it rising 1.28 a fight vs B 0.15, mostly at air ticks 1-4, 74% sprint hits.
+    - After such a hit, their next hit comes first 51% (after its own hit) vs 26-27% when hit falling or on the ground.
+    - The rising hits in their combo are C3 fly-outs and work (their next first 3%).
+    - Expected value is small (about +0.7 rounds per 45 pairs).
+  - Free test: run 83 already cuts these take-offs. Over its next 3 checks, if rising catches fall from 0.68 to 0.4 or less a fight while "their next first after their first hit" stays at 31.8% and rounds do not rise, drop the hypothesis.
+  - Proposed fixes, not built yet; run 83 is still being judged:
+    1. Branching replays at its own take-offs (K3/T8/K2): replay from 3 ticks before with the jump held off for 4 ticks, and use the 25-tick net damage as the jump head's target.
+    2. A next-swing-timing predictor as a policy input (T9). This changes the observation; speculative.
+  - Built now, counter only (deploys with the next redeploy, after run 83's second check): the check line "in their combo ... held with the crosshair on them: by the jump-in guard x%, in the air y%, on the ground z%" for A and B (agent 17's mechanism test).
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 

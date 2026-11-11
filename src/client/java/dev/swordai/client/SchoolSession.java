@@ -818,7 +818,7 @@ public final class SchoolSession implements AgentSession {
 	 * second and third hits in a row with none of its own between (the user's real fights, 24 Oct 22:05: comboed, "like 3 sprint
 	 * hits before it even press S or do any react").
 	 */
-	private final long[][] swingCount = new long[2][14];
+	private final long[][] swingCount = new long[2][17];
 	/** Their hits in a row in this fight, none of its own between. */
 	private int theirRow;
 	/** Ticks what it sees of them is behind the game this fight. */
@@ -3996,7 +3996,7 @@ public final class SchoolSession implements AgentSession {
 			logHits(1, action[ActionSpace.ATTACK] == 1, truth.botFalling());
 			applyAction(installed.fighter.yawRate(), installed.fighter.pitchRate());
 			clicked = action[ActionSpace.ATTACK] == 1;
-			countReady(1, charge, reader.duel.them.falling() || truth.botFalling());
+			countReady(1, charge, reader.duel.them.falling() || truth.botFalling(), false);
 			showBar(truth);
 			return;
 		}
@@ -4496,7 +4496,7 @@ public final class SchoolSession implements AgentSession {
 				}
 			}
 		}
-		countReady(0, charge, reader.duel.them.falling() || truth.botFalling());
+		countReady(0, charge, reader.duel.them.falling() || truth.botFalling(), k2Hold);
 		// Run 54b: counters for PROBLEMS.md 1, 2, 10 (the swing back in their combo) and 4 (the T1c funnel after its punish crit).
 		if (mode == Mode.TRAIN && review < 0) {
 			boolean theirCombo = clock.ticksSinceHitTaken <= 20 && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken;
@@ -4992,7 +4992,9 @@ public final class SchoolSession implements AgentSession {
 						c[5], 100.0 * c[6] / c[5], 100.0 * c[7] / c[5], 100.0 * c[8] / c[5]))
 				+ (c[5] == 0 ? "" : String.format(Locale.ROOT, ", crosshair off them %.0f%% (on its body but no pick %.0f%%)", 100.0 * c[9] / c[5], 100.0 * c[10] / c[5]))
 				+ (c[11] == 0 ? "" : String.format(Locale.ROOT, "; in their combo, sword ready, them in reach: %d ticks, swung %.0f%%, crosshair off them %.0f%%",
-						c[11], 100.0 * c[12] / c[11], 100.0 * c[13] / c[11]));
+						c[11], 100.0 * c[12] / c[11], 100.0 * c[13] / c[11]))
+				+ (c[11] == 0 ? "" : String.format(Locale.ROOT, ", held with the crosshair on them: by the jump-in guard %.0f%%, in the air %.0f%%, on the ground %.0f%%",
+						100.0 * c[16] / c[11], 100.0 * c[14] / c[11], 100.0 * c[15] / c[11]));
 	}
 
 	/**
@@ -5000,7 +5002,7 @@ public final class SchoolSession implements AgentSession {
 	 * combo on the ground with the sword ready and them in reach, and whether it swung, held with them falling (K2) or held
 	 * otherwise; so A and B are compared on the same moments.
 	 */
-	private void countReady(int side, float charge, boolean themFalling) {
+	private void countReady(int side, float charge, boolean themFalling, boolean guardHeld) {
 		if (mode != Mode.CHECK || mc.player == null) {
 			return;
 		}
@@ -5017,6 +5019,14 @@ public final class SchoolSession implements AgentSession {
 				c[12]++;
 			} else if (!onOpponent()) {
 				c[13]++;
+			} else if (guardHeld) {
+				// Agent 17 (counter only): who held the swing with the crosshair on them in their combo: A's jump-in guard,
+				// the rules' keep while it is in the air, or on the ground.
+				c[16]++;
+			} else if (!mc.player.onGround()) {
+				c[14]++;
+			} else {
+				c[15]++;
 			}
 			return;
 		}
