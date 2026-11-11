@@ -162,6 +162,8 @@ public final class Teacher {
 		s.punishJumpIns = true;
 		// Run 70 (Fable): in their combo their jump-in is met with the jump along and the crit (K3), not the wait (PvpPlayer#jumpAlongMoment).
 		s.jumpAlong = true;
+		// Run 79 (agent 12): T1c's jump at once on landing from its punish crit, "immediately jump and crit again" (PvpPlayer#T1C_AT_LANDING).
+		s.t1cAtLanding = dev.swordai.core.pvp.PvpPlayer.T1C_AT_LANDING;
 		// Jump resets wherever the file has them (T9 on a sprint hit, T9b, T9c), not only from their second hit in a row: the
 		// user, 24 Oct 22:50, "remove jump reset barrier cause I didn't even see it manage to pull a jump reset".
 		s.resetsInCombosOnly = false;

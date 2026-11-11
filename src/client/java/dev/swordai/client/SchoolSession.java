@@ -797,6 +797,9 @@ public final class SchoolSession implements AgentSession {
 	/** Run 54b: the T1c funnel (its own jump after the punish crit, hits from it, sprint hits among them) and its swing back in their combo. */
 	private boolean t1cJumpCounted;
 	private int t1cJumps, t1cHits, t1cSprintHits;
+	/** Run 79: its T1c take-offs by ticks after its first ground tick after the punish crit (0-1, 2-4, 5+). */
+	private final int[] t1cJumpByLanding = new int[3];
+	private int t1cLandSince = -1;
 	private int comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboOther, comboAirLifted, comboAirFalling, comboOtherFalling;
 	/** Run 54c: ticks in the air since its last take-off; its vertical speed on the tick before; hits in its own jump not paid. */
 	private int ownAirTicks;
@@ -837,6 +840,8 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | guard in their combo: rules gave way %d, taught to back off %d", guardGaveWay, guardBackTaught)
 				+ String.format(Locale.ROOT, " | its own jump in their combo, the keep given back: training %d (swung %d), checks %d (swung %d)",
 						ownKeepYield[0], ownKeepYieldSwung[0], ownKeepYield[1], ownKeepYieldSwung[1])
+				+ String.format(Locale.ROOT, " | T1c take-offs by ticks after landing from its punish crit: 0-1 %d, 2-4 %d, 5+ %d",
+						t1cJumpByLanding[0], t1cJumpByLanding[1], t1cJumpByLanding[2])
 				// Run 76: "no jump" taught between their hits; its own take-offs in their combo, by the technique it was told.
 				+ String.format(Locale.ROOT, " | their combo: no-jump taught %d, its own take-offs %d (told:%s)", comboGroundTaught, comboTakeoffs, toldLine(comboTakeoffsByTold))
 				// Run 77: those take-offs by ticks since their hit, and the ones charged with their sword ready in reach.
@@ -865,6 +870,7 @@ public final class SchoolSession implements AgentSession {
 		comboScenePicks = 0;
 		punishCritsForT1c = t1cCrits = critBacks = 0;
 		t1cJumps = t1cHits = t1cSprintHits = 0;
+		java.util.Arrays.fill(t1cJumpByLanding, 0);
 		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = comboOtherFalling = 0;
 		airJumpHitsFree = 0;
 		counterHits = 0;
@@ -4428,11 +4434,17 @@ public final class SchoolSession implements AgentSession {
 			}
 			if (sincePunishCrit == 0) {
 				t1cJumpCounted = false;
+				t1cLandSince = -1;
+			}
+			if (sincePunishCrit <= T1C_WINDOW && t1cLandSince < 0 && me.onGround()) {
+				t1cLandSince = sincePunishCrit;
 			}
 			if (sincePunishCrit <= T1C_WINDOW && !t1cJumpCounted && me.onGround() && action[ActionSpace.JUMP] == 1
 					&& (ruled & (1 << ActionSpace.JUMP)) == 0) {
 				t1cJumps++;
 				t1cJumpCounted = true;
+				int afterLanding = t1cLandSince < 0 ? 0 : sincePunishCrit - t1cLandSince;
+				t1cJumpByLanding[afterLanding <= 1 ? 0 : afterLanding <= 4 ? 1 : 2]++;
 			}
 		}
 		ownAirTicks = me.onGround() ? 0 : ownAirTicks + 1;

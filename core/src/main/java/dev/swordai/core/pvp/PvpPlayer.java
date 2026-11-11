@@ -61,6 +61,15 @@ public final class PvpPlayer {
 	static final int PLAN_MOST = 80;
 	/** A crit jump from this far (eye to hitbox) or more is a running jump; the bait crit (T1a) is one from here, landing close. */
 	static final float RUNNING_JUMP_FROM = 2.8f;
+	/**
+	 * Run 79 (agent 12, 11 Nov 17:05): T1c as the document has it, "After you punish-crit them, immediately jump and crit again".
+	 * The plan walked in to 2.6 and waited for a sword of 0.4 first, so its take-off came about c+5-10 (A's T1c jumps in the
+	 * checks: median c+9; by take-off tick c+1..4 +0.54 net damage, c+5..8 -0.59). In real duels their answer lands at median
+	 * c+5, as it lands. Now the jump comes on its first ground tick after the punish crit with no wait for the sword (back by the
+	 * fall, about 0.9 at c+11); only one knocked beyond T1C_WALK_FROM is walked toward first.
+	 */
+	public static final boolean T1C_AT_LANDING = true;
+	static final float T1C_WALK_FROM = 4.0f;
 
 	/**
 	 * Where a jump-in that lands 2.5 to 3 blocks from them takes off ({@link Style#jumpInLands}), eye to hitbox: in the toy
@@ -1196,12 +1205,13 @@ public final class PvpPlayer {
 				k.forward = d.reach > 1.2 ? 1 : 0;
 				return planT < 20 ? RUN : ABORT;
 			}
-			if (d.reach > from + 0.1) {
+			boolean atLanding = T1C_AT_LANDING && style.t1cAtLanding && plan == Plan.T1C;
+			if (d.reach > (atLanding ? T1C_WALK_FROM : from) + 0.1) {
 				k.forward = 1;
 				k.sprint = running || d.reach > from + 1.0;
 				return planT < 40 ? RUN : ABORT;
 			}
-			if (waitsForTheSword(me)) {
+			if (!atLanding && waitsForTheSword(me)) {
 				k.forward = d.reach > 1.2 ? 1 : 0;
 				return planT < 40 ? RUN : ABORT;
 			}
