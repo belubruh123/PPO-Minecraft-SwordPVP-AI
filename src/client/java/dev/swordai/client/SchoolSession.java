@@ -337,6 +337,20 @@ public final class SchoolSession implements AgentSession {
 	private int madeMiss;
 	static final int CHASE_GAP = 30;
 	static final int AWAY_TICKS = 3;
+	/**
+	 * Run 80 (agent 13, 17:40; PROBLEMS.md 12): a follow-up of its own combo is paid only once it has held. COMBO_HIT, COMBO_HIT3,
+	 * JUMP_COMBO_HIT, STRAFE_COMBO_HIT and CHASE_CRIT wait HELD_TICKS; paid then, or at its next hit, if no hit was taken; dropped if
+	 * their hit came first. In 10 checks (08:33-17:12) A's 2-hit combos went on to a 3rd 27% against B 39% (A 44% before run 62);
+	 * 42% of A's follow-ups were in the air (B 5%), its own take-offs in its combo 1714 vs 205, and when their hit ended a combo
+	 * A was in the air 55% (B 8%). After a ground sprint follow-up, A taking off in the next 6 ticks: their hit next 43%, its
+	 * next hit 42%; staying on the ground 24% and 48%. The pay at the hit itself paid an air follow-up 2-3 times a ground one.
+	 */
+	static final boolean HELD_COMBO_CREDIT = true;
+	static final int HELD_TICKS = 8;
+	/** Run 80: CHASE_CRIT's "going away" counted only while they are on the ground (their knockback flight is not backing out). */
+	static final boolean CHASE_GROUND_ONLY = true;
+	private float heldPending;
+	private int heldPendingAt, heldPaid, heldDropped;
 	/** Ticks since its last hit that they moved away from it (Duel.theyClose below -0.05), and chase crits paid since the update. */
 	private int awayTicks;
 	private int chaseCrits;
@@ -842,6 +856,7 @@ public final class SchoolSession implements AgentSession {
 						ownKeepYield[0], ownKeepYieldSwung[0], ownKeepYield[1], ownKeepYieldSwung[1])
 				+ String.format(Locale.ROOT, " | T1c take-offs by ticks after landing from its punish crit: 0-1 %d, 2-4 %d, 5+ %d",
 						t1cJumpByLanding[0], t1cJumpByLanding[1], t1cJumpByLanding[2])
+				+ String.format(Locale.ROOT, " | its follow-ups' pay held %d ticks: paid %d, dropped by their hit %d", HELD_TICKS, heldPaid, heldDropped)
 				// Run 76: "no jump" taught between their hits; its own take-offs in their combo, by the technique it was told.
 				+ String.format(Locale.ROOT, " | their combo: no-jump taught %d, its own take-offs %d (told:%s)", comboGroundTaught, comboTakeoffs, toldLine(comboTakeoffsByTold))
 				// Run 77: those take-offs by ticks since their hit, and the ones charged with their sword ready in reach.
@@ -871,6 +886,7 @@ public final class SchoolSession implements AgentSession {
 		punishCritsForT1c = t1cCrits = critBacks = 0;
 		t1cJumps = t1cHits = t1cSprintHits = 0;
 		java.util.Arrays.fill(t1cJumpByLanding, 0);
+		heldPaid = heldDropped = 0;
 		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = comboOtherFalling = 0;
 		airJumpHitsFree = 0;
 		counterHits = 0;
@@ -3204,6 +3220,7 @@ public final class SchoolSession implements AgentSession {
 		lastOwnHitAt = ownScene ? -1 : -1000;
 		rewardRow = !ownScene ? 0 : sceneNow.kind == KIND_OWN2 ? 2 : 1;
 		awayTicks = 0;
+		heldPending = 0f;
 		ownJumpAir = false;
 		ownFrom = -1;
 		ownRow = 0;
@@ -3775,13 +3792,26 @@ public final class SchoolSession implements AgentSession {
 						repeatEndNow = true;
 					}
 				}
+				// Run 80: the last follow-up's held pay: dropped on a hit taken (a trade too), paid at its next hit or after HELD_TICKS.
+				if (HELD_COMBO_CREDIT && heldPending > 0f) {
+					if (facts.hitsTaken > 0) {
+						heldPending = 0f;
+						heldDropped++;
+					} else if (facts.hitsDealt > 0 || fightTicks - heldPendingAt >= HELD_TICKS) {
+						reward += heldPending;
+						heldPending = 0f;
+						heldPaid++;
+					}
+				}
+				float comboPay = 0f;
 				// The chase crit (run 44, CHASE_CRIT): before the combo count below moves its last hit to now.
 				if (facts.hitsDealt > 0 && facts.critDealt && facts.hitsTaken == 0 && lastOwnHitAt > -1000
 						&& fightTicks - lastOwnHitAt <= CHASE_GAP && awayTicks >= AWAY_TICKS) {
-					reward += CHASE_CRIT;
+					comboPay += CHASE_CRIT;
 					chaseCrits++;
 				}
-				awayTicks = facts.hitsDealt > 0 || facts.hitsTaken > 0 ? 0 : awayTicks + (reader.duel.theyClose < -0.05 ? 1 : 0);
+				awayTicks = facts.hitsDealt > 0 || facts.hitsTaken > 0 ? 0
+						: awayTicks + (reader.duel.theyClose < -0.05 && (!CHASE_GROUND_ONLY || reader.duel.them.onGround) ? 1 : 0);
 				// The combo reward (run 42, COMBO_HIT): a trade (both hit this tick) or a hit taken ends its combo.
 				if (facts.hitsTaken > 0) {
 					lastOwnHitAt = -1000;
@@ -3789,14 +3819,14 @@ public final class SchoolSession implements AgentSession {
 				} else if (facts.hitsDealt > 0) {
 					if (fightTicks - lastOwnHitAt <= COMBO_GAP) {
 						rewardRow = Math.max(rewardRow, 1) + 1;
-						reward += COMBO_HIT + (rewardRow >= 3 ? COMBO_HIT3 : 0f);
+						comboPay += COMBO_HIT + (rewardRow >= 3 ? COMBO_HIT3 : 0f);
 						comboHitsPaid++;
 						combo3Paid += rewardRow >= 3 ? 1 : 0;
 						// Run 56: held with an uppercut, a lunge or a hop (a sprint hit out of its own jump), or while strafing.
 						// Run 68: not in the T1c window on one falling (K2, "while they are critting you"): there the crit is the answer.
 						if (facts.sprintHit && ownJumpAir && !facts.onGround
 								&& !(T1C_CREDIT && inT1cWindow && (reader.duel.them.falling() || truth.botFalling()))) {
-							reward += JUMP_COMBO_HIT;
+							comboPay += JUMP_COMBO_HIT;
 							if (prevVy > 0.0) {
 								uppercutComboHits++;
 							} else {
@@ -3804,13 +3834,29 @@ public final class SchoolSession implements AgentSession {
 							}
 						}
 						if (lastStrafe) {
-							reward += STRAFE_COMBO_HIT;
+							comboPay += STRAFE_COMBO_HIT;
 							strafeComboHits++;
 						}
 					} else {
 						rewardRow = 1;
 					}
 					lastOwnHitAt = fightTicks;
+				}
+				if (HELD_COMBO_CREDIT && comboPay > 0f) {
+					heldPending += comboPay;
+					heldPendingAt = fightTicks;
+				} else {
+					reward += comboPay;
+				}
+				if (HELD_COMBO_CREDIT && heldPending > 0f && (ko || timeUp || full)) {
+					// The fight ends inside the wait: paid unless it was knocked out.
+					if (facts.koTaken) {
+						heldDropped++;
+					} else {
+						reward += heldPending;
+						heldPaid++;
+					}
+					heldPending = 0f;
 				}
 				reward += shaping;
 				shapingPaid += shaping;
