@@ -8,6 +8,8 @@ weighted by moments), swings its teacher asked for that a rule kept back (sword 
   RISING    up 5 points or more on the window before: learning, normal
   STUCK     enough moments, not rising: look at the keys it is off on and fix the teaching
 Below 60% first, then below 80%.
+From 11 Nov (agent 15): 'own x/y' is the share where the network itself had the deciding key; 'rule-held' moments count as done
+with nothing judged (T9's 48-62% was about half rule-held).
 """
 import collections
 import glob
@@ -30,6 +32,7 @@ def updates(run):
 
 def tally(lines):
     done = collections.defaultdict(lambda: [0, 0])
+    ruled = collections.defaultdict(lambda: [0, 0])
     off = collections.defaultdict(lambda: collections.defaultdict(float))
     blocked = collections.defaultdict(lambda: [0, 0])
     for l in lines:
@@ -40,6 +43,10 @@ def tally(lines):
                 done[t][0] += int(x)
                 done[t][1] += int(n)
                 moments[t] = int(n)
+            # Agent 15 (11 Nov): moments whose deciding key a rule or the sword gate held (counted done with nothing judged).
+            for t, n, x in re.findall(r' (\w+) \d+/\d+ done \(\d+%\), \d+ paid, key held by a rule (\d+) \(done (\d+)\)', m.group(1)):
+                ruled[t][0] += int(x)
+                ruled[t][1] += int(n)
         m = re.search(r'why not done:([^|]*)', l)
         if m:
             for part in m.group(1).split(';'):
@@ -56,7 +63,7 @@ def tally(lines):
             for t, a, b in re.findall(r' (\w+) (\d+)/(\d+);', m.group(1)):
                 blocked[t][0] += int(a)
                 blocked[t][1] += int(b)
-    return done, off, blocked
+    return done, off, blocked, ruled
 
 
 def main():
@@ -65,8 +72,8 @@ def main():
     run = sys.argv[sys.argv.index('--run') + 1] if '--run' in sys.argv else 'D:/swordai/run'
     ups = updates(run)
     now, before = ups[-n:], ups[-2 * n:-n]
-    d, off, blocked = tally(now)
-    d0, _, _ = tally(before)
+    d, off, blocked, ruled = tally(now)
+    d0, _, _, _ = tally(before)
     rows = []
     for t, (x, k) in d.items():
         if t == '-':
@@ -85,7 +92,9 @@ def main():
             verdict = 'RISING'
         else:
             verdict = 'STUCK'
-        rows.append((r, t, x, k, r0, worst, verdict))
+        rx, rk = ruled.get(t, (0, 0))
+        own = '' if rk == 0 else ('  own %d/%d%s' % (x - rx, k - rk, '' if k - rk == 0 else ' (%.0f%%)' % (100.0 * (x - rx) / (k - rk))) + ', rule-held %d' % rk)
+        rows.append((r, t, x, k, r0, worst, verdict + own))
     rows.sort()
     print('%d updates (%s to %s); before: %d' % (len(now), now[0][1:9] if now else '-', now[-1][1:9] if now else '-', len(before)))
     for bar in (60, 80):

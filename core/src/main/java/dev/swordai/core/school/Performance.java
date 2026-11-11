@@ -23,6 +23,16 @@ public final class Performance {
 
 	/** Per technique: moments, done, paid, since {@link #clear}. */
 	public final int[] moments = new int[Technique.COUNT];
+	/**
+	 * Agent 15 (11 Nov 23:40): of the moments, those whose deciding key (the jump, the swing, or S where S is the technique) the
+	 * teacher asked for on a tick the network could not press it (a rule held the head, or the sword gate): such a head is skipped
+	 * in the match, so the moment counts as done with nothing judged (T9: about 141 of 254 moments, the network itself jumped on
+	 * about 2% of the rest). Measurement only: moments and done are unchanged; tech-review.py shows the network's own share.
+	 */
+	public final int[] ruledMoments = new int[Technique.COUNT];
+	public final int[] ruledDone = new int[Technique.COUNT];
+	private boolean ruledKey;
+	private boolean closingRuled;
 	public final int[] done = new int[Technique.COUNT];
 	public final int[] paid = new int[Technique.COUNT];
 	/**
@@ -77,6 +87,8 @@ public final class Performance {
 	public void clear() {
 		java.util.Arrays.fill(moments, 0);
 		java.util.Arrays.fill(done, 0);
+		java.util.Arrays.fill(ruledMoments, 0);
+		java.util.Arrays.fill(ruledDone, 0);
 		java.util.Arrays.fill(paid, 0);
 		outsideTicks = 0;
 		insideTicks = 0;
@@ -200,6 +212,7 @@ public final class Performance {
 				ticks = 0;
 				matched = 0;
 				keyMissed = false;
+				ruledKey = false;
 				owedKeys = 0;
 				dealt = 0f;
 				taken = 0f;
@@ -240,7 +253,12 @@ public final class Performance {
 		int counted = 0;
 		int same0 = 0;
 		for (int h = 0; h < ActionSpace.HEADS; h++) {
-			if ((heads & (1 << h)) == 0 || !ActionSpace.unlocked(mask, h)) {
+			if ((heads & (1 << h)) == 0) {
+				continue;
+			}
+			if (!ActionSpace.unlocked(mask, h)) {
+				int w = argmax(target, h);
+				ruledKey |= h == ActionSpace.JUMP && w == 1 || h == ActionSpace.ATTACK && w == 1 || h == ActionSpace.FORWARD && sNeeded(current) && w == 2;
 				continue;
 			}
 			int want = argmax(target, h);
@@ -283,6 +301,7 @@ public final class Performance {
 		boolean ok = ticks > 0 && matched >= MATCH * ticks && !keyMissed;
 		closing = current;
 		closingDone = ok;
+		closingRuled = ruledKey;
 		// A key asked for on the moment's last tick may still come on the next.
 		closingOwed = owedKeys;
 		closingLeft = AFTER;
@@ -295,6 +314,10 @@ public final class Performance {
 		boolean gain = closingDone && dealt - taken >= 0f;
 		moments[t]++;
 		done[t] += closingDone ? 1 : 0;
+		if (closingRuled) {
+			ruledMoments[t]++;
+			ruledDone[t] += closingDone ? 1 : 0;
+		}
 		doneSince[t] += closingDone ? 1 : 0;
 		paidSince[t] += gain ? 1 : 0;
 		wonSince[t] += closingDone && dealt - taken > 0f ? 1 : 0;

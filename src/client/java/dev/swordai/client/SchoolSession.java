@@ -5048,7 +5048,9 @@ public final class SchoolSession implements AgentSession {
 		for (Technique t : Technique.ALL) {
 			int i = t.ordinal();
 			if (p.moments[i] > 0) {
-				b.append(String.format(Locale.ROOT, " %s %d/%d done (%.0f%%), %d paid;", t.id, p.done[i], p.moments[i], 100f * p.done[i] / p.moments[i], p.paid[i]));
+				b.append(String.format(Locale.ROOT, " %s %d/%d done (%.0f%%), %d paid", t.id, p.done[i], p.moments[i], 100f * p.done[i] / p.moments[i], p.paid[i]));
+				// Agent 15: the moments whose deciding key a rule (or the sword gate) held, done with nothing judged.
+				b.append(p.ruledMoments[i] > 0 ? String.format(Locale.ROOT, ", key held by a rule %d (done %d);", p.ruledMoments[i], p.ruledDone[i]) : ";");
 			}
 		}
 		return b.toString();
