@@ -449,7 +449,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Its rounds are lost on damage TAKEN: their crit openers cost A 137 vs B 99 (-1.8 HP a fight), plain openers -0.9, partly from the user's jump-in rule.
   - Test that could prove it wrong (3 checks, no training change): A's untraded staying-down 'their hit first' at least B's + 6 points with z >= 2, or the take-off cost back above 0.7 HP.
   - Done: the gates are rewritten (item 2's measure line), scripts are in tools/a18, and no new training run on item 2.
-  - Next: their crit openers (A -1.8 HP a fight). Agent 18 is asked to split them (jump-ins under the user's rule, others, made to miss by T6, answered by B1).
+  - Next: their crit openers (A -1.8 HP a fight): split them into jump-ins under the user's rule, others, made to miss by T6, answered by B1. Agent 18's follow-up was STOPPED at the user's word (12 Nov 07:00: at most one subagent per 2 h, Sonnet only). QUEUED for a Sonnet agent at 08:30 or later; I measure what I can myself until then.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
