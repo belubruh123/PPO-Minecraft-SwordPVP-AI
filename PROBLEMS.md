@@ -181,6 +181,10 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Third hits A 19% vs B 36%. In their combo A swung 39% vs 43%; outside their combo 52% vs 56%. Punish crit 62-64%.
   - Since runs 75/76: A 41/89 rounds vs B 34/89; third hits 26%/19% vs B 37%/36%.
   - Before, A's third hits ran 36-42% against B's 18-27% in every check.
+- 14:21 check (stage T-C): A 14/45, B 15/45 (z -0.3); damage A 343/418, B 352/400.
+  - Third hits A 44% vs B 33%: back to the old pattern. In their combo A swung 33% vs 46%.
+  - So since runs 75/76: A 55/134, B 49/134; third hits 26/19/44% vs 37/36/33%.
+  - The gain is not stable yet (the two good checks were stage T-B). The real-duel port waits for more checks.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
 ## SOLVED (with the evidence)
