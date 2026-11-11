@@ -452,6 +452,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Next: their crit openers (A -1.8 HP a fight): split them into jump-ins under the user's rule, others, made to miss by T6, answered by B1. Agent 18's follow-up was STOPPED at the user's word (12 Nov 07:00: at most one subagent per 2 h, Sonnet only). QUEUED for a Sonnet agent at 08:30 or later; I measure what I can myself until then.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
+- 06:50 BENCHMARK (docs/BENCHMARK.md, per-skill tests vs the installed model; the user: "make sure to run benchmark"; none since 10 Nov): R re-measured under the current code as run35w83 (run35-0657, suite-v2), then the candidate run83n0618 (checked-1112-0618 = run 83 after its 3 checks, kept as run/best-candidates/run83-0618.bin). Scored with tools/bench.py compare; then about every 3 h on the newest candidate.
 
 ## SOLVED (with the evidence)
 
