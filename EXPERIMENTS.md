@@ -1058,3 +1058,40 @@ Gates (2 checks, judged with run 77c):
 - K2 broken (hits on a falling jumper, A 41 vs B 32 at 16:12) not up.
 - Revert: OWN_JUMP_KEEP_YIELD = false if z < -1 twice, chances critted under 40% for 3 updates, or hit-rising not down after 2 checks.
 
+## Run 79 (11 Nov 17:08; deploys with runs 77c and 78 after the ~17:10 check): the teacher's T1c jump at once on landing (agent 12)
+
+Agent 12 (PROBLEMS.md item 4). c = the tick of its punish crit.
+
+| | A (18 checks since run 71) | B | Real duels (470 punish crits) |
+|---|---|---|---|
+| Their hit first | 43% (+8% trades) | 45% | 69% |
+| Their first hit, median | c+10 | c+8 | c+5 |
+| Jumped before their hit | 30% (median c+9) | 1% | 1.5% |
+
+- In real duels it lands at c+4-5 in 63% of cases, as their punish crit back lands: 81% of their answers come with them in the air.
+- Its keys before their hit: W 63%, sprint 66%, jump 0%. The rules hold body keys on 3% or less of c+1..20, so the walk-in is the network's own.
+- A in the checks by take-off tick: c+1..4 +0.54 net damage (n 45); c+5..8 -0.59 (n 87); c+9..12 -0.07 (n 120).
+- Cause: the T1c plan (PvpPlayer.jumpedCrit) walked in to 2.6, then waited for a sword of 0.4, so it taught a take-off at about c+5-10, rising into their answer. Run 71's gated layer copies that timing.
+- Rewards also tilt it. K2 is off for 15 ticks after its punish crit, and COMBO_HIT pays the sprint follow-up on the lifted opponent. A crit taken in its own jump is not a lift, so it pays nothing extra, and it costs AIR_JUMP_HIT plus CRIT_BACK_COST. Its jump is not changed here.
+- Bots: run 59b's answer to its punish crit is rarer and later than real players' (c+10 vs c+5).
+
+T1c in docs/PVP-TECHNIQUES.md: "After you punish-crit them, immediately jump and crit again."
+
+Change: PvpPlayer.T1C_AT_LANDING = true, for the teacher's style only (Style.t1cAtLanding, set in Teacher; the bots keep theirs). For the plan T1C:
+- the jump comes on its first ground tick after the punish crit;
+- no wait for the sword (it is back by the fall, about 0.9 at c+11);
+- one knocked beyond 4.0 is walked toward first (was 2.6);
+- the falling swing is unchanged.
+
+Counter: "T1c take-offs by ticks after landing from its punish crit: 0-1, 2-4, 5+".
+
+Not done: agent 12's sub-flag T1C_EVERY_PUNISH, and its fix 2 PUNISH_FOLLOW (punish scenes that go on 25 ticks after the crit, bots answering at real timing). Fix 2 is next if the landing jumps rise but the checks stay level.
+
+Gates:
+- Training, 2 h: T1c 11% -> 18%+; most take-offs at 0-1 ticks after landing.
+- Checks, 1-2: A's take-off before their hit median c+5 or earlier; A's crits per punish crit 0.25 -> 0.35+; net damage after its punish crit at least B's; ROUNDS WON z >= 0.
+- Punish crit chances critted >= 50%; K2 broken / late jump-in hits not up.
+- Revert: T1C_AT_LANDING = false if the punish crit stays under 50% for 3 updates, jumps off the moments double, or T1c is flat after 2 h.
+
+Batch note: runs 77c, 78 and 79 go live together. 77c and 78 act in their combo (its own jump 13-20 ticks after their hit); 79 acts after its own punish crit. Each has its own counter, but ROUNDS WON cannot tell them apart. If the checks fall, revert 79 first (it changes the teacher), then 78.
+

@@ -205,6 +205,10 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Run 78: on its own rising jump in their combo, the keep gives the swing to the network.
   - 77c and 78 deploy together after the ~17:08 check.
 - 3-hour rule (17:00), item 4: T1c 9% and critted back 18% after its punish crit (43 updates), flat at 6-19% for days. Research agent 12 launched: the ~20 ticks after its punish crit in real duels vs checks vs training, the cause chain, 2 fixes of a different kind. Item 12 is queued next.
+- Agent 12 (17:05), item 4: the T1c teacher walked in and waited for the sword, so its jump came about c+9, into their answer.
+  - Real players answer at c+5, as it lands (their hit first 69%); the bots at c+10.
+  - A's take-offs at c+1..4 net +0.54; at c+5..8, -0.59.
+  - Run 79: the teacher's T1c jump on its first ground tick after the punish crit. It deploys with 77c and 78.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
