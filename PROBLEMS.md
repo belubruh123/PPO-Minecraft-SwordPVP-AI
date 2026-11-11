@@ -143,6 +143,12 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Third hits A 42% vs B 18%.
   - In their combo A swung 32% vs 35%; outside their combo 44% vs 58%.
   - Restart 08:46 with 73c (the known state plus the counters).
+- 09:36 check (run 73c, the known state): A 20/44, B 15/44 (z +1.3); damage A 354/397, B 344/386.
+  - Third hits A 39% vs B 23%.
+  - In their combo A swung 26% vs 37% (crosshair off 44% both).
+  - Outside their combo 48% vs 51%.
+  - Two checks in a row ahead (08:33 +1.5, 09:36 +1.3), as the counters stayed flat.
+- Run 74 (the reach aim, alone) live 09:44.
 
 ## SOLVED (with the evidence)
 
