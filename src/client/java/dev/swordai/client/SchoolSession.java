@@ -673,7 +673,7 @@ public final class SchoolSession implements AgentSession {
 	 * watches it (jumpInWatched, jumpInTookOff, ticks from the ground flag). Per side, so the checks compare A and B; the old
 	 * "hits on them rising close/further" line mixed in its own combo's hits on one its last hit lifted and had no tick.
 	 */
-	private final long[][] lateHits = new long[2][3];
+	private final long[][] lateHits = new long[2][5];
 	private final boolean[] jiAir = new boolean[2], jiTheirHit = new boolean[2];
 	/**
 	 * Its hits on a rising jumper by how close they were (under {@link #RISER_CLOSE} blocks), and the crits taken within ten
@@ -5630,7 +5630,15 @@ public final class SchoolSession implements AgentSession {
 			jiTheirHit[side] |= facts.hitsTaken > 0;
 			if (facts.hitsDealt > 0 && !jiTheirHit[side]) {
 				int t = jumpInTick(them);
-				lateHits[side][t <= 1 ? 0 : them.rising() ? 1 : 2]++;
+				if (t > 1 && facts.critDealt) {
+					// Its own crit on the jumper (JUMP_IN_LET_CRIT, the user's run 51 "jump along so both deal a crit"): not a knock-away.
+					lateHits[side][3]++;
+				} else {
+					lateHits[side][t <= 1 ? 0 : them.rising() ? 1 : 2]++;
+				}
+				if (t > 1 && clock.ticksSinceHitDealt <= dev.swordai.core.school.SchoolFighter.K2_COMBO_TICKS) {
+					lateHits[side][4]++;
+				}
 			}
 		}
 		if (them.sinceJump == 0 && reader.duel.theyClose > 0.05 && reader.duel.flat < 6.5) {
@@ -5775,8 +5783,9 @@ public final class SchoolSession implements AgentSession {
 
 	private String jumpInLine(int side) {
 		long[] c = jumpIn[side];
-		return String.format(Locale.ROOT, "its hits on their jump-in at ground tick 0-1 %d, LATE (tick 2+, before their hit) rising %d, falling %d; ",
-				lateHits[side][0], lateHits[side][1], lateHits[side][2])
+		return String.format(Locale.ROOT, "its hits on their jump-in at ground tick 0-1 %d, LATE knock-away hits (tick 2+, before their hit) rising %d, falling %d, "
+				+ "its crits on them at tick 2+ (jump along, let through) %d, late ones in its own combo %d; ",
+				lateHits[side][0], lateHits[side][1], lateHits[side][2], lateHits[side][3], lateHits[side][4])
 				+ String.format(Locale.ROOT, "their jump-ins %d, of those with their crit or plain hit on it or a K2: punished with its crit %d of %d (%.0f%%; their crit punished in %d; "
 				+ "their hit not punished in %d, no hit of theirs (not counted) %d, a sprint hit on them falling in %d); "
 				+ "its hits on them rising (T8) %d; its knockback hits on them falling (K2 broken) %d, crits taken "
