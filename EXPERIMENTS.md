@@ -1191,3 +1191,29 @@ Gates (2 checks, test off):
 
 Revert: OWN_FOLLOWUP_AWR = false if two checks show its follow-up back at 24-34% / 54% with z < 0, or the punish crit is under 50% for 3 updates.
 
+## Run 82 (12 Nov 01:26): the jump reset on a first sprint hit, learned by outcome (agent 15's F2)
+
+Agent 15 (11 Nov 23:40):
+- T9 is half a counting artefact: rule-held moments counted as done. Fixed at 00:33; T9's own share is 5%.
+- The first-hit jump reset was never taught. T9's pull is 0, so on the hit tick only B's key teaches (RULED_AWR, x4 on the hit tick), and B's JumpReset fires only in a combo (JumpReset.java: "Only ever in a combo, never on the first hit").
+- Rules-off scenes: jumped 98% on their 2nd+ sprint hits, 6% on their 1st.
+- The document's T9 ("press jump at the same moment you take damage"; Part 7: sprint hit -> jump reset) has no first-hit limit. The user removed the jump-reset limit on 24 Oct ("remove jump reset barrier").
+- After a first-hit jump (n 18): next hit its own 61% vs 37%.
+
+Change:
+- JumpReset.firstSprintHit and Fighter.firstSprintHitReset.
+- SchoolSession.RESET_FIRST_HIT_TRAIN = true: in TRAINING on A's side, on a tick a sprint hit was taken, A's rule also jump-resets a first hit on the ground.
+- The network learns it by outcome through RULED_AWR, the path that taught the 2nd-hit reset to 98%.
+- B, checks and real fights are unchanged.
+- Counter: "sprint hits taken with the first-hit jump reset open: N".
+
+Not done: F1 (T9 run-taught and gated). Teaching T9's jump directly spread jumps everywhere on 29 Oct, and run 25 cost -10.2.
+
+Gates (1-2 h, then two checks):
+- T9's own share (tech-review "own") 5% -> 20%+.
+- Jumps off the moments not up more than 30%; swings not down 10%.
+- Punish crit 50-65%.
+- In checks: A's first-hit jump resets up, with its next hit after them at or above the no-jump case; ROUNDS WON not falling.
+
+Revert: RESET_FIRST_HIT_TRAIN = false if the punish crit is under 50% for 3 updates, swings fall 10%, or T9 own is flat after 2 h.
+

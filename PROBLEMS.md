@@ -317,6 +317,12 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Late knock-aways on jump-ins A 9 vs B 19; jump-along crits 4 vs 4. K2 broken A 30 vs B 35.
   - Since 17:23 (runs 77c-81): A ahead in 5 of 6 checks, 118 vs 102 rounds (two were agent 14's test checks). A's own play only: 18:15 +4, 20:22 +3, 21:22 -5, 00:23 +5.
 - 00:25: the technique scoring fix (rule-held moments apart) deploying.
+- 00:33 the scoring fix was live. Network-own rates: T9 5% (37 of 57 moments rule-held), T9a 0/0 (all 12 rule-held), T10 46%, C6 0/7 (82 rule-held). Its own: B1 80%, K3 83%, T11c 83%, T4 54%, T1c 61%.
+- 01:24 check (T-E), run 81's second: A 19/45, B 18/45 (z +0.3); damage A 372/430, B 376/394 (net -8.7 vs -3.0).
+  - After its own ground hit: A takes off 38%. Its next hit 23% ground / 16% jump; theirs 63% / 50%. B: 35% / 47%. WORSE than 00:23, so run 81 has not taught it yet (about 1.5 h of training).
+  - Outside their combo A swung 36% vs 54%; third hits 31% vs 29%. Late knock-aways A 5 vs B 18; K2 broken A 29 vs B 55.
+  - Run 81's revert rule (follow-up back to 24-34% / 54% AND z < 0 in two checks) is not met, since z was +1.0 and +0.3. KEPT, but its mechanism is not working yet. If its follow-up is still under B's in the next two checks, look at its pull: the outcome-gated B-key target at ruledPull may be too weak.
+- 01:26: run 82 (RESET_FIRST_HIT_TRAIN) deploying.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
