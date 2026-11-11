@@ -136,6 +136,9 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - In their combo: A swung 27% vs B 45%. Third hits 44% vs 42%.
   - So the network alone is clearly behind the rules. No key can be handed over yet. Its camera is worse than the aim rule's (crosshair off 43% vs 29%).
 - Runs 73/73b (fresh pick for the whiff guard; the camera lesson aims at the nearest point of their box; camera counters by who held it), deploying 07:04. Status: NOT VERIFIED.
+  - Run 73's fresh pick: reverted 07:43 (mismatched positions now with the camera before the turn; punish crit 49%).
+  - Run 73b's lesson: reverted 08:25 (punish crit 50% -> 44%).
+  - Run 74 (the reach aim for A's aim rule) waits for the punish crit to come back over 50%; then it goes alone.
 
 ## SOLVED (with the evidence)
 

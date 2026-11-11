@@ -152,7 +152,9 @@ public final class SchoolSession implements AgentSession {
 	 * combo's ready ticks) put the ray on the box beyond 3.0; the wanted speed allows for the hand closing half the gap a tick
 	 * (cfg.aimResponse); and the ticks on their body without a pick are taught too.
 	 */
-	static final boolean REACH_TARGET = true;
+	// Run 73c (08:25): OFF. With it the punish crit chances critted slid 54% -> 44% (49% at 07:48, 48% at 08:10, 44% at 08:21, the
+	// rolling 300 clean of the fresh pick by then), under the user's 50% floor for 10 updates; the swing in their combo 26-29%, no gain.
+	static final boolean REACH_TARGET = false;
 	static final float REACH_TARGET_MARGIN = 0.1f;
 	/**
 	 * Run 74 (agent 8; the stopgap of Fable's camera item): A's aim rule aims where a swing lands (AimRule#reach: level with its eye within
@@ -160,7 +162,8 @@ public final class SchoolSession implements AgentSession {
 	 * teacher playing A) and real fights keep the 23 Oct aim. In their combo the aim rule holds A's camera on 90%+ of the ready ticks and
 	 * its middle aim left the ray on their body beyond 3.0 on a quarter of them (07:14-07:20: 25%).
 	 */
-	static final boolean REACH_AIM = true;
+	// Held OFF for the 08:30 deploy (run 73c): back to the known state first, then run 74 alone so the punish crit can be read.
+	static final boolean REACH_AIM = false;
 	private boolean inT1cWindow;
 	/**
 	 * Since 24 Oct 15:45 the punish crit is paid only as the game counts it (the user's table, "punish crit 0 of 89"):

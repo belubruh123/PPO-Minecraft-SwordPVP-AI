@@ -865,3 +865,12 @@ Gates (1-2 h, then two checks):
 - A's swing in their combo in checks 36%+ and crosshair off 28% or less; ROUNDS WON z >= 0.
 - Punish crit chances critted >= 50%; technique review B1 >= 70%.
 - Revert (REACH_AIM = false): the punish crit under 50% for 3 updates, off-body up 5+ points, or z under -1 in two checks.
+
+## Run 73c (08:25 11 Nov): run 73b's camera lesson OFF; run 74 held back (deploys after the ~08:28 check)
+
+With 73b (07:43-08:21, 29 updates):
+- Punish crit chances critted 50% -> 44% (48% at 08:10, 46% at 08:16, 44% at 08:21). The rolling 300 was clean of the fresh pick by then. Under the user's 50% floor for 10 updates.
+- Swing in their combo 26% (24-29%), not open 52%; third hits 39%; T1c 4 of 114, critted back 27.
+- Camera in their combo: the aim rule's 937 ticks (on body no pick 21%, off body 13%); the network's 3800 (18%, 32%).
+
+REACH_TARGET = false. REACH_AIM (run 74) is held false for this deploy, so the deploy goes back to the known state (runs 69-72 and the counters). Run 74 will go alone at the next window if the punish crit is back over 50%.
