@@ -1095,3 +1095,52 @@ Gates:
 
 Batch note: runs 77c, 78 and 79 go live together. 77c and 78 act in their combo (its own jump 13-20 ticks after their hit); 79 acts after its own punish crit. Each has its own counter, but ROUNDS WON cannot tell them apart. If the checks fall, revert 79 first (it changes the teacher), then 78.
 
+## Run 80 (11 Nov 17:45; deploys after the ~18:08 check if it is not clearly worse): its own follow-ups paid once they held (agent 13)
+
+Agent 13 (PROBLEMS.md 12), from 10 checks (08:33-17:12, hits.csv and jumps.csv).
+
+Its own combos:
+
+| | A | B |
+|---|---|---|
+| 2nd hit | 24% | 25% |
+| 3rd out of the 2s | 27% | 39% |
+| 4th out of the 3s | 28% | 35% |
+
+- Before run 62, A's 3rd out of the 2s was 44%; since, 28% (B 38% -> 37%). A's 3rd hits a check went 30.8 -> 13.1.
+- 42% of A's follow-ups are made in the air (B 5%). Its take-offs in its own combo: A 1714 vs B 205, a median 8 ticks after its hit, from 2.82 (B 14 ticks, 3.49).
+- Of A's take-offs in its combo: its own hit 24%, hit in the air 39%, nothing 35%.
+- Combos of 2+ ended by their hit: A 68% vs B 50%. A was in the air at that hit 55% (B 8%).
+- After a ground sprint follow-up with nothing for 6 ticks:
+  - A taking off: their hit next 43%, its next hit 42% (n 160);
+  - A staying on the ground: 24% and 48% (n 110);
+  - B: 35% and 51% (n 692).
+- Stuns (T3): A 34% of its sprint hits, B 38%.
+- Rules: they take no keys at A's follow-ups in checks (10 of 688 had jump or W, none the swing).
+- Cause:
+  - The teacher tells T11b after any sprint hit, and treats their knockback flight as "backing out" (PvpPlayer :459), which starts T10/T11a/T11c. The decider copies those labels about 90%.
+  - The pay favours air: JUMP_COMBO_HIT +0.2, and CHASE_CRIT +0.4 with awayTicks counting their knockback flight. So an air follow-up pays 2-3 times a ground stun follow-up, even when it gets A hit in the air.
+- The document:
+  - T10: "Best time: right after you stun them".
+  - T11a: "extra hits on players who hold S out of a trade (C3)".
+  - T11b: "You stay *outside their reach* while holding them in a combo".
+  - T11c: "Alternate hops and lunges whenever they hold S".
+
+Change (agent 13's fix 2; the user, 6 Nov: combo starters and holders by reward, not copying):
+- SchoolSession.HELD_COMBO_CREDIT = true. The follow-up's pay (COMBO_HIT, COMBO_HIT3, JUMP_COMBO_HIT, STRAFE_COMBO_HIT, CHASE_CRIT) waits HELD_TICKS = 8. It is paid at its next hit or after 8 ticks with no hit taken. It is dropped if their hit (or a trade) comes first. At the fight's end it is paid unless knocked out.
+- CHASE_GROUND_ONLY = true: CHASE_CRIT's going-away ticks count only while they are on the ground.
+- First hits and DEFLECT_HIT are unchanged. B1 and the T1c window are already outside these pays. No swing logic changes, so the jump-in rule stands.
+
+Counter: "its follow-ups' pay held 8 ticks: paid N, dropped by their hit M".
+
+Not done:
+- Agent 13's fix 1 (OWN_COMBO_HINDSIGHT: relabel the decider's T10/T11 targets by what held the combo). It is supervised and bigger; next if run 80 is flat.
+- The teacher's own moments (PvpPlayer :459, :1261: knockback flight as "holding S"). Also next.
+- Side finding: own-combo replay scenes are won 3.5% (2->3 scenes 5.7%), since replays run without the rules (run 47c).
+
+Gates:
+- Training: hits taken in the air from its own jump <= 12 an update (about 19 now); chase crits <= 2 an update (5).
+- Checks: A's follow-ups in the air <= 25% (42%); crits <= 8% of its follow-ups (18%); their hit next after its follow-ups <= 45%; A's 3rd out of the 2s >= B's; ROUNDS WON z >= 0.
+- Punish crit chances critted 50-65%.
+- Revert: HELD_COMBO_CREDIT = false if the punish crit is under 50% for 3 updates, or after 2 checks A's 3rd out of the 2s has not risen and z < 0 in both.
+
