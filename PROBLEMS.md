@@ -346,6 +346,21 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - The jumps are the network's, taught by run 62's hops: the teacher began T11b after every own sprint hit without checking for a stun, against the document's T11b/T3/T10.
   - Run 81 is masked off on those ticks.
   - Run 83 (TEACH_STUN_GATE) deploying 03:38.
+- 04:34 check (T-C), RUN 83's FIRST: A 20/45, B 11/45 (z +2.3, only A won 12, only B won 3); damage A 365/411, B 327/429 (net -7.2 vs -15.7).
+  - After its own ground hit: A takes off 28% (was 40%). On the ground, its next hit 35% and theirs 51% (was 26/60%). After a jump, 41/34%. B: 32/49%.
+  - Run 83's gates:
+    - take-offs <=20%: NOT YET (28%);
+    - their hit first <=41%: NOT YET (46% overall);
+    - its next >=30%: OK (37%);
+    - T3 stuns >=25%: OK (A 26%, B 45%);
+    - z >=0: OK;
+    - punish crit 63% in training, B1 80% done in the check.
+  - Revert rule (two checks with z<0 and their hit first >=46%) not met. KEPT; the second check decides.
+  - Third hits A 39% vs B 40%. Outside their combo swung 42% vs 53%; in their combo 35% vs 45%.
+  - K2 A 126/135 (93%) vs B 34/118 (29%). T10 done A 42% vs B 8%.
+  - Late knock-aways on jump-ins: rising A 8 vs B 25, falling 0 vs 2, at ground tick 0-1 0 and 0.
+  - Uppercutter A 1-2 vs B 0-3; fight-jumpin 0-3 both.
+  - A's own play since 17:23: +4, +3, -5, +5, +1, +4, -5, +9 (8 checks, +16).
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
