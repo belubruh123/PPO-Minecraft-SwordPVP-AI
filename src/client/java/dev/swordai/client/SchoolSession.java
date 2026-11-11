@@ -658,6 +658,14 @@ public final class SchoolSession implements AgentSession {
 	 */
 	private final long[][] jumpIn = new long[2][15];
 	/**
+	 * Its hits on a jump-in as the user's rule counts them (5 Nov, memory "jump-in ticks"): at ground tick 0-1 of their jump-in
+	 * [0]; from ground tick 2 on, before their hit lands, rising [1] or falling [2] (both break the rule). A jump-in as the guard
+	 * watches it (jumpInWatched, jumpInTookOff, ticks from the ground flag). Per side, so the checks compare A and B; the old
+	 * "hits on them rising close/further" line mixed in its own combo's hits on one its last hit lifted and had no tick.
+	 */
+	private final long[][] lateHits = new long[2][3];
+	private final boolean[] jiAir = new boolean[2], jiTheirHit = new boolean[2];
+	/**
 	 * Its hits on a rising jumper by how close they were (under {@link #RISER_CLOSE} blocks), and the crits taken within ten
 	 * ticks after each kind. The user, 25 Oct 17:12: a sprint hit does not knock a close rising jumper away, and there is lag.
 	 */
@@ -5585,6 +5593,19 @@ public final class SchoolSession implements AgentSession {
 		wasVisible[side] = facts.enemyVisible;
 		long[] c = jumpIn[side];
 		dev.swordai.core.pvp.Body them = reader.duel.them;
+		if (them.onGround) {
+			jiAir[side] = false;
+		} else if (jumpInTookOff(them) && jumpInWatched(reader.duel)) {
+			jiAir[side] = true;
+			jiTheirHit[side] = false;
+		}
+		if (jiAir[side]) {
+			jiTheirHit[side] |= facts.hitsTaken > 0;
+			if (facts.hitsDealt > 0 && !jiTheirHit[side]) {
+				int t = jumpInTick(them);
+				lateHits[side][t <= 1 ? 0 : them.rising() ? 1 : 2]++;
+			}
+		}
 		if (them.sinceJump == 0 && reader.duel.theyClose > 0.05 && reader.duel.flat < 6.5) {
 			if (exAt[side] >= 0) {
 				finishJumpIn(side);
@@ -5727,7 +5748,9 @@ public final class SchoolSession implements AgentSession {
 
 	private String jumpInLine(int side) {
 		long[] c = jumpIn[side];
-		return String.format(Locale.ROOT, "their jump-ins %d, of those with their crit or plain hit on it or a K2: punished with its crit %d of %d (%.0f%%; their crit punished in %d; "
+		return String.format(Locale.ROOT, "its hits on their jump-in at ground tick 0-1 %d, LATE (tick 2+, before their hit) rising %d, falling %d; ",
+				lateHits[side][0], lateHits[side][1], lateHits[side][2])
+				+ String.format(Locale.ROOT, "their jump-ins %d, of those with their crit or plain hit on it or a K2: punished with its crit %d of %d (%.0f%%; their crit punished in %d; "
 				+ "their hit not punished in %d, no hit of theirs (not counted) %d, a sprint hit on them falling in %d); "
 				+ "its hits on them rising (T8) %d; its knockback hits on them falling (K2 broken) %d, crits taken "
 				+ "within ten ticks %d; crits taken in all %d; hits on them rising close %d (crits taken after %d), further %d (crits taken after %d)",
@@ -5857,6 +5880,7 @@ public final class SchoolSession implements AgentSession {
 		k2Seen = 0;
 		java.util.Arrays.fill(critTrace[0], 0L);
 		java.util.Arrays.fill(jumpIn[0], 0L);
+		java.util.Arrays.fill(lateHits[0], 0L);
 		float dealtAll = 0f;
 		float takenAll = 0f;
 		int ticksAll = 0;
