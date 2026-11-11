@@ -184,6 +184,16 @@ public final class SchoolSession implements AgentSession {
 	 * Lifts and falling ticks keep the B1 logic; the jump-in guard took the swing out of keys before (k2Hold), so it stays held.
 	 */
 	static final boolean OWN_JUMP_KEEP_YIELD = true;
+	/**
+	 * Agent 14's test (11 Nov 19:30), CHECKS ONLY, off until run 80 is judged: for B_FOLLOWUP_TICKS after A's own hit made on the
+	 * ground, with no hit taken since, A's W/S, sprint and jump are B's (installed.fighter.action(), decided on A's state every
+	 * tick). Swing, camera, guards and rules unchanged. In 10 checks, after its own ground hit A's next hit came first 24% vs B
+	 * 33%, theirs 56% vs 46%. If those rates do not move, the gap is not the movement (swing guards or aim); if they move but its
+	 * crits fall as much, the bots cannot tell and real duels decide. Two checks, then off either way.
+	 */
+	static final boolean CHECK_B_FOLLOWUP = false;
+	static final int B_FOLLOWUP_TICKS = 12;
+	private int ownGroundHitAt = -1, bFollowTicks;
 	/** Run 78's counters, [0] training, [1] checks: ticks given back, and of those the network swung. */
 	private final int[] ownKeepYield = new int[2], ownKeepYieldSwung = new int[2];
 	private boolean ownKeepYieldNow;
@@ -3229,6 +3239,7 @@ public final class SchoolSession implements AgentSession {
 		rewardRow = !ownScene ? 0 : sceneNow.kind == KIND_OWN2 ? 2 : 1;
 		awayTicks = 0;
 		heldPending = 0f;
+		ownGroundHitAt = -1;
 		ownJumpAir = false;
 		ownFrom = -1;
 		ownRow = 0;
@@ -4407,6 +4418,19 @@ public final class SchoolSession implements AgentSession {
 		if (ownKeepYieldNow && action[ActionSpace.ATTACK] == 1) {
 			ownKeepYieldSwung[mode == Mode.CHECK ? 1 : 0]++;
 		}
+		if (facts.hitsDealt > 0) {
+			ownGroundHitAt = me.onGround() ? fightTicks : -1;
+		}
+		if (CHECK_B_FOLLOWUP && mode == Mode.CHECK && installed != null && installedDecided && !teacherPlaysA && !ruleOff
+				&& ownGroundHitAt >= 0 && fightTicks - ownGroundHitAt <= B_FOLLOWUP_TICKS
+				&& clock.ticksSinceHitTaken > fightTicks - ownGroundHitAt) {
+			// Agent 14's test: B's movement keys in A's follow-up window (checks only).
+			int[] b = installed.fighter.action();
+			action[ActionSpace.FORWARD] = b[ActionSpace.FORWARD];
+			action[ActionSpace.SPRINT] = b[ActionSpace.SPRINT];
+			action[ActionSpace.JUMP] = b[ActionSpace.JUMP];
+			bFollowTicks++;
+		}
 		// Run 43: a take-off on the ground by the network (not a rule's jump) marks the air until it stands again.
 		if (me.onGround()) {
 			ownJumpAir = action[ActionSpace.JUMP] == 1 && (ruled & (1 << ActionSpace.JUMP)) == 0;
@@ -5227,6 +5251,9 @@ public final class SchoolSession implements AgentSession {
 				+ "| A by the game:{} | B by the game:{} | A crit moments: {} | B crit moments: {} | A jumping in: {} | B jumping in: {} | A swings: {} | B swings: {}",
 				checkFights / 2, perfLine(perf), perfLine(perfB), perf.keysLine(), perfB.keysLine(), ownLine(0), ownLine(1), critLine(0), critLine(1),
 				jumpInLine(0), jumpInLine(1), swingLine(0), swingLine(1));
+		if (CHECK_B_FOLLOWUP) {
+			SwordAi.LOGGER.info("school check B follow-up test (agent 14): A's W/S, sprint and jump were B's on {} ticks after its own ground hits", bFollowTicks);
+		}
 		SwordAi.LOGGER.info("school check rules | A: the golden rule (K2) held the swing on {} ticks, the installed model's rules set keys on {} ticks; "
 				+ "sprint hits outside its combos on one falling: on the server {}, as seen {} | lost view: A {} of {} ticks off the screen ({} times), "
 				+ "B {} of {} ticks ({} times)", k2Held, ruleTicks, k2Truth, k2Seen, lostTicks[0], viewTicks[0], lostTimes[0], lostTicks[1], viewTicks[1],
