@@ -323,6 +323,12 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Outside their combo A swung 36% vs 54%; third hits 31% vs 29%. Late knock-aways A 5 vs B 18; K2 broken A 29 vs B 55.
   - Run 81's revert rule (follow-up back to 24-34% / 54% AND z < 0 in two checks) is not met, since z was +1.0 and +0.3. KEPT, but its mechanism is not working yet. If its follow-up is still under B's in the next two checks, look at its pull: the outcome-gated B-key target at ruledPull may be too weak.
 - 01:26: run 82 (RESET_FIRST_HIT_TRAIN) deploying.
+- 01:52, 13 updates of run 82: T9's own share 79% (11/14; was 5%), with 41 rule-held moments (the rule now resets first hits too in training). Punish crit 58%.
+- 02:24 check (T-B; runs 81 + 82): A 24/44, B 20/44 (z +1.2); damage A 395/381, B 387/399 (net +2.1 vs -1.9).
+  - After its own ground hit: A's next hit about 38% (36% ground, 40% after a jump) vs B 33%; theirs about 43% vs B 46%. A ahead of B on its follow-up for the first time without the test.
+  - Third hits A 34% vs B 30%. Outside their combo 51% vs 55%; in their combo 36% vs 40%.
+  - Late knock-aways on jump-ins A 4 vs B 11. K2 broken A 33 vs B 41.
+  - A's own play since 17:23: +4, +3, -5, +5, +1, +4 rounds (6 checks, +12). With the two test checks (+7, +2), A was ahead in 7 of 8.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
