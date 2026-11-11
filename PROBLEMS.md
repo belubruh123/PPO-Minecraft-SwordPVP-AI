@@ -311,6 +311,12 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Training fix for the first-hit jump reset: after run 81 is judged.
     - Preferred: F2 (B's JumpReset also on a first sprint hit, training only, A's side), taught by outcome through RULED_AWR, the path that reached 98%.
     - Not first: F1 (T9 run-taught and gated). Teaching T9's jump spread jumps everywhere on 29 Oct, and run 25 cost -10.2 in a check.
+- 12 Nov 00:23 check (T-D), run 81's first (test off): A 22/45, B 17/45 (z +1.0); damage A 381/391, B 337/379 (net -1.5 vs -7.3).
+  - Third hits A 28% vs B 19%. Outside their combo 51% vs 51%. In their combo 33% vs 46%.
+  - After its own ground hit (test off now): A takes off 33% (39% before run 81; gate <= 20%). Its next hit 30% on the ground / 35% after a jump, theirs 54% / 37%. B: 32% / 47%. Not yet B's level on the ground: 50 minutes of run 81.
+  - Late knock-aways on jump-ins A 9 vs B 19; jump-along crits 4 vs 4. K2 broken A 30 vs B 35.
+  - Since 17:23 (runs 77c-81): A ahead in 5 of 6 checks, 118 vs 102 rounds (two were agent 14's test checks). A's own play only: 18:15 +4, 20:22 +3, 21:22 -5, 00:23 +5.
+- 00:25: the technique scoring fix (rule-held moments apart) deploying.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 
