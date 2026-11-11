@@ -1,6 +1,6 @@
 """Exact per-pair outcomes from the training logs' 'school pair N A bot: ... knockout' lines, keyed by the check's step count."""
 import re, glob, json
-logs = sorted(glob.glob(r'D:/swordai/run/school-client-111[01]-*.log')) + [r'D:/swordai/run/school-client-live.log']
+logs = sorted(glob.glob(r'D:/swordai/run/school-client-11[0-9][0-9]-*.log')) + [r'D:/swordai/run/school-client-live.log']
 out = {}
 cur = None
 for fn in logs:

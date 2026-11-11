@@ -104,6 +104,8 @@ public final class Style {
 	public boolean jumpAlong = false;
 	/** Run 79: T1c's jump on its first ground tick after the punish crit (PvpPlayer#T1C_AT_LANDING). The teacher's; the bots keep theirs. */
 	public boolean t1cAtLanding = false;
+	/** Run 83: hops (T11b) and the uppercut (T10) after its own sprint hit only once that hit stunned (PvpPlayer#TEACH_STUN_GATE). The teacher's; the bots keep theirs. */
+	public boolean hopsAfterStun = false;
 	/**
 	 * Every hit that throws it up, of any kind, is answered by the punish crit (B1) when one can come, before the jump reset
 	 * or any other answer: the drill of the user's method (27 Oct), where the decision model's output is forced to the punish
@@ -178,6 +180,7 @@ public final class Style {
 		s.punishJumpIns = punishJumpIns;
 		s.jumpAlong = jumpAlong;
 		s.t1cAtLanding = t1cAtLanding;
+		s.hopsAfterStun = hopsAfterStun;
 		s.punishFirst = punishFirst;
 		s.answerCrit = answerCrit;
 		s.closeIn = closeIn;

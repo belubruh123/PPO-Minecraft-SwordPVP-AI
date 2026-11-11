@@ -69,6 +69,19 @@ public final class PvpPlayer {
 	 * fall, about 0.9 at c+11); only one knocked beyond T1C_WALK_FROM is walked toward first.
 	 */
 	public static final boolean T1C_AT_LANDING = true;
+	/**
+	 * Run 83 (agent 16, 12 Nov 03:45): the teacher began hops (T11b), or the uppercut (T10) later, after EVERY own sprint hit that
+	 * was not a T2/C6, never checking that it stunned. Run 62 teaches those keys and the decider copies the label 89-95%. So in the
+	 * checks A took off 56% of the times after its own ground hit (B 4%), at ticks 2-5, 88% within 3.0 blocks with their sword
+	 * ready, and their hit came first 35% vs 18% when it stayed down. The document: T11b "You stay *outside their reach* while
+	 * holding them in a combo"; T3 a sprint hit "that knocks the opponent far enough away that they *can't hit you back*"; T10
+	 * "Best time: right after you stun them". Now, for the teacher's style, the hop or uppercut is decided HOP_CHECK_TICKS after
+	 * the hit: only if the hit put them out of their reach or they are flying out, and no hit was taken since; else the moment
+	 * stays the ordinary fight (its S-tap while the sword comes back). Agent 14's test (A's movement B's there) won two checks.
+	 */
+	public static final boolean TEACH_STUN_GATE = true;
+	static final int HOP_CHECK_TICKS = 2;
+	private int hopCheckAt = -1;
 	static final float T1C_WALK_FROM = 4.0f;
 
 	/**
@@ -140,6 +153,7 @@ public final class PvpPlayer {
 		System.arraycopy(s.p, 0, pNow, 0, pNow.length);
 		habits.reset();
 		tick = 0;
+		hopCheckAt = -1;
 		sinceMyHit = 1000;
 		sinceTheirHit = 1000;
 		sinceMySwing = 1000;
@@ -346,6 +360,18 @@ public final class PvpPlayer {
 			jumpAt = -1;
 			end();
 			begin(Plan.K3);
+		}
+		if (hopCheckAt >= 0 && tick >= hopCheckAt) {
+			hopCheckAt = -1;
+			// Run 83: hops or the uppercut only after a stun (out of their reach, or flying out), with no hit of theirs since.
+			boolean stunned = d.theirReach > Duel.REACH || d.theyClose < -0.1;
+			if (plan == Plan.NONE && pending == Plan.NONE && stunned && sinceTheirHit > sinceMyHit) {
+				if (roll(Technique.T11B)) {
+					begin(Plan.T11B);
+				} else if (roll(Technique.T10)) {
+					later(Plan.T10);
+				}
+			}
 		}
 		if (plan == Plan.NONE && pending != Plan.NONE && tick >= pendingAt) {
 			begin(pending);
@@ -738,12 +764,17 @@ public final class PvpPlayer {
 				later(Plan.T10);
 				return;
 			}
-			if (roll(Technique.T11B)) {
-				begin(Plan.T11B);
-				return;
-			}
-			if (roll(Technique.T10)) {
-				later(Plan.T10);
+			if (style.hopsAfterStun) {
+				// Run 83: decided once the knockback shows (the stun), HOP_CHECK_TICKS on.
+				hopCheckAt = tick + HOP_CHECK_TICKS;
+			} else {
+				if (roll(Technique.T11B)) {
+					begin(Plan.T11B);
+					return;
+				}
+				if (roll(Technique.T10)) {
+					later(Plan.T10);
+				}
 			}
 		} else {
 			end();
