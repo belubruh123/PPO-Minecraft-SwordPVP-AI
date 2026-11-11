@@ -291,6 +291,12 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Third hits A 33% vs B 30%. Outside their combo A swung 36% vs 46%.
   - Late knock-away hits on jump-ins: A 8 (7 rising, 1 falling) vs B 16. K2 broken A 43 vs B 34: B's sprint key in that window may add A's sprint hits on fallers. Watch.
   - One check supports agent 14's hypothesis: A's own movement after its own ground hit is where it loses the next hit. Even A's ground ticks were worse than B's (their hit 54% vs 45%). The second test check (~23:10) decides. Then the training fix.
+- 23:12 check (T-D), the second with the test on (1362 ticks): A 19/44, B 17/44 (z +0.4); damage A 374/407, B 349/390.
+  - After its own ground hit: A's next hit 37% vs B 32%; their hit 46% vs 52%.
+  - Third hits A 35% vs B 26%. Outside their combo A swung 48% vs 50%.
+  - Late knock-aways on jump-ins: A 6 vs B 21. K2 broken A 28 vs B 37.
+  - The two test checks: A 43/88 vs B 34/88. In both, A's follow-up beat B's. HYPOTHESIS SUPPORTED: A's own movement after its ground hit cost it the next hit.
+- 23:22: test off. Run 81 (OWN_FOLLOWUP_AWR: B's movement keys in that window as an outcome target in training) deploying.
 - 3-hour rule (14:55), item 10: run 76's no-jump lesson left its own take-offs in their combo flat at 41-46 an update (130 updates). Research agent 10 launched: what keeps the jump (rewards, the decider telling T9/T9a, the lesson's weight or window, the jump reset's timing), and a different kind of fix.
 - NEXT for real duels: the profile's jar is from 9 Nov. A 69a+ checkpoint (4 more tensors) does not load in it, and runs 74/75 act only in training and checks, not in real fights (SchoolFighter). A real-duel arm needs the new jar and runs 74/75 ported to the real fight. Needs the user's word.
 

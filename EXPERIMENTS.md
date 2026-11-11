@@ -1167,3 +1167,27 @@ Training gates:
 
 All four are kept. Two checks are not proof, and real duels decide.
 
+## Run 81 (11 Nov 23:22): after its own ground hit, B's movement keys as an outcome target (agent 14's plan 2)
+
+Agent 14's checks-only test (CHECK_B_FOLLOWUP: for 12 ticks after A's own ground hit, with no hit taken since, A's W/S, sprint and jump were B's):
+
+| | 22:23 (T-C) | 23:12 (T-D) |
+|---|---|---|
+| Rounds | A 24-17 (z +1.7) | A 19-17 (z +0.4) |
+| After its own ground hit, A's next hit | 42% (B 39%) | 37% (B 32%) |
+| Their hit | 33% (B 37%) | 46% (B 52%) |
+
+- In the 3 checks before, with A's own movement: take-offs 39%, its next hit 24% on the ground and 34% after a jump; their hit 54% and 36%.
+- Supported: A's own movement after its ground hit cost it the next hit. Even on the ground A did worse than B.
+
+Change: SchoolSession.OWN_FOLLOWUP_AWR = true. Training only, in the same window (B_FOLLOWUP_TICKS = 12 after its own ground hit, no hit taken since). On the heads no teacher teaches, B's W/S, sprint and jump (installed.fighter.action() on A's state) join step.ruledHeads. So run 72's outcome path (SchoolPpo RULED_AWR) applies: the network presses these keys itself, and B's key is taught only where the network's own key differed and the moment went worse than the critic expected.
+
+Counter: "after its own ground hit, B's movement as an outcome target: N ticks".
+
+Gates (2 checks, test off):
+- After its own ground hit: A's next hit >= 33%, their hit <= 46%, take-offs <= 20% (39% before).
+- ROUNDS WON z >= 0 over the two.
+- Punish crit 50-65%. K2 broken and late knock-aways on jump-ins not up.
+
+Revert: OWN_FOLLOWUP_AWR = false if two checks show its follow-up back at 24-34% / 54% with z < 0, or the punish crit is under 50% for 3 updates.
+
