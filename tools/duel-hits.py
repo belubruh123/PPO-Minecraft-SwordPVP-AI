@@ -59,16 +59,19 @@ for f in sorted(glob.glob(base + '*.txt.gz')):
     with gzip.open(f, 'rt', encoding='utf-8', errors='replace') as fh:
         for line in fh:
             line = line.rstrip('\n')
-            if line == HEAD:
+            if line.startswith('tick,dist,'):
+                # The header names the columns (13 Nov: four more before 'event'); read by name.
+                names = line.split(',')
+                ix = {n: i for i, n in enumerate(names)}
                 started = True
                 continue
             if not started:
                 continue
-            p = line.split(',')
-            if len(p) < 15:
+            p = line.split(',', len(names) - 1)
+            if len(p) < len(names):
                 continue
             try:
-                rows.append((int(p[0]), float(p[1]), float(p[2]), float(p[3]), p[6], p[7], p[12], p[13], p[14]))
+                rows.append((int(p[0]), float(p[1]), float(p[2]), float(p[3]), p[6], p[7], p[ix['keys']], p[ix['rules']], p[ix['event']]))
             except ValueError:
                 continue
     if not rows:

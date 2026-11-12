@@ -20,14 +20,22 @@ BINS = [(0, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8)]
 
 def rows(path):
     out = []
+    ix = None
     with gzip.open(path, 'rt', errors='replace') as f:
         for line in f:
-            p = line.rstrip('\n').split(',')
-            if len(p) < 15 or not p[0].isdigit():
+            line = line.rstrip('\n')
+            if line.startswith('tick,dist,'):
+                # The header names the columns (13 Nov: four more before 'event'); read by name.
+                ix = {n: i for i, n in enumerate(line.split(','))}
+                continue
+            if ix is None or not line[:1].isdigit():
+                continue
+            p = line.split(',', len(ix) - 1)
+            if len(p) < len(ix):
                 continue
             try:
                 out.append(dict(t=int(p[0]), dist=float(p[1]), me=p[6], opp=p[7], oppUp=float(p[8]),
-                                oppToward=float(p[9]), myToward=float(p[11]), keys=p[12], rules=p[13], ev=p[14]))
+                                oppToward=float(p[9]), myToward=float(p[11]), keys=p[ix['keys']], rules=p[ix['rules']], ev=p[ix['event']]))
             except ValueError:
                 continue
     return out

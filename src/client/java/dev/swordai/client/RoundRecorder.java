@@ -53,7 +53,7 @@ final class RoundRecorder {
 	/** One tick, as recorded. */
 	private record Tick(float dist, float myCharge, float oppSword, float myHp, float oppHp, boolean myGround, boolean oppGround,
 						boolean oppSprint, float oppUp, float oppToward, float oppSide, float myToward, String keys, String rules,
-						String event) {
+						float oppSideSigned, float oppFacing, float oppPitch, boolean oppSwinging, String event) {
 	}
 
 	private final List<Tick> timeline = new ArrayList<>();
@@ -144,6 +144,14 @@ final class RoundRecorder {
 		double ovz = opp.getZ() - opp.zo;
 		float oppToward = (float) -(ovx * ux + ovz * uz);
 		float oppSide = (float) Math.abs(ovx * uz - ovz * ux);
+		// 13 Nov (learning from the opponents' winning moves, the user's 12 Nov request): what is needed to read the opponent's own
+		// keys back from a lost round: the side speed with its sign (plus: to its right as it faces this player), where its head looks
+		// (degrees off the line to this player; and its pitch) and whether its arm is swinging.
+		float oppSideSigned = (float) (ovx * uz - ovz * ux);
+		double toMeYaw = Math.toDegrees(Math.atan2(-(me.getX() - opp.getX()), me.getZ() - opp.getZ()));
+		float oppFacing = (float) net.minecraft.util.Mth.wrapDegrees(opp.getYHeadRot() - toMeYaw);
+		float oppPitch = opp.getXRot();
+		boolean oppSwinging = opp.swinging;
 		float myToward = (float) ((me.getX() - me.xo) * ux + (me.getZ() - me.zo) * uz);
 		float oppUp = (float) (opp.getY() - opp.yo);
 		float myCharge = me.getAttackStrengthScale(0f);
@@ -273,7 +281,7 @@ final class RoundRecorder {
 			}
 		}
 		timeline.add(new Tick(dist, myCharge, oppSword, myHp, oppHp, me.onGround(), oppGround, opp.isSprinting(), oppUp,
-				oppToward, oppSide, myToward, keys(action), rulesText(rules), ev.toString().trim()));
+				oppToward, oppSide, myToward, keys(action), rulesText(rules), oppSideSigned, oppFacing, oppPitch, oppSwinging, ev.toString().trim()));
 	}
 
 	/** At the end of the tick: what its swing came to, as this game made it out ({@code crit}, {@code sprint}, ...), or a miss. */
@@ -292,7 +300,8 @@ final class RoundRecorder {
 		Tick t = timeline.remove(timeline.size() - 1);
 		String ev = (t.event().isEmpty() ? "" : t.event() + " ") + "swing:" + kind;
 		timeline.add(new Tick(t.dist(), t.myCharge(), t.oppSword(), t.myHp(), t.oppHp(), t.myGround(), t.oppGround(), t.oppSprint(),
-				t.oppUp(), t.oppToward(), t.oppSide(), t.myToward(), t.keys(), t.rules(), ev));
+				t.oppUp(), t.oppToward(), t.oppSide(), t.myToward(), t.keys(), t.rules(), t.oppSideSigned(), t.oppFacing(), t.oppPitch(),
+				t.oppSwinging(), ev));
 	}
 
 	/**
@@ -380,13 +389,15 @@ final class RoundRecorder {
 			w.write("\nTimeline, one line a tick. dist: eye to the opponent's hitbox. sword: its own charge, and the opponent's as read off its arm. "
 					+ "opp: on ground (g) or in the air (a), s if sprinting, toward = blocks a tick it comes at it (minus: going away), side = sideways. "
 					+ "keys: W/S, A/D, r = sprint, j = jump, x = attack. rules: which rule had the keys (" + RULE_NAMES + ").\n");
-			w.write("tick,dist,mySword,oppSword,myHp,oppHp,me,opp,oppUp,oppToward,oppSide,myToward,keys,rules,event\n");
+			w.write("Since 13 Nov: oppSideS = sideways with its sign (plus: to its right as it faces this player), oppFacing = degrees its head "
+					+ "turns off the line to this player, oppPitch, oppSwing = 1 while its arm swings.\n");
+			w.write("tick,dist,mySword,oppSword,myHp,oppHp,me,opp,oppUp,oppToward,oppSide,myToward,keys,rules,oppSideS,oppFacing,oppPitch,oppSwing,event\n");
 			for (int i = 0; i < timeline.size(); i++) {
 				Tick t = timeline.get(i);
-				w.write(String.format(Locale.ROOT, "%d,%.2f,%.2f,%.2f,%.0f,%.0f,%s,%s%s,%.2f,%.2f,%.2f,%.2f,%s,%s,%s\n",
+				w.write(String.format(Locale.ROOT, "%d,%.2f,%.2f,%.2f,%.0f,%.0f,%s,%s%s,%.2f,%.2f,%.2f,%.2f,%s,%s,%.2f,%.0f,%.0f,%d,%s\n",
 						i, t.dist(), t.myCharge(), t.oppSword(), t.myHp(), t.oppHp(), t.myGround() ? "g" : "a",
 						t.oppGround() ? "g" : "a", t.oppSprint() ? "s" : "", t.oppUp(), t.oppToward(), t.oppSide(), t.myToward(),
-						t.keys(), t.rules(), t.event()));
+						t.keys(), t.rules(), t.oppSideSigned(), t.oppFacing(), t.oppPitch(), t.oppSwinging() ? 1 : 0, t.event()));
 			}
 		}
 	}
