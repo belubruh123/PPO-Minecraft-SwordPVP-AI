@@ -595,6 +595,11 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Third hits A 21% vs B 28%. Outside their combo A swung 54% vs 57%.
   - Jump-ins at ground tick 0-1: A 1, B 1 (allowed). Late knock-aways rising A 6 vs B 15. K2 broken 26 vs 37.
   - Training: K2 broken 10, 10, 21 in the last three windows (up; more league fights since run 85). Punish crit chances critted 72% (above the band). The check's K2 broken is low, so watch the next check.
+- 20:49 check (T-D), run 85's sixth: A 22/45, B 20/45 (z +0.5); damage A 398/408, B 370/386 (net -1.4 vs -2.6).
+  - Run 85 over 6 checks: A 141, B 108.
+  - Outside their combo A swung 60% vs 54%: A AHEAD for the first time (it was 38-46% before run 85). Crosshair off 28% vs 28%.
+  - Third hits A 29% vs B 33%. Late knock-aways rising A 7 vs B 18. K2 broken 30 vs 39.
+  - Training K2 broken back to 4-8 a window (the 21 was one window).
 
 ## SOLVED (with the evidence)
 
