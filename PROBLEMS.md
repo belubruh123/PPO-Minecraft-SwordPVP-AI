@@ -564,6 +564,11 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Third hits A 30% vs B 46%. Outside their combo A swung 50% vs 55%.
   - Late knock-aways rising A 7 vs B 13; ground tick 0-1 0 and 0. K2 broken 34 vs 44.
   - Training: punish crit chances critted 70% (above the band).
+- 17:31 check (T-B), run 85's third: A 23/45, B 18/45 (z +1.1); damage A 395/394, B 377/404 (net +0.2 vs -4.3).
+  - Run 85 over 3 checks: A 70, B 54.
+  - Outside their combo A swung 51% vs B 53% (nearly level, was 38-46% before run 85). Crosshair off 42% vs 35%.
+  - Third hits A 37% vs B 27%. Swings 366 vs 410, on them 97% vs 89%.
+  - Late knock-aways rising A 5 vs B 15; ground tick 0-1 0 and 0. K2 broken 38 vs 54.
 
 ## SOLVED (with the evidence)
 
