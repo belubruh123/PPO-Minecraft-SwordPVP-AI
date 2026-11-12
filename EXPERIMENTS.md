@@ -1483,3 +1483,36 @@ the keep given back 4 times in training, swung 0.
 
 The user asked (06:50) whether the installed model is really the strongest old model; this settles it on equal terms. The
 winner goes to the duel pool, with a backup.
+
+### Run 88b (built 13 Nov 07:25; deploy after the ~07:30 check): the combo "proven" keep off for A's rules
+
+**Run 88 alone did nothing.** The keep given back 38 ticks over six windows, and it swung 3. The network was still being
+taught the hold:
+- RULED_PULL targets the rule's keys in the fights without the rules (59% of fights), and the rule keeps the swing there.
+- Where no technique teaches, the installed model's choice is copied (oldPull), and that choice is the rule's keep.
+- With the swing's entropy at 0.01 it does not explore, so PPO alone cannot find the swing.
+
+**The change.** Fighter.comboProvenOff: in their combo, AnswerRule.when no longer keeps the swing for the way down on a
+proven opponent. It swings now, as against an opponent not yet punish-critted. That is the rule's own first aim: "no combo
+goes by without a swing back".
+- Set per tick for A's rules only, with the same hook as run 74's reach aim. B (the 23 Oct model) is unchanged.
+- Benchmarks: only with the "airyield" option. The user's game: only an "airyield" arm (FightSession).
+- Both copying targets now teach the swing in those ticks, and the rule-on fights press it.
+- Their first hit's keep (B1) is untouched.
+
+**Expected side effect.** The punish crit count, now 67-71% (above the user's 50-65%), should drop toward the band, because
+some lifts in their combo now end in a plain swing instead of a crit. The rule's comment measured this: against opponents who
+stay on top, 3 in 4 falls ended in a crit with the keep, 6 in 10 without it.
+
+**Also in this deploy:** agent 26's counter, any hit taken within 12/30 ticks after its punish crit.
+
+**Judge.**
+- The check's in-combo split: A's air hold 25% toward B's 14-18%; A's swing 33% toward 46%; their third hit after the second
+  not above B.
+- The punish crit stays 50-65%. It must not fall under 50%.
+- Late jump-in hits do not rise.
+
+**Revert** (COMBO_PROVEN_OFF false) if the punish crit falls under 50% for 3 updates, or rounds won falls below B in two
+checks running.
+
+**The ~09:15 tournament moves to about 10:15**, so run 88b has about 2.5 hours.

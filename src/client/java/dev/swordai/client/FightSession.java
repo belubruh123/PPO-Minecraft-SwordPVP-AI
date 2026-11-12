@@ -172,6 +172,7 @@ final class FightSession implements AgentSession {
 					mc.hasSingleplayerServer() ? loaded.cfg.swingMinCharge : loaded.cfg.swingMinChargeOnline, loaded.cfg.playTemperature);
 			school.whiffGuard(loaded.cfg.whiffGuard);
 			school.airKeepYield(arm != null && arm.airYield);
+			fighter.comboProvenOff(arm != null && arm.airYield);
 			if (rulesOn) {
 				school.rulesFrom(fighter);
 				rulesBody.patchedUp = loaded.patchedUp;

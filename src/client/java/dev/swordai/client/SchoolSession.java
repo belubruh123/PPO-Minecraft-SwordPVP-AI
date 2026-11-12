@@ -194,6 +194,14 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final boolean AIR_KEEP_YIELD = true;
 	/**
+	 * Run 88b (13 Nov 07:30): run 88 alone did not move the swing (given back 38 ticks in six windows, swung 3), because the
+	 * rule's keep stayed the copying target: RULED_PULL in the fights without the rules (59%) and the installed model's choice
+	 * where no technique teaches. So A's rules themselves no longer keep the swing in their combo once proven (Fighter
+	 * comboProvenOff): the rule swings there, and both targets teach the swing. B (the 23 Oct model) is untouched. In a
+	 * benchmark only with the "airyield" option, in the user's game only for an "airyield" arm (like AIR_KEEP_YIELD).
+	 */
+	static final boolean COMBO_PROVEN_OFF = true;
+	/**
 	 * Agent 14's test (11 Nov 19:30), CHECKS ONLY, off until run 80 is judged: for B_FOLLOWUP_TICKS after A's own hit made on the
 	 * ground, with no hit taken since, A's W/S, sprint and jump are B's (installed.fighter.action(), decided on A's state every
 	 * tick). Swing, camera, guards and rules unchanged. In 10 checks, after its own ground hit A's next hit came first 24% vs B
@@ -4097,6 +4105,7 @@ public final class SchoolSession implements AgentSession {
 		if (installed != null) {
 			// Run 74: the reach aim for A's rules only; B keeps the 23 Oct aim.
 			installed.fighter.reachAim(REACH_AIM && !installedPlays && !teacherPlaysA);
+			installed.fighter.comboProvenOff(COMBO_PROVEN_OFF && !installedPlays && !teacherPlaysA && (benchTag == null || benchAirYield));
 			boolean firstReset = RESET_FIRST_HIT_TRAIN && mode == Mode.TRAIN && !installedPlays && !teacherPlaysA && facts.sprintsTaken > 0;
 			installed.fighter.firstSprintHitReset(firstReset);
 			firstHitResetTicks += firstReset ? 1 : 0;

@@ -62,6 +62,8 @@ public final class Fighter {
 	private final boolean punishWait;
 	private final float keepWithin;
 	private final boolean punishInCombo;
+	/** Run 88b: the punish crit's keep in a combo (FallWatch.proven) off for this tick's decision; see {@link #comboProvenOff}. */
+	private boolean comboProvenOff;
 	private final boolean meetWhenComing;
 	private final boolean dodgeJump;
 	private final EdgeHold edgeHold;
@@ -418,7 +420,7 @@ public final class Fighter {
 		boolean meet = meetRule && swingMinCharge > 0f && MeetJump.applies(obs.vec, meetWhenComing) && (jumpIn == null || jumpIn.kind() == JumpIn.NONE);
 		// On the ground the swing is made at once; in the air it stays the swing it would have been.
 		boolean meetSwings = meet && body.onGround;
-		int when = owes && punishRule && !meetSwings ? AnswerRule.when(obs.vec, fallWatch.punishable(), punishInCombo && fallWatch.proven(), punishWait, keepWithin) : AnswerRule.NOW;
+		int when = owes && punishRule && !meetSwings ? AnswerRule.when(obs.vec, fallWatch.punishable(), punishInCombo && !comboProvenOff && fallWatch.proven(), punishWait, keepWithin) : AnswerRule.NOW;
 		boolean answer = owes && when == AnswerRule.NOW;
 		boolean keep = owes && when != AnswerRule.NOW;
 		boolean letGo = owes && when == AnswerRule.LET_GO;
@@ -673,6 +675,15 @@ public final class Fighter {
 	 * Hit and out on or off for this fighter, whatever the config says ({@code Config.hitAndOutRule}): the school switches it for the
 	 * side it plays for, and a fighter that plays against it (the installed model in a check) keeps it off.
 	 */
+	/**
+	 * Run 88b (13 Nov): in their combo (AnswerRule.when's "second hit or not" once a punish crit was made on this opponent) the
+	 * swing is made now, as against an opponent not yet punish-critted: "no combo goes by without a swing back" (AnswerRule).
+	 * Their first hit's keep for the way down (B1) is untouched. Off by default; the school sets it per tick for A's rules only.
+	 */
+	public void comboProvenOff(boolean on) {
+		comboProvenOff = on;
+	}
+
 	public void hitAndOut(boolean on) {
 		hitAndOut = on;
 		if (on && stepBack == null && ActionSpace.unlocked(headMask, ActionSpace.FORWARD) && ActionSpace.unlocked(headMask, ActionSpace.SPRINT)) {
