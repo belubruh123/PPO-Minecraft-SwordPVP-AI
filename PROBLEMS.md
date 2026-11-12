@@ -627,6 +627,16 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Done now (23:00):
     - No new training run (freeze). run 85 keeps training.
     - Benchmark noise floor: run85-1727 benchmarked AGAIN (run85n1727b), then the installed model again (run35w83b, the A/A test).
+- 22:48 REPEAT BENCHMARK of the same network run85-1727 (tag run85n1727b) vs run35w83: TOTAL +2.28 (0.99) -> TIE (was +3.51 BETTER).
+  - Skills +5.64 (1.80) (was +7.48). Punish crit +11.12 (3.62), rate 19% vs 12%.
+  - Jump-in defence -4.82 (1.49) 'WORSE', the noisy 25-seed test (100 seeds said BETTER).
+  - Head-to-head -3.28 (1.56) (was -1.70). Bots +1.13 (0.47) (was +0.77). Mixer -0.96.
+  - NOISE FLOOR: the same network moved the total by 1.2 between two runs, as its se says. Single verdicts flip between BETTER and TIE on noise.
+  - POOLED over the benchmarks of runs 84/85, against the installed model:
+    - the total is positive (mean about +1.6; run85-1727 about +2.9);
+    - skills positive every time;
+    - the HEAD-TO-HEAD is NEGATIVE every time (-1.40, -2.10, -1.70, -0.85, -3.28; mean about -1.9), a REAL weakness;
+    - the mixer is negative every time (mean about -2).
 
 ## SOLVED (with the evidence)
 
