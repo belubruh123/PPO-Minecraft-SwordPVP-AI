@@ -1363,3 +1363,39 @@ run85-1727. Before, all of them went to the installed model. No reward or rule c
 **Revert** (take game-run85-1727.bin out of league/ and restart): if two benchmarks average below +1.5 against the
 averaged reference, or the hourly checks' A falls below B for three checks in a row, or the punish crit falls below 50%
 for 3 updates.
+
+**Run 87, 13 Nov 03:10: restart from run85-1727.** The benchmark of run85n0218 (the 02:18 checked network, 11.5 hours
+into run 85):
+
+| Against | Total | Skills | h2h | Bots |
+|---|---|---|---|---|
+| run35w83 | -0.41 TIE | | -3.35 | -1.67 |
+| run35w83b | +1.23 TIE | +2.60 | +1.40 | -1.70 |
+
+Run 85's checkpoints against w83b:
+
+| Checkpoint | Hours in | Bots C-R | Skills | Total |
+|---|---|---|---|---|
+| 1727 | 2.5 | +0.74 / +1.11 (two runs) | +7.31 / +7.00 | +4.60 / +4.14 |
+| 2045 | 5.5 | -0.33 | +3.43 | +2.61 |
+| 0218 | 11.5 | -1.70 | +2.60 | +1.23 |
+
+- The bot part (se about 0.47) fell about 2.6 from 1727 to 0218, about 4 se. The skills fell with it.
+- Run 85 peaked early and then drifted down. The hourly checks did not show it (A 23-13 at 02:21), because their B, the
+  23 Oct model, is weak.
+- The share of bot fights did not change in run 85; only the sparring rival did. So "fewer bot fights" is not the cause.
+
+**The cause is unknown.** Policy drift; the lr fell from 7.5e-5 to 5e-5. The cause is not settled, but the best network
+is known.
+
+**Action.**
+- The drifted network is kept as run/best-candidates/run85-end-0310.bin.
+- Run 87 (league = installed + run85-1727, share 0.8) now trains FROM run85-1727. The benchmark's kept copy was swapped,
+  so it resumes from 1727 after the reference benchmark run35w87.
+- run35w87 is the installed model re-measured under today's code (after the 00:43 recorder change), to rule out a
+  code artefact in 0218's bot score.
+
+**Judge.**
+- Benchmark run 87 at about 2.5 hours (when 1727 peaked) and at about 5 hours, against the mean of the references.
+- If it falls like run 85 did, the next idea is to train from 1727 with a lower lr, or to stop earlier and average
+  checkpoints.
