@@ -555,6 +555,10 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Ground hits dealt -2.23 a fight in h2h. Hit in the air from its own take-offs +0.65. Take-offs from their 2nd+ hit cost -4.43 vs -2.70.
   - The checks' lead over the 23 Oct model comes from that model's weaker aim and punish crit, so it does not carry over to the installed model.
   - Run 85 (LEAGUE_SHARE 0.8: sparring mostly against the installed model) deploying 14:53. Next benchmark about 17:50.
+- 15:53 check (T-E), RUN 85's FIRST: A 27/45, B 16/45 (z +2.8; only A won 13, only B won 2); damage A 421/394, B 371/404 (net +4.1 vs -5.3).
+  - Best check of the day (B is the weaker 23 Oct model; the 18:00 benchmark against the installed model is the real test).
+  - Third hits A 26% vs B 36%. Outside their combo A swung 50% vs 56% (closer). In their combo 37% vs 42%.
+  - Late knock-aways rising A 6 vs B 23; ground tick 0-1 0 vs 1. K2 broken 37 vs 42.
 
 ## SOLVED (with the evidence)
 
