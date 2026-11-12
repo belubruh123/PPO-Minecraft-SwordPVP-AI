@@ -528,6 +528,12 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Half of the loss falls after tick 17 (the ordinary fight).
   - Possible legal part: C presses its own jump at their take-off in 86% of situations vs R 43%, and is hit airborne at their landing (ticks 9-16) 0.30 vs 0.18 a jump-in (11 vs 8 hits). About +0.27 HP; small counts.
   - Test (no training change): tools/bench/suite-jumpin.txt = jump-in-critter on 100 seeds, run35wji (installed) then run84ji (run84-1106), 12:00. If the gap stays under 0.3 HP or the airborne hits do not differ, drop it.
+- 12:16 JUMP-IN TEST ON 100 SEEDS (suite-jumpin, agent 20's falsifying test): C = run84ji (run84-1106) vs R = run35wji (installed).
+  - HP per jump-in: C +0.02 (0.21), R -0.50 (0.19). C-R +0.64 (0.33) = +1.70 (0.87) HP per real fight: C BETTER, about 2 se. Crits taken per jump-in 0.05 vs 0.06.
+  - KB hits on falling jumpers C 0.05 vs R 0.09; hits on rising jumpers 0.39 vs 0.29.
+  - The 25-seed 'WORSE' (-2.94) at 11:47 was noise, so the airborne-at-landing hypothesis is dropped. No training change.
+  - Run 84's benchmark stays TIE overall (+0.19), with no test truly worse.
+  - The suite's 25 jump-in episodes are too few for this test (agent 20). A suite v3 with more would need R measured again: the user's call.
 
 ## SOLVED (with the evidence)
 
