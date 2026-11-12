@@ -487,6 +487,10 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Jump-in crits are about equal (0.52 vs 0.43): it is not mainly the jump-in test.
   - Run 84 (COMBO_EXIT_YIELD, EXPERIMENTS.md) deploying 08:40: the network takes W/S/sprint/jump in their combo from their 2nd hit in 35% of training fights (C3), paid by the existing combo-escape reward.
   - Item 2 (comboed) and the benchmark's head-to-head are its targets. Judged by the next benchmark (h2h better than -2).
+- 09:32 check (T-B), RUN 84's FIRST: A 23/44, B 16/44 (z +1.8; only A won 11, only B won 4); damage A 412/395, B 368/430 (net +2.5 vs -9.4).
+  - Third hits A 30% vs B 37%. Outside their combo A swung 46% vs 60%. In their combo 37% vs 45%; held with the crosshair on them: guard 5%, in the air 26%, on the ground 3% (B 0/18/6%).
+  - Jump-ins: A's hits at ground tick 0-1: 2 (allowed). Late knock-aways rising A 7 vs B 24. K2 broken 35 vs 43.
+  - Run 84 in training (52 updates): the network had the keys on 2325 ticks and pressed S 24%. Their 3rd hit after their 2nd: 40% in the yielded fights vs 40% in the others (level; the revert needs 10+ worse).
 
 ## SOLVED (with the evidence)
 
