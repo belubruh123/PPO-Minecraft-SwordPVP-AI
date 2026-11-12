@@ -760,3 +760,22 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
 **Training.** Punish crit 62%. After its 7 punish crits: T1c 0, critted back 2.
 
 **Next.** Run 87's benchmark at about 06:00, then run 88.
+
+## 13 Nov 05:59 check (run 87 at 2.5 hours) and run 88's first windows (06:52)
+
+**Check, rounds won:** A 18 of 45 (40%), B 15 of 45 (33%); z +0.8. Damage A 367 dealt / 412 taken, B 401 / 417.
+
+**Their combos.** Their third hit after the second: A 24%, B 27%. In their combo, sword ready: A swung 33%, B 46%; held in
+the air A 25%, B 14%.
+
+**Outside their combo:** A swung 40%, B 54%.
+
+**Jump-ins:** A 0 at ground tick 0-1, 4 late; B 0 and 30 late.
+
+**Run 88 (live 06:45).** The keep given back from their 2nd hit, in training: 11 ticks, swung 1. The network does not take
+the freed ticks yet; its swing entropy is 0.01, so it barely explores. Judge at about 07:45: if "swung" over "given back"
+is still under about 30%, the run does nothing by itself and the freed ticks need a teaching signal or exploration.
+
+**Punish crit 71%** (last 300), above the user's 50-65%. It has crept up: 57, 64, 65, 63, 62, 67, 71. Watch it under run
+88, which may lower it, because the swings it frees in their combo are not crits. If it is still above 65% at about
+08:00, find what holds it high.
