@@ -567,7 +567,15 @@ public final class SchoolSession implements AgentSession {
 	private final List<SchoolBotPilot> league = new ArrayList<>();
 	private final List<String> leagueNames = new ArrayList<>();
 	static final String LEAGUE_DIR = "league";
-	static final float LEAGUE_SHARE = 0.5f;
+	/**
+	 * Run 85 (agent 21, 12 Nov 15:00): 0.5 -> 0.8. The benchmark against the installed model (the league's only network,
+	 * game-run35-0657) stayed at TIE over three candidates (-0.02, +0.19, -0.11) while the hourly checks against the 23 Oct
+	 * model led 107-85: that lead comes from the 23 Oct model's weaker aim (swings landing 90% vs 99%) and punish crit, which
+	 * the installed model does not have. Against it the candidate trades ground sprint hits at 2-3 blocks (-1.2 a fight in the
+	 * head-to-head) for take-offs that cost more in their chains. So the sparring that teaches the ground game is mostly against
+	 * the model the user's game plays and the benchmark judges by.
+	 */
+	static final float LEAGUE_SHARE = 0.8f;
 	/** This fight's sparring opponent: 0 the installed model, above it a league network. */
 	private int rivalNow;
 	/**

@@ -1285,3 +1285,26 @@ Gates:
   - two checks have z < 0 with third hits up 5+ points.
 
 Run 84 verdict (12 Nov 11:47): KEPT. Benchmark run84n1106 vs installed: head-to-head -1.40 (was -4.87 with run 83), rounds 33-31 (was 22-31); total +0.19 TIE; jump-in defence -2.94 WORSE (the installed model knocks away falling jumpers 0.11 per jump-in vs 0.03). Checks 09:32 / 10:21 / 11:10: A 61, B 48. Training split level (39% vs 37%).
+
+## Run 85 (12 Nov 15:00; agent 21, Sonnet): LEAGUE_SHARE 0.5 -> 0.8, so most sparring is against the installed model
+
+Why (agent 21, run84n1356 vs run35w83, all 365 paired episodes):
+- The benchmark stayed at TIE for three candidates (-0.02, +0.19, -0.11), while the hourly checks against the 23 Oct model led 107-85.
+- That lead comes from B's weakness: swings landing 90% vs A's 99%, punish crit 14% vs 25%, and late knock-aways. Against the installed model aim is equal (98% vs 97%).
+- The same mechanism shows across h2h, the mixer and the bots: C's ground hits at 2-3 blocks are fewer (h2h -2.23 a fight, -1.22 of them at 2-3 blocks), replaced by air hits and crits (+1.05). HP dealt ends lower.
+- C is hit more in the air from its own take-offs (+0.65 h2h) and takes more HP in chains of 3+ (h2h +1.03, mixer +3.56).
+- Take-offs within 3 ticks of their 2nd+ hit: C 2.52 a fight at -4.43 HP each, vs R 1.97 at -2.70.
+- Ground neutral ready windows: C 4.5 ticks a fight vs R 10.2. C jumps in 33% of them vs 9%.
+- The league (school/league/) holds only game-run35-0657 = the installed model; the other half of the sparring was the 23 Oct model.
+
+Change: SchoolSession.LEAGUE_SHARE = 0.8 (one constant). Nothing else changes; checks, benches and real fights are unchanged.
+
+Not done yet (agent 21's other proposals):
+- A ground-exchange outcome credit at 2-3 blocks when their sword is empty or returning (T7/T4).
+- A cost on take-offs from their 2nd+ hit that still end in their 3rd hit within 15 ticks.
+- Moving the check's B to the installed model. B's Fighter also supplies A's rules overlay, so this is not a simple swap.
+
+Gates:
+- The next benchmark (about 3 h after the deploy, against run35w83): total > 0 and h2h better than -1.4. Ground hits dealt per fight in h2h up (tools/a19/an.py).
+- Checks: punish crit chances critted 50-65%; late jump-in hits not up.
+- Revert (LEAGUE_SHARE 0.5) if the bench h2h is worse than -2.5, or the punish crit is under 50% for 3 updates, or "Getting out of combos" falls under 15%.
