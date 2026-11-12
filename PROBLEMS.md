@@ -797,3 +797,18 @@ redeploy.
 - If training is far under 82%, the bots answer too softly, and the bots' hit-back timing is the fix.
 - If training is near 82%, the next step is agent 26's option: a short S-tap after the punish crit, decided by the network
   (a gated option, the decider picks when), not a rule.
+
+## 13 Nov 07:34 check (run 88 at 50 minutes; the last check before run 88b)
+
+**Rounds won:** A 24 of 45 (53%), B 21 of 45 (47%); only A won 11, only B won 8; z +0.7.
+**Damage:** A 404 dealt / 387 taken, B 412 / 405.
+
+**Their combos.** Their third hit after the second: A 27%, B 19%.
+- In their combo, sword ready: A swung 34%, B 43%.
+- Held in the air: A 27%, B 25%. B was higher this time, so the air hold gap varies from check to check.
+
+**Outside their combo:** A swung 43%, B 53%.
+
+**Jump-ins:** A 0 hits at ground tick 0-1, 5 late; B 0 and 25 late.
+
+**Next.** Run 88b's redeploy was asked for at 07:35, together with agent 26's hit-back counter.
