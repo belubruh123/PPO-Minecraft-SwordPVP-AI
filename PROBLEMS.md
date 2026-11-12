@@ -540,6 +540,10 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Outside their combo A swung 38% vs B 62%, crosshair off them 47% vs 27% (A's highest yet; watch the tracking).
   - Late knock-aways rising A 2 vs B 14; ground tick 0-1 0 and 0. K2 broken 26 vs 41.
   - Training: punish crit chances critted 71% (above the band, not below).
+- 13:59 check (T-D), run 84's fifth: A 23/44, B 21/44 (z +0.5); damage A 412/389, B 366/377 (net +3.5 vs -1.9).
+  - Run 84 over 5 checks: A 107, B 85.
+  - Outside their combo A swung 43% vs 56%. Held with them falling (K2) 27% vs 15%. Crosshair off 38% vs 26% (47% at 13:10 was one check).
+  - Third hits A 27% vs B 22%. Late knock-aways rising A 4 vs B 19, falling 2 vs 2; ground tick 0-1 0 and 0. K2 broken 41 vs 50.
 
 ## SOLVED (with the evidence)
 
