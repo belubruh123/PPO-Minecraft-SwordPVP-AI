@@ -497,6 +497,12 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Late knock-aways rising A 3 vs B 23; ground tick 0-1 0 and 0. K2 broken 37 vs 41.
   - Training (72 updates): the network pressed S on 27% of the yielded ticks. Their 3rd hit after their 2nd: 38% yielded vs 37% others.
   - Punish crit chances critted 67% (just above the 50-65 band, not below).
+- 11:10 check (T-C), run 84's third: A 17/44, B 16/44 (z +0.3); damage A 349/418, B 345/395 (net -10.9 vs -7.9).
+  - Run 84 over 3 checks: A 61, B 48.
+  - Third hits A 34% vs B 38%. Outside their combo A swung 46% vs 53%. In their combo 30% vs 49%.
+  - Late knock-aways rising A 6 vs B 25. At ground tick 0-1: A 1 (allowed).
+  - Training, their 3rd hit after their 2nd, all 117 updates: 39% yielded vs 37% others (level). The last 24 updates: 49% vs 33% (worse, n=43).
+  - The 11:30 benchmark decides. Revert if the h2h does not improve and the yielded share stays 10+ worse.
 
 ## SOLVED (with the evidence)
 
