@@ -1335,3 +1335,5 @@ Gates:
   - if the two benchmarks' mean total is below +0.5, or
   - the punish crit is under 50% for 3 updates, or
   - its take-offs in their combo fall to near 0 while third hits rise (it stopped escaping at all).
+
+Run 86 NOT DEPLOYED (12 Nov 23:12): the A/A test (installed vs itself: total -1.62, h2h -4.75) showed its basis (h2h and "Getting out of combos" negative every time) came from one lucky reference measurement. COMBO_TAKEOFF_FAIL = false; the code stays for later.

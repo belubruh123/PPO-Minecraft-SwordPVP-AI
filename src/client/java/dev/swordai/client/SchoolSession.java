@@ -235,7 +235,7 @@ public final class SchoolSession implements AgentSession {
 	 * still lands within COMBO_TAKEOFF_WINDOW ticks: the failed escapes, not the jumps that got it out. The swing is untouched
 	 * (B1, the jump-in rule).
 	 */
-	static final boolean COMBO_TAKEOFF_FAIL = true;
+	static final boolean COMBO_TAKEOFF_FAIL = false; // 12 Nov 23:12: NOT deployed; its basis (h2h and "Getting out of combos" negative every time) was a lucky reference run (A/A test)
 	static final float COMBO_TAKEOFF_FAIL_COST = 0.4f;
 	static final int COMBO_TAKEOFF_WINDOW = 15;
 	private int comboTakeoffAt = -1;

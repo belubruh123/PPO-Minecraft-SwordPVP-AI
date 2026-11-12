@@ -637,6 +637,14 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
     - skills positive every time;
     - the HEAD-TO-HEAD is NEGATIVE every time (-1.40, -2.10, -1.70, -0.85, -3.28; mean about -1.9), a REAL weakness;
     - the mixer is negative every time (mean about -2).
+- 23:07 A/A TEST: the installed model measured AGAIN (run35w83b) vs its 07:07 measurement (run35w83). TOTAL -1.62 (1.10); head-to-head -4.75 (1.58) between two runs of the SAME network; Getting out of combos -1.86; Jump-in defence -2.46.
+  - The first reference run (run35w83) was a LUCKY one, in exactly the tests that looked like our 'weaknesses' (R's h2h +0.72 vs -4.03 the second time).
+  - Against the second reference: run85n1727 +4.60 BETTER (h2h +3.05, Getting out of combos -0.15), run85n1727b +4.14 BETTER (h2h +1.47, out of combos +0.89), run85n2045 +2.61 BETTER.
+  - CONCLUSIONS:
+    - The 'head-to-head negative every time' and 'Getting out of combos negative every time' were ARTEFACTS of one lucky reference run.
+    - Against both references, run85-1727 averages about +3.6 (BETTER 3 of 4 comparisons). The h2h is about even.
+    - Run 86 (built on that artefact) was NOT deployed: COMBO_TAKEOFF_FAIL = false, the redeploy request was removed at 23:12.
+    - From now on compare against the MEAN of the reference runs (run35w83 + run35w83b), and re-measure the reference about daily.
 
 ## SOLVED (with the evidence)
 
