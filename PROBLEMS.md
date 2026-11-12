@@ -544,6 +544,13 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Run 84 over 5 checks: A 107, B 85.
   - Outside their combo A swung 43% vs 56%. Held with them falling (K2) 27% vs 15%. Crosshair off 38% vs 26% (47% at 13:10 was one check).
   - Third hits A 27% vs B 22%. Late knock-aways rising A 4 vs B 19, falling 2 vs 2; ground tick 0-1 0 and 0. K2 broken 41 vs 50.
+- 14:47 BENCHMARK, run84n1356 (run 84 after 5h15m) vs run35w83 (installed): TOTAL -0.11 (1.03) -> TIE.
+  - Three benchmarks today: run83 -0.02, run84@11:06 +0.19, run84@13:56 -0.11. FLAT at TIE.
+  - Skills +1.11 (1.86): Crits +5.36 (2.47), Reverse deflection +6.74 (6.09); Jump-in defence -1.82 (1.90); Getting out of combos -1.37 (1.10); Punish crit -1.18 (3.74), rate 14% vs 12%. No test worse by more than 2 se.
+  - Head-to-head -2.10 (1.69), rounds 29-31 (was -1.40 and 33-31 at 11:06).
+  - Bots -0.56 (0.43), rounds 149-149. Of these the MIXER bot -2.84 (1.14), 2.5 se (shown only).
+  - The hourly checks against the 23 Oct model are ahead (run 84: 107-85 over 5 checks), but against the INSTALLED model it ties. The checks measure the wrong bar for an install.
+  - 3-hour rule on 'beat the installed model': agent 21 (Sonnet, 14:50), structural: where the candidate loses HP to the installed model across all parts (mixer, h2h, bots) against where it gains (crits), and one bottleneck of a different kind than runs 80-84.
 
 ## SOLVED (with the evidence)
 
