@@ -1283,3 +1283,5 @@ Gates:
   - the yielded fights' 3rd-hit share is 10+ points worse than the others after 2 h (the network loses to the rule there, as in Oct), or
   - the punish crit leaves 50-65% for 3 updates, or
   - two checks have z < 0 with third hits up 5+ points.
+
+Run 84 verdict (12 Nov 11:47): KEPT. Benchmark run84n1106 vs installed: head-to-head -1.40 (was -4.87 with run 83), rounds 33-31 (was 22-31); total +0.19 TIE; jump-in defence -2.94 WORSE (the installed model knocks away falling jumpers 0.11 per jump-in vs 0.03). Checks 09:32 / 10:21 / 11:10: A 61, B 48. Training split level (39% vs 37%).

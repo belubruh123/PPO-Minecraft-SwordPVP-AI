@@ -503,6 +503,25 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Late knock-aways rising A 6 vs B 25. At ground tick 0-1: A 1 (allowed).
   - Training, their 3rd hit after their 2nd, all 117 updates: 39% yielded vs 37% others (level). The last 24 updates: 49% vs 33% (worse, n=43).
   - The 11:30 benchmark decides. Revert if the h2h does not improve and the yielded share stays 10+ worse.
+- 11:47 BENCHMARK, run84n1106 (run 84 after 2h25m, the 11:10 check's network) vs run35w83 (installed): TOTAL +0.19 (1.10) -> TIE (run83n0618 was -0.02).
+  - HEAD-TO-HEAD C-R -1.40 (1.67), was -4.87. Rounds 33 vs 31 of 60, was 22 vs 31. RUN 84's GATE (h2h better than -2) MET: RUN 84 KEPT.
+    - Agent 19's split (tools/a19/an.py): hits taken while in the air 2.37 a fight (3.40 before) vs R 1.88. Air share 63% (68%) vs R 47%.
+  - Skills +1.26 (2.02):
+    - Reverse deflection +6.17, Crits +3.33, Make them miss +1.71, Three-block +1.14, Holding a combo +0.95.
+    - Punish crit -1.98 (4.54), rate 16% vs 12%. Getting out of combos -1.25 (1.05).
+    - JUMP-IN DEFENCE -2.94 (1.29), WORSE by more than 2 se: this blocks BETTER.
+  - Bots -0.38 (0.46); rounds 152 vs 149.
+  - Jump-in defence per tag (bench.py score):
+
+    | | crits taken per jump-in | KB hits on FALLING jumpers | hits on rising jumpers | HP per jump-in |
+    |---|---|---|---|---|
+    | installed | 0.02 | 0.11 | 0.30 | +0.77 |
+    | run 84 | 0.05 | 0.03 | 0.30 | -0.03 |
+    | run 83 | 0.04 | 0.08 | 0.31 | -0.60 |
+
+    The installed model breaks K2 / the user's jump-in rule almost 4x as often, and the test pays it in HP. Part of 'WORSE' is the price of the user's rule.
+    - The benchmark's scoring is the user's; not changed. Told the user.
+  - Next: the legal part of the jump-in defence gap (agent 20, Sonnet, 11:50).
 
 ## SOLVED (with the evidence)
 
