@@ -211,6 +211,23 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final boolean RESET_FIRST_HIT_TRAIN = true;
 	private int firstHitResetTicks;
+	/**
+	 * Run 84 (agent 19, 12 Nov 08:40; the benchmark's head-to-head against the installed model, -4.87 HP a fight, 3 se worse):
+	 * C takes 3.2 hits a fight in chains of 6+ against the installed model's 0.65, and its chains end within 15 ticks after a
+	 * combo hit 20% vs 39%. Inside their combo the jump reset rule holds W and the sprint on 99-100% of the ticks, and the
+	 * back-out rule (b) only fires when the reset does not (Fighter: reset == 0), so the network never presses S there itself.
+	 * The document's C3: "when the opponent stuns you, jump and hold S, so that you fly out of the trade". In TRAINING, in this
+	 * share of the fights, from their 2nd hit in a row and for COMBO_EXIT_TICKS after each of their hits, W, S (one head), the
+	 * sprint and the jump are the network's; the existing combo-escape reward (comboBack, comboEscape, comboThird of the late
+	 * stages) pays the way out. The swing stays with the rules (the jump-in rule and B1 untouched). Checks, benches and real
+	 * fights unchanged. Not RULES_LET_GO_IN_LIFT (Oct: the whole lift from the first hit eroded the escape).
+	 */
+	static final boolean COMBO_EXIT_YIELD = true;
+	static final float COMBO_EXIT_SHARE = 0.35f;
+	static final int COMBO_EXIT_TICKS = 12;
+	private boolean comboExitFight;
+	private int comboExitTicks, comboExitBack;
+	private final int[][] comboExitRow = new int[2][2];
 	private int ownFollowTaught;
 	/** Run 78's counters, [0] training, [1] checks: ticks given back, and of those the network swung. */
 	private final int[] ownKeepYield = new int[2], ownKeepYieldSwung = new int[2];
@@ -895,6 +912,8 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | its follow-ups' pay held %d ticks: paid %d, dropped by their hit %d", HELD_TICKS, heldPaid, heldDropped)
 				+ String.format(Locale.ROOT, " | after its own ground hit, B's movement as an outcome target: %d ticks", ownFollowTaught)
 				+ String.format(Locale.ROOT, " | sprint hits taken with the first-hit jump reset open: %d", firstHitResetTicks)
+				+ String.format(Locale.ROOT, " | run 84, their combo from their 2nd hit, W/S/sprint/jump the network's: %d ticks, S pressed %d; their 3rd hit after their 2nd: those fights %d/%d, other fights %d/%d",
+						comboExitTicks, comboExitBack, comboExitRow[1][1], comboExitRow[1][0], comboExitRow[0][1], comboExitRow[0][0])
 				// Run 76: "no jump" taught between their hits; its own take-offs in their combo, by the technique it was told.
 				+ String.format(Locale.ROOT, " | their combo: no-jump taught %d, its own take-offs %d (told:%s)", comboGroundTaught, comboTakeoffs, toldLine(comboTakeoffsByTold))
 				// Run 77: those take-offs by ticks since their hit, and the ones charged with their sword ready in reach.
@@ -927,6 +946,10 @@ public final class SchoolSession implements AgentSession {
 		heldPaid = heldDropped = 0;
 		ownFollowTaught = 0;
 		firstHitResetTicks = 0;
+		comboExitTicks = comboExitBack = 0;
+		for (int[] r : comboExitRow) {
+			java.util.Arrays.fill(r, 0);
+		}
 		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = comboOtherFalling = 0;
 		airJumpHitsFree = 0;
 		counterHits = 0;
@@ -3250,6 +3273,7 @@ public final class SchoolSession implements AgentSession {
 		hasLastAction = false;
 		clicked = false;
 		theirRow = 0;
+		comboExitFight = COMBO_EXIT_YIELD && rng.nextFloat() < COMBO_EXIT_SHARE;
 		seenSide = 0;
 		sweep = 0;
 		frozenTicks = 0;
@@ -3601,6 +3625,11 @@ public final class SchoolSession implements AgentSession {
 				theirRow++;
 				sc[3] += theirRow == 2 ? 1 : 0;
 				sc[4] += theirRow == 3 ? 1 : 0;
+				if (mode == Mode.TRAIN && !installedPlays && !ruleOff) {
+					// Run 84's counter: their 3rd hit after their 2nd, in the fights where the keys are the network's and in the others.
+					comboExitRow[comboExitFight ? 1 : 0][0] += theirRow == 2 ? 1 : 0;
+					comboExitRow[comboExitFight ? 1 : 0][1] += theirRow == 3 ? 1 : 0;
+				}
 			}
 			// Run 66c: in a scene fight too when it is played without the rules (the scenes are): until now trackCombo never ran
 			// there, so the combo scene's "fewer than two of their hits in a row" was always met (learned in 3 tries) and run 66b's
@@ -4372,6 +4401,13 @@ public final class SchoolSession implements AgentSession {
 				ruled &= ~ActionSpace.mask(ActionSpace.ATTACK);
 				ownKeepYieldNow = true;
 				ownKeepYield[mode == Mode.CHECK ? 1 : 0]++;
+			}
+			if (comboExitFight && mode == Mode.TRAIN && review < 0 && !ruleOff && theirRow >= 2 && clock.ticksSinceHitTaken <= COMBO_EXIT_TICKS
+					&& clock.ticksSinceHitDealt > clock.ticksSinceHitTaken) {
+				// Run 84: in their combo from their 2nd hit, W/S, the sprint and the jump are the network's (C3, by the combo-escape reward).
+				ruled &= ~ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT, ActionSpace.JUMP);
+				comboExitTicks++;
+				comboExitBack += action[ActionSpace.FORWARD] == dev.swordai.core.rl.BackNudge.BACK ? 1 : 0;
 			}
 			ruledTaught = ruleOff ? (sceneNow != null && mode == Mode.TRAIN ? 0 : keys & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH)) : ruled;
 			if (ruleOff) {

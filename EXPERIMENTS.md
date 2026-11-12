@@ -1254,3 +1254,32 @@ Next if needed: agent 16's fix 2, COMBO_JUMP_AWR (the decider's T10/T11 labels w
 
 Run 82's own judgement shares these checks: T9's own share in training (75-79%) and A's first-hit jump resets in the checks.
 
+
+## Run 84 (12 Nov 08:40; agent 19, Sonnet): the network takes W/S/sprint/jump in their combo from their 2nd hit, in 35% of training fights
+
+Why (the benchmark, 07:27: C = run83n0618 vs R = the installed run35-0657, TIE; head-to-head C-R -4.87 (1.62) HP a fight, rounds 22-31 of 60):
+- HP per hit is equal; the gap is hit counts.
+- C takes 3.2 hits a fight in chains of 6+ vs R 0.65. 25 fights have a 6+ chain vs 10. That is 3.4 HP of the 4.87.
+- After a combo hit, the chain ends within 15 ticks 20% (C) vs 39% (R). Escaping hits have S pressed in 31% (R) vs 12% (C) of the next 11 ticks, almost all by the back-out rule (b): 28% vs 10%.
+- In continuing combos the jump reset rule (r) holds W and the sprint on 99-100% of the ticks.
+- Fighter: `backOut = backOutRule && reset == 0 && ...`. So when the reset fires (79% of C's ground combo hits vs 57% of R's), the back-out cannot fire. The network presses S itself on neither side.
+- C is also in the air 68% vs 47% of ticks, with ground ready ticks near them 3.7 vs 14.6 a fight (agent 19's fix 2, not done here).
+- The document's C3: "when the opponent stuns you, jump and hold S, so that you fly out of the trade". Common mistake: "holding S only a hit or two *after* being stunned. This can work for getting out of combos, but you take more damage than you need to".
+
+Change:
+- SchoolSession.COMBO_EXIT_YIELD = true, COMBO_EXIT_SHARE = 0.35, COMBO_EXIT_TICKS = 12.
+- In TRAINING, in 35% of the fights (drawn per fight), from their 2nd hit in a row and for 12 ticks after each of their hits (their combo by recency), the rules give the network W/S, the sprint and the jump (`ruled &= ~mask(FORWARD, SPRINT, JUMP)`).
+- The existing combo-escape reward of the late stages pays the way out: comboBack 0.07, comboEscape 1.0, comboThird 1.5.
+- The swing stays with the rules, so the jump-in rule and B1 are untouched. Checks, benches and real fights are unchanged.
+- Not RULES_LET_GO_IN_LIFT, which handed over the whole lift from the first hit (Oct: third hits 33% -> 52%).
+
+Counter, on the update line: "run 84, their combo from their 2nd hit, W/S/sprint/jump the network's: N ticks, S pressed M; their 3rd hit after their 2nd: those fights a/b, other fights c/d".
+
+Gates:
+- Training, 2 h: in the yielded fights, their 3rd hit after their 2nd at or below the other fights' share. S pressed on a rising share of the yielded ticks.
+- Checks: third hits not up more than 5 points; punish crit chances critted 50-65%; late jump-in hits not up; ROUNDS WON z >= 0 summed over 2 checks.
+- The decider: the next benchmark (about 3 h, run84 vs run35wNN) needs head-to-head C-R better than -2 HP a fight, and chains of 6+ in h2h below 1.5 hits a fight.
+- Revert (COMBO_EXIT_YIELD = false) if:
+  - the yielded fights' 3rd-hit share is 10+ points worse than the others after 2 h (the network loses to the rule there, as in Oct), or
+  - the punish crit leaves 50-65% for 3 updates, or
+  - two checks have z < 0 with third hits up 5+ points.

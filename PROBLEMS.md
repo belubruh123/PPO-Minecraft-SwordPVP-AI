@@ -480,6 +480,13 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - In their combo, held with the crosshair on them: A guard 7%, in the air 26%, on the ground 5%; B 0/16/6%.
   - Late knock-aways rising A 5 vs B 27. K2 broken 35 vs 37.
   - Run 83 so far (4 checks): A 82, B 73.
+- Agent 19 (Sonnet, 08:30-08:36): the head-to-head loss against the installed model is LONG CHAINS TAKEN.
+  - C takes 3.2 hits a fight in chains of 6+ vs R 0.65, which is 3.4 of the 4.87 HP. Its chains end within 15 ticks after a combo hit 20% vs 39%.
+  - In their combo the jump reset rule holds W and the sprint (99-100% of ticks). The back-out rule only fires when the reset does not, and the network never presses S itself.
+  - C is in the air 68% vs 47% of ticks; ground ready ticks near them 3.7 vs 14.6 a fight.
+  - Jump-in crits are about equal (0.52 vs 0.43): it is not mainly the jump-in test.
+  - Run 84 (COMBO_EXIT_YIELD, EXPERIMENTS.md) deploying 08:40: the network takes W/S/sprint/jump in their combo from their 2nd hit in 35% of training fights (C3), paid by the existing combo-escape reward.
+  - Item 2 (comboed) and the benchmark's head-to-head are its targets. Judged by the next benchmark (h2h better than -2).
 
 ## SOLVED (with the evidence)
 
