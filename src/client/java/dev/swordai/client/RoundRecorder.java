@@ -58,6 +58,7 @@ final class RoundRecorder {
 
 	private final List<Tick> timeline = new ArrayList<>();
 	private String opponent = "?";
+	private String arm;
 	private LocalDateTime started;
 	private boolean open;
 	/** What this tick's own swing came to; filled in at the end of the tick. */
@@ -107,8 +108,17 @@ final class RoundRecorder {
 	}
 
 	void start(String opponentName) {
+		start(opponentName, null);
+	}
+
+	/**
+	 * A new round. {@code armTag}: the live A/B pool's arm that plays it ({@code AbPool}), or null; it goes on the round file's
+	 * first line (13 Nov, so tools/duelday.py can split the user's real rounds by network without matching the game log).
+	 */
+	void start(String opponentName, String armTag) {
 		timeline.clear();
 		opponent = opponentName;
+		arm = armTag;
 		started = LocalDateTime.now();
 		open = true;
 		ownSwing = "";
@@ -380,7 +390,7 @@ final class RoundRecorder {
 	private void write(Path file, String line, List<String> why, int oppPingMillis) throws IOException {
 		try (OutputStream out = new GZIPOutputStream(Files.newOutputStream(file));
 			 Writer w = new OutputStreamWriter(out, StandardCharsets.UTF_8)) {
-			w.write("SwordAI round, " + started.format(SHOWN) + "\n" + line + "\n\n");
+			w.write("SwordAI round, " + started.format(SHOWN) + (arm != null ? ", A/B arm " + arm : "") + "\n" + line + "\n\n");
 			w.write(details(oppPingMillis));
 			w.write("\nWhat decided it, most first:\n");
 			for (String r : why) {

@@ -485,7 +485,7 @@ final class FightSession implements AgentSession {
 		actedThisTick = true;
 		if (loaded.cfg.recordRounds) {
 			if (!rounds.open()) {
-				rounds.start(opponentName);
+				rounds.start(opponentName, arm != null ? arm.tag : null);
 			}
 			// With the school's network under the installed model's rules, the rules that pressed keys are recorded too (1 Nov: the timelines could not tell them from the network).
 			rounds.tick(me, opp, body, action, school != null && !rulesOn ? 0 : fighter.rules(), dealtNow, takenNow);
