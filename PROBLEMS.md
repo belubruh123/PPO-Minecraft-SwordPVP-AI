@@ -491,6 +491,12 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Third hits A 30% vs B 37%. Outside their combo A swung 46% vs 60%. In their combo 37% vs 45%; held with the crosshair on them: guard 5%, in the air 26%, on the ground 3% (B 0/18/6%).
   - Jump-ins: A's hits at ground tick 0-1: 2 (allowed). Late knock-aways rising A 7 vs B 24. K2 broken 35 vs 43.
   - Run 84 in training (52 updates): the network had the keys on 2325 ticks and pressed S 24%. Their 3rd hit after their 2nd: 40% in the yielded fights vs 40% in the others (level; the revert needs 10+ worse).
+- 10:21 check (T-B), run 84's second: A 21/45, B 16/45 (z +1.4; only A won 9, only B won 4); damage A 397/409, B 363/419 (net -1.8 vs -8.9).
+  - Run 84 over 2 checks: A 44, B 32 (z +1.8, +1.4).
+  - Third hits A 29% vs B 28%. Outside their combo A swung 47% vs 53%. In their combo 37% vs 43%; held with the crosshair on them in the air 30% vs 13%.
+  - Late knock-aways rising A 3 vs B 23; ground tick 0-1 0 and 0. K2 broken 37 vs 41.
+  - Training (72 updates): the network pressed S on 27% of the yielded ticks. Their 3rd hit after their 2nd: 38% yielded vs 37% others.
+  - Punish crit chances critted 67% (just above the 50-65 band, not below).
 
 ## SOLVED (with the evidence)
 
