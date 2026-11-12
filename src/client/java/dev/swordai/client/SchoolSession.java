@@ -192,7 +192,7 @@ public final class SchoolSession implements AgentSession {
 	 * (theirRow 1) keeps the rule's keep (B1). The golden rule (k2Hold) and the whiff guard still close the swing before this.
 	 * The user's game: SchoolFighter.airKeepYield, on only for an A/B arm with the option word "airyield".
 	 */
-	static final boolean AIR_KEEP_YIELD = false;
+	static final boolean AIR_KEEP_YIELD = true;
 	/**
 	 * Agent 14's test (11 Nov 19:30), CHECKS ONLY, off until run 80 is judged: for B_FOLLOWUP_TICKS after A's own hit made on the
 	 * ground, with no hit taken since, A's W/S, sprint and jump are B's (installed.fighter.action(), decided on A's state every
@@ -661,6 +661,9 @@ public final class SchoolSession implements AgentSession {
 	static final String HIT_AND_OUT_FILE = "hit-and-out";
 	/** With this file in the school folder a benchmark plays side A with hit and out over the network (an A/B of the rule, 7 Nov). */
 	static final String BENCH_HIT_AND_OUT_FILE = "bench-hit-and-out";
+	/** Run 88 in a benchmark: only with this file in the school folder (bench-run.sh AIR_YIELD=1), as the user's game has it only for an "airyield" arm. */
+	static final String BENCH_AIR_YIELD_FILE = "bench-air-yield";
+	private boolean benchAirYield;
 	static final float RULED_PULL = 0.3f;
 	/**
 	 * Run 30e: the pull on the rules' keys follows a budget instead of staying at RULED_PULL (the adaptive controller of the body keys' copying,
@@ -3397,6 +3400,10 @@ public final class SchoolSession implements AgentSession {
 					throw new IOException(file + ": the first line must be \"tag NAME\" (letters, digits, . _ -), not \"" + line + "\"");
 				}
 				benchTag = p[1];
+				benchAirYield = Files.exists(SwordFiles.schoolDir().resolve(BENCH_AIR_YIELD_FILE));
+				if (benchAirYield) {
+					SwordAi.LOGGER.info("school bench {}: run 88's air yield on (bench-air-yield)", benchTag);
+				}
 				continue;
 			}
 			if (p[0].equals("network")) {
@@ -4459,7 +4466,7 @@ public final class SchoolSession implements AgentSession {
 				ownKeepYieldNow = true;
 				ownKeepYield[mode == Mode.CHECK ? 1 : 0]++;
 			}
-			if (AIR_KEEP_YIELD && theirRow >= 2 && !me.onGround()
+			if (AIR_KEEP_YIELD && (benchTag == null || benchAirYield) && theirRow >= 2 && !me.onGround()
 					&& clock.ticksSinceHitTaken <= COMBO_GAP && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken
 					&& (installed.fighter.rules() & 2) != 0 && (ruled & ActionSpace.mask(ActionSpace.ATTACK)) != 0
 					&& installed.fighter.action()[ActionSpace.ATTACK] == 0) {

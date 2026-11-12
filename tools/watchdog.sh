@@ -44,6 +44,7 @@ if [ -f /d/swordai/run/bench-request ] && ! ps -ef | grep -a "bench-run" | grep 
   read -r BTAG BNET BSUITE BOPT < /d/swordai/run/bench-request  # "TAG NET [SUITE]", SUITE e.g. suite-v2 (default: bench-run.sh's)
   BNET=$(echo "$BNET" | tr -d '\r'); BSUITE=$(echo "$BSUITE" | tr -d '\r'); BOPT=$(echo "$BOPT" | tr -d '\r')
   BENV=; [ "$BOPT" = hitout ] && BENV="HIT_AND_OUT=1"  # a 4th word "hitout": side A with hit and out (bench-run.sh)
+  [ "$BOPT" = airyield ] && BENV="AIR_YIELD=1"  # "airyield": run 88's air yield for side A (a network trained with it)
   mv /d/swordai/run/bench-request /d/swordai/run/bench-request.taken
   echo "$(date '+%m-%d %H:%M') benchmark asked for: $BTAG $BNET $BSUITE" >> $LOG
   if [ -n "$BSUITE" ]; then
