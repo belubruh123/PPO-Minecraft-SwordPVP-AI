@@ -534,6 +534,12 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - The 25-seed 'WORSE' (-2.94) at 11:47 was noise, so the airborne-at-landing hypothesis is dropped. No training change.
   - Run 84's benchmark stays TIE overall (+0.19), with no test truly worse.
   - The suite's 25 jump-in episodes are too few for this test (agent 20). A suite v3 with more would need R measured again: the user's call.
+- 13:10 check (T-D), run 84's fourth: A 23/46, B 16/46 (z +1.7; only A won 12, only B won 5); damage A 389/390, B 344/405 (net -0.2 vs -9.9).
+  - Run 84 over 4 checks: A 84, B 64.
+  - Third hits A 28% vs B 27%. In their combo A swung 32% vs 43%.
+  - Outside their combo A swung 38% vs B 62%, crosshair off them 47% vs 27% (A's highest yet; watch the tracking).
+  - Late knock-aways rising A 2 vs B 14; ground tick 0-1 0 and 0. K2 broken 26 vs 41.
+  - Training: punish crit chances critted 71% (above the band, not below).
 
 ## SOLVED (with the evidence)
 
