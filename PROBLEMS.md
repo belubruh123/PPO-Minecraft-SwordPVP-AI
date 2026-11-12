@@ -551,6 +551,10 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Bots -0.56 (0.43), rounds 149-149. Of these the MIXER bot -2.84 (1.14), 2.5 se (shown only).
   - The hourly checks against the 23 Oct model are ahead (run 84: 107-85 over 5 checks), but against the INSTALLED model it ties. The checks measure the wrong bar for an install.
   - 3-hour rule on 'beat the installed model': agent 21 (Sonnet, 14:50), structural: where the candidate loses HP to the installed model across all parts (mixer, h2h, bots) against where it gains (crits), and one bottleneck of a different kind than runs 80-84.
+- Agent 21 (Sonnet, 14:50-14:54): against the installed model the candidate swaps ground sprint hits at 2-3 blocks for take-offs, air hits and crits.
+  - Ground hits dealt -2.23 a fight in h2h. Hit in the air from its own take-offs +0.65. Take-offs from their 2nd+ hit cost -4.43 vs -2.70.
+  - The checks' lead over the 23 Oct model comes from that model's weaker aim and punish crit, so it does not carry over to the installed model.
+  - Run 85 (LEAGUE_SHARE 0.8: sparring mostly against the installed model) deploying 14:53. Next benchmark about 17:50.
 
 ## SOLVED (with the evidence)
 
