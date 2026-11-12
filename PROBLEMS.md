@@ -708,3 +708,34 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
 - Too few rounds, and confounded with the opponent adapting. No change now.
 - If 14 Nov shows later rounds clearly worse, the fix is training rematches that keep the memory: run 87 candidate, no
   reward change.
+
+## 13 Nov 04:20 check, run 87's first (run 87 = from run85-1727, league: the installed model + run85-1727; 45 minutes in)
+
+**Rounds won:** A 23 of 45 (51%), B 15 of 45 (33%); only A won 13, only B won 5; z +1.9.
+**Damage:** A 359 dealt / 381 taken, B 382 / 378.
+
+**Their combos.** A third hit after their second: A 30 of 81 (37%), B 22 of 82 (27%). A is worse (02:21: 34% vs 32%).
+- In their combo with the sword ready and them in reach:
+  - A, 501 ticks: swung 34%, crosshair off them 33%; held with the crosshair on them in the air 27%, by the guard 3%, on the
+    ground 3%.
+  - B, 424 ticks: swung 46%, off them 29%; in the air 18%, on the ground 7%.
+- So A's gap in swinging back comes mostly from being held in the air (27% vs 18%; open items 1 and 10). The crosshair
+  being off them is a smaller part.
+
+**Outside their combo on the ground, sword ready:**
+
+| | Swung | Held, them falling | Held otherwise | Crosshair off them | On its body but no pick |
+|---|---|---|---|---|---|
+| A | 50% | 20% | 30% | 34% | 14% |
+| B | 56% | 16% | 28% | 29% | 17% |
+
+**Jump-ins.**
+- A: hits at ground tick 0-1 0; late knock-away hits 1. Its crit punished their jump-in 18 of 47 (38%), B's 5 of 62 (8%).
+- B: hits at ground tick 0-1 0; late knock-away hits 18.
+
+**Training (04:15).**
+- Punish crit 65%.
+- After its 7 punish crits: T1c 1, critted back 3.
+- In their combo, of 127 ready ticks: swung 39; swing not open 43, with the crosshair on its body 23; in the air 29.
+
+**Agent 25 (Sonnet, 04:27):** the structural diagnosis of the in-combo swing-back gap (items 1, 2 and 10).
