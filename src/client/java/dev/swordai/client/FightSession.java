@@ -171,6 +171,7 @@ final class FightSession implements AgentSession {
 			school = new SchoolFighter(l, loaded.cfg.aimResponse,
 					mc.hasSingleplayerServer() ? loaded.cfg.swingMinCharge : loaded.cfg.swingMinChargeOnline, loaded.cfg.playTemperature);
 			school.whiffGuard(loaded.cfg.whiffGuard);
+			school.airKeepYield(arm != null && arm.airYield);
 			if (rulesOn) {
 				school.rulesFrom(fighter);
 				rulesBody.patchedUp = loaded.patchedUp;
@@ -201,6 +202,7 @@ final class FightSession implements AgentSession {
 				+ (arm != null ? " [A/B arm " + arm.tag + "]" : "")
 				+ (rulesOn && school != null && fighter.hitAndOut() ? " [hit and out]" : "")
 				+ (arm != null && arm.noBack ? " [no back-out]" : "")
+				+ (arm != null && arm.airYield ? " [air yield]" : "")
 				+ (rulesOn ? ", the installed model's fight-time rules over it." : "; no rule presses anything for it.")
 				: loaded.skillLine();
 	}

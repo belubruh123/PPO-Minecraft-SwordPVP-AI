@@ -185,6 +185,15 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final boolean OWN_JUMP_KEEP_YIELD = true;
 	/**
+	 * Run 88 (agent 25, 13 Nov): in their combo from their 2nd hit in a row, in the air (rising or falling), the rules' keep of the
+	 * swing for the way down (AnswerRule.when: kept "second hit or not" once a punish crit was made on this opponent) gives the swing
+	 * to the network. The check of 04:20 had A held with the crosshair on them in the air 27% of its ready ticks in their combo (B
+	 * 18%), swinging 34% (B 46%), their third hit after the second 37% (B 27%): PROBLEMS.md 1, 2 and 10. Their first hit's lift
+	 * (theirRow 1) keeps the rule's keep (B1). The golden rule (k2Hold) and the whiff guard still close the swing before this.
+	 * The user's game: SchoolFighter.airKeepYield, on only for an A/B arm with the option word "airyield".
+	 */
+	static final boolean AIR_KEEP_YIELD = false;
+	/**
 	 * Agent 14's test (11 Nov 19:30), CHECKS ONLY, off until run 80 is judged: for B_FOLLOWUP_TICKS after A's own hit made on the
 	 * ground, with no hit taken since, A's W/S, sprint and jump are B's (installed.fighter.action(), decided on A's state every
 	 * tick). Swing, camera, guards and rules unchanged. In 10 checks, after its own ground hit A's next hit came first 24% vs B
@@ -246,6 +255,8 @@ public final class SchoolSession implements AgentSession {
 	/** Run 78's counters, [0] training, [1] checks: ticks given back, and of those the network swung. */
 	private final int[] ownKeepYield = new int[2], ownKeepYieldSwung = new int[2];
 	private boolean ownKeepYieldNow;
+	private final int[] airKeepYield = new int[2], airKeepYieldSwung = new int[2];
+	private boolean airKeepYieldNow;
 	/**
 	 * Run 76 (11 Nov, agent 9's follow-up): in their combo, on the ground, between their hits (from the 2nd tick after their hit, so the
 	 * jump reset at the hit, T9/T9a, is not touched) and not with their jump-in in the air (K3's jump along), the jump is taught "no",
@@ -929,6 +940,8 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | guard in their combo: rules gave way %d, taught to back off %d", guardGaveWay, guardBackTaught)
 				+ String.format(Locale.ROOT, " | its own jump in their combo, the keep given back: training %d (swung %d), checks %d (swung %d)",
 						ownKeepYield[0], ownKeepYieldSwung[0], ownKeepYield[1], ownKeepYieldSwung[1])
+				+ String.format(Locale.ROOT, " | run 88, the keep in the air from their 2nd hit given back: training %d (swung %d), checks %d (swung %d)",
+						airKeepYield[0], airKeepYieldSwung[0], airKeepYield[1], airKeepYieldSwung[1])
 				+ String.format(Locale.ROOT, " | T1c take-offs by ticks after landing from its punish crit: 0-1 %d, 2-4 %d, 5+ %d",
 						t1cJumpByLanding[0], t1cJumpByLanding[1], t1cJumpByLanding[2])
 				+ String.format(Locale.ROOT, " | its follow-ups' pay held %d ticks: paid %d, dropped by their hit %d", HELD_TICKS, heldPaid, heldDropped)
@@ -953,6 +966,8 @@ public final class SchoolSession implements AgentSession {
 		guardGaveWay = guardBackTaught = 0;
 		java.util.Arrays.fill(ownKeepYield, 0);
 		java.util.Arrays.fill(ownKeepYieldSwung, 0);
+		java.util.Arrays.fill(airKeepYield, 0);
+		java.util.Arrays.fill(airKeepYieldSwung, 0);
 		comboGroundTaught = comboTakeoffs = 0;
 		java.util.Arrays.fill(takeoffWindow, 0);
 		readyJumpCharged = 0;
@@ -4372,6 +4387,7 @@ public final class SchoolSession implements AgentSession {
 		int ruledTaught = 0;
 		benchRules = 0;
 		ownKeepYieldNow = false;
+		airKeepYieldNow = false;
 		if (RULE_OVERLAY && installed != null && (review < 0 || basics[review].bot.attacks) && !(ruleOff && mode == Mode.CHECK)) {
 			if (!installedDecided) {
 				observer.fillBody(installedBody, me, bot, truth.floorY());
@@ -4442,6 +4458,15 @@ public final class SchoolSession implements AgentSession {
 				ruled &= ~ActionSpace.mask(ActionSpace.ATTACK);
 				ownKeepYieldNow = true;
 				ownKeepYield[mode == Mode.CHECK ? 1 : 0]++;
+			}
+			if (AIR_KEEP_YIELD && theirRow >= 2 && !me.onGround()
+					&& clock.ticksSinceHitTaken <= COMBO_GAP && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken
+					&& (installed.fighter.rules() & 2) != 0 && (ruled & ActionSpace.mask(ActionSpace.ATTACK)) != 0
+					&& installed.fighter.action()[ActionSpace.ATTACK] == 0) {
+				// Run 88: from their 2nd hit, in the air, the rule's keep for the way down gives the swing to the network.
+				ruled &= ~ActionSpace.mask(ActionSpace.ATTACK);
+				airKeepYieldNow = true;
+				airKeepYield[mode == Mode.CHECK ? 1 : 0]++;
 			}
 			if (comboExitFight && mode == Mode.TRAIN && review < 0 && !ruleOff && theirRow >= 2 && clock.ticksSinceHitTaken <= COMBO_EXIT_TICKS
 					&& clock.ticksSinceHitDealt > clock.ticksSinceHitTaken) {
@@ -4526,6 +4551,9 @@ public final class SchoolSession implements AgentSession {
 				&& (step.teacherHeads & ActionSpace.mask(ActionSpace.ATTACK)) != 0
 				? ruled & dev.swordai.core.school.SchoolStages.PUNISH_SHADOW_KEYS : 0;
 		learner.act(step, keys, ruled, mode == Mode.TRAIN, cfg.playTemperature, action);
+		if (airKeepYieldNow && action[ActionSpace.ATTACK] == 1) {
+			airKeepYieldSwung[mode == Mode.CHECK ? 1 : 0]++;
+		}
 		if (ownKeepYieldNow && action[ActionSpace.ATTACK] == 1) {
 			ownKeepYieldSwung[mode == Mode.CHECK ? 1 : 0]++;
 		}

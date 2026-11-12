@@ -22,7 +22,7 @@ import java.util.Random;
  * {@code tag | network | rules | temperatures | weight | options}. The network is a path relative to the {@code ab} folder (or absolute;
  * {@code ../checkpoint.bin} is the installed one); rules is {@code on} (the installed model's fight-time rules over the network) or
  * {@code off}; temperatures is empty for none, {@code default} for the school folder's {@code play-temperature}, or a file; weight
- * defaults to 1; options (a sixth field) are words, so far {@code hitout} for hit and out ({@code StepBack#planShort}) over the network and {@code noback} for the back-out rule off. Lines starting with {@code #} are comments. An arm whose network is missing is left out; with no valid arm there
+ * defaults to 1; options (a sixth field) are words, so far {@code hitout} for hit and out ({@code StepBack#planShort}) over the network and {@code noback} for the back-out rule off, {@code airyield} for run 88's swing in their combo (SchoolFighter#airKeepYield). Lines starting with {@code #} are comments. An arm whose network is missing is left out; with no valid arm there
  * is no pool and the installed network plays as before.
  */
 public final class AbPool {
@@ -40,8 +40,14 @@ public final class AbPool {
 		public final boolean hitAndOut;
 		/** The back-out rule off ({@code Config.backRule}: S for 12 ticks after the second hit of a combo it is taking), with the rules on. */
 		public final boolean noBack;
+		/** Run 88: from their 2nd hit, in the air, the rules' keep of the swing is the network's (option word {@code airyield}). */
+		public final boolean airYield;
 
 		Arm(String tag, Path network, boolean rules, Path temperatures, double weight, boolean hitAndOut, boolean noBack) {
+			this(tag, network, rules, temperatures, weight, hitAndOut, noBack, false);
+		}
+
+		Arm(String tag, Path network, boolean rules, Path temperatures, double weight, boolean hitAndOut, boolean noBack, boolean airYield) {
 			this.tag = tag;
 			this.network = network;
 			this.rules = rules;
@@ -49,6 +55,7 @@ public final class AbPool {
 			this.weight = weight;
 			this.hitAndOut = hitAndOut;
 			this.noBack = noBack;
+			this.airYield = airYield;
 		}
 	}
 
@@ -110,13 +117,15 @@ public final class AbPool {
 			}
 			boolean hitAndOut = false;
 			boolean noBack = false;
+			boolean airYield = false;
 			if (f.length > 5) {
 				for (String o : f[5].split("[ ,]+")) {
 					hitAndOut |= o.trim().equalsIgnoreCase("hitout");
 					noBack |= o.trim().equalsIgnoreCase("noback");
+					airYield |= o.trim().equalsIgnoreCase("airyield");
 				}
 			}
-			arms.add(new Arm(tag, network, rules, temps, weight, hitAndOut, noBack));
+			arms.add(new Arm(tag, network, rules, temps, weight, hitAndOut, noBack, airYield));
 		}
 		return arms;
 	}

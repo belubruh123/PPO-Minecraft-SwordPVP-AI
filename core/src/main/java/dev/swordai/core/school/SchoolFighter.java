@@ -33,6 +33,10 @@ public final class SchoolFighter {
 	private boolean hasAction;
 	private int sinceHitDealt = 1000;
 	private int sinceHitTaken = 1000;
+	/** Their hits in a row since its last (run 88). */
+	private int theirRow;
+	/** Run 88 in the user's game: an A/B arm with the option "airyield" (see SchoolSession.AIR_KEEP_YIELD). */
+	private boolean airKeepYield;
 	private final TakenStreak takenStreak = new TakenStreak();
 	/** Its combo jump resets mistimed now and then, as a person's are. */
 	private final FairJump fairJump = new FairJump(System.nanoTime());
@@ -56,6 +60,7 @@ public final class SchoolFighter {
 		hasAction = false;
 		sinceHitDealt = 1000;
 		sinceHitTaken = 1000;
+		theirRow = 0;
 		takenStreak.reset();
 		dealtSince = 0;
 		takenSince = 0;
@@ -127,11 +132,18 @@ public final class SchoolFighter {
 	public void hitDealt() {
 		sinceHitDealt = 0;
 		dealtSince++;
+		theirRow = 0;
 	}
 
 	public void hitTaken() {
 		sinceHitTaken = 0;
 		takenSince++;
+		theirRow++;
+	}
+
+	/** Run 88: from their 2nd hit in a row, in the air, the rules' keep of the swing for the way down is the network's. */
+	public void airKeepYield(boolean on) {
+		airKeepYield = on;
 	}
 
 	/**
@@ -186,6 +198,11 @@ public final class SchoolFighter {
 		if (ruled != 0 && SchoolStages.COMBO_ESCAPE_TAUGHT && SchoolStages.comboEscape(learner.told().ordinal())
 				&& sinceHitTaken <= OWN_COMBO_TICKS && sinceHitDealt > sinceHitTaken) {
 			ruled &= ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
+		}
+		// Run 88 (SchoolSession.AIR_KEEP_YIELD), for an arm trained with it: from their 2nd hit, in the air, the keep is the network's.
+		if (airKeepYield && theirRow >= 2 && !body.onGround && sinceHitTaken <= OWN_COMBO_TICKS && sinceHitDealt > sinceHitTaken
+				&& (ruled & ActionSpace.mask(ActionSpace.ATTACK)) != 0 && (rules.rules() & 2) != 0 && rules.action()[ActionSpace.ATTACK] == 0) {
+			ruled &= ~ActionSpace.mask(ActionSpace.ATTACK);
 		}
 		keys &= ~ruled;
 		if (ruled != 0) {

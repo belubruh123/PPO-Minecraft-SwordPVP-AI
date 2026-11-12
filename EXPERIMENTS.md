@@ -1415,3 +1415,33 @@ change):
 
 **Training resumed at 03:30 from run85-1727** (update 9342, 39.3M steps). The league holds game-run35-0657 and
 game-run85-1727. From now on every candidate is compared with the mean of w83, w83b and w87.
+
+### Run 88 (built 13 Nov 04:50, flag AIR_KEEP_YIELD = false; to be deployed after run 87's benchmark at about 06:00)
+
+**From agent 25 (Sonnet), checked in the code.**
+- AnswerRule.when keeps the swing for the way down "second hit or not" once FallWatch.proven holds, that is, once a punish
+  crit was made on this opponent.
+- So in their combo, in the air, the rule holds A's swing with the crosshair on them: 27% of A's ready ticks against B's
+  18% (04:20 check). A lands more punish crits, so it is proven more often.
+- The doc teaches the keep for the first lift (B1). Swinging back in their combo is the user's requirement (PROBLEMS.md 1).
+
+**The change.** From their 2nd hit in a row, in the air (rising or falling), the keep rule's swing is the network's. The
+gate is the rules' bit 2, with the rule pressing no swing, and ATTACK ruled. Their first lift keeps the rule (B1). The
+golden rule (k2Hold) and the whiff guard still close the swing before this. PPO decides by its rewards; the crit teacher
+still teaches the swing on a fall that can crit.
+
+**The user's game.** SchoolFighter.airKeepYield, on only for an A/B arm whose pool line has the option word "airyield".
+The installed arm and run85-1727 play as before.
+
+**Found on the way.** Runs 75 (the guard gives W and the sprint back) and 78 (its own jump's keep given back) act in
+training, checks and the benchmark, but not in the user's game (SchoolFighter). They are rare (75: about 7 ticks a window;
+78: 1 in training, 0 in checks lately), so this is no duel-day problem. Note it for the docs.
+
+**Judge** (counters: "run 88, the keep in the air from their 2nd hit given back" and the check's in-combo split).
+- In the checks: A's in-air hold from 27% toward 18%; A's swing in their combo from 34% toward 46%; their 3rd hit after
+  the 2nd below 37%.
+- Training: "swung" over "given back" above about 30%; otherwise the network does not take the ticks and the run does
+  nothing.
+
+**Revert if** B1's chances critted fall under 50% (the user's band), or its swings landing fall, or late jump-in hits rise.
+Narrow first to the rising half or to !critSwingNow before giving it up.
