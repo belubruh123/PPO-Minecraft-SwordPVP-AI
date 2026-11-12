@@ -586,6 +586,10 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Real duels decide. Judge with tools/duels.py '[A/B arm' lines: rounds won, their 3+ combos, late jump-in hits.
   - Undo: tools/install-ab.sh --off, and the jar from the backup.
   - NOT installed as the main model: that needs the user's real duels and the user's word.
+- 19:10 check (T-C), run 85's fourth: A 18/44, B 17/44 (z +0.2); damage A 358/421, B 354/403 (net -10.0 vs -7.9).
+  - Run 85 over 4 checks: A 88, B 71.
+  - Third hits 38% vs 38%. Outside their combo A swung 47% vs 51%.
+  - Late knock-aways rising A 7 vs B 16, falling 2 vs 4; ground tick 0-1 0 and 0. K2 broken 39 vs 32 (A above B for once).
 
 ## SOLVED (with the evidence)
 
