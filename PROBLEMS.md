@@ -559,6 +559,11 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Best check of the day (B is the weaker 23 Oct model; the 18:00 benchmark against the installed model is the real test).
   - Third hits A 26% vs B 36%. Outside their combo A swung 50% vs 56% (closer). In their combo 37% vs 42%.
   - Late knock-aways rising A 6 vs B 23; ground tick 0-1 0 vs 1. K2 broken 37 vs 42.
+- 16:42 check (T-B), run 85's second: A 20/44, B 20/44 (z 0.0); damage A 391/409, B 368/410 (net -2.8 vs -6.4).
+  - Run 85 over 2 checks: A 47, B 36.
+  - Third hits A 30% vs B 46%. Outside their combo A swung 50% vs 55%.
+  - Late knock-aways rising A 7 vs B 13; ground tick 0-1 0 and 0. K2 broken 34 vs 44.
+  - Training: punish crit chances critted 70% (above the band).
 
 ## SOLVED (with the evidence)
 
