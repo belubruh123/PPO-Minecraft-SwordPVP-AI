@@ -658,6 +658,7 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Done for the 14 Nov duels: the real-duel recorder now also writes the opponent's signed side speed, head facing, pitch and arm swing (RoundRecorder, commit b13e611), so lost rounds give A/D, aim and swings directly.
     - The new jar goes into the profile's A/B pool before the user plays.
     - duel-hits.py and jumpins.py read columns by name now.
+- 13 Nov 00:46: the profile jar was replaced by the 00:43 build (the new recorder columns), with the same A/B pool (installed vs run85-1727). The backup is swordai/backup-before-ab-20261113-004654.
 
 ## SOLVED (with the evidence)
 
