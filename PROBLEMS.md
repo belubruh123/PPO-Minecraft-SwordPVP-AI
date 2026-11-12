@@ -600,6 +600,12 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Outside their combo A swung 60% vs 54%: A AHEAD for the first time (it was 38-46% before run 85). Crosshair off 28% vs 28%.
   - Third hits A 29% vs B 33%. Late knock-aways rising A 7 vs B 18. K2 broken 30 vs 39.
   - Training K2 broken back to 4-8 a window (the 21 was one window).
+- 21:49 BENCHMARK, run85n2045 (run 85 after 5h45m) vs run35w83 (installed): TOTAL +1.24 (1.23) -> TIE.
+  - Skills +3.09 (2.32): Three-block +7.39 (2.69), Reverse deflection +4.77, Crits +3.09, Make them miss +2.60; Punish crit -1.56 (5.18) (rate 17% vs 12%); Jump-in defence -1.10; Getting out of combos -1.08 (0.95).
+  - Head-to-head -0.85 (1.58), rounds 30-31. Bots -0.36 (0.50), rounds 152-146. Mixer -2.36 (1.38).
+  - 6 of 360 episodes broken off. The user's Minecraft was opened during or around it (javaw 2 at 21:50), so it may be affected.
+  - run85-1727's BETTER (+3.51) is NOT confirmed by the later network. The two differ by about 1.3 se; their mean is about +2.4.
+  - The real-duel arm stays on run85-1727 (the BETTER one). Real duels decide.
 
 ## SOLVED (with the evidence)
 
