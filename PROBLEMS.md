@@ -659,6 +659,10 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
     - The new jar goes into the profile's A/B pool before the user plays.
     - duel-hits.py and jumpins.py read columns by name now.
 - 13 Nov 00:46: the profile jar was replaced by the 00:43 build (the new recorder columns), with the same A/B pool (installed vs run85-1727). The backup is swordai/backup-before-ab-20261113-004654.
+- 01:32 check (T-C), run 85's eighth: A 18/44, B 16/44 (z +0.4); damage A 373/421, B 344/417 (net -7.3 vs -11.5).
+  - Run 85 over 8 checks: A 184, B 141.
+  - Third hits 33% vs 34%. Outside their combo A swung 47% vs 49%.
+  - Late knock-aways rising A 7 vs B 17; ground tick 0-1 0 and 0. K2 broken A 30 vs B 34 (back in A's normal range; the 48 was one check).
 
 ## SOLVED (with the evidence)
 
