@@ -1469,3 +1469,17 @@ or night, the same PC state. Better still, benchmark the candidate and its compa
 **By that rule.** run87n0552 beats run85-1727 on the same night: bots by 4 se, total by 1.3 se. Repeat 0552 once, then
 decide whether the duel arm 'run85' becomes run87-0552 (a reversible pool change with a backup). That arm swap is the open
 decision for the 14 Nov duels.
+
+**Run 88 deployed 13 Nov 06:45.** It continues run 87's network (update 9459), keeping the same league. The first window:
+the keep given back 4 times in training, swung 0.
+
+**Planned for about 09:15: one same-session benchmark tournament, back to back.**
+1. run35-0657, the reference
+2. run87-0552
+3. run 88 at 2.5 h, with the airyield option
+4. run85-1727
+5. run52-1218, the best older challenger on record
+6. run30h-1855, a pre-run-35 model
+
+The user asked (06:50) whether the installed model is really the strongest old model; this settles it on equal terms. The
+winner goes to the duel pool, with a backup.
