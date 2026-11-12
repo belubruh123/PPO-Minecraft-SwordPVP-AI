@@ -663,6 +663,10 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Run 85 over 8 checks: A 184, B 141.
   - Third hits 33% vs 34%. Outside their combo A swung 47% vs 49%.
   - Late knock-aways rising A 7 vs B 17; ground tick 0-1 0 and 0. K2 broken A 30 vs B 34 (back in A's normal range; the 48 was one check).
+- 02:21 check (T-C), run 85's ninth: A 23/44, B 13/44 (z +2.7; only A won 12, only B won 2); damage A 402/396, B 345/421 (net +0.9 vs -11.7).
+  - Run 85 over 9 checks: A 207, B 154.
+  - Third hits 34% vs 32%. Outside their combo A swung 51% vs 50%.
+  - Late knock-aways rising A 7 vs B 18; ground tick 0-1 0 and 0. K2 broken A 24 vs B 33.
 
 ## SOLVED (with the evidence)
 
