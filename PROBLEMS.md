@@ -739,3 +739,24 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
 - In their combo, of 127 ready ticks: swung 39; swing not open 43, with the crosshair on its body 23; in the air 29.
 
 **Agent 25 (Sonnet, 04:27):** the structural diagnosis of the in-combo swing-back gap (items 1, 2 and 10).
+
+## 13 Nov 05:09 check, run 87's second (1.6 hours from run85-1727)
+
+**Rounds won:** A 18 of 44 (41%), B 15 of 44 (34%); only A won 10, only B won 7; z +0.7. Run 87's checks so far: z +1.9,
++0.7.
+
+**Damage:** A 347 dealt / 402 taken, B 375 / 425.
+
+**Their combos.**
+- Their third hit after their second: A 26%, B 25%.
+- In their combo, sword ready: A swung 38%, B 44%. Held in the air: A 25%, B 16% (run 88's target, 04:20: 27% vs 18%).
+
+**Outside their combo:** A swung 46%, B 53%.
+
+**Jump-ins.**
+- A: 1 hit at ground tick 0-1 (allowed), 4 late rising hits.
+- B: 0 at ground tick 0-1, 18 late.
+
+**Training.** Punish crit 62%. After its 7 punish crits: T1c 0, critted back 2.
+
+**Next.** Run 87's benchmark at about 06:00, then run 88.
