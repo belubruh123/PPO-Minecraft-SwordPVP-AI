@@ -645,6 +645,10 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
     - Against both references, run85-1727 averages about +3.6 (BETTER 3 of 4 comparisons). The h2h is about even.
     - Run 86 (built on that artefact) was NOT deployed: COMBO_TAKEOFF_FAIL = false, the redeploy request was removed at 23:12.
     - From now on compare against the MEAN of the reference runs (run35w83 + run35w83b), and re-measure the reference about daily.
+- 13 Nov 00:00 check (T-B), run 85's seventh: A 25/45, B 17/45 (z +2.1; only A won 11, only B won 3); damage A 416/407, B 359/413 (net +1.2 vs -8.6).
+  - Run 85 over 7 checks: A 166, B 125.
+  - Third hits A 33% vs B 39%. Outside their combo A swung 55% vs 56%.
+  - Late knock-aways rising A 3 vs B 20; ground tick 0-1 0 and 0. K2 broken A 48 vs B 50 (A's highest; it was 26-41): watch.
 
 ## SOLVED (with the evidence)
 
