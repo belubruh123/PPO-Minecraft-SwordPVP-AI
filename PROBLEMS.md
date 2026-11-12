@@ -649,6 +649,15 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Run 85 over 7 checks: A 166, B 125.
   - Third hits A 33% vs B 39%. Outside their combo A swung 55% vs 56%.
   - Late knock-aways rising A 3 vs B 20; ground tick 0-1 0 and 0. K2 broken A 48 vs B 50 (A's highest; it was 26-41): watch.
+- 13 Nov 00:26-00:38 LEARNING FROM THE OPPONENTS' WINNING MOVES (the user's 12 Nov request), stage 1, agent 23 (Sonnet), offline: tools/oppdemo/ (lib.py, run.py).
+  - 200 real duels, 203 rounds, 27 lost (19 by death).
+  - Their 3,079 hits: 75% were trades; 305 broke the user's jump-in rule or K2 for our AI (dropped). Only 36 clean good hits are left, 16 of them in lost rounds.
+  - Inferred keys checked on our own AI: W 98.6%, jump 99.9%; S weak (48-73%). A/D impossible because the recorder wrote |oppSide|. Opponent actions show 2 ticks late (shift 2 ticks earlier; ping about 1.2 ticks).
+  - With the safeguards (5 examples, 2 rounds, net HP +2), NO table entry survives. The held-out validation of a looser exploratory table is not positive: ATK negative in all 18 splits.
+  - VERDICT: nothing is safe to train on yet. The data is too small, so NOT used in training.
+  - Done for the 14 Nov duels: the real-duel recorder now also writes the opponent's signed side speed, head facing, pitch and arm swing (RoundRecorder, commit b13e611), so lost rounds give A/D, aim and swings directly.
+    - The new jar goes into the profile's A/B pool before the user plays.
+    - duel-hits.py and jumpins.py read columns by name now.
 
 ## SOLVED (with the evidence)
 
