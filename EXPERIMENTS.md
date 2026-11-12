@@ -1399,3 +1399,19 @@ is known.
 - Benchmark run 87 at about 2.5 hours (when 1727 peaked) and at about 5 hours, against the mean of the references.
 - If it falls like run 85 did, the next idea is to train from 1727 with a lower lr, or to stop earlier and average
   checkpoints.
+
+**13 Nov 03:27, reference run35w87.** The installed model, measured again under today's code (after the 00:43 recorder
+change):
+
+| Against | Total | h2h | Bots |
+|---|---|---|---|
+| run35w83 | -1.94 | -3.95 | -0.68 |
+| run35w83b | -0.21 | +0.80 | -0.71 |
+
+- So today's code (or noise) reads the same network about 0.7 lower in bot fights.
+- Scored against this same-code reference, run85n0218 is +1.85 TIE: bots -0.99 (0.49), skills +3.89 (1.88), h2h +0.60.
+- Against the mean of the three references, run85n0218's total is about +0.9, against 1727's about +3.6.
+- So the drift after 1727 is real even after the code shift: bots about 1.7-2.0 lower, about 3 se.
+
+**Training resumed at 03:30 from run85-1727** (update 9342, 39.3M steps). The league holds game-run35-0657 and
+game-run85-1727. From now on every candidate is compared with the mean of w83, w83b and w87.
