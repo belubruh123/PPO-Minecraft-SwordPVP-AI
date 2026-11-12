@@ -522,6 +522,12 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
     The installed model breaks K2 / the user's jump-in rule almost 4x as often, and the test pays it in HP. Part of 'WORSE' is the price of the user's rule.
     - The benchmark's scoring is the user's; not changed. Told the user.
   - Next: the legal part of the jump-in defence gap (agent 20, Sonnet, 11:50).
+- Agent 20 (Sonnet, 11:50-11:53), the jump-in defence test, 25 paired episodes: the gap of 0.8 HP per jump-in is about 1.5 se, NOT significant.
+  - CORRECTION of the 11:47 note: of R's 0.27 falling-air hits per jump-in, 0.16 are inside its own combo (legal). Only 3 of 44 are clean knock-aways, about 0.19 of the gap at most.
+  - Dealt is equal (2.78 vs 2.84); the gap is HP lost (2.81 vs 2.07). Their crits about 0 both; B1 no difference.
+  - Half of the loss falls after tick 17 (the ordinary fight).
+  - Possible legal part: C presses its own jump at their take-off in 86% of situations vs R 43%, and is hit airborne at their landing (ticks 9-16) 0.30 vs 0.18 a jump-in (11 vs 8 hits). About +0.27 HP; small counts.
+  - Test (no training change): tools/bench/suite-jumpin.txt = jump-in-critter on 100 seeds, run35wji (installed) then run84ji (run84-1106), 12:00. If the gap stays under 0.3 HP or the airborne hits do not differ, drop it.
 
 ## SOLVED (with the evidence)
 

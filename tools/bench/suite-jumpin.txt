@@ -1,0 +1,3 @@
+# SwordAI focused suite (12 Nov, agent 20's test): the jump-in defence test alone on 100 seeds, to tell a 0.3-0.8 HP gap from noise.
+# Same format as suite-v2 (docs/BENCHMARK.md). Both tags must be measured on it.
+jump-in-critter 100
