@@ -1445,3 +1445,27 @@ training, checks and the benchmark, but not in the user's game (SchoolFighter). 
 
 **Revert if** B1's chances critted fall under 50% (the user's band), or its swings landing fall, or late jump-in hits rise.
 Narrow first to the rising half or to !critSwingNow before giving it up.
+
+**13 Nov 06:36: run 87 benchmarked, and run85-1727 re-measured under today's code.**
+
+| Benchmark | vs w87 (03:11) | vs w83b (22:51) | vs w83 (06:52 on 12 Nov) |
+|---|---|---|---|
+| run87n0552 (run 87 at 2.4 h) | **+3.62 BETTER** (skills +5.97, h2h +1.00, bots +1.55) | +2.77 | +1.88 |
+| run85n1727c (06:21) | +1.36 TIE (skills +3.51, h2h -1.32, bots -0.28) | +0.48 | -1.21 |
+
+- Earlier 1727 benchmarks: 18:02 gave +3.51 / +4.60 and 22:31 gave +2.28 / +4.14 (vs w83 / w83b).
+- Head to head, run87n0552 vs run85n1727c: +1.85 (1.41) TIE. Bots +1.83 (0.46, about 4 se), h2h +2.32 (1.88), skills +1.63 (2.66).
+- The network hashes in every DONE file are right.
+- No code change between 22:31 and 06:21 alters play. Run 86 is off and a reward cannot change a benchmark; the recorder and
+  the arm tag are logging.
+- So 1727's fall from about +3.6 to about +0.2 is the benchmark session.
+  - The 12 Nov evening (1727, 2045, 1727b, w83b) ran while the user's other Minecraft may have been open.
+  - The night (w87, 0218, 0552, 1727c) ran with it closed.
+  - Same network, different session: up to about 3.7 on the total.
+
+**Rule from now on.** Compare candidates only with a reference, or with each other, from the SAME session: the same evening
+or night, the same PC state. Better still, benchmark the candidate and its comparison back to back.
+
+**By that rule.** run87n0552 beats run85-1727 on the same night: bots by 4 se, total by 1.3 se. Repeat 0552 once, then
+decide whether the duel arm 'run85' becomes run87-0552 (a reversible pool change with a backup). That arm swap is the open
+decision for the 14 Nov duels.
