@@ -779,3 +779,21 @@ is still under about 30%, the run does nothing by itself and the freed ticks nee
 **Punish crit 71%** (last 300), above the user's 50-65%. It has crept up: 57, 64, 65, 63, 62, 67, 71. Watch it under run
 88, which may lower it, because the swings it frees in their combo are not crits. If it is still above 65% at about
 08:00, find what holds it high.
+
+## 13 Nov ~07:00: agent 26 (Sonnet) on item 4, critted back after its punish crit
+
+**What it found.**
+- After its punish crit almost no rule presses keys: W/S, the sprint and the jump are the network's. T1c is a gated option.
+- Its sword is about 0.4 at landing and about 0.9 at crit+11. Their answer lands at a median of crit+5.
+- The training bots already crit back: 17% in training against 16% real. So the bots are not missing the crit back.
+- What training never sees is the PLAIN hit back. In the real duels 82% of its punish crits were answered within 30 ticks,
+  mostly plain hits. The run 54 counter counts crits only, and it closes on its own next hit.
+- Doc: T1c (crit again) and C1 (sprint-hit instead of the punish crit). The doc does not say what to do after a plain hit
+  back. Its S-tap (spacing) is general.
+
+**First step, done (counter only).** "after its N punish crits, any hit taken: within 12 ticks, within 30 (crits)" is
+counted the way tools/duelday.py counts the real duels, for comparison with the real 82%. It goes live with the next
+redeploy.
+- If training is far under 82%, the bots answer too softly, and the bots' hit-back timing is the fix.
+- If training is near 82%, the next step is agent 26's option: a short S-tap after the punish crit, decided by the network
+  (a gated option, the decider picks when), not a rule.

@@ -896,6 +896,14 @@ public final class SchoolSession implements AgentSession {
 	private int enteredByJump, enteredByWalk;
 	/** Run 54: ticks since its last punish crit (past T1C_WINDOW: none open); after those punish crits, its T1c crits and their crits back. */
 	private int sincePunishCrit = T1C_WINDOW + 1;
+	/**
+	 * Agent 26's counter (13 Nov): ANY hit taken after its punish crit, as tools/duelday.py counts it in the user's real duels (the
+	 * first hit taken within 30 ticks of the crit, whatever it did meanwhile): there 82% within 30 ticks, 16% of them crits. The
+	 * run 54 window closes on its own next hit and counts crits only, so the plain hits back were never seen in training.
+	 */
+	private int pcAnySince = 1000;
+	private boolean pcAnyCounted = true;
+	private int pcAnyCrits, pcBack12, pcBack30, pcBackCrit30;
 	private int punishCritsForT1c, t1cCrits, critBacks;
 	/** Run 54b: the T1c funnel (its own jump after the punish crit, hits from it, sprint hits among them) and its swing back in their combo. */
 	private boolean t1cJumpCounted;
@@ -943,6 +951,8 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | guard in their combo: rules gave way %d, taught to back off %d", guardGaveWay, guardBackTaught)
 				+ String.format(Locale.ROOT, " | its own jump in their combo, the keep given back: training %d (swung %d), checks %d (swung %d)",
 						ownKeepYield[0], ownKeepYieldSwung[0], ownKeepYield[1], ownKeepYieldSwung[1])
+				+ String.format(Locale.ROOT, " | after its %d punish crits, any hit taken (real duels: 82%% within 30, 16%% crits): within 12 ticks %d, within 30 %d (crits %d)",
+						pcAnyCrits, pcBack12, pcBack30, pcBackCrit30)
 				+ String.format(Locale.ROOT, " | run 88, the keep in the air from their 2nd hit given back: training %d (swung %d), checks %d (swung %d)",
 						airKeepYield[0], airKeepYieldSwung[0], airKeepYield[1], airKeepYieldSwung[1])
 				+ String.format(Locale.ROOT, " | T1c take-offs by ticks after landing from its punish crit: 0-1 %d, 2-4 %d, 5+ %d",
@@ -983,6 +993,7 @@ public final class SchoolSession implements AgentSession {
 		comboTrackTaught = 0;
 		comboScenePicks = 0;
 		punishCritsForT1c = t1cCrits = critBacks = 0;
+		pcAnyCrits = pcBack12 = pcBack30 = pcBackCrit30 = 0;
 		t1cJumps = t1cHits = t1cSprintHits = 0;
 		java.util.Arrays.fill(t1cJumpByLanding, 0);
 		heldPaid = heldDropped = 0;
@@ -3323,6 +3334,8 @@ public final class SchoolSession implements AgentSession {
 		frozenTicks = 0;
 		fightTicks = 0;
 		sincePunishCrit = T1C_WINDOW + 1;
+		pcAnySince = 1000;
+		pcAnyCounted = true;
 		// An own-combo scene starts the tick after its first hit: a hit within COMBO_GAP is that combo's follow-up (COMBO_HIT).
 		boolean ownScene = sceneNow != null && (sceneNow.kind == KIND_OWN || sceneNow.kind == KIND_OWN2);
 		lastOwnHitAt = ownScene ? -1 : -1000;
@@ -3824,6 +3837,15 @@ public final class SchoolSession implements AgentSession {
 				}
 				// Run 54: after its punish crit, T1c pays and their crit back costs, until its next hit or T1C_WINDOW.
 				sincePunishCrit++;
+				if (pcAnySince < 1000) {
+					pcAnySince++;
+				}
+				if (!pcAnyCounted && pcAnySince <= 30 && facts.hitsTaken > 0) {
+					pcAnyCounted = true;
+					pcBack30++;
+					pcBack12 += pcAnySince <= 12 ? 1 : 0;
+					pcBackCrit30 += facts.critsTaken > 0 ? 1 : 0;
+				}
 				boolean afterPunish = sincePunishCrit <= T1C_WINDOW;
 				inT1cWindow = afterPunish;
 				if (afterPunish && facts.critsTaken > 0) {
@@ -3855,6 +3877,9 @@ public final class SchoolSession implements AgentSession {
 						liftStage = 6;
 						sincePunishCrit = 0;
 						punishCritsForT1c++;
+						pcAnySince = 0;
+						pcAnyCounted = false;
+						pcAnyCrits++;
 					} else {
 						reward += OTHER_CRIT;
 						otherCrits++;
