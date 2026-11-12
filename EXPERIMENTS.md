@@ -1310,3 +1310,28 @@ Gates:
 - Revert (LEAGUE_SHARE 0.5) if the bench h2h is worse than -2.5, or the punish crit is under 50% for 3 updates, or "Getting out of combos" falls under 15%.
 
 Run 85 (12 Nov 18:17): benchmark run85n1727 vs installed BETTER, total +3.51 (1.25); skills +7.48, h2h -1.70, bots +0.77 (rounds 175-149). Checks since the deploy: A 70, B 54. Put in the real-duel A/B pool 18:18 (installed vs run85).
+
+## Run 86 (12 Nov 23:15; agent 21's fix 2): charge its own failed take-offs in their combo
+
+Why (pooled over the benchmarks of runs 84/85 against the installed model, the advisor's anti-noise rule):
+- The head-to-head is negative every time: -1.40, -2.10, -1.70, -0.85, -3.28.
+- "Getting out of combos" is negative every time: -1.25, -1.37, -1.77, -1.08, -0.84.
+- Agent 21 (h2h): its own take-offs within 3 ticks of their 2nd+ hit cost -4.43 HP each, against the installed model's -2.70 (2.52 vs 1.97 a fight). Run 84 gave the network those keys; it jumps, and the jump is often mistimed.
+- The document: T9 "the jump is mistimed" is how the jump reset fails. C3: "hold S *right before* you get stunned".
+
+Change:
+- SchoolSession.COMBO_TAKEOFF_FAIL = true, COST 0.4, WINDOW 15 ticks.
+- In TRAINING (rules on), its own take-off (not a rule's jump) in their combo after their 2nd hit in a row is marked.
+  - If their next hit lands within 15 ticks anyway (their 3rd+ in a row), the step is charged 0.4.
+  - If it hits back first, or 15 ticks pass, nothing is charged and it counts as "out".
+- Only failed escapes cost; jumps that got it out are free. The swing is untouched (B1, the jump-in rule). Checks, benches and real fights are unchanged.
+
+Counter: "run 86, its own take-offs after their 2nd hit: their next hit within 15 ticks anyway (charged) N, out M".
+
+Gates:
+- Training, 2 h: the charged share falls (N/(N+M)). Punish crit chances critted 50-65%+.
+- Benchmarks, pooled over 2 (about 3 and 5 h after the deploy), against the installed model: h2h mean better than -1.9 (the run 84/85 mean); "Getting out of combos" mean better than -1.26; total not below run 85's mean (+1.9).
+- Revert (COMBO_TAKEOFF_FAIL = false):
+  - if the two benchmarks' mean total is below +0.5, or
+  - the punish crit is under 50% for 3 updates, or
+  - its take-offs in their combo fall to near 0 while third hits rise (it stopped escaping at all).

@@ -226,6 +226,20 @@ public final class SchoolSession implements AgentSession {
 	static final float COMBO_EXIT_SHARE = 0.35f;
 	static final int COMBO_EXIT_TICKS = 12;
 	private boolean comboExitFight;
+	/**
+	 * Run 86 (agent 21's fix 2, 12 Nov 23:10): against the installed model the head-to-head stayed negative in every benchmark
+	 * of runs 84/85 (-1.40, -2.10, -1.70, -0.85, -3.28) and "Getting out of combos" too (-1.25, -1.37, -1.77, -1.08, -0.84).
+	 * Its own take-offs from their 2nd hit on cost -4.43 HP each against the installed model's -2.70 (agent 21, h2h). The
+	 * document's C3/T9: a jump in their combo works when it is timed ("the jump is mistimed (T9)" is how it fails). In TRAINING,
+	 * its own take-off (not a rule's) after their 2nd hit in a row is charged COMBO_TAKEOFF_FAIL_COST only if their next hit
+	 * still lands within COMBO_TAKEOFF_WINDOW ticks: the failed escapes, not the jumps that got it out. The swing is untouched
+	 * (B1, the jump-in rule).
+	 */
+	static final boolean COMBO_TAKEOFF_FAIL = true;
+	static final float COMBO_TAKEOFF_FAIL_COST = 0.4f;
+	static final int COMBO_TAKEOFF_WINDOW = 15;
+	private int comboTakeoffAt = -1;
+	private int comboTakeoffFail, comboTakeoffOut;
 	private int comboExitTicks, comboExitBack;
 	private final int[][] comboExitRow = new int[2][2];
 	private int ownFollowTaught;
@@ -920,6 +934,8 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | its follow-ups' pay held %d ticks: paid %d, dropped by their hit %d", HELD_TICKS, heldPaid, heldDropped)
 				+ String.format(Locale.ROOT, " | after its own ground hit, B's movement as an outcome target: %d ticks", ownFollowTaught)
 				+ String.format(Locale.ROOT, " | sprint hits taken with the first-hit jump reset open: %d", firstHitResetTicks)
+				+ String.format(Locale.ROOT, " | run 86, its own take-offs after their 2nd hit: their next hit within %d ticks anyway (charged) %d, out %d",
+						COMBO_TAKEOFF_WINDOW, comboTakeoffFail, comboTakeoffOut)
 				+ String.format(Locale.ROOT, " | run 84, their combo from their 2nd hit, W/S/sprint/jump the network's: %d ticks, S pressed %d; their 3rd hit after their 2nd: those fights %d/%d, other fights %d/%d",
 						comboExitTicks, comboExitBack, comboExitRow[1][1], comboExitRow[1][0], comboExitRow[0][1], comboExitRow[0][0])
 				// Run 76: "no jump" taught between their hits; its own take-offs in their combo, by the technique it was told.
@@ -955,6 +971,7 @@ public final class SchoolSession implements AgentSession {
 		ownFollowTaught = 0;
 		firstHitResetTicks = 0;
 		comboExitTicks = comboExitBack = 0;
+		comboTakeoffFail = comboTakeoffOut = 0;
 		for (int[] r : comboExitRow) {
 			java.util.Arrays.fill(r, 0);
 		}
@@ -3282,6 +3299,7 @@ public final class SchoolSession implements AgentSession {
 		clicked = false;
 		theirRow = 0;
 		comboExitFight = COMBO_EXIT_YIELD && rng.nextFloat() < COMBO_EXIT_SHARE;
+		comboTakeoffAt = -1;
 		seenSide = 0;
 		sweep = 0;
 		frozenTicks = 0;
@@ -3628,9 +3646,24 @@ public final class SchoolSession implements AgentSession {
 			sc[2] += facts.hitsDealt;
 			if (facts.hitsDealt > 0) {
 				theirRow = 0;
+				if (comboTakeoffAt >= 0) {
+					// Run 86: it hit back after its take-off in their combo: out of it.
+					comboTakeoffOut++;
+					comboTakeoffAt = -1;
+				}
 			}
 			if (facts.hitsTaken > 0) {
 				theirRow++;
+				if (comboTakeoffAt >= 0) {
+					if (theirRow >= 3 && fightTicks - comboTakeoffAt <= COMBO_TAKEOFF_WINDOW) {
+						// Run 86: its own take-off after their 2nd hit did not get it out: their next hit landed anyway.
+						enterReward -= COMBO_TAKEOFF_FAIL_COST;
+						comboTakeoffFail++;
+					} else {
+						comboTakeoffOut++;
+					}
+					comboTakeoffAt = -1;
+				}
 				sc[3] += theirRow == 2 ? 1 : 0;
 				sc[4] += theirRow == 3 ? 1 : 0;
 				if (mode == Mode.TRAIN && !installedPlays && !ruleOff) {
@@ -4509,11 +4542,19 @@ public final class SchoolSession implements AgentSession {
 			action[ActionSpace.JUMP] = b[ActionSpace.JUMP];
 			bFollowTicks++;
 		}
+		if (comboTakeoffAt >= 0 && fightTicks - comboTakeoffAt > COMBO_TAKEOFF_WINDOW) {
+			// Run 86: no hit of theirs within the window after its take-off: out of their combo.
+			comboTakeoffOut++;
+			comboTakeoffAt = -1;
+		}
 		// Run 43: a take-off on the ground by the network (not a rule's jump) marks the air until it stands again.
 		if (me.onGround()) {
 			ownJumpAir = action[ActionSpace.JUMP] == 1 && (ruled & (1 << ActionSpace.JUMP)) == 0;
 			if (ownJumpAir && mode == Mode.TRAIN && review < 0 && clock.ticksSinceHitTaken <= COMBO_GAP
 					&& clock.ticksSinceHitDealt > clock.ticksSinceHitTaken) {
+				if (COMBO_TAKEOFF_FAIL && !ruleOff && theirRow >= 2 && comboTakeoffAt < 0) {
+					comboTakeoffAt = fightTicks;
+				}
 				// Run 76: its own take-off in their combo, and the technique it was told.
 				comboTakeoffs++;
 				comboTakeoffsByTold[learner.told().ordinal()]++;
