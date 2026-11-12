@@ -475,6 +475,11 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - The hourly checks (A slightly ahead of the 23 Oct model) did not show this: against the INSTALLED model it loses the head-to-head. run52-1218 also lost it, 19-22 on 9 Nov.
   - The h2h episodes are run/swordai/bench/run83n0618/NNNN-h2h.txt.gz (real-fight format, per tick).
   - Next: WHY it loses the head-to-head, which is the biggest and the blocking part. The queued Sonnet agent (08:30 or later) takes this instead of the crit-opener split; jump-in defence -2.95 may be the same thing.
+- 08:20 check (T-E, first after the benchmark): A 24/45, B 21/45 (z +0.8); damage A 419/412, B 376/391 (net +0.9 vs -2.4).
+  - Third hits 28% vs 28%. Outside their combo A swung 44% vs B 56%.
+  - In their combo, held with the crosshair on them: A guard 7%, in the air 26%, on the ground 5%; B 0/16/6%.
+  - Late knock-aways rising A 5 vs B 27. K2 broken 35 vs 37.
+  - Run 83 so far (4 checks): A 82, B 73.
 
 ## SOLVED (with the evidence)
 
