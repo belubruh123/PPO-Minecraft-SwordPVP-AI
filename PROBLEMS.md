@@ -606,6 +606,27 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - 6 of 360 episodes broken off. The user's Minecraft was opened during or around it (javaw 2 at 21:50), so it may be affected.
   - run85-1727's BETTER (+3.51) is NOT confirmed by the later network. The two differ by about 1.3 se; their mean is about +2.4.
   - The real-duel arm stays on run85-1727 (the BETTER one). Real duels decide.
+- ADVISOR 22 (Sonnet, 22:25; the user: advice "that doesn't just focus on numbers"). A big-picture review.
+  - Structure:
+    - The goal (real duels) and the feedback loop have come apart: no real duels since 9 Nov, and every verdict since is a proxy.
+    - One-cause-per-run tuning has become cause-hunting inside noise: the benchmark stayed TIE over runs 83-85, and run 85's BETTER then TIE are one result.
+    - The rules overlay is the real player and the network its apprentice; every rule change changes what the training data means.
+    - The bots fight unlike people (item 8).
+  - A coach's view (doc Part 7/8): the missing piece is READING THE OPPONENT over the fight (their reset, S-after-hit, deflection and double-crit habits) and switching answers. Item 4 (critted back after B1) and item 3 (jump-in type) are habit-conditioned choices, not single-moment fixes.
+  - Stop:
+    - treating small differences as results (at most one deploy and one verdict a day, with a minimum effect size stated first);
+    - adding reward terms for gaps within noise (freeze and prune);
+    - chasing bot realism metric by metric;
+    - rating by the old-model B.
+  - Recommendations, ranked:
+    1. Real duels with the A/B pool on (about 40+ rounds an arm) as the only decision. NEEDS THE USER.
+    2. Freeze for 48 h and measure the benchmark's noise floor: repeat the same network, plus A/A.
+    3. An opponent read: per-fight habit counters as inputs, with bots that switch counters (C7, C1, Part 7).
+    4. Calibrate the bots from the real timelines once, then stop.
+    5. Move the rules overlay from 'plays' to 'advises', one rule at a time, via the A/B pool. NEEDS THE USER.
+  - Done now (23:00):
+    - No new training run (freeze). run 85 keeps training.
+    - Benchmark noise floor: run85-1727 benchmarked AGAIN (run85n1727b), then the installed model again (run35w83b, the A/A test).
 
 ## SOLVED (with the evidence)
 
