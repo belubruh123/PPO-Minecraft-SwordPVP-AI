@@ -1337,3 +1337,29 @@ Gates:
   - its take-offs in their combo fall to near 0 while third hits rise (it stopped escaping at all).
 
 Run 86 NOT DEPLOYED (12 Nov 23:12): the A/A test (installed vs itself: total -1.62, h2h -4.75) showed its basis (h2h and "Getting out of combos" negative every time) came from one lucky reference measurement. COMBO_TAKEOFF_FAIL = false; the code stays for later.
+
+### Run 87 (13 Nov 02:46): spar its own best too (the league = the installed model + run85-1727)
+
+**From:** run 85's line, as it trains (no reset). The same code: run85-1727.bin is copied to school/league/ as
+game-run85-1727.bin. It loads when training restarts after the run85n0218 benchmark.
+
+**The change.** 80% of sparring fights (LEAGUE_SHARE 0.8) now draw evenly from two rivals: the installed model and
+run85-1727. Before, all of them went to the installed model. No reward or rule changes.
+
+**Why.**
+- Run 85's benchmark gain came from sparring the installed model more. Once it beats that model, the rival teaches less.
+- Run 85's later checkpoints have not passed 1727: n2045 scored +1.24 / +2.61 against 1727's +3.51 / +4.60.
+- A rival at its own best level keeps the pressure on.
+- This differs from run 36b (3 Nov, a league of PAST, weaker selves). Run 36b was reverted after 4 hours on the hourly
+  check only, a measure with noise of about ±4.
+
+**The real-duel arm is untouched.** run85-1727 stays in the user's A/B pool.
+
+**Judge.**
+- Benchmark the run 87 checkpoints at about 3, 6 and 12 hours against the mean of the two references (run35w83 and
+  run35w83b), and against run85-1727's own average of about +3.6.
+- A third arm for the duels only if its pooled total is at least 1727's and no skill test is worse by more than 2 se.
+
+**Revert** (take game-run85-1727.bin out of league/ and restart): if two benchmarks average below +1.5 against the
+averaged reference, or the hourly checks' A falls below B for three checks in a row, or the punish crit falls below 50%
+for 3 updates.
