@@ -1308,3 +1308,5 @@ Gates:
 - The next benchmark (about 3 h after the deploy, against run35w83): total > 0 and h2h better than -1.4. Ground hits dealt per fight in h2h up (tools/a19/an.py).
 - Checks: punish crit chances critted 50-65%; late jump-in hits not up.
 - Revert (LEAGUE_SHARE 0.5) if the bench h2h is worse than -2.5, or the punish crit is under 50% for 3 updates, or "Getting out of combos" falls under 15%.
+
+Run 85 (12 Nov 18:17): benchmark run85n1727 vs installed BETTER, total +3.51 (1.25); skills +7.48, h2h -1.70, bots +0.77 (rounds 175-149). Checks since the deploy: A 70, B 54. Put in the real-duel A/B pool 18:18 (installed vs run85).

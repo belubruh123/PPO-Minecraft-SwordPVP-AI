@@ -569,6 +569,23 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
   - Outside their combo A swung 51% vs B 53% (nearly level, was 38-46% before run 85). Crosshair off 42% vs 35%.
   - Third hits A 37% vs B 27%. Swings 366 vs 410, on them 97% vs 89%.
   - Late knock-aways rising A 5 vs B 15; ground tick 0-1 0 and 0. K2 broken 38 vs 54.
+- 18:17 BENCHMARK, run85n1727 (run 85 after 2h25m) vs run35w83 (installed): TOTAL +3.51 (1.25) -> BETTER. The first BETTER since the benchmark exists (7 Nov).
+  - Skills +7.48 (2.39):
+    - Punish crit +7.33 (4.61), rate 16% vs 12%. Holding a combo +4.21 (2.37), 0.84 vs 0.69 hits.
+    - Reverse deflection +14.68 (6.70), Deflection +8.63 (7.12), Crits +4.16, Three-block +2.57, Jump reset +2.07.
+    - Jump-in defence -2.73 (2.16): 1.3 se; on 100 seeds run 84 was BETTER. Getting out of combos -1.77 (1.21), 1.5 se.
+    - No test worse by 2 se.
+  - Head-to-head -1.70 (1.39), not worse by 2 se; rounds 26-31.
+  - Bots +0.77 (0.47); rounds 175 vs 149 of 300 (z +2.6).
+  - The user's 8 Nov install bar:
+    - TIE or better: BETTER;
+    - better punish crit: +7.33, 16% vs 12%;
+    - fewer late hits on jump-ins: KB hits on falling jumpers 0.03 per jump-in vs the installed 0.11.
+- 18:18 REAL-DUEL A/B ARM (standing order: reversible A/B arms with a backup, no asking). The pool is now installed vs run85 (best-candidates/run85-1727.bin, sha256 5e450dc0), both rules on. It replaces the run82 arm, which had no duels.
+  - The profile jar was replaced by the 15:03 build. The backup is swordai/backup-before-ab-20261112-181851.
+  - Real duels decide. Judge with tools/duels.py '[A/B arm' lines: rounds won, their 3+ combos, late jump-in hits.
+  - Undo: tools/install-ab.sh --off, and the jar from the backup.
+  - NOT installed as the main model: that needs the user's real duels and the user's word.
 
 ## SOLVED (with the evidence)
 
