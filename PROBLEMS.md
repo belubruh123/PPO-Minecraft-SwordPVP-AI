@@ -671,3 +671,40 @@ The bench and the bot checks do not count as proof: on 9 Nov the bench called ru
 ## SOLVED (with the evidence)
 
 (none yet)
+
+## 13 Nov 02:27-03:00: advisor 24 (Sonnet), the duel-day plan, and what was done
+
+**The advisor's plan.**
+- The 14 Nov duels stay installed vs run85-1727. No untested arm. A third arm only if the user can play about 90+ rounds, and
+  only with a checkpoint whose pooled benchmark is at least as good as 1727's.
+- Run 85 keeps training as a source of checkpoints. No new reward terms before the duels. Every further tweak is below the
+  benchmark's noise floor.
+- The decision rule is fixed before the duels: docs/DUEL-DAY.md (YES / NO / TIE / NOT ENOUGH, 60+ rounds an arm).
+- After the duels: tag each lost round by technique ID (read only), shift the practice mix toward the bots that play those
+  IDs, then replay the scenes as a held-out test. Train only after that, as a new arm. Never imitate opponents directly.
+- Coach's view: after its own punish crit it plays the same follow-up against everyone. A person reads the opponent's habit
+  (doc Part 7: reset, S after the hit, double crit) and changes the answer. The bots never change habit mid-fight, so
+  training cannot teach it. Candidate for after the duels: bots that switch habit mid-fight. No new reward, punish crit and
+  the jump-in rule untouched.
+
+**Done (02:30-02:45).**
+- Checked: the opponent-habit memory (Habits via DuelReader) is ON in the real-duel arms (FightSession feeds
+  reader.memory() to the network).
+- Each round file's first line now names its A/B arm (RoundRecorder/FightSession). tools/duelday.py prints the per-arm
+  table and the decision in one command (0.5 s). Its columns: rounds won, hits a round, 3+ combos taken, their 3rd hit after
+  their 2nd, swing-back, punish crit, crit-back, late jump-in hits.
+  - Tested on the 1-9 Nov files (no tags, older models): 113 won rounds (lost ones were 'open' before 9 Nov 21:50),
+    3+ combos 0.29 a round, their 3rd hit after their 2nd 10%, swing-back 35%, crit-back 82%, late jump-in hits 137 of 229
+    jumps (older models, before the run 49 guard).
+- The profile jar was replaced by the 02:42 build (backup swordai/backup-before-ab-20261113-024333). The pool is unchanged.
+- Benchmark asked for: run85n0218 (the 02:18 checked network).
+
+**A hypothesis to test on the 14 Nov data (tools/roundidx.py).**
+- In real duels the habit memory carries over across rounds against the same opponent (reset only on a new opponent). In
+  training it resets every fight. So a round-2 opening (full health, far apart) with a full memory is a state training
+  never shows.
+- 1-9 Nov, first exchange won: round 1 69% (152), round 2 59% (29), round 3+ 50% (16). The hit ratio did not fall
+  (1.19 / 1.16 / 1.34).
+- Too few rounds, and confounded with the opponent adapting. No change now.
+- If 14 Nov shows later rounds clearly worse, the fix is training rematches that keep the memory: run 87 candidate, no
+  reward change.
