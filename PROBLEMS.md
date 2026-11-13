@@ -1285,3 +1285,10 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - The 5-hour usage window is at 54%, so the next builder is Sonnet: agent 36 (Sonnet, high effort, worktree) builds run 93, switched off.
   - Run 93 is a "comboable" bot (full knockback, small ping, backs off) in 25% of training fights, plus a long-combo bonus from the 4th hit (agent 32's plan item 3).
   - Turned on if run 92's follow-ups stay flat.
+
+## 14 Nov 02:22 review: run 93's first 13 updates (since 02:05)
+
+- Comboable-bot fights 17 (about 1.3 an update). Its longest run there is 2; no run reached 3; no long-combo hits paid.
+- Overall per update: follow-ups 22.0, their 2nd+ 62.1, own untaught take-offs 81.8, too close 28.5.
+- Punish crit 63%. The latest check is 01:54 (A 19-18). The next is about 02:50.
+- If the longest run is still 2 at about 04:00, raise COMBOABLE_SHARE to 0.5 and look at what breaks its runs there.
