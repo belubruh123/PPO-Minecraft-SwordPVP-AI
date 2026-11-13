@@ -1725,3 +1725,24 @@ Deployed on top of run 89b (20:26) at the user's word; the two are told apart by
 - Real duels: air share under 45%, its runs of 3+ hits, their 2+ runs fewer.
 
 **Revert / rethink** if the checks lose to B for 2 checks running with no rise in its own combo hits, or the punish crit falls under 50%.
+
+### Run 91b (13 Nov 23:35): its own untaught take-offs cost (the user: "I don't want a crit spamming bot")
+
+**The user (23:30):** "It just spam crit I don't want a crit spamming bot. I want an advance combo bot that can use crit when needed and counter crit spammer yet being combo and do sprint hit most of time".
+
+**Where the crits come from** (the user's 14 real rounds of 13 Nov, the round files' keys and rules columns):
+- Take-offs: 247 by the network's own jump, 28 by the rules' jump reset (r), 27 by the rules' "jump made for it" (J), 23 other.
+- Crit swings: 133, of which 61 had the rules' "swing kept for the way down" (k) in the 6 ticks before; 91 sprint swings.
+- The loop: hit taken, then its own jump, then the rules' answer is kept for the way down (AnswerRule.when in the air = KEEP), so the swing becomes a crit; their next hit lands in its cooldown.
+
+**Change.** Each of its own take-offs costs OWN_JUMP_COST = 0.05 (about 0.5 HP) in training. Exempt:
+- the teacher's jump key on that tick;
+- a told jump technique (T9a/b/c, T10, T11a/b/c, K3, T1c, C6);
+- a timed jump reset (a hit taken this tick or the tick before).
+
+With fewer of its own jumps, the rules' keep rarely fires and the answer is a ground sprint hit. The B1 keep, when lifted by their hit, is untouched (punish crit kept). Counter: "its own untaught take-offs charged N".
+
+**Learn-by (about 2 h):**
+- training: charged take-offs and "hit in the air from its own jump" (14.1 an update before) fall; combo follow-ups (27.2) rise;
+- checks: A's jump keys a minute fall toward B's;
+- real duels: air share under 45%, sprint swings above crit swings.

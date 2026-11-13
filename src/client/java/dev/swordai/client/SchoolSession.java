@@ -122,6 +122,26 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final float THEIR_ROW_COST = 0.3f;
 	/**
+	 * Run 91b (13 Nov 23:35), the user: "It just spam crit I don't want a crit spamming bot. I want an advance combo bot that can use
+	 * crit when needed and counter crit spammer yet being combo and do sprint hit most of time". In the user's 14 real rounds of
+	 * 13 Nov, 247 of 325 take-offs were the network's own (rules: 28 jump resets, 27 'jump made for it'), and after them the rules'
+	 * answer was kept for the way down (61 of 133 crits): so its own jumping makes the crit spam. Its own take-off costs this unless
+	 * a technique asks for the jump (the teacher's jump key, or the decider's told technique is a jump one: jump resets T9a-c,
+	 * uppercut/lunge/hops T10/T11, K3, T1c, C6) or it is a timed jump reset (a hit taken this tick or the tick before). About
+	 * 0.5 HP at PER_HEALTH; real rounds had about 11 take-offs per 10 s.
+	 */
+	static final float OWN_JUMP_COST = 0.05f;
+	/** Run 91b: whether a technique asks for a jump on this tick (see OWN_JUMP_COST). */
+	private boolean jumpTechniqueNow(dev.swordai.core.school.SchoolRollout.Step step) {
+		int jo = ActionSpace.OFFSETS[ActionSpace.JUMP];
+		if ((step.teacherHeads & (1 << ActionSpace.JUMP)) != 0 && step.teacher[jo + 1] > 0.5f) {
+			return true;
+		}
+		Technique t = learner.told();
+		return t == Technique.T9A || t == Technique.T9B || t == Technique.T9C || t == Technique.T10 || t == Technique.T11A
+				|| t == Technique.T11B || t == Technique.T11C || t == Technique.K3 || t == Technique.T1C || t == Technique.C6;
+	}
+	/**
 	 * Run 68 (10 Nov, PROBLEMS.md 4, agent 6): the T1c window's credit. Their crit on its rising jump keeps the window open; no
 	 * AIR_JUMP_HIT in the window; no JUMP_COMBO_HIT in it on one falling. In the checks its jumps after a punish crit took off at c+10
 	 * (median), half were hit rising, and only 6-11% became crits; in the user's duels 10 of its 16 such jumps did.
@@ -952,6 +972,7 @@ public final class SchoolSession implements AgentSession {
 	private final int[] guardFreeSwungBy = new int[3];
 	private int lateSwingCharged;
 	private int theirRowCharged;
+	private int ownJumpCharged;
 	/** Run 54c: ticks in the air since its last take-off; its vertical speed on the tick before; hits in its own jump not paid. */
 	private int ownAirTicks;
 	private double prevVy;
@@ -997,6 +1018,7 @@ public final class SchoolSession implements AgentSession {
 						guardFreeBy[0], guardFreeSwungBy[0], guardFreeBy[1], guardFreeSwungBy[1], guardFreeBy[2], guardFreeSwungBy[2])
 				+ String.format(Locale.ROOT, ", late swings charged %d", lateSwingCharged)
 				+ String.format(Locale.ROOT, " | run 91, their 2nd+ hits in a row charged %d", theirRowCharged)
+				+ String.format(Locale.ROOT, ", its own untaught take-offs charged %d", ownJumpCharged)
 				+ String.format(Locale.ROOT, " | after its %d punish crits, any hit taken (real duels: 82%% within 30, 16%% crits): within 12 ticks %d, within 30 %d (crits %d)",
 						pcAnyCrits, pcBack12, pcBack30, pcBackCrit30)
 				+ String.format(Locale.ROOT, " | run 89, after its punish crit the teacher showed T6 on %d ticks, S its own on %d", t6AfterTaught, t6AfterBack)
@@ -1058,6 +1080,7 @@ public final class SchoolSession implements AgentSession {
 		java.util.Arrays.fill(guardFreeSwungBy, 0);
 		lateSwingCharged = 0;
 		theirRowCharged = 0;
+		ownJumpCharged = 0;
 		airJumpHitsFree = 0;
 		counterHits = 0;
 		readyTicks = readySwung = readyHeldFalling = readyHeldOther = 0;
@@ -4703,6 +4726,11 @@ public final class SchoolSession implements AgentSession {
 		// Run 43: a take-off on the ground by the network (not a rule's jump) marks the air until it stands again.
 		if (me.onGround()) {
 			ownJumpAir = action[ActionSpace.JUMP] == 1 && (ruled & (1 << ActionSpace.JUMP)) == 0;
+			if (ownJumpAir && mode == Mode.TRAIN && review < 0 && OWN_JUMP_COST > 0f && clock.ticksSinceHitTaken > 1 && !jumpTechniqueNow(step)) {
+				// Run 91b: its own take-off that no technique asked for and that is not a timed jump reset costs OWN_JUMP_COST.
+				enterReward -= OWN_JUMP_COST;
+				ownJumpCharged++;
+			}
 			if (ownJumpAir && mode == Mode.TRAIN && review < 0 && clock.ticksSinceHitTaken <= COMBO_GAP
 					&& clock.ticksSinceHitDealt > clock.ticksSinceHitTaken) {
 				if (COMBO_TAKEOFF_FAIL && !ruleOff && theirRow >= 2 && comboTakeoffAt < 0) {
