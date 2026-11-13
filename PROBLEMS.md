@@ -972,3 +972,17 @@ kept as run87-pre88c.bin.
 **Jump-ins:** A 0 at ground tick 0-1, 7 late; B 0 and 27 late.
 
 **Next.** Run 88c's same-session benchmark is at 16:15.
+
+## 13 Nov 15:21 check (run 88c at 1.6 hours)
+
+**Rounds won:** A 19 of 44 (43%), B 17 of 44 (39%); only A won 11, only B won 9; z +0.4.
+**Damage:** A 379 dealt / 408 taken, B 387 / 428.
+
+**Their combos.** Their third hit after the second: **A 27%, B 31%**, so A is better this time (14:32: 39% vs 22%).
+- In their combo, sword ready: A swung 36%, B 39%.
+- Held in the air: A 16%, B 16%, level again.
+- Held by the jump-in guard: A 10%, B 0%.
+
+**Outside their combo:** A swung less than B (B 58%).
+
+**Jump-ins:** A 0 at ground tick 0-1, 4 late; B 0 and 22 late.
