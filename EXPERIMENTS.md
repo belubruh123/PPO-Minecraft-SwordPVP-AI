@@ -1636,3 +1636,10 @@ run35wU2 (the drift reference) is scored when the session ends.
 | run87U | +2.73 BETTER | +2.23 BETTER | +2.48 |
 
 Run 88c is BETTER than the installed model against both references, and ahead of run 87 against both. Kept; run 89 goes on top.
+
+**Run 88c vs the duel arm run 85 (linked through run 87, which ran in both sessions).**
+- Session T (10:15-12:37): run85T vs run87T +0.88 (1.11). Against the installed references: run85 +1.79/+1.27, run87 +1.43/+0.80. Session T compressed every gap.
+- Session U: run88cU vs run87U +0.89 (1.03).
+- So run 88c ≈ run 85 (both about +0.9 over run 87). That is not enough to swap the duel arm, which would also need a new jar for the airyield option.
+- The duel pool stays installed vs run85-1727.
+- A same-session check of run 85 vs run 89 later tonight decides whether the arm changes before 14 Nov.
