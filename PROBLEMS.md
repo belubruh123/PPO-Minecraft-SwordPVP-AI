@@ -1292,3 +1292,8 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Overall per update: follow-ups 22.0, their 2nd+ 62.1, own untaught take-offs 81.8, too close 28.5.
 - Punish crit 63%. The latest check is 01:54 (A 19-18). The next is about 02:50.
 - If the longest run is still 2 at about 04:00, raise COMBOABLE_SHARE to 0.5 and look at what breaks its runs there.
+
+## 14 Nov 02:52 review: run 93 at about 45 minutes
+
+- Comboable-bot fights 54. Its longest run there is 4 (2 at 02:22); 1 run has reached 3+.
+- Punish crit 57%. Run 93's first check started at about 02:50, still guarded the same way as runs 91/92.
