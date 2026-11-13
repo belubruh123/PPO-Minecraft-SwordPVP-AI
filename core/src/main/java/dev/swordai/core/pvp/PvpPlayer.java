@@ -160,6 +160,8 @@ public final class PvpPlayer {
 	/** Waiting for their swing to hit right after it (hit selecting): ticks left, or 0; and whether this window was rolled for. */
 	private int selectLeft;
 	private boolean selectRolled;
+	/** Run 93b: ticks left of the stun after a hit taken (Style#stunAfterHit): the sword counts as not back. */
+	private int stunLeft;
 
 	public void start(Style s, long seed) {
 		style = s;
@@ -210,6 +212,7 @@ public final class PvpPlayer {
 		strafing = false;
 		selectLeft = 0;
 		selectRolled = false;
+		stunLeft = 0;
 	}
 
 	public Style style() {
@@ -413,7 +416,7 @@ public final class PvpPlayer {
 			ordinary(d, k);
 		}
 		// Run 59: the answer to their crit (hitTaken).
-		if (answerUntil >= tick && tick >= answerFrom && d.reach <= Duel.REACH && me.charge >= ANSWER_CHARGE) {
+		if (answerUntil >= tick && tick >= answerFrom && d.reach <= Duel.REACH && me.charge >= ANSWER_CHARGE && stunLeft == 0) {
 			k.attack = true;
 			answerUntil = -1;
 		} else if (answerUntil >= 0 && tick > answerUntil) {
@@ -481,6 +484,9 @@ public final class PvpPlayer {
 	private void clocks(Duel d, Events e) {
 		Body me = d.me;
 		Body them = d.them;
+		if (stunLeft > 0) {
+			stunLeft--;
+		}
 		sinceMyHit = e.iHit != Events.NONE ? 0 : Math.min(sinceMyHit + 1, 1000);
 		sinceTheirHit = e.theyHit != Events.NONE ? 0 : Math.min(sinceTheirHit + 1, 1000);
 		sinceMySwing = e.iSwung ? 0 : Math.min(sinceMySwing + 1, 1000);
@@ -623,6 +629,12 @@ public final class PvpPlayer {
 
 	/** On the tick a hit of theirs is felt. */
 	private void hitTaken(Duel d, Events e) {
+		if (style.stunAfterHit > 0) {
+			// Run 93b: stunned (Style#stunAfterHit): no swing and the spacing of a sword coming back, from this tick on; no S of its own.
+			stunLeft = style.stunAfterHit;
+			wtapLeft = 0;
+			stapLeft = 0;
+		}
 		if (style.backAfterHit > 0) {
 			// Run 93 (14 Nov ~02:00): the comboable bot walks back after every hit (S, no swing) so that a held sprint-hit combo
 			// is possible against it (Style#backAfterHit); its W-tap is dropped, the S is the whole answer.
@@ -1354,7 +1366,8 @@ public final class PvpPlayer {
 		Body me = d.me;
 		Body them = d.them;
 		k.technique = Technique.BASE;
-		boolean ready = me.charge >= style.swingCharge;
+		// Run 93b: while stunned after a hit taken (Style#stunAfterHit) it fights as with its sword not back.
+		boolean ready = me.charge >= style.swingCharge && stunLeft == 0;
 		// Run 92: with the sword not back, Style#spaceAfterHit walks in only from beyond spacing + 0.2 (the gap at the edge of reach).
 		double inFrom = style.spaceAfterHit && !ready ? Math.max(Duel.REACH, style.spacing) + 0.2 : Duel.REACH + 0.2;
 		if (wtapLeft > 0) {

@@ -154,10 +154,11 @@ public final class Specialists {
 	 * Run 93 (14 Nov ~02:00): the comboable bot, a realistic player that CAN be held in a sprint-hit combo (the user wants "an advance
 	 * combo bot ... do sprint hit most of time", combos of 10+). Agent 32's finding: no bot in training lets itself be comboed (it
 	 * stays in reach and hits back, its knockback late and often scaled down), so no reward could teach a held combo. This one has no
-	 * technique, never jumps (no jump reset, no hop, no crit), takes the full knockback with a small ping, walks back (S, no swing) for
-	 * {@link Style#backAfterHit} ticks after every hit it takes, then re-engages from about 3 blocks and swings when its sword is back
-	 * and the other is in reach: held at the right spacing and rhythm it is comboed (the document's T3 stun, T4, T7; C3/C4 from the
-	 * other side), and bad spacing (walking into it with an empty sword) still costs a hit.
+	 * technique, never jumps (no jump reset, no hop, no crit), takes the full knockback with a small ping, and after every hit it takes
+	 * is stunned for {@link Style#stunAfterHit} ticks (run 93b; {@link #COMBOABLE_STUNNED}): no swing, and the spacing of a sword coming
+	 * back, so it walks in again to about 3 blocks; then it swings when its sword is back and the other is in reach. Held at the right
+	 * spacing and rhythm it is comboed (the document's T3 stun, T4, T7), and bad spacing or a late follow-up (walking into it with an
+	 * empty sword, or coming after its stun) still costs a hit. Run 93 had it walk back with S instead ({@link Style#backAfterHit}).
 	 */
 	public static Style comboable(Random rng) {
 		Style s = new Style().drawHuman(rng);
@@ -184,10 +185,30 @@ public final class Specialists {
 		s.hitSelect = 0f;
 		s.swingEarly = 0f;
 		s.rhythm = false;
-		// Longer than the 12-13 ticks between its hits, so that a held combo keeps it walking back.
-		s.backAfterHit = 12 + rng.nextInt(9);
+		// Longer than the 12-13 ticks the AI's sword takes to come back, so that the next hit of a held combo can land inside it
+		// (run 93b: the stun; run 93: the walk back). The same draw for both.
+		int window = 12 + rng.nextInt(9);
+		if (COMBOABLE_STUNNED) {
+			s.stunAfterHit = window;
+		} else {
+			s.backAfterHit = window;
+		}
 		return s;
 	}
+
+	/**
+	 * Run 93b (agent 37, 14 Nov 05:30): the comboable bot is stunned after each hit it takes (Style#stunAfterHit: no swing, and the
+	 * spacing of a sword coming back) instead of walking back with S (Style#backAfterHit). The walk back was the document's C3, the
+	 * way OUT of a combo ("jump and hold S, so that you fly out of the trade"): S held through its knockback carried it about 4.5
+	 * blocks (3.2 without S), and it came back only once its S was over, sword ready, 15-25 ticks after the hit (past COMBO_GAP 20),
+	 * head-on. A sprinter that chased it perfectly (agent 37's game-physics simulation, tools/combosim, 300 fights) had 3+ runs in
+	 * 1% of its runs (none at a 4-tick view lag), and after 47% of its hits no next hit nor theirs within 20 ticks, 4.4 blocks apart;
+	 * in training 180 fights gave runs to 3 four times. Stunned and not fleeing, it is the document's T3 victim: knocked back, it
+	 * walks in again to the edge of reach, and the next sprint hit lands if the AI kept up and swung as its sword came back; late or
+	 * too far, it is hit (its stun ends). In the simulation: the perfect sprinter's 3+ runs 1% -> 8% of its runs (10+ 18 -> 94),
+	 * a noisy half-trained policy's 3+ runs 0.04 -> 0.55 a fight, at every view lag. false: run 93 as it was.
+	 */
+	public static final boolean COMBOABLE_STUNNED = true;
 
 	/**
 	 * A specialist that does other things too (the user, 24 Oct 22:50: an opponent for each case "that is suitable to use the

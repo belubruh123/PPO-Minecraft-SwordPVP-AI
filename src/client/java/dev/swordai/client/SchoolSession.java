@@ -442,7 +442,8 @@ public final class SchoolSession implements AgentSession {
 	/**
 	 * Run 93 (14 Nov ~02:00): the share of full training fights (not checks, benchmarks, scenes, drills, sparring, reviews) played against
 	 * the comboable bot (Specialists#comboable: full knockback, a small ping, no jumps, walks back after each hit it takes, swings when
-	 * its sword is back and the AI is in reach). Agent 32's finding: no bot in training lets itself be comboed (late and scaled knockback,
+	 * its sword is back and the AI is in reach; since run 93b stunned after each hit instead of walking back, see
+	 * Specialists.COMBOABLE_STUNNED). Agent 32's finding: no bot in training lets itself be comboed (late and scaled knockback,
 	 * it stays in reach and hits back), so a held sprint-hit combo of 3+ is almost never possible and no reward can teach it; the user
 	 * wants "an advance combo bot ... do sprint hit most of time", combos of 10+ (real duels: runs of 1 hit 123 times, 2 hits 31, 3+ 13).
 	 * 0 = off: nothing changes (no extra draw of the random stream either). About 0.25 when on.
@@ -1036,6 +1037,15 @@ public final class SchoolSession implements AgentSession {
 	 */
 	private boolean fightComboable;
 	private int comboableFights, comboableLongest, comboableRuns3, comboableRuns5, comboableRuns10, longComboPaid;
+	/**
+	 * Run 93b (agent 37), training, fights against the comboable bot: after each of its hits (no hit taken that tick), what came
+	 * first: its next hit within COMBO_GAP (and those gaps summed), their hit within CB_TRADE_TICKS (a trade: their swing was already
+	 * coming) or later, or neither within COMBO_GAP (and the distance then, summed). The fight tick of the open hit, -1 for none.
+	 */
+	private int cbFollowAt = -1;
+	private int cbFollowed, cbTraded, cbTheirFirst, cbTimedOut, cbGapSum;
+	private float cbTimeoutDistSum;
+	static final int CB_TRADE_TICKS = 3;
 	private double ownHitDistSum;
 	private final int[] meetStarts = new int[2], meetStartsIntoReady = new int[2];
 	/** Run 92: eye to hitbox when the last step's keys were chosen, the distance of the swing they made (EDGE_HIT). */
@@ -1091,6 +1101,9 @@ public final class SchoolSession implements AgentSession {
 						ownHitsMeasured, meetStarts[0], meetStartsIntoReady[0], MEET_NOT_INCOMING ? "stopped" : "run")
 				+ String.format(Locale.ROOT, " | run 93, comboable bot (%s, share %.2f): fights %d, its longest own run of hits there %d, runs reaching 3 hits %d, 5 hits %d, 10 hits %d; long-combo hits paid %d",
 						COMBOABLE_SHARE > 0f ? "on" : "off", COMBOABLE_SHARE, comboableFights, comboableLongest, comboableRuns3, comboableRuns5, comboableRuns10, longComboPaid)
+				+ String.format(Locale.ROOT, "; run 93b (%s), after its hits there: its next hit within %d ticks %d (mean gap %.1f), their hit first within %d (trade) %d, later %d, neither within %d %d (distance then %.2f)",
+						Specialists.COMBOABLE_STUNNED ? "stunned" : "walks back", COMBO_GAP, cbFollowed, cbFollowed > 0 ? cbGapSum / (double) cbFollowed : 0.0,
+						CB_TRADE_TICKS, cbTraded, cbTheirFirst, COMBO_GAP, cbTimedOut, cbTimedOut > 0 ? cbTimeoutDistSum / cbTimedOut : 0.0)
 				+ String.format(Locale.ROOT, " | after its %d punish crits, any hit taken (real duels: 82%% within 30, 16%% crits): within 12 ticks %d, within 30 %d (crits %d)",
 						pcAnyCrits, pcBack12, pcBack30, pcBackCrit30)
 				+ String.format(Locale.ROOT, " | run 89, after its punish crit the teacher showed T6 on %d ticks, S its own on %d", t6AfterTaught, t6AfterBack)
@@ -1155,6 +1168,8 @@ public final class SchoolSession implements AgentSession {
 		ownJumpCharged = 0;
 		tooCloseCharged = edgeHitsPaid = ownHitsMeasured = 0;
 		comboableFights = comboableLongest = comboableRuns3 = comboableRuns5 = comboableRuns10 = longComboPaid = 0;
+		cbFollowed = cbTraded = cbTheirFirst = cbTimedOut = cbGapSum = 0;
+		cbTimeoutDistSum = 0f;
 		ownHitDistSum = 0.0;
 		meetStarts[0] = meetStartsIntoReady[0] = 0;
 		airJumpHitsFree = 0;
@@ -3521,6 +3536,7 @@ public final class SchoolSession implements AgentSession {
 		boolean ownScene = sceneNow != null && (sceneNow.kind == KIND_OWN || sceneNow.kind == KIND_OWN2);
 		lastOwnHitAt = ownScene ? -1 : -1000;
 		rewardRow = !ownScene ? 0 : sceneNow.kind == KIND_OWN2 ? 2 : 1;
+		cbFollowAt = -1;
 		awayTicks = 0;
 		heldPending = 0f;
 		ownGroundHitAt = -1;
@@ -4217,6 +4233,30 @@ public final class SchoolSession implements AgentSession {
 						rewardRow = 1;
 					}
 					lastOwnHitAt = fightTicks;
+				}
+				if (fightComboable) {
+					// Run 93b (agent 37): what came after each of its hits on the comboable bot (no hit taken that tick), the break points.
+					int since = fightTicks - cbFollowAt;
+					if (cbFollowAt >= 0 && since > COMBO_GAP) {
+						cbTimedOut++;
+						cbTimeoutDistSum += facts.reachDist;
+						cbFollowAt = -1;
+					}
+					if (cbFollowAt >= 0 && facts.hitsTaken > 0) {
+						if (since <= CB_TRADE_TICKS) {
+							cbTraded++;
+						} else {
+							cbTheirFirst++;
+						}
+						cbFollowAt = -1;
+					} else if (cbFollowAt >= 0 && facts.hitsDealt > 0) {
+						cbFollowed++;
+						cbGapSum += since;
+						cbFollowAt = -1;
+					}
+					if (facts.hitsDealt > 0 && facts.hitsTaken == 0) {
+						cbFollowAt = fightTicks;
+					}
 				}
 				if (HELD_COMBO_CREDIT && comboPay > 0f) {
 					heldPending += comboPay;

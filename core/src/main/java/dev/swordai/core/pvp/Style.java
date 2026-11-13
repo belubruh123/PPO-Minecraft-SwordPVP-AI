@@ -146,6 +146,16 @@ public final class Style {
 	 */
 	public int backAfterHit = 0;
 	/**
+	 * Run 93b (agent 37, 14 Nov): ticks after every hit it takes (from the tick it feels it) in which it fights as if its sword were
+	 * not back: no swing, and the ordinary fight's spacing for a sword coming back (part 0's S-tap: S only inside spacing - 0.3,
+	 * standing to spacing + 0.2, walking in from farther), then its swing again; 0 for every bot but the comboable one. The stun of
+	 * the document's T3 ("knocks the opponent far enough away that they can't hit you back"), without the C3 fly-out that
+	 * {@link #backAfterHit} was: 12-20 ticks of S after each hit carried it about 4.5 blocks out in its knockback (S held in the air)
+	 * and kept it walking back, so the next hit came only as it walked back in with its sword ready, 15-25 ticks later (past the
+	 * school's COMBO_GAP of 20) and head-on, where the side that sees later loses the first hit.
+	 */
+	public int stunAfterHit = 0;
+	/**
 	 * What it takes the other to do before it has seen anything, by {@link Habits} index; below zero for
 	 * no belief. A counter specialist expects the thing it counters (the crit-breaker expects double crits).
 	 */
@@ -206,6 +216,7 @@ public final class Style {
 		s.flyOut = flyOut;
 		s.hitSelect = hitSelect;
 		s.backAfterHit = backAfterHit;
+		s.stunAfterHit = stunAfterHit;
 		System.arraycopy(believe, 0, s.believe, 0, believe.length);
 		s.heldOut = heldOut;
 		return s;
