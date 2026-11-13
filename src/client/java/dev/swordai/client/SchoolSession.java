@@ -192,7 +192,7 @@ public final class SchoolSession implements AgentSession {
 	 * (theirRow 1) keeps the rule's keep (B1). The golden rule (k2Hold) and the whiff guard still close the swing before this.
 	 * The user's game: SchoolFighter.airKeepYield, on only for an A/B arm with the option word "airyield".
 	 */
-	static final boolean AIR_KEEP_YIELD = true;
+	static final boolean AIR_KEEP_YIELD = false; // 13 Nov 12:25: off with 88b (the tournament: 88b +0.07 vs its parent run 87 +1.43)
 	/**
 	 * Run 88b (13 Nov 07:30): run 88 alone did not move the swing (given back 38 ticks in six windows, swung 3), because the
 	 * rule's keep stayed the copying target: RULED_PULL in the fights without the rules (59%) and the installed model's choice
@@ -200,7 +200,7 @@ public final class SchoolSession implements AgentSession {
 	 * comboProvenOff): the rule swings there, and both targets teach the swing. B (the 23 Oct model) is untouched. In a
 	 * benchmark only with the "airyield" option, in the user's game only for an "airyield" arm (like AIR_KEEP_YIELD).
 	 */
-	static final boolean COMBO_PROVEN_OFF = true;
+	static final boolean COMBO_PROVEN_OFF = false; // 13 Nov 12:25: off (same-session tournament: run88b +0.07, run87 +1.43, run85-1727 +1.79; h2h -1.87, K2 down)
 	/**
 	 * Agent 14's test (11 Nov 19:30), CHECKS ONLY, off until run 80 is judged: for B_FOLLOWUP_TICKS after A's own hit made on the
 	 * ground, with no hit taken since, A's W/S, sprint and jump are B's (installed.fighter.action(), decided on A's state every

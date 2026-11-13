@@ -1516,3 +1516,34 @@ stay on top, 3 in 4 falls ended in a crit with the keep, 6 in 10 without it.
 checks running.
 
 **The ~09:15 tournament moves to about 10:15**, so run 88b has about 2.5 hours.
+
+### 13 Nov 10:22-12:37: the same-session tournament (7 benchmarks back to back, suite-v2)
+
+Each network against run35wT1, the installed model measured first in the same session:
+
+| Rank | Network | Total (se) | Skills | h2h | Bots |
+|---|---|---|---|---|---|
+| 1 | run85-1727 (the duel arm) | **+1.79** (1.21) TIE | +4.12 | -0.80 | -0.30 |
+| 2 | run87-0552 | **+1.43** (1.00) TIE | +2.50 | +0.92 | -0.19 |
+| 3 | run52-1218 (the best older one) | +0.08 (0.92) TIE | +0.48 | -0.98 | +0.35 |
+| 4 | run88b-1015 (air yield on) | +0.07 (0.94) TIE | +0.88 | -1.87 | +0.40 |
+| 5 | run30h-1855 (pre-run-35) | -1.02 (0.89) TIE | -0.85 | -1.73 | -0.64 |
+
+run35wT2 (the installed model again, for drift within the session) finishes after this.
+
+**What it shows.**
+- **No older network beats the installed model.** run52 ties it and run30h is worse. The user asked (06:50) whether
+  run35-0657 is really the strongest old model; it is, or tied.
+- **run85-1727 and run87-0552 lean ahead of it, level with each other.** The earlier "run 87 beats 1727 on bots by 4 se"
+  did not repeat: here bots are -0.19 vs -0.30. The benchmark's noise between sessions is bigger than its se.
+- **Run 88b fell behind its parent run 87.** Its air hold improved (checks: 21% from 25-28%) and Getting out of combos rose
+  slightly, but h2h was -1.87 and Make them miss and Deflection fell. K2 also dropped in training (44-45%). Its rule swinging
+  at once in every combo cost more than it gained.
+  - Decision: AIR_KEEP_YIELD and COMBO_PROVEN_OFF are off. Training resumes from run87-0552, swapped into the benchmark's kept
+    file. Run 88b's network is kept as run88b-end-1022.bin.
+- **The skill tests of the top two against the installed model.**
+  - Both strong: Punish crit (+7.67 / +4.88), Make them miss (+2.79 / +3.74), Holding a combo (+1.68 / +1.79).
+  - Both weak: Three-block hit (-1.41 / -1.09); its rate is 0% for every network.
+  - Mixed: Jump-in defence (-0.06 / -1.90) and Crits (-2.05 / +0.19).
+  - No test is worse by more than 2 se.
+- **Duel arm:** unchanged (installed vs run85-1727). It is the top-ranked network.
