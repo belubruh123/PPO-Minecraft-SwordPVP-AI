@@ -941,3 +941,19 @@ word.
 - Damage: A 349 dealt / 409 taken, B 344 / 442.
 - Run 88b's checks: z +1.0, +0.9, 0.0. It is off since 12:41; run 88c, without the swing at falling opponents, comes after
   the next check.
+
+## 13 Nov 13:33 check (run 87's line from run87-0552, 48 minutes, runs 88/88b off)
+
+**Rounds won:** A 25 of 45 (56%), B 17 of 45 (38%); only A won 15, only B won 7; z +1.7.
+**Damage:** A 344 dealt / 406 taken, B 400 / 395.
+
+**Their combos.** Their third hit after the second: A 35%, B 22%, so A is worse.
+- In their combo, sword ready: A swung 32%, B 40%.
+- Held in the air: A 26%, back up from run 88b's 21%; B 21%.
+
+**Outside their combo:** A swung 49%, B 53%.
+
+**Jump-ins:** A 0 at ground tick 0-1, 3 late; B 0 and 16 late.
+
+**Next.** Run 88c's redeploy was asked for at 13:34 (the combo swing, not at falling opponents). The network before it is
+kept as run87-pre88c.bin.
