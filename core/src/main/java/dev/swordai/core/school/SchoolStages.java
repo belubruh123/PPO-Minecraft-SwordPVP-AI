@@ -294,6 +294,14 @@ public final class SchoolStages {
 	 * and C3 since run 65b): their risk is the document's, and the decider learns from the fight when they pay.
 	 */
 	public static final boolean COUNTER_JUMPS_TAUGHT = true;
+	/**
+	 * Run 89b (13 Nov 20:00): run 89's teacher shows T6 (make them miss) after its punish crit (Teacher.T6_AFTER_PUNISH), but T6 was
+	 * not in RUN_TAUGHT, so techPulls gave its moments a pull of 0 and the network was never pulled toward it (its own S on 58 of 737
+	 * ticks, hit back within 30 ticks 66% vs run 88c's 61%). T6 taught at the run's pull, by the outcome (TEACH_AWR, FROM_THE_FIGHT):
+	 * only where the moment went better than expected. Not gated (agent 29's option layer would move every T6 moment's keys out of
+	 * the shared trunk). Revert if swings in a check fall 10% under run 89's (336-341) or W/S off at T4/T7 passes 50% (the C3 spread).
+	 */
+	public static final boolean T6_TAUGHT = true;
 	public static final int T1C_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP,
 			dev.swordai.core.rl.ActionSpace.FORWARD, dev.swordai.core.rl.ActionSpace.SPRINT, dev.swordai.core.rl.ActionSpace.ATTACK);
 	public static final int T9B_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP,
@@ -414,6 +422,9 @@ public final class SchoolStages {
 		if (COUNTER_JUMPS_TAUGHT) {
 			RUN_TAUGHT[Technique.T1C.ordinal()] = true;
 			RUN_TAUGHT[Technique.T9B.ordinal()] = true;
+		}
+		if (T6_TAUGHT) {
+			RUN_TAUGHT[Technique.T6.ordinal()] = true;
 		}
 	}
 

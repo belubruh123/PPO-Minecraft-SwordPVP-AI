@@ -1643,3 +1643,20 @@ Run 88c is BETTER than the installed model against both references, and ahead of
 - So run 88c ≈ run 85 (both about +0.9 over run 87). That is not enough to swap the duel arm, which would also need a new jar for the airyield option.
 - The duel pool stays installed vs run85-1727.
 - A same-session check of run 85 vs run 89 later tonight decides whether the arm changes before 14 Nov.
+
+### Run 89b (13 Nov 20:00): run 89 was never taught (T6 not in RUN_TAUGHT)
+
+**Bug found at the 19:52 review.** Run 89's teacher shows T6 after its punish crit, but:
+- SchoolStages.techPulls gives a technique outside RUN_TAUGHT the pull TECH_PULL * min(PULL_CAP = 0, ...) = 0.
+- SchoolPpo takes the pull of a technique's heads from techPulls, so T6's heads had a pull of 0. The rules' and the installed model's pulls are also left off on the heads a teacher speaks on.
+- So the network got no lesson at all from run 89. Its own S stayed on 58 of 737 ticks (8%). The hit back within 30 ticks after its punish crit was 66% (run 88c 61%), critted back 25% (23%).
+
+**Change (one, completing run 89):** SchoolStages.T6_TAUGHT = true puts T6 in RUN_TAUGHT.
+- Its pull is TECH_PULL * min(RUN_PULL_CAP = 1, pullShare). It is weighed by the outcome (TEACH_AWR) and, with FROM_THE_FIGHT, taught only where the moment went better than expected.
+- Not gated. RULES_YIELD and WEAKEST_RUN_ONLY are off, so nothing else changes.
+
+**Judge** (3 checks), the same as run 89: hit back within 30 ticks after its punish crit below 61% (run 88c) and falling toward real duels' level of answer, critted back below 23%, punish crit 50-65%, its own S share after its punish crit rising from 8%.
+
+**Revert** if a check's swings fall 10% under run 89's (336-341), W/S off at T4 or T7 in tech-review passes 50% (the C3 spread of 29 Oct), or rounds fall under B's in two checks.
+
+Deploy after the 20:10 check (run 89's third, which judges run 89 as built: the teacher only).
