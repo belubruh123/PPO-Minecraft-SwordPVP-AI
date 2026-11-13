@@ -1137,3 +1137,16 @@ Split (first-hit damage, 3 checks):
 - Verified by cmp: the jar matches build/libs, and run88c.bin matches run88c-1615 (sha1 21eff2966213).
 - After the duels: tools/duelday.py 20261113 (and 14) for run88c vs installed, by docs/DUEL-DAY.md's rule.
 - 21:35, the user: "The opponent aren't the same so yeah". The pool is now run88c alone (weight 1, airyield), so every duel plays run 88c. The 75/25 pool is kept as ab/pool-7525-20261113-2123.txt. Judge run 88c against the earlier real-duel record (12-13 Nov installed/run85 rounds), knowing the opponents differ.
+
+## 13 Nov 21:52 review (runs 89b + 90, about 1 h; no check since 20:12 because of the redeploys)
+
+- Run 90's guard ticks, by what the bot was really doing (ticks/swung):
+
+  | Window | Uppercut/lunge/hop | Jump crit | Other | Late knock-away hits (rising / falling) |
+  |---|---|---|---|---|
+  | 20:54-21:20 | 463/20 (4%) | 11/1 (9%) | 1888/105 (6%) | 102 / 17 |
+  | 21:24-21:51 | 591/26 (4%) | 43/1 (2%) | 1812/92 (5%) | 63 / 14 |
+
+- The jump-crit share is now under the uppercut share, the first sign, on few ticks.
+- After its punish crit (21:24-21:51, 200 punish crits): any hit within 30 ticks 72%, crits 27%, critted back 24%; 20:54-21:20 74/26/23. Run 88c was 61/25/23 and run 89 65/27/25. Worse, possibly the sword spent on run 90's late swings or the T6 back-off being hit. Its own S on T6 ticks is 5%. On watch: run 89b's revert rule is the hit-back not below 61% after 3 checks.
+- No real duels yet (user's Minecraft closed). The next check is about 22:10.
