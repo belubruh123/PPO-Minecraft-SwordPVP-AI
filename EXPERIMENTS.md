@@ -1566,3 +1566,24 @@ So even within one session the same network moves about 0.7.
 The best two lean ahead of the installed model by about 1 se. That is not proven on this benchmark alone: earlier "BETTER" verdicts (+3.5 to +4.6) were inflated by the session effect. Real duels decide; the duel arm is the top network.
 
 **Training resumed at 12:37 from run87-0552.** A redeploy was asked for with runs 88/88b off.
+
+### Run 88c (built 13 Nov 12:55, flag COMBO_PROVEN_OFF_C = false; deploy after the ~13:30 check)
+
+**The change.** Run 88b's swing in their combo (A's rules: no keep for the way down once proven), but only while the opponent
+is NOT falling, as the client sees it (Body.falling). The same view is used in training and in the user's game (FightSession
+sets it per tick, only for an "airyield" arm).
+
+**Why.** In the tournament run 88b scored +0.07 against its parent run 87's +1.43: h2h -1.87, Make them miss and Deflection
+down, K2 in training down to 44-45%. The rule's immediate swing also knock-back-hit falling opponents, which the doc's K2
+forbids because their crit follows. Run 88b's gain (the air hold from 25-28% down to 21%, Getting out of combos +0.23) came
+from the rising and ground part.
+
+**From:** run87-0552's line, as it trains since 12:45, with runs 88/88b off.
+
+**Judge.**
+- A same-session benchmark at about 2.5 hours: installed, run 88c (airyield), run87-0552, back to back.
+- K2 in tech-review stays at its run 87 level (53-62%).
+- The checks' air hold falls under 25%.
+- The punish crit stays 50-65%.
+
+**Revert** if the benchmark is worse than run87-0552 by more than 1 se, or K2 falls under 50%.

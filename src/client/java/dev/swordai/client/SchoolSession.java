@@ -200,6 +200,18 @@ public final class SchoolSession implements AgentSession {
 	 * comboProvenOff): the rule swings there, and both targets teach the swing. B (the 23 Oct model) is untouched. In a
 	 * benchmark only with the "airyield" option, in the user's game only for an "airyield" arm (like AIR_KEEP_YIELD).
 	 */
+	/**
+	 * Run 88c (13 Nov 12:50): run 88b's swing in their combo only while they are not falling. The tournament: run 88b +0.07 against
+	 * its parent run 87's +1.43 (h2h -1.87, K2 down to 44%): the rule's swing at once also knock-back-hit falling opponents, which
+	 * the document's K2 forbids (their crit follows). The client's view of their fall (Body.falling), the same in training and
+	 * in the user's game.
+	 */
+	static final boolean COMBO_PROVEN_OFF_C = false;
+
+	/** Whether A's rules make the swing in their combo now (runs 88b/88c); see Fighter#comboProvenOff. */
+	static boolean comboProvenOffNow(dev.swordai.core.pvp.Body them) {
+		return COMBO_PROVEN_OFF || COMBO_PROVEN_OFF_C && !them.falling();
+	}
 	static final boolean COMBO_PROVEN_OFF = false; // 13 Nov 12:25: off (same-session tournament: run88b +0.07, run87 +1.43, run85-1727 +1.79; h2h -1.87, K2 down)
 	/**
 	 * Agent 14's test (11 Nov 19:30), CHECKS ONLY, off until run 80 is judged: for B_FOLLOWUP_TICKS after A's own hit made on the
@@ -4114,7 +4126,7 @@ public final class SchoolSession implements AgentSession {
 		if (installed != null) {
 			// Run 74: the reach aim for A's rules only; B keeps the 23 Oct aim.
 			installed.fighter.reachAim(REACH_AIM && !installedPlays && !teacherPlaysA);
-			installed.fighter.comboProvenOff(COMBO_PROVEN_OFF && !installedPlays && !teacherPlaysA && (benchTag == null || benchAirYield));
+			installed.fighter.comboProvenOff(comboProvenOffNow(reader.duel.them) && !installedPlays && !teacherPlaysA && (benchTag == null || benchAirYield));
 			boolean firstReset = RESET_FIRST_HIT_TRAIN && mode == Mode.TRAIN && !installedPlays && !teacherPlaysA && facts.sprintsTaken > 0;
 			installed.fighter.firstSprintHitReset(firstReset);
 			firstHitResetTicks += firstReset ? 1 : 0;

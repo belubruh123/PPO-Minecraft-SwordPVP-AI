@@ -172,7 +172,6 @@ final class FightSession implements AgentSession {
 					mc.hasSingleplayerServer() ? loaded.cfg.swingMinCharge : loaded.cfg.swingMinChargeOnline, loaded.cfg.playTemperature);
 			school.whiffGuard(loaded.cfg.whiffGuard);
 			school.airKeepYield(arm != null && arm.airYield);
-			fighter.comboProvenOff(arm != null && arm.airYield);
 			if (rulesOn) {
 				school.rulesFrom(fighter);
 				rulesBody.patchedUp = loaded.patchedUp;
@@ -450,6 +449,8 @@ final class FightSession implements AgentSession {
 			if (rulesOn) {
 				observer.fillBody(rulesBody, me, opp, groundY);
 				fighter.crosshairOnOpponent(onOpponent());
+				// Runs 88b/88c: an "airyield" arm's rules swing in their combo (not at a falling opponent with 88c).
+				fighter.comboProvenOff(arm != null && arm.airYield && SchoolSession.comboProvenOffNow(reader.duel.them));
 				fighter.decide(observer.frame, rulesBody);
 			}
 			// The golden rule (K2): what is seen of them is a round trip behind the server by the time a hit gets there.
