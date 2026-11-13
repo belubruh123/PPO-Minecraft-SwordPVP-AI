@@ -1297,3 +1297,12 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 
 - Comboable-bot fights 54. Its longest run there is 4 (2 at 02:22); 1 run has reached 3+.
 - Punish crit 57%. Run 93's first check started at about 02:50, still guarded the same way as runs 91/92.
+
+## 14 Nov 02:55 check: run 93's first (about 50 minutes)
+
+- **ROUNDS WON: A 19/46, B 17/46, z +0.5.** Net A-B -1.7 (se 6.1). Damage a minute: A 360 dealt / 406 taken, B 362 / 395.
+- Their third hit: A 38% (38), B 28% (20). Worse.
+- Outside their combo: A swung 43%, B 50%. In their combo: A 36%, B 41%. Swings: A 337, B 398.
+- Jump keys a minute (off / on moments): A 68 / 122, B 42 / 40. The on-moment jumps are up (01:05: 84).
+- Comboable bot (to 03:21): 89 fights, longest run 6 (02:22: 2, 02:52: 4), runs to 3+ 2, to 5+ 1.
+- Punish crit 59%.
