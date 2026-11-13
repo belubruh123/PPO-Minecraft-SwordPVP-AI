@@ -181,7 +181,7 @@ public final class Teacher {
 		// Run 34 (3 Nov): it opens with a jump-in crit whenever they are far enough for one that lands 2.5-3 blocks from them,
 		// falling when it comes into their reach (the user, 2 Nov: "99% of user starts with jump in crit", "it should learn to jump
 		// in as the other player as well"). In the 23:59 check A's jump-ins from 4-5 blocks were hit rising in 32%.
-		s.critOpen = 1f;
+		s.critOpen = 0f; // run 91 (13 Nov 23:00, the user: combo first, not a crit spammer unless needed): was 1 (the user, 2 Nov)
 		s.t6AfterPunish = T6_AFTER_PUNISH;
 		s.jumpInLands = true;
 		return s;

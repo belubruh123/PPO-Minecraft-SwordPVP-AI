@@ -1689,3 +1689,39 @@ Deployed on top of run 89b (20:26) at the user's word; the two are told apart by
   - Memory (9 Nov): against the bots a late hit costs no HP, while in the user's real duels a late swing at a jump within 6.5 blocks is -0.40 HP vs +0.10 with no swing (0.05 at PER_HEALTH) and 0.20 vs 0.12 crits a jump (0.08 x CRIT_BACK_COST 0.3 = 0.024).
   - Without it the bots would teach late swings for free. A hit on an uppercut's jump that pays (about 7 HP = 0.7) still outweighs it, so it can learn the difference.
   - The counter shows "late swings charged N".
+
+### Run 91 (13 Nov 23:00): combo first, jump less, crit only when needed (the user after real duels)
+
+**The user's real duels with run88c-1615 (22:42-22:48, 14 rounds, 10 won, 4 lost), measured from the round files:**
+- In the air 60% of ticks, about 11 take-offs per 10 s. The opponents jumped 0-1 times a round. The installed model on 9 Nov: 52% air.
+- About 9.5 crits and 5-7 sprint hits a round. Installed on 9 Nov: 7.5 crits, 11 sprint hits.
+- Lost rounds: of about 20 take-offs, 11-16 came 0-3 ticks after a hit taken, mistimed jump resets (the doc's T9: "press jump at the same moment you take damage ... mistime the jump and you get sent flying"). Its next swing was then a crit from the air.
+- Fights became 1-for-1 trades. Its runs of hits were almost all 1 (longest 2-3); theirs were 1-4. 12-15 hits a lost round were taken with its sword empty.
+
+**The user:** combo first; counter crit spammers but do not be one unless needed; hold combos 10+ (about 99%); do not get comboed (90%); spacing, gap control and distance are bad; jumping makes the aim crazy.
+
+**Changes (one direction: away from crit and jump seeking, toward combos):**
+
+| Setting | Was | Now | Note |
+|---|---|---|---|
+| Teacher critOpen | 1 | 0 | The user's 2 Nov "every approach a jump-in crit" is superseded |
+| ENTER_BY_JUMP | 0.2 | 0 | |
+| JUMP_ALONG_CRIT | 0.3 | 0 | |
+| CHASE_CRIT | 0.4 | 0 | |
+| T1C_CRIT | 0.3 | 0 | |
+| JUMP_COMBO_HIT | 0.2 | 0 | |
+| COMBO_HIT | 0.2 | 0.4 | |
+| COMBO_HIT3 | 0.2 | 0.4 | A 3rd+ hit of its own combo now pays 0.8 on top of its damage |
+| THEIR_ROW_COST | new | 0.3 | Each hit taken that is their 2nd+ in a row |
+
+- Kept: PUNISH_CRIT and CRIT_SWING (lifts only), the B1 answer to crit spammers.
+- Kept: the technique copies (T10/T11 combo holders, K3, T1c/T9b, T6).
+- **Paired checks now play as training does (run 90's guard learned; benchmarks and the user's fights keep the guard).** The 22:12 check showed the check's guard holding the swings the network now goes for. The one-off guard-off-check file was removed.
+
+**Learn-by (watch in checks and training):**
+- A's jump keys a minute fall toward B's (22:12: see "A keys a minute"); A's falling ticks fall.
+- Its follow-up hits (COMBO_HIT paid, 3rd+) rise; their 2nd+ hits charged fall.
+- Sprint hits rise against crits.
+- Real duels: air share under 45%, its runs of 3+ hits, their 2+ runs fewer.
+
+**Revert / rethink** if the checks lose to B for 2 checks running with no rise in its own combo hits, or the punish crit falls under 50%.

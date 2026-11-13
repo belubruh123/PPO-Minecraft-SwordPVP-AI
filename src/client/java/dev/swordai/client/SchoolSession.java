@@ -113,8 +113,14 @@ public final class SchoolSession implements AgentSession {
 	 * since) on one not falling (K2) pays COUNTER_HIT.
 	 */
 	static final float COUNTER_HIT = 0.2f;
-	static final float T1C_CRIT = 0.3f;
+	static final float T1C_CRIT = 0f; // run 91 (13 Nov 23:00, the user after real duels: combo first, jump less, crit only when needed): was 0.3
 	static final float CRIT_BACK_COST = 0.3f;
+	/**
+	 * Run 91 (13 Nov 23:00), the user after real duels with run88c: "get comboed too easily ... should not get in to any combo 90%".
+	 * Each hit taken that is their 2nd or later in a row (no hit of its own in between, theirRow) costs this on top of its damage.
+	 * Real rounds 13 Nov: their runs of 2-4 hits came 2-5 times a round; its own runs were almost all 1 hit (trades).
+	 */
+	static final float THEIR_ROW_COST = 0.3f;
 	/**
 	 * Run 68 (10 Nov, PROBLEMS.md 4, agent 6): the T1c window's credit. Their crit on its rising jump keeps the window open; no
 	 * AIR_JUMP_HIT in the window; no JUMP_COMBO_HIT in it on one falling. In the checks its jumps after a punish crit took off at c+10
@@ -375,13 +381,13 @@ public final class SchoolSession implements AgentSession {
 	 * were A 1.74, B 1.75 within 20 ticks (last three checks before run 42), so about +0.35 a fight against a damage
 	 * reward of about +-6.
 	 */
-	static final float COMBO_HIT = 0.2f;
+	static final float COMBO_HIT = 0.4f; // run 91 (13 Nov 23:00, the user after real duels: combo first, jump less, crit only when needed): was 0.2
 	static final int COMBO_GAP = 20;
 	/**
 	 * Run 44 (block 5, the user 7 Nov 07:30: "always like 3+ combo"): the third and every later hit of its own combo pays this
 	 * on top of COMBO_HIT (0.4 a hit in all). Of its 2-hit combos 37% went on to a third in run 42's benchmark.
 	 */
-	static final float COMBO_HIT3 = 0.2f;
+	static final float COMBO_HIT3 = 0.4f; // run 91 (13 Nov 23:00, the user after real duels: combo first, jump less, crit only when needed): was 0.2
 	/**
 	 * Run 56 (10 Nov 06:50), the user: "fight back with a combo: learn how to start a combo and hold a combo with uppercut/hop/lunge
 	 * and strafe". The document: T10 uppercut (jump, sprint-hit at the peak; "best time: right after you stun them", "deflection
@@ -390,7 +396,7 @@ public final class SchoolSession implements AgentSession {
 	 * a follow-up hit of its own combo pays JUMP_COMBO_HIT when it is a sprint hit out of its own jump (uppercut rising, lunge or hop
 	 * falling), and STRAFE_COMBO_HIT when A or D was held.
 	 */
-	static final float JUMP_COMBO_HIT = 0.2f;
+	static final float JUMP_COMBO_HIT = 0f; // run 91 (13 Nov 23:00, the user after real duels: combo first, jump less, crit only when needed): was 0.2
 	static final float STRAFE_COMBO_HIT = 0.1f;
 	/**
 	 * Run 44, the chase crit (the user, 7 Nov 07:50, their own knowledge: "a lot of player back out of combo so ... once the AI
@@ -399,7 +405,7 @@ public final class SchoolSession implements AgentSession {
 	 * hit, no hit taken since) on an opponent that went away from it for AWAY_TICKS or more since that hit pays this on top.
 	 * Taught by reward, no rule; run 43's AIR_JUMP_HIT costs only when the jump is hit, which a safe chase is not.
 	 */
-	static final float CHASE_CRIT = 0.4f;
+	static final float CHASE_CRIT = 0f; // run 91 (13 Nov 23:00, the user after real duels: combo first, jump less, crit only when needed): was 0.4
 	/**
 	 * Run 44, made to miss (the document's T6, "make them miss, then stun"; the user, 7 Nov 08:00: strafe one way, then
 	 * suddenly the other, circle strafe, so the opponent used to aiming one way misses): a bot's swing that misses it within
@@ -945,6 +951,7 @@ public final class SchoolSession implements AgentSession {
 	private final int[] guardFreeBy = new int[3];
 	private final int[] guardFreeSwungBy = new int[3];
 	private int lateSwingCharged;
+	private int theirRowCharged;
 	/** Run 54c: ticks in the air since its last take-off; its vertical speed on the tick before; hits in its own jump not paid. */
 	private int ownAirTicks;
 	private double prevVy;
@@ -989,6 +996,7 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | run 90, the guard's ticks left to it in training by the bot's technique, ticks/swung: uppercut/lunge/hop %d/%d, jump crit %d/%d, other %d/%d",
 						guardFreeBy[0], guardFreeSwungBy[0], guardFreeBy[1], guardFreeSwungBy[1], guardFreeBy[2], guardFreeSwungBy[2])
 				+ String.format(Locale.ROOT, ", late swings charged %d", lateSwingCharged)
+				+ String.format(Locale.ROOT, " | run 91, their 2nd+ hits in a row charged %d", theirRowCharged)
 				+ String.format(Locale.ROOT, " | after its %d punish crits, any hit taken (real duels: 82%% within 30, 16%% crits): within 12 ticks %d, within 30 %d (crits %d)",
 						pcAnyCrits, pcBack12, pcBack30, pcBackCrit30)
 				+ String.format(Locale.ROOT, " | run 89, after its punish crit the teacher showed T6 on %d ticks, S its own on %d", t6AfterTaught, t6AfterBack)
@@ -1049,6 +1057,7 @@ public final class SchoolSession implements AgentSession {
 		java.util.Arrays.fill(guardFreeBy, 0);
 		java.util.Arrays.fill(guardFreeSwungBy, 0);
 		lateSwingCharged = 0;
+		theirRowCharged = 0;
 		airJumpHitsFree = 0;
 		counterHits = 0;
 		readyTicks = readySwung = readyHeldFalling = readyHeldOther = 0;
@@ -2473,7 +2482,7 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final boolean JUMP_IN_LET_CRIT = true;
 	static final int JUMP_ALONG_TICKS = 4;
-	static final float JUMP_ALONG_CRIT = 0.3f;
+	static final float JUMP_ALONG_CRIT = 0f; // run 91 (13 Nov 23:00, the user after real duels: combo first, jump less, crit only when needed): was 0.3
 	/**
 	 * Run 51b (9 Nov 07:00), the user: "jump in crit has a rule where you jump out side the opponent's reach so it cannot knock
 	 * you away when you are rising and enter your reach when you are falling and land a crit on them" (as their 2 Nov tip). The
@@ -2488,7 +2497,7 @@ public final class SchoolSession implements AgentSession {
 	 * its own approach: falling from its own jump that kept the rule pays ENTER_BY_JUMP; on the ground walking or sprinting in
 	 * (its own closing speed at least ENTER_OWN_CLOSE) costs ENTER_BY_WALK. Their walking in is not its approach.
 	 */
-	static final float ENTER_BY_JUMP = 0.2f;
+	static final float ENTER_BY_JUMP = 0f; // run 91 (13 Nov 23:00, the user after real duels: combo first, jump less, crit only when needed): was 0.2
 	static final float ENTER_BY_WALK = 0f; // 0.1 from 07:03 to 07:21 on 9 Nov: the opponent off its screen rose from about 2 to 32 an update within 15 minutes and damage fell to 192 dealt, 499 taken a minute
 	static final double ENTER_OWN_CLOSE = 0.05;
 
@@ -3750,6 +3759,11 @@ public final class SchoolSession implements AgentSession {
 			}
 			if (facts.hitsTaken > 0) {
 				theirRow++;
+				if (theirRow >= 2 && mode == Mode.TRAIN) {
+					// Run 91: their combo goes on.
+					enterReward -= THEIR_ROW_COST;
+					theirRowCharged++;
+				}
 				if (comboTakeoffAt >= 0) {
 					if (theirRow >= 3 && fightTicks - comboTakeoffAt <= COMBO_TAKEOFF_WINDOW) {
 						// Run 86: its own take-off after their 2nd hit did not get it out: their next hit landed anyway.
@@ -4452,7 +4466,9 @@ public final class SchoolSession implements AgentSession {
 				|| K2_GUARD && !inCombo && ((me.isSprinting() || reader.duel.me.sprinting)
 				&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, fightLag + K2_MARGIN) || step.teacherTechnique == Technique.K2.ordinal());
 		// Run 90: in training the guard's ticks are the network's to learn (GUARD_LEARNED); checks and benchmarks keep the hold.
-		boolean k2Hold = guardWould && !(GUARD_LEARNED && (mode == Mode.TRAIN || guardOffCheck));
+		// Run 91 (13 Nov 23:00): the paired checks play as training does (the 22:12 check: the check's guard held the swings the
+		// network now goes for, outside-combo swings 34% vs 43-55%). Benchmarks and the user's fights keep the guard.
+		boolean k2Hold = guardWould && !(GUARD_LEARNED && (mode == Mode.TRAIN || mode == Mode.CHECK && benchTag == null || guardOffCheck));
 		boolean guardFree = guardWould && !k2Hold;
 		if (guardFree) {
 			// Neither "swing" nor "don't" is taught here either: the outcome decides.
