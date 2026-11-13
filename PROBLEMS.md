@@ -1228,3 +1228,14 @@ Run 91's learn-by counters, a training update each:
 - Run 91b's exemption of jumps on the hit tick or the tick after may leave the reflex jumps uncharged.
 
 Next: run 92 (one combo-first package) built by an Opus agent in a worktree, reviewed before deploy.
+
+## 13 Nov 23:52 review (run 91b since about 23:46)
+
+- Run 91b's first 5 updates, per update:
+  - its own untaught take-offs charged 35.6;
+  - their 2nd+ hits in a row 54.2;
+  - its combo follow-ups 22.2 (3rd+ 9.4);
+  - hit in the air from its own jump 14.2.
+- Punish crit chances critted 57% (band 50-65). Their third hit 1 of 10 in the last window.
+- No check since 23:02 (A 18-18). The next one is about 00:30, run 91b's first.
+- Agent 35 (Opus, max effort, worktree) is building run 92. It is reviewed before deploy.
