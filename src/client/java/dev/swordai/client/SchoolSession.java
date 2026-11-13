@@ -295,7 +295,27 @@ public final class SchoolSession implements AgentSession {
 	 * barrier"). In TRAINING, on A's side, A's rule also jump-resets a first sprint hit taken on the ground, so the network learns
 	 * it by the outcome through the same path that taught the 2nd-hit reset. Checks, real fights and B unchanged.
 	 */
-	static final boolean RESET_FIRST_HIT_TRAIN = true;
+	// Run 94 (14 Nov, agent 38): OFF. The check's jump keys: A 60-76 off / 85-120 on the moments, B 32-46 / 29-40. This rule is one of the
+	// designed A-versus-B differences: B resets only in their combo (their 2nd+ hit; T9a "against combos ... they hit the moment you land"),
+	// A's network learned to reset on the first sprint hit as well, taken in rule-off fights from RULED_AWR. In the user's 14 real rounds
+	// (agent 34) after the rule-r jump reset their next hit came 65% against 35% without it, and 82% of the take-offs were its own,
+	// most 0-1 ticks after a hit taken. The document's T9 safest moments are T9a/T9b/T9c, not every first sprint hit.
+	static final boolean RESET_FIRST_HIT_TRAIN = false;
+	/**
+	 * Run 94: a take-off of its own on the tick of a hit taken (or the next) that no technique asked for costs this ON TOP of
+	 * OWN_JUMP_COST when the hit was their first (no earlier hit of theirs in its row): the reflex jump of a single hit, which is
+	 * not T9a (their combo's rhythm), T9b or T9c. 0.08 alone left 85 take-offs charged an update from run 92 on (81.8-93.3), 77% of its
+	 * own take-offs, 86% of those in their combo at 0-1 ticks after their hit: the price is under what the reset keeps.
+	 */
+	static final float REFLEX_FIRST_COST = 0.08f;
+	/** Run 94 counters (training): reflex take-offs charged the extra. */
+	private int reflexFirstCharged;
+	/**
+	 * Run 94 (checks and training): its take-offs by source, per side (0 A, 1 B): a rule's jump; a technique's (teacher key or told
+	 * jump technique); its own 0-1 ticks after their first hit; its own 0-1 ticks after a hit in their combo (2nd+); its own 2-12
+	 * ticks after a hit; its own later or with no hit taken lately. Printed with each check, cleared after it.
+	 */
+	private final int[][] takeoffSrc = new int[2][6];
 	private int firstHitResetTicks;
 	/**
 	 * Run 84 (agent 19, 12 Nov 08:40; the benchmark's head-to-head against the installed model, -4.87 HP a fight, 3 se worse):
@@ -1095,7 +1115,7 @@ public final class SchoolSession implements AgentSession {
 						guardFreeBy[0], guardFreeSwungBy[0], guardFreeBy[1], guardFreeSwungBy[1], guardFreeBy[2], guardFreeSwungBy[2])
 				+ String.format(Locale.ROOT, ", late swings charged %d", lateSwingCharged)
 				+ String.format(Locale.ROOT, " | run 91, their 2nd+ hits in a row charged %d", theirRowCharged)
-				+ String.format(Locale.ROOT, ", its own untaught take-offs charged %d", ownJumpCharged)
+				+ String.format(Locale.ROOT, ", its own untaught take-offs charged %d (run 94: reflex after their first hit charged extra %d)", ownJumpCharged, reflexFirstCharged)
 				+ String.format(Locale.ROOT, " | run 92, too close (under %.1f, its sword empty, theirs ready) ticks charged %d; edge sprint hits (%.1f-%.1f) paid %d; its hits' mean distance %.2f (%d hits); rule m runs started by A's rules %d, into a ready sword or a jump-in crit %d (%s)",
 						TOO_CLOSE_WITHIN, tooCloseCharged, EDGE_HIT_FROM, EDGE_HIT_TO, edgeHitsPaid, ownHitsMeasured > 0 ? ownHitDistSum / ownHitsMeasured : 0.0,
 						ownHitsMeasured, meetStarts[0], meetStartsIntoReady[0], MEET_NOT_INCOMING ? "stopped" : "run")
@@ -1166,6 +1186,7 @@ public final class SchoolSession implements AgentSession {
 		lateSwingCharged = 0;
 		theirRowCharged = 0;
 		ownJumpCharged = 0;
+		reflexFirstCharged = 0;
 		tooCloseCharged = edgeHitsPaid = ownHitsMeasured = 0;
 		comboableFights = comboableLongest = comboableRuns3 = comboableRuns5 = comboableRuns10 = longComboPaid = 0;
 		cbFollowed = cbTraded = cbTheirFirst = cbTimedOut = cbGapSum = 0;
@@ -4899,6 +4920,16 @@ public final class SchoolSession implements AgentSession {
 				// or the tick after is no longer let off by itself (the reflex jumps of the real rounds).
 				enterReward -= OWN_JUMP_COST;
 				ownJumpCharged++;
+				if (REFLEX_FIRST_COST > 0f && clock.ticksSinceHitTaken <= 1 && theirRow <= 1) {
+					enterReward -= REFLEX_FIRST_COST;
+					reflexFirstCharged++;
+				}
+			}
+			if (mode == Mode.CHECK && action[ActionSpace.JUMP] == 1) {
+				int side = installedPlays ? 1 : 0;
+				int src = (ruled & (1 << ActionSpace.JUMP)) != 0 ? 0 : jumpTechniqueNow(step) ? 1
+						: clock.ticksSinceHitTaken <= 1 ? (theirRow <= 1 ? 2 : 3) : clock.ticksSinceHitTaken <= 12 ? 4 : 5;
+				takeoffSrc[side][src]++;
 			}
 			if (ownJumpAir && mode == Mode.TRAIN && review < 0 && clock.ticksSinceHitTaken <= COMBO_GAP
 					&& clock.ticksSinceHitDealt > clock.ticksSinceHitTaken) {
@@ -5764,6 +5795,11 @@ public final class SchoolSession implements AgentSession {
 		if (CHECK_B_FOLLOWUP) {
 			SwordAi.LOGGER.info("school check B follow-up test (agent 14): A's W/S, sprint and jump were B's on {} ticks after its own ground hits", bFollowTicks);
 		}
+		SwordAi.LOGGER.info("school check take-offs by source (rule | technique | own 0-1 ticks after their first hit | own 0-1 in their combo | own 2-12 | own other) "
+				+ "A {} {} {} {} {} {} | B {} {} {} {} {} {}", takeoffSrc[0][0], takeoffSrc[0][1], takeoffSrc[0][2], takeoffSrc[0][3], takeoffSrc[0][4],
+				takeoffSrc[0][5], takeoffSrc[1][0], takeoffSrc[1][1], takeoffSrc[1][2], takeoffSrc[1][3], takeoffSrc[1][4], takeoffSrc[1][5]);
+		java.util.Arrays.fill(takeoffSrc[0], 0);
+		java.util.Arrays.fill(takeoffSrc[1], 0);
 		SwordAi.LOGGER.info("school check rules | A: the golden rule (K2) held the swing on {} ticks, the installed model's rules set keys on {} ticks; "
 				+ "sprint hits outside its combos on one falling: on the server {}, as seen {} | lost view: A {} of {} ticks off the screen ({} times), "
 				+ "B {} of {} ticks ({} times)", k2Held, ruleTicks, k2Truth, k2Seen, lostTicks[0], viewTicks[0], lostTimes[0], lostTicks[1], viewTicks[1],
