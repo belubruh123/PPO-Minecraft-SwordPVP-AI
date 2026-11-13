@@ -25,3 +25,4 @@ external/
 # Third-party video transcript (kept local; docs/PVP-TECHNIQUES.md is our write-up of it)
 tactiq-*.txt
 tools/*.log
+tools/a31/pairs.json

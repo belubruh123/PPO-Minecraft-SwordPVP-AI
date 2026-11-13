@@ -1032,3 +1032,27 @@ not a lockout.
 **Benchmark (same session):** run 88c beat the installed model on both references (+3.70, +2.96). Head-to-head was level (-0.48, +0.72). Weakest test: Make them miss, rate 45% vs 56-62% but level in HP. Run 89's T6 lesson aims there and at item 4.
 
 **3-hour rule:** item 2's queued follow-up (their crit openers, A -1.8 HP a fight, queued 12 Nov 07:00) has not been done. Research agent 31 (Sonnet) launched 18:30, read-only: split their crit openers into jump-ins under the user's rule / legal / after its whiff or hit (T6) / after its punish crit / other, A vs B over the last checks; one bottleneck, a test, ranked fixes.
+
+## 13 Nov 18:31: agent 31 (Sonnet) on item 2, their crit openers (3 checks 14:32-16:10, 133 paired fights; 6 for checking)
+
+**The 12 Nov crit-opener gap is gone.** Their crit as the first hit of an exchange: A 53 vs B 52 events, 186 vs 182 HP a check.
+Per fight A-B -0.55 HP (se 0.69); over 6 checks -0.75 (se 0.56). Noise. Agent 18's -1.8 was before runs 87/88c.
+
+Split (first-hit damage, 3 checks):
+
+| Class | A | B | Who is better |
+|---|---|---|---|
+| Jump-ins | B's late knock-aways (14-25 rising, 2-6 falling a check) are what A lacks | | B breaks the user's rule; no legal fix |
+| After its own swing (T6 territory) | 11 (116 HP) | 20 (210 HP) | A (it hits 96% vs 90%) |
+| After its own punish crit (B1) | 44 (462 HP) | 55 (578 HP) | A |
+| No own swing before | 42 (441 HP) | 32 (336 HP) | B, about +35 HP a check |
+| After its own non-punish crit (their double crit) | 72 (755 HP) | 42 (441 HP) | B, +2.4 HP a fight (se 0.8); A opens 2.7x more crit chains, so partly the price |
+
+- At their crit opener A is in the air 55-58% vs B 19% (its own take-off). Air-exposed opener damage A 390 vs B 105 HP, but grounded A 27 vs B 49 events, so the totals cancel.
+- Test that could prove it wrong (next 3 checks): the air share of their openers on A below 35% with the total unchanged means the take-off is not the cost. Total opener damage on A not above B's by 40 HP a check means no gap to fix.
+- Its fixes: (1) air-opener scene replay, about +1 round a check with a real chance of 0. (2) More sprint-in from attack-then-s and fall-spacer, about +0.5 round. (3) none.
+
+**Decision: no run from this.** The totals are level and the fixes' expected value is below a check's noise (+-4 rounds).
+- Run 89 stays the only change until it is judged.
+- The one class worth watching is their double crit after its own non-punish crit (+2.4, se 0.8, about 3 se). If run 89's T6 lesson after its punish crit works (item 4), the same T6 answer after its other crits is the next single change.
+- Scripts in tools/a31 (pairs.json is data, not committed).
