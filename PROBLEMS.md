@@ -1204,3 +1204,27 @@ Run 91's learn-by counters, a training update each:
 
 - Expected within about 2 h: follow-ups and 3rd+ rising above the old level, air hits and their 2nd+ hits falling.
 - First check about 24:05.
+
+## 13 Nov ~23:50: agents 32, 33, 34 (Sonnet) on the user's combo-bot goal (the 14 real rounds of 22:42-22:48)
+
+**Agent 32 (combos):**
+- Its runs of hits: 1 hit 123 times, 2 hits 31, 3 hits 6, 4 hits 5, 6 hits 2. 54% of its hits are crits, which do not stun.
+- After its hit: it took off within 5 ticks 41% of the time, and then their hit came within 3 ticks 44%; after S, 11%; after W with no jump, 24%.
+- About 40% of its swings go into a ready sword, so they are trades.
+- The teacher starts hops or an uppercut after EVERY own sprint hit (hopsAfterStun = TEACH_STUN_GATE), and the decider copies it about 90%.
+- No bot demonstrates being comboed: the bots' knockback is late and scaled under 1, so they stay in reach.
+
+**Agent 33 (spacing):**
+- In range it is under 2.5 blocks 51% of the time (old won rounds 40%). Its hits land at 1.60 blocks.
+- The first hit of an exchange went 21 (it) to 42 (them), mostly at under 1 block. It enters reach with W 84% of the time, into their ready sword 67%.
+- Inside 3.0 its sword is empty 65% of the time, and 61% of the hits it takes come then.
+- Nothing in training charges any of it.
+
+**Agent 34 (rules overlay):**
+- KEEP a/k (the answer and the keep for the way down): it hit first 78% vs 54% without, about +0.8 hit a round.
+- CHANGE m (run at a rising jumper): it hit first 37% of the time, 10% when their sword was ready. About -1 hit a round. Fix: `&& !incoming` on `meet` (Fighter.java ~line 420).
+- CHANGE r (jump reset 65%): next hit taken 65% vs 35% with b (n 26/17).
+- The rules make only 18% of the jumps; 159 of the 302 jumps came after a hit taken and were the network's own.
+- Run 91b's exemption of jumps on the hit tick or the tick after may leave the reflex jumps uncharged.
+
+Next: run 92 (one combo-first package) built by an Opus agent in a worktree, reviewed before deploy.
