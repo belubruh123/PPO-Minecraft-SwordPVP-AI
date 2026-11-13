@@ -19,6 +19,12 @@ import dev.swordai.core.rl.ObsSpec;
  * memory of the fight), so its counters are the right ones.
  */
 public final class Teacher {
+	/**
+	 * Run 89 (13 Nov, agent 29's design, cut to the teacher's trigger): after its punish crit, the share of times the teacher shows T6
+	 * (make them miss their answer: a short S as they swing, then the sprint hit) instead of T1c. The keys go where T6's always go
+	 * (no new option layer: T6's own moments, a benchmark strength, stay as they are). 0 = off.
+	 */
+	public static final float T6_AFTER_PUNISH = 0f;
 	/** Of a target, the share on the teacher's key; the rest is spread over the other keys of the head. */
 	static final float SURE = 0.99f;
 	/** A key the target holds at least this much of is one the teacher asks for (alone, or with others alike). */
@@ -176,6 +182,7 @@ public final class Teacher {
 		// falling when it comes into their reach (the user, 2 Nov: "99% of user starts with jump in crit", "it should learn to jump
 		// in as the other player as well"). In the 23:59 check A's jump-ins from 4-5 blocks were hit rising in 32%.
 		s.critOpen = 1f;
+		s.t6AfterPunish = T6_AFTER_PUNISH;
 		s.jumpInLands = true;
 		return s;
 	}

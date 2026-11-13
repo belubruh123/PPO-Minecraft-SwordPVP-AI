@@ -1587,3 +1587,26 @@ from the rising and ground part.
 - The punish crit stays 50-65%.
 
 **Revert** if the benchmark is worse than run87-0552 by more than 1 se, or K2 falls under 50%.
+
+### Run 89 (built 13 Nov 14:50, Teacher.T6_AFTER_PUNISH = 0 = off; to deploy after run 88c's 16:15 benchmark)
+
+**Item 4** (critted back after its punish crit). After its punish crits: hit back within 30 ticks 70% (real 82%), crits
+28% (real 16%). The bots are realistic. The network has no learned answer except T1c, which often comes in 0-1 of 9-11.
+
+**Agent 29's design, cut down.** After its punish crit, the teacher shows T6 a share of the time (Style.t6AfterPunish, set
+only in the teacher; every bot stays 0, so the bots and the benchmark are unchanged) instead of T1c.
+- Doc: T6 "When the opponent goes to attack you, stop moving or hold S, so their swing misses ... your next sprint hit stuns
+  them". The doc names T1c as the punish-crit answer, so T6 comes second and T1c keeps the larger share.
+- The plan is PvpPlayer Plan.T6 with planDir -1 (S) and planAfterPunish: the S at most 8 ticks (C3: "common mistake" is
+  the long S), then stand; up to 20 ticks for their swing; then the sprint hit from reach 2.2 or more.
+- NOT gated into an option layer, as agent 29 proposed. That would have moved every T6 moment's keys out of the shared
+  trunk, and Make them miss is a benchmark strength (+2.8 / +3.7).
+- No new reward: the damage terms and CRIT_BACK_COST already pay a missed answer.
+- Counter: "run 89, after its punish crit the teacher showed T6 on N ticks, S its own on M".
+
+**Doubt** (agent 29). Their answer lands at about crit+5, about when it lands itself, so an S in the air does little. If
+the counter shows few ticks, or the hit-back after its punish crit does not fall, take it out. The alternative is a higher
+T1c rate (T1C_AT_LANDING).
+
+**Deploy.** T6_AFTER_PUNISH = 0.3, after run 88c's verdict. Judge: hit back within 30 ticks after its punish crit below
+70%, critted back below 28%, punish crit 50-65%, Make them miss not worse in the benchmark.

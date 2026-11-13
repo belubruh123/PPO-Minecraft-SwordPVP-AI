@@ -131,6 +131,8 @@ public final class PvpPlayer {
 	private int phase;
 	private int planDir;
 	private boolean planAlt;
+	/** Run 89: this T6 began right after its own punish crit (Style.t6AfterPunish). */
+	private boolean planAfterPunish;
 	private Plan pending = Plan.NONE;
 	private int pendingAt;
 	/** Timed jump waiting for its tick (a jump reset): the tick, or -1. */
@@ -543,6 +545,7 @@ public final class PvpPlayer {
 		phase = 0;
 		planDir = rng.nextBoolean() ? 1 : -1;
 		planAlt = false;
+		planAfterPunish = false;
 	}
 
 	/**
@@ -729,6 +732,12 @@ public final class PvpPlayer {
 			boolean punishCrit = was == Plan.B1 || tick - thrownUpAt <= 18 && sinceLanded > tick - thrownUpAt && !d.me.onGround;
 			if (was == Plan.T1A) {
 				begin(Plan.T1);
+			} else if (punishCrit && style.t6AfterPunish > 0f && rng.nextFloat() < style.t6AfterPunish) {
+				// Run 89: make them miss their answer to its punish crit (T6, "when the opponent goes to attack you, stop moving or hold
+				// S, so their swing misses"), the S kept short (C3's common mistake is the long S).
+				begin(Plan.T6);
+				planDir = -1;
+				planAfterPunish = true;
 			} else if (punishCrit && roll(Technique.T1C)) {
 				begin(Plan.T1C);
 			} else if (punishes() && roll(Technique.T1)) {
@@ -1005,6 +1014,10 @@ public final class PvpPlayer {
 				if (phase == 0) {
 					// Stop, or S, as they go to swing (or strafe, T6a): the swing comes short.
 					k.forward = planDir > 0 ? 0 : -1;
+					if (planAfterPunish && planT > 8) {
+						// Run 89: after its punish crit the S stays short; then it stands and waits for their swing.
+						k.forward = 0;
+					}
 					if (planAlt) {
 						k.strafe = planDir;
 						k.technique = Technique.T6A;
@@ -1013,7 +1026,7 @@ public final class PvpPlayer {
 						phase = 1;
 						return RUN;
 					}
-					return sinceTheirHit <= 1 || planT > 14 ? ABORT : RUN;
+					return sinceTheirHit <= 1 || planT > (planAfterPunish ? 20 : 14) ? ABORT : RUN;
 				}
 				// They missed: in, and the sprint hit; from not too close.
 				if (sinceTheirHit == 0) {

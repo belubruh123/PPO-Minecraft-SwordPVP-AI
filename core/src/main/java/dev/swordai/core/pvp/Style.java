@@ -57,6 +57,11 @@ public final class Style {
 	public float strafe = 0.3f;
 	/** Share of its openings made as a jumped crit rather than a sprint hit (part 0: a crit is a hit made falling). */
 	public float critOpen = 0f;
+	/**
+	 * Run 89 (13 Nov): after its punish crit, the share of times it makes them miss (T6: S as they swing, then the sprint hit) instead
+	 * of the jump and crit again (T1c). 0 for every bot (their behaviour and the benchmark stay as they were); the school's teacher.
+	 */
+	public float t6AfterPunish = 0f;
 	/** From how far it jumps in for such a crit: eye to hitbox at take-off. */
 	public float critFrom = 2.2f;
 	/**

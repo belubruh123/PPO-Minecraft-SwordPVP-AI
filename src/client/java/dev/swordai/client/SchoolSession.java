@@ -924,6 +924,7 @@ public final class SchoolSession implements AgentSession {
 	private int pcAnySince = 1000;
 	private boolean pcAnyCounted = true;
 	private int pcAnyCrits, pcBack12, pcBack30, pcBackCrit30;
+	private int t6AfterTaught, t6AfterBack;
 	private int punishCritsForT1c, t1cCrits, critBacks;
 	/** Run 54b: the T1c funnel (its own jump after the punish crit, hits from it, sprint hits among them) and its swing back in their combo. */
 	private boolean t1cJumpCounted;
@@ -981,6 +982,7 @@ public final class SchoolSession implements AgentSession {
 						comboGuardBy[0], comboGuardBy[1], comboGuardBy[2])
 				+ String.format(Locale.ROOT, " | after its %d punish crits, any hit taken (real duels: 82%% within 30, 16%% crits): within 12 ticks %d, within 30 %d (crits %d)",
 						pcAnyCrits, pcBack12, pcBack30, pcBackCrit30)
+				+ String.format(Locale.ROOT, " | run 89, after its punish crit the teacher showed T6 on %d ticks, S its own on %d", t6AfterTaught, t6AfterBack)
 				+ String.format(Locale.ROOT, " | run 88, the keep in the air from their 2nd hit given back: training %d (swung %d), checks %d (swung %d)",
 						airKeepYield[0], airKeepYieldSwung[0], airKeepYield[1], airKeepYieldSwung[1])
 				+ String.format(Locale.ROOT, " | T1c take-offs by ticks after landing from its punish crit: 0-1 %d, 2-4 %d, 5+ %d",
@@ -1022,6 +1024,7 @@ public final class SchoolSession implements AgentSession {
 		comboScenePicks = 0;
 		punishCritsForT1c = t1cCrits = critBacks = 0;
 		pcAnyCrits = pcBack12 = pcBack30 = pcBackCrit30 = 0;
+		t6AfterTaught = t6AfterBack = 0;
 		t1cJumps = t1cHits = t1cSprintHits = 0;
 		java.util.Arrays.fill(t1cJumpByLanding, 0);
 		heldPaid = heldDropped = 0;
@@ -4726,6 +4729,11 @@ public final class SchoolSession implements AgentSession {
 			if (sincePunishCrit == 0) {
 				t1cJumpCounted = false;
 				t1cLandSince = -1;
+			}
+			// Run 89: after its punish crit, the ticks the teacher showed T6 (make them miss) and those the network held S itself.
+			if (sincePunishCrit <= T1C_WINDOW && step.teacherTechnique == Technique.T6.ordinal()) {
+				t6AfterTaught++;
+				t6AfterBack += action[ActionSpace.FORWARD] == dev.swordai.core.rl.BackNudge.BACK && (ruled & (1 << ActionSpace.FORWARD)) == 0 ? 1 : 0;
 			}
 			if (sincePunishCrit <= T1C_WINDOW && t1cLandSince < 0 && me.onGround()) {
 				t1cLandSince = sincePunishCrit;
