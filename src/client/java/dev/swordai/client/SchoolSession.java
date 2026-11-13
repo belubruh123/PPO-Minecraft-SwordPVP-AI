@@ -447,7 +447,7 @@ public final class SchoolSession implements AgentSession {
 	 * wants "an advance combo bot ... do sprint hit most of time", combos of 10+ (real duels: runs of 1 hit 123 times, 2 hits 31, 3+ 13).
 	 * 0 = off: nothing changes (no extra draw of the random stream either). About 0.25 when on.
 	 */
-	static final float COMBOABLE_SHARE = 0f;
+	static final float COMBOABLE_SHARE = 0.25f;
 	/**
 	 * Run 93: only in fights against the comboable bot, each hit of its own combo from the LONG_COMBO_FROM-th on pays this on top of
 	 * COMBO_HIT and COMBO_HIT3 (held back like them, HELD_COMBO_CREDIT), to teach holding a combo to 10+ where the bot can be held.

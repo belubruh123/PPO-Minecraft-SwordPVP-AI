@@ -1773,3 +1773,18 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - checks: A's rounds and its jump keys a minute against B's.
 
 **Revert** a part if swings fall 15%, the punish crit falls under 50%, or A loses 2 checks running with no rise in follow-ups.
+
+### Run 93 (14 Nov 02:00): a comboable bot (agent 36, Sonnet, worktree; merged as 0090dac, switched on)
+
+- **Why** (agent 32): no training bot lets itself be comboed, so a held sprint-hit combo is almost never possible and no reward can teach it.
+  - Runs 91/92 doubled the combo pay; its follow-ups stayed flat at 28-33 an update.
+  - Run 92's checks: 01:05 A 23-22 (z +0.3); 01:54 A 19-18 (z +0.3), net +2.3. Their third hit 39% vs 35%.
+  - A's jump keys a minute 71/85 vs B 43/45. A's swings 336 vs 391.
+- **Change.** COMBOABLE_SHARE = 0.25: a quarter of full training fights face Specialists.comboable(). Checks and benchmarks are untouched.
+  - The bot: knockback 1.0, ping 1-2 (plus uplink), no jumps, no techniques, no crit opener.
+  - After a hit taken it backs off with S for 12-20 ticks without swinging, then re-engages at spacing 2.9-3.3. It still hits an AI that walks in with an empty sword.
+  - LONG_COMBO 0.3 for each hit from the 4th of its own combo, in those fights only.
+  - Comboable fights are kept out of scenes, stage judging and per-bot tallies.
+- **Counter:** "run 93, comboable bot (...): fights N, its longest own run of hits there L, runs reaching 3/5/10 hits; long-combo hits paid P".
+- **Learn-by (2-3 h):** the longest run and runs reaching 5/10 rise in those fights. Then the checks' follow-ups and their third hit improve, and real duels show runs of 3+.
+- **Revert** if the checks fall under B in 2 checks running, or swings fall a further 10%.
