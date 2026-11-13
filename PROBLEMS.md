@@ -1105,3 +1105,10 @@ Split (first-hit damage, 3 checks):
 - B1 49/56 (88%) vs 29/65 (45%).
 - Behind: uppercutter -22.2 (A 0-3), fight-spacer -21.0, stun-escaper -15.2, fight-timer -14.0, fight-jumpin -10.5.
 - Training (72 updates, 564 punish crits): any hit within 30 ticks 65% (run 88c 61%), critted back 25% (23%). The teacher showed T6 on 562 ticks; its own S 45. Item 4 has not moved yet. Verdict after the third check.
+
+## 13 Nov 19:52 review: run 89 was not being taught (bug), run 89b built
+
+- Item 4: after 2.1 h of run 89 (94 updates, 728 punish crits), hit back within 30 ticks 66%, crits 27%, critted back 25%. Run 88c: 61 / 25 / 23. The network chose S itself on 58 of 737 T6 ticks (8%).
+- Cause found in the code: T6 was not in SchoolStages.RUN_TAUGHT, so techPulls gave the teacher's T6 moments a pull of 0. The teacher showed T6, but nothing pulled the network toward it.
+- Fix: run 89b (SchoolStages.T6_TAUGHT, outcome-weighted, ungated). Compile-checked and committed. Redeploy after the 20:10 check (run 89's third).
+- Judge and revert criteria: EXPERIMENTS.md "Run 89b".
