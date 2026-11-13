@@ -918,3 +918,26 @@ learn to jump in as the other player as well". Teaching straight-in openings 30%
 **For the user (20:30), no blocking.** The benchmark shows every network losing the first hit when closing in (2-6%). The doc's
 T7 (sprint-hit from just outside their reach) is barely taught, because the teacher always opens with a jump-in crit, by the
 2 Nov instruction. Should the teacher show T7 openings some of the time, for example 30%?
+
+## 13 Nov 12:52: the guard counter (agent 27's measurement) since 09:31, and the 10:22 check
+
+**What the jump-in guard holds against in their combo**, by what the bot was really doing (server truth), summed over windows:
+
+| Bot was doing | Holds | Share |
+|---|---|---|
+| A jump crit (T1 family, T8) | 0 | 0% |
+| Uppercut, lunge or hop (T10, T11a-c) | 22 | 24% |
+| Anything else (jump resets, plain fighting) | 68 | 76% |
+
+So in their combo the guard never held against a real jump crit. It holds against jumps the user's rule also covers ("any
+direction", 8 Nov), but which are not the jump-in crit the rule was made for.
+
+**For the user (20:30), not blocking.** Should the no-swing-from-ground-tick-2 rule also cover jumps INSIDE their combo
+(their hops, lunges, uppercuts, jump resets)? In 90 measured holds there, none was a jump crit. Not changed without the user's
+word.
+
+**The 10:22 check** (run 88b at 1.7 h; played to the end before the tournament began):
+- Rounds won: A 15 of 45, B 15 of 45, z 0.0.
+- Damage: A 349 dealt / 409 taken, B 344 / 442.
+- Run 88b's checks: z +1.0, +0.9, 0.0. It is off since 12:41; run 88c, without the swing at falling opponents, comes after
+  the next check.
