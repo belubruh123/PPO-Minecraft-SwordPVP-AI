@@ -1306,3 +1306,12 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Jump keys a minute (off / on moments): A 68 / 122, B 42 / 40. The on-moment jumps are up (01:05: 84).
 - Comboable bot (to 03:21): 89 fights, longest run 6 (02:22: 2, 02:52: 4), runs to 3+ 2, to 5+ 1.
 - Punish crit 59%.
+
+## 14 Nov 03:44 check: run 93's second (about 1.7 h)
+
+- **ROUNDS WON: A 20/44 (45%), B 11/44 (25%), z +2.2.** Only A won 13, only B won 4. The best check since run 88c.
+- Net A-B +8.4 (se 4.8). Damage a minute: A 377 dealt / 387 taken, B 341 / about 400.
+- Their third hit: A 26%, B 29%.
+- Outside their combo: A swung 47%, B 52%. In their combo: A 36%, B 38%. Swings: A 357, B 390.
+- Jump keys a minute: A 65 / 84, B 42 / 35. The on-moment jumps are back to 84 from 122.
+- Comboable bot: longest run 6. Punish crit 64%.
