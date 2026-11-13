@@ -1069,3 +1069,27 @@ Split (first-hit damage, 3 checks):
 - Techniques: B1 45/56 (80%) vs B 38/68; T6 2/12 (17%) vs 1/10; T6a 3/17 vs 0/18; T1c 6/6.
 - **Uppercutter -37.3 (se 8.4)**, A 0-3 vs B 2-1. On run 88c/89: -13.5, -11.8, -37.3, pooled about -19 a fight. A deals 240-317 a minute against it vs B 356-447, while damage taken is level. That is item 11. It ties to the user's 20:30 question (the jump-in guard holds against uppercuts, lunges and hops in their combo; 0 of 90 holds were jump crits).
 - Run 89 verdict after 3 checks.
+
+## 13 Nov 18:52 review: run 89 at 70 minutes; why A deals less to the uppercutter (item 11)
+
+**Run 89 so far** (50 updates, 380 punish crits):
+- After its punish crit: any hit within 30 ticks 65%, crits 27%, critted back 23%.
+- Run 88c (126 updates, 1202 punish crits) had 61% / 25% / 23%. No change yet.
+- The teacher showed T6 on 327 ticks; the network chose S on its own on 25. The copy has just started.
+
+**Uppercutter, A vs B per fight** (hits.csv, the last 14 checks, 27 fights each; my own measurement):
+
+| Per fight | A | B |
+|---|---|---|
+| Hits dealt | 6.37 | 7.26 |
+| Damage dealt | 50.4 | 57.3 |
+| Hits on them rising | 2.30 | 3.15 |
+| Hits on them falling | 2.63 | 3.78 |
+| Damage taken | 63.5 | 62.1 |
+| Hits taken in the air | 3.11 | 0.67 |
+
+- The whole gap is hits on the uppercutter while it is in the air (B about +2.0 a fight). A makes up about 1.1 of that on the ground.
+- This is specific to the uppercutter. Against fight-jumpin, jump-in-critter and mixer, A hits airborne bots as often as B or more.
+- T10 (the doc): "jump, and sprint-hit the opponent at the peak of your jump". The jump-in guard arms on any take-off from 3.3-6.5 blocks (agent 27), so it holds A's swing against the uppercut's jump from ground tick 2 on. B has no guard.
+- So item 11's uppercutter loss is mostly the price of the user's rule ("jumps in any direction", 8 Nov). It goes to the user's 20:30 question, now sharper: should an uppercut's jump (T10) count as a jump-in for the no-swing rule? Not changed without the user's word.
+- A is hit in the air about 5x as often as B against every bot (its own take-offs; agent 31). Damage taken is level, so it is not a cost by itself.
