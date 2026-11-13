@@ -1112,3 +1112,18 @@ Split (first-hit damage, 3 checks):
 - Cause found in the code: T6 was not in SchoolStages.RUN_TAUGHT, so techPulls gave the teacher's T6 moments a pull of 0. The teacher showed T6, but nothing pulled the network toward it.
 - Fix: run 89b (SchoolStages.T6_TAUGHT, outcome-weighted, ungated). Compile-checked and committed. Redeploy after the 20:10 check (run 89's third).
 - Judge and revert criteria: EXPERIMENTS.md "Run 89b".
+
+## 13 Nov 20:12 check: run 89's third (2.5 hours; run 89 as built, the teacher only, no lesson)
+
+- **ROUNDS WON: A 22/45 (49%), B 21/45 (47%), z +0.3.** Only A won 8, only B won 7.
+- Net a fight: A +1.3, B -4.6, so A-B +5.8 (se 4.8). Damage a minute: A 409 dealt / 401 taken, B 361 / 389.
+- Their third hit: A 21% (18/84), B 20% (17/87).
+- Swings: A 368 at 96% = 355 hits; B 417 at 89% = 372.
+- Outside their combo (ground, ready): A 197 ticks, 55 / 17 / 28; B 353, 52 / 17 / 31.
+- Late jump-in hits: A 2 rising / 1 falling, B 19 / 0.
+
+**Run 89's three checks:** z +0.4, +0.9, +0.3. A-B +9.6, +6.3, +5.8 HP a fight. Rounds 61 vs 54.
+- This is run 88c's level (+0.7, +0.4, +1.5). As built, run 89 taught nothing (the 19:52 bug), so item 4 did not move.
+- Run 89b (T6 taught) redeploy asked 20:13.
+
+**Duel arm.** The same-session run 85 vs run 89 benchmark is dropped. The linked estimate already puts run 88c level with run 85 (both +0.9 over run 87), so a 40-minute direct test would most likely read TIE. A swap would also need a new jar in the user's profile. The training time goes to run 89b instead. The pool stays installed vs run85-1727 for 14 Nov.
