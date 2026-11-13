@@ -1269,3 +1269,11 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 
 - Jumps and their 2nd+ hits are falling. Follow-ups are slightly down and too-close ticks up.
 - Punish crit 63%. The first run 92 check is due about 01:00.
+
+## 14 Nov 01:05 check: run 92's first (about 50 minutes; runs 91 + 91b + 92)
+
+- **ROUNDS WON: A 23/44 (52%), B 22/44 (50%), z +0.3.** Net A-B +6.5 (se 4.3). Damage a minute: A 403 dealt / 396 taken, B 366 / 400.
+- Their third hit: A 27% (20), B 35% (25).
+- Outside their combo (ground, ready): A swung 47% (at 23:02: 26%), held otherwise 39%; B 52%, 30%. Swings: A 362, B 385.
+- Jump keys a minute (off / on moments): A 59 / 84, B 38 / 38. At 16:10: A 71 / 91, B 45 / 31. Fewer, but still above B.
+- Punish crit 65%.
