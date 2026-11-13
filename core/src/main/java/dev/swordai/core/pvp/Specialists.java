@@ -151,6 +151,45 @@ public final class Specialists {
 	}
 
 	/**
+	 * Run 93 (14 Nov ~02:00): the comboable bot, a realistic player that CAN be held in a sprint-hit combo (the user wants "an advance
+	 * combo bot ... do sprint hit most of time", combos of 10+). Agent 32's finding: no bot in training lets itself be comboed (it
+	 * stays in reach and hits back, its knockback late and often scaled down), so no reward could teach a held combo. This one has no
+	 * technique, never jumps (no jump reset, no hop, no crit), takes the full knockback with a small ping, walks back (S, no swing) for
+	 * {@link Style#backAfterHit} ticks after every hit it takes, then re-engages from about 3 blocks and swings when its sword is back
+	 * and the other is in reach: held at the right spacing and rhythm it is comboed (the document's T3 stun, T4, T7; C3/C4 from the
+	 * other side), and bad spacing (walking into it with an empty sword) still costs a hit.
+	 */
+	public static Style comboable(Random rng) {
+		Style s = new Style().drawHuman(rng);
+		s.bot = STRAIGHT_SPRINTER;
+		s.name = "comboable";
+		java.util.Arrays.fill(s.p, 0f);
+		s.adapts = false;
+		s.noJumps = true;
+		s.critOpen = 0f;
+		s.jumpInLands = false;
+		s.humanTiming = true;
+		s.reaction = 3 + rng.nextInt(3);
+		// A small ping (its knockback reaches it 1-2 ticks late; TechniqueBot adds the agent's way up) and a fast view of the other.
+		s.ping = 1 + rng.nextInt(2);
+		s.lag = 1 + rng.nextInt(2);
+		s.swingCharge = 0.95f + 0.05f * rng.nextFloat();
+		s.spacing = 2.9f + 0.4f * rng.nextFloat();
+		s.wtap = rng.nextInt(2);
+		s.stap = 0;
+		s.strafe = 0.1f * rng.nextFloat();
+		s.closeIn = 0.1f + 0.3f * rng.nextFloat();
+		s.answerCrit = 0f;
+		s.flyOut = 0f;
+		s.hitSelect = 0f;
+		s.swingEarly = 0f;
+		s.rhythm = false;
+		// Longer than the 12-13 ticks between its hits, so that a held combo keeps it walking back.
+		s.backAfterHit = 12 + rng.nextInt(9);
+		return s;
+	}
+
+	/**
 	 * A specialist that does other things too (the user, 24 Oct 22:50: an opponent for each case "that is suitable to use the
 	 * PVP method but like doing other stuff than the teacher and is random, so it learns all the cases and adapts"): {@code
 	 * bot}'s own technique as {@link #draw} gives it, and every technique it does not have at a real player's chances (as

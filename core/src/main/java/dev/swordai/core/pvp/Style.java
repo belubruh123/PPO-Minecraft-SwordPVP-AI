@@ -140,6 +140,12 @@ public final class Style {
 	 */
 	public float hitSelect = 0f;
 	/**
+	 * Run 93 (14 Nov ~02:00): ticks of S (walking back, no sprint, no swing) after every hit it takes, then the ordinary fight's
+	 * spacing and its swing again; 0 for every bot but the comboable one ({@link Specialists#comboable}). Agent 32's finding: no bot lets
+	 * itself be comboed (it stays in reach and hits back), so a held sprint-hit combo of 3+ is almost never possible in training.
+	 */
+	public int backAfterHit = 0;
+	/**
 	 * What it takes the other to do before it has seen anything, by {@link Habits} index; below zero for
 	 * no belief. A counter specialist expects the thing it counters (the crit-breaker expects double crits).
 	 */
@@ -199,6 +205,7 @@ public final class Style {
 		s.closeIn = closeIn;
 		s.flyOut = flyOut;
 		s.hitSelect = hitSelect;
+		s.backAfterHit = backAfterHit;
 		System.arraycopy(believe, 0, s.believe, 0, believe.length);
 		s.heldOut = heldOut;
 		return s;

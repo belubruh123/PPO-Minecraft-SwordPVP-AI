@@ -623,6 +623,12 @@ public final class PvpPlayer {
 
 	/** On the tick a hit of theirs is felt. */
 	private void hitTaken(Duel d, Events e) {
+		if (style.backAfterHit > 0) {
+			// Run 93 (14 Nov ~02:00): the comboable bot walks back after every hit (S, no swing) so that a held sprint-hit combo
+			// is possible against it (Style#backAfterHit); its W-tap is dropped, the S is the whole answer.
+			stapLeft = style.backAfterHit;
+			wtapLeft = 0;
+		}
 		// Run 59: their crit (a punish crit) answered at once, as real players do: a swing back a reaction later if the sword is
 		// ready and they are in reach (see the end of tick; the golden rule K2 still holds a knockback hit on a faller).
 		if (e.theyHit == Events.CRIT && style.answerCrit > 0f && rng.nextFloat() < style.answerCrit) {
@@ -1388,6 +1394,10 @@ public final class PvpPlayer {
 			k.attack = them.onGround && !theyWereOnGround || them.onGround && sinceMyHit > 14;
 		} else if (ready && seenLongEnough && d.reach <= Duel.REACH - style.closeIn + style.swingEarly) {
 			k.attack = true;
+		}
+		if (k.attack && style.backAfterHit > 0 && stapLeft > 0) {
+			// Run 93: no swing back while it walks back after a hit (Style#backAfterHit); after that the swing is the ordinary fight's.
+			k.attack = false;
 		}
 		boolean comboing = sinceMyHit <= COMBO_TICKS && sinceMyHit < sinceTheirHit;
 		if (k.attack && style.hitSelect > 0f && them.swordReady() && !comboing) {

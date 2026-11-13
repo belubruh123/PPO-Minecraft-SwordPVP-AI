@@ -440,6 +440,21 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final float COMBO_HIT3 = 0.4f; // run 91 (13 Nov 23:00, the user after real duels: combo first, jump less, crit only when needed): was 0.2
 	/**
+	 * Run 93 (14 Nov ~02:00): the share of full training fights (not checks, benchmarks, scenes, drills, sparring, reviews) played against
+	 * the comboable bot (Specialists#comboable: full knockback, a small ping, no jumps, walks back after each hit it takes, swings when
+	 * its sword is back and the AI is in reach). Agent 32's finding: no bot in training lets itself be comboed (late and scaled knockback,
+	 * it stays in reach and hits back), so a held sprint-hit combo of 3+ is almost never possible and no reward can teach it; the user
+	 * wants "an advance combo bot ... do sprint hit most of time", combos of 10+ (real duels: runs of 1 hit 123 times, 2 hits 31, 3+ 13).
+	 * 0 = off: nothing changes (no extra draw of the random stream either). About 0.25 when on.
+	 */
+	static final float COMBOABLE_SHARE = 0f;
+	/**
+	 * Run 93: only in fights against the comboable bot, each hit of its own combo from the LONG_COMBO_FROM-th on pays this on top of
+	 * COMBO_HIT and COMBO_HIT3 (held back like them, HELD_COMBO_CREDIT), to teach holding a combo to 10+ where the bot can be held.
+	 */
+	static final float LONG_COMBO = 0.3f;
+	static final int LONG_COMBO_FROM = 4;
+	/**
 	 * Run 56 (10 Nov 06:50), the user: "fight back with a combo: learn how to start a combo and hold a combo with uppercut/hop/lunge
 	 * and strafe". The document: T10 uppercut (jump, sprint-hit at the peak; "best time: right after you stun them", "deflection
 	 * into uppercut is an easy way to start combos"), T11a lunge (sprint-jump forward, sprint-hit as you fall), T11b hops ("hops hold
@@ -1015,6 +1030,12 @@ public final class SchoolSession implements AgentSession {
 	 * swing; rule m runs started by A's rules ([0] training, [1] checks) and of those into a jump-in crit coming or a ready sword.
 	 */
 	private int tooCloseCharged, edgeHitsPaid, ownHitsMeasured;
+	/**
+	 * Run 93 (14 Nov ~02:00), training, fights against the comboable bot: fights, the longest run of its own hits in a fight since the
+	 * last update, runs that reached 3, 5 and 10 hits, and the LONG_COMBO hits paid.
+	 */
+	private boolean fightComboable;
+	private int comboableFights, comboableLongest, comboableRuns3, comboableRuns5, comboableRuns10, longComboPaid;
 	private double ownHitDistSum;
 	private final int[] meetStarts = new int[2], meetStartsIntoReady = new int[2];
 	/** Run 92: eye to hitbox when the last step's keys were chosen, the distance of the swing they made (EDGE_HIT). */
@@ -1068,6 +1089,8 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | run 92, too close (under %.1f, its sword empty, theirs ready) ticks charged %d; edge sprint hits (%.1f-%.1f) paid %d; its hits' mean distance %.2f (%d hits); rule m runs started by A's rules %d, into a ready sword or a jump-in crit %d (%s)",
 						TOO_CLOSE_WITHIN, tooCloseCharged, EDGE_HIT_FROM, EDGE_HIT_TO, edgeHitsPaid, ownHitsMeasured > 0 ? ownHitDistSum / ownHitsMeasured : 0.0,
 						ownHitsMeasured, meetStarts[0], meetStartsIntoReady[0], MEET_NOT_INCOMING ? "stopped" : "run")
+				+ String.format(Locale.ROOT, " | run 93, comboable bot (%s, share %.2f): fights %d, its longest own run of hits there %d, runs reaching 3 hits %d, 5 hits %d, 10 hits %d; long-combo hits paid %d",
+						COMBOABLE_SHARE > 0f ? "on" : "off", COMBOABLE_SHARE, comboableFights, comboableLongest, comboableRuns3, comboableRuns5, comboableRuns10, longComboPaid)
 				+ String.format(Locale.ROOT, " | after its %d punish crits, any hit taken (real duels: 82%% within 30, 16%% crits): within 12 ticks %d, within 30 %d (crits %d)",
 						pcAnyCrits, pcBack12, pcBack30, pcBackCrit30)
 				+ String.format(Locale.ROOT, " | run 89, after its punish crit the teacher showed T6 on %d ticks, S its own on %d", t6AfterTaught, t6AfterBack)
@@ -1131,6 +1154,7 @@ public final class SchoolSession implements AgentSession {
 		theirRowCharged = 0;
 		ownJumpCharged = 0;
 		tooCloseCharged = edgeHitsPaid = ownHitsMeasured = 0;
+		comboableFights = comboableLongest = comboableRuns3 = comboableRuns5 = comboableRuns10 = longComboPaid = 0;
 		ownHitDistSum = 0.0;
 		meetStarts[0] = meetStartsIntoReady[0] = 0;
 		airJumpHitsFree = 0;
@@ -2301,7 +2325,8 @@ public final class SchoolSession implements AgentSession {
 	/** Keeps the scene from fight tick {@code start} to now. */
 	private void keepScene(int start, int kind) {
 		// A league fight's scene would be fought again against the installed model, a different opponent from its start on.
-		if (rivalNow > 0 || fightTicks - start >= histTick.length - 1 || countKind(kind) >= SCENES_ACTIVE) {
+		// Run 93: nor a comboable fight's (its scene would come back against the straight sprinter's style).
+		if (rivalNow > 0 || fightComboable || fightTicks - start >= histTick.length - 1 || countKind(kind) >= SCENES_ACTIVE) {
 			return;
 		}
 		float sum = 0f;
@@ -3269,6 +3294,7 @@ public final class SchoolSession implements AgentSession {
 		int agentLag = 1 + lagDraw.nextInt(4);
 		EpisodePlan plan;
 		sparFight = false;
+		fightComboable = false;
 		rivalNow = 0;
 		if (review >= 0) {
 			// The old stage's own episode: its bot (standing, strafing, hopping out of view, fighting) at a skill drawn from
@@ -3378,6 +3404,16 @@ public final class SchoolSession implements AgentSession {
 				sparFight = rivalNow > 0;
 			}
 			plan.rivalIndex = rivalNow;
+			if (COMBOABLE_SHARE > 0f && mode == Mode.TRAIN && benchNow < 0 && sceneNow == null && !drill && !sparFight && rivalNow == 0
+					&& rng.nextFloat() < COMBOABLE_SHARE) {
+				// Run 93 (14 Nov ~02:00): a full fight against the comboable bot (Specialists#comboable), see COMBOABLE_SHARE. It stands in
+				// the straight sprinter's slot (the network's opponent input shows no technique), but is kept out of that bot's tallies,
+				// the stages' progress and the scenes (endFight, keepScene).
+				fightComboable = true;
+				fightBot = Specialists.STRAIGHT_SPRINTER;
+				fightStyle = Specialists.comboable(new Random(fightStyleSeed ^ 0x93C0B0L));
+				plan.style = fightStyle;
+			}
 			if (sparFight) {
 				// The installed model plays the bot (ArenaServer's rival): no scripted style.
 				plan.style = null;
@@ -4151,6 +4187,17 @@ public final class SchoolSession implements AgentSession {
 						comboPay += COMBO_HIT + (rewardRow >= 3 ? COMBO_HIT3 : 0f);
 						comboHitsPaid++;
 						combo3Paid += rewardRow >= 3 ? 1 : 0;
+						if (fightComboable) {
+							// Run 93 (14 Nov ~02:00): a combo held against the comboable bot, the 4th hit on, pays LONG_COMBO more; its runs counted.
+							if (rewardRow >= LONG_COMBO_FROM) {
+								comboPay += LONG_COMBO;
+								longComboPaid++;
+							}
+							comboableLongest = Math.max(comboableLongest, rewardRow);
+							comboableRuns3 += rewardRow == 3 ? 1 : 0;
+							comboableRuns5 += rewardRow == 5 ? 1 : 0;
+							comboableRuns10 += rewardRow == 10 ? 1 : 0;
+						}
 						// Run 56: held with an uppercut, a lunge or a hop (a sprint hit out of its own jump), or while strafing.
 						// Run 68: not in the T1c window on one falling (K2, "while they are critting you"): there the crit is the answer.
 						if (facts.sprintHit && ownJumpAir && !facts.onGround
@@ -5488,6 +5535,9 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	private void endFight(boolean won, boolean lost) {
+		if (fightComboable && mode == Mode.TRAIN) {
+			comboableFights++;
+		}
 		// Full fights only (7 Nov, run 48b): a replay without the rules goes on to the replay's own tally below (won, 3 in a row,
 		// learned). Since run 30f (1 Nov) about half the replays were played without the rules and returned here uncounted, and
 		// since 47c (every replay without the rules) none was counted: the repeated deflection replay was fought ~700 times with
@@ -5513,7 +5563,8 @@ public final class SchoolSession implements AgentSession {
 		}
 		// Full fights only: a scene starts at a moment it was crit and so loses by design; with them in, the damage curve fell
 		// the moment the scenes came in (26 Oct 09:41) while the full fights had not got worse. The scenes have their own line.
-		if (review < 0 && sceneNow == null && fightBot >= 0 && fightBot < Specialists.KINDS) {
+		// Run 93: not a comboable fight (it stands in the straight sprinter's slot and would make that bot look easy).
+		if (review < 0 && sceneNow == null && !fightComboable && fightBot >= 0 && fightBot < Specialists.KINDS) {
 			botDealt[fightBot] += fightDealt;
 			botTaken[fightBot] += fightTaken;
 			botTicks[fightBot] += fightTicks;
@@ -5635,7 +5686,9 @@ public final class SchoolSession implements AgentSession {
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school fight %s: dealt %.1f, taken %.1f, ticks %d%s", sparName(), fightDealt,
 					fightTaken, fightTicks, result));
 		} else {
-			stages.fight(fightBot, fightDealt, fightTaken, fightTicks);
+			if (!fightComboable) {
+				stages.fight(fightBot, fightDealt, fightTaken, fightTicks);
+			}
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school fight %s: dealt %.1f, taken %.1f, ticks %d%s, teacher spoke on %d ticks; %s",
 					Specialists.NAMES[fightBot], fightDealt, fightTaken, fightTicks, result, fightTeacherTicks, fightStyle.describe()));
 		}
