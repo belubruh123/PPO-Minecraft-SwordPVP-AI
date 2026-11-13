@@ -897,3 +897,24 @@ against T10/T11 (item 11's bots), teach C3/C4/K3 on those ticks.
 **Guard holds by the bot's technique** (first window): uppercut/lunge/hop 3, jump crit 0, other 8. Too few to judge yet.
 
 **Next.** The tournament starts at 10:15.
+
+## 13 Nov ~12:35: agent 28 (Sonnet) on the three-block hit (T7, 0% for every network)
+
+**What it found, checked by me.**
+- The test's 'won' needs three things: the first hit its own, a sprint hit, and no hit back for 10 ticks (bench.py's stun
+  clause).
+- The agent guessed the 0% was the stun clause alone (an artefact). That is WRONG. bench.py's own "first hit its own" line
+  reads 2% for run87T and 6% for the installed model (run35wT1).
+- So when it comes within 4 blocks at the start of an exchange, the opponent gets the first hit about 94-98% of the time.
+  That costs about -1.5 to -1.8 HP a situation for every network. A real gap.
+- No rule locks the T7 keys out. The whiff guard opens at reach 3.0, which is where T7's swing is asked for.
+- The teacher almost never shows T7. Teacher.critOpen = 1, run 34 (3 Nov): it opens EVERY approach with a jump-in crit from
+  about 6 blocks, so the T7 roll never runs. Training sees T7 only after a knockback (own 24/107).
+
+**Why it is not changed.** critOpen = 1 is the user's 2 Nov instruction: "99% of user starts with jump in crit", "it should
+learn to jump in as the other player as well". Teaching straight-in openings 30% of the time (the agent's change: critOpen
+0.7) would override that.
+
+**For the user (20:30), no blocking.** The benchmark shows every network losing the first hit when closing in (2-6%). The doc's
+T7 (sprint-hit from just outside their reach) is barely taught, because the teacher always opens with a jump-in crit, by the
+2 Nov instruction. Should the teacher show T7 openings some of the time, for example 30%?
