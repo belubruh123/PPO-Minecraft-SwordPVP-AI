@@ -1182,3 +1182,12 @@ The fair test of run 90 is a check without the guard. **guard-off-check armed at
 - Run 91 is committed (acf52dc): combo first, jump and crit bonuses off, combo hits paid more, their 2nd+ hits cost; checks play like training.
 - The round line's damage fix is committed (ae2f495). Its redeploy request was held at 22:59, because a paired check started at 22:57 (the 89b + 90 build). It goes in when that check ends (about 23:35).
 - The user's Minecraft: two instances of another profile (not DRL AI). Training runs at 41 steps a second (slower). No new DRL AI rounds since 22:48.
+
+## 13 Nov 23:02 check (runs 89b + 90, guarded; the last before run 91)
+
+- **ROUNDS WON: A 18/45, B 18/45, z 0.0.** Net A-B +0.5 (se 4.4). Damage a minute: A 376 dealt / 424 taken, B 358 / 411.
+- Outside their combo (ground, ready): A swung 26% (383 ticks), B 36% (501).
+- In their combo: A swung 28%, guard 9%; B 39%.
+- Their third hit: 29% each. Late jump-in hits: A 4 / 0, B 22 / 8.
+- The guard-off file was armed after this check had started, so it played guarded.
+- Run 91's redeploy asked 23:03.
