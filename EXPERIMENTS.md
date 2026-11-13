@@ -1805,3 +1805,19 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **Next (agent 37's plan, ranked):** shorten the stun (12-16, then 10-14) once "next hit within 20" holds 60%+ for an hour (waiting at the edge of reach then beats rushing: spacing and gap control); give C3 back as about 0.3 of fights and tell T11a after its hit against S-holders; a copy target for the follow-up window if late follow-ups dominate.
 - **Revert** if A falls under B in two checks running. Checks do not use this bot.
 - Checks before it: 04:34 A 27/45 vs B 16/45 (z +2.5, +10.2 HP); 05:19 A 26/44 vs B 22/44 (z +0.9, +5.1 HP; uppercutter -10.8; their third hit A 22%, B 14%).
+
+## Run 94 (14 Nov ~07:30): no first-hit jump reset in training, extra cost on reflex take-offs (agent 38)
+
+- **Why:** PROBLEMS item 10 flat 3+ h. The check's jump keys a minute (off / on technique moments), five checks 03:44-07:14: A 60-76 / 84-101, B 32-46 / 29-40. The user (13 Nov): "jump too much ... easy to be comboed ... harder to aim".
+- **Agent 38's breakdown** (training counters, 80 updates 05:37-07:24; no per-tick source data in checks):
+  - Of the network's own take-offs (31 per 1200 ticks), 77% were charged by OWN_JUMP_COST. 59% were in their combo, 86% of those 0-1 ticks after their hit; 62% "off beyond their reach, rising out of it".
+  - Charged take-offs stayed at about 85 an update from run 92 on: the 0.08 cost does not bind.
+  - History: A's jump keys rose from 46-64 / 64-84 to 80-110 / 100-135 at the 10 Nov 10:45 check, right after run 62 taught hops, uppercut and lunge (T10/T11); run 92 brought them down to 60-76 / 84-122.
+  - Reset jumps are taught from three places the cost cannot outweigh: the teacher's T9 jump on every sprint hit taken (PvpPlayer.java:714-719, exempt from the cost), the rule-r copy (RULED_AWR) in rule-off fights, and run 82's RESET_FIRST_HIT_TRAIN (A's training rule also jump-resets a FIRST sprint hit taken; basis n=18). B resets only in their combo.
+  - Agent 34's real rounds (n=26/17): after the rule-r jump reset their next hit came 65%, against 35% without it.
+- **Document:** T9 "press jump at the same moment you take damage"; the safest moments are T9a (against combos, as you land), T9b (against deflections), T9c (against three-block hits). Risk: "mistime the jump and you get sent flying".
+- **Change:** RESET_FIRST_HIT_TRAIN = false (training only; checks, real fights and B were never changed by it). REFLEX_FIRST_COST 0.08 on top of OWN_JUMP_COST for an untaught own take-off 0-1 ticks after their FIRST hit (theirRow <= 1). B1 and the jump-in guard untouched.
+- **Counters:** check line "school check take-offs by source (rule | technique | own 0-1 after their first hit | own 0-1 in their combo | own 2-12 | own other) A ... | B ..."; training "its own untaught take-offs charged N (run 94: reflex after their first hit charged extra N)".
+- **Learn-by (1-2 h):** the reflex extra charge falls; the check's A jump keys fall toward 45 / 65.
+- **Falsifying test:** if they do not fall, the exempt teacher keys or the rule-r copy are the source. Next then: the teacher's plain T9 only at T9a/b/c moments (needs the user's word: it reverses their 24 Oct "remove jump reset barrier"), or OWN_JUMP_COST 0.15.
+- **Revert** if rounds fall more than 2 se, "jump reset (T9)" in checks falls under 90%, or punish crit chances critted under 50%.
