@@ -1685,3 +1685,7 @@ Deploy after the 20:10 check (run 89's third, which judges run 89 as built: the 
 **Revert** if the checks (guard still on) fall under B in two checks, or the training late hits on jump crits rise for 2 h.
 
 Deployed on top of run 89b (20:26) at the user's word; the two are told apart by their own counters (after-punish-crit hit back for 89b; the run 90 line and the late hits for 90).
+- **Added to run 90 before its deploy (20:47): LATE_SWING_COST = 0.075 per late swing at a jump** (a guard tick left to it, training only).
+  - Memory (9 Nov): against the bots a late hit costs no HP, while in the user's real duels a late swing at a jump within 6.5 blocks is -0.40 HP vs +0.10 with no swing (0.05 at PER_HEALTH) and 0.20 vs 0.12 crits a jump (0.08 x CRIT_BACK_COST 0.3 = 0.024).
+  - Without it the bots would teach late swings for free. A hit on an uppercut's jump that pays (about 7 HP = 0.7) still outweighs it, so it can learn the difference.
+  - The counter shows "late swings charged N".

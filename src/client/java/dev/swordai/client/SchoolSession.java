@@ -944,6 +944,7 @@ public final class SchoolSession implements AgentSession {
 	private final int[] comboGuardBy = new int[3];
 	private final int[] guardFreeBy = new int[3];
 	private final int[] guardFreeSwungBy = new int[3];
+	private int lateSwingCharged;
 	/** Run 54c: ticks in the air since its last take-off; its vertical speed on the tick before; hits in its own jump not paid. */
 	private int ownAirTicks;
 	private double prevVy;
@@ -987,6 +988,7 @@ public final class SchoolSession implements AgentSession {
 						comboGuardBy[0], comboGuardBy[1], comboGuardBy[2])
 				+ String.format(Locale.ROOT, " | run 90, the guard's ticks left to it in training by the bot's technique, ticks/swung: uppercut/lunge/hop %d/%d, jump crit %d/%d, other %d/%d",
 						guardFreeBy[0], guardFreeSwungBy[0], guardFreeBy[1], guardFreeSwungBy[1], guardFreeBy[2], guardFreeSwungBy[2])
+				+ String.format(Locale.ROOT, ", late swings charged %d", lateSwingCharged)
 				+ String.format(Locale.ROOT, " | after its %d punish crits, any hit taken (real duels: 82%% within 30, 16%% crits): within 12 ticks %d, within 30 %d (crits %d)",
 						pcAnyCrits, pcBack12, pcBack30, pcBackCrit30)
 				+ String.format(Locale.ROOT, " | run 89, after its punish crit the teacher showed T6 on %d ticks, S its own on %d", t6AfterTaught, t6AfterBack)
@@ -1046,6 +1048,7 @@ public final class SchoolSession implements AgentSession {
 		java.util.Arrays.fill(comboGuardBy, 0);
 		java.util.Arrays.fill(guardFreeBy, 0);
 		java.util.Arrays.fill(guardFreeSwungBy, 0);
+		lateSwingCharged = 0;
 		airJumpHitsFree = 0;
 		counterHits = 0;
 		readyTicks = readySwung = readyHeldFalling = readyHeldOther = 0;
@@ -2436,6 +2439,13 @@ public final class SchoolSession implements AgentSession {
 	 * Checks, benchmarks and the user's fights (FightSession) keep the guard until training shows it holds on its own.
 	 */
 	static final boolean GUARD_LEARNED = true;
+	/**
+	 * Run 90: a late swing at a jump (on a tick the guard would have held) costs what it costs in the user's real duels and the bots
+	 * do not charge (memory, 9 Nov: against the bots a late hit costs no HP). Real duels, jumps within 6.5 blocks: a late swing -0.40 HP
+	 * a jump, no swing +0.10, so 0.5 HP (0.05 at PER_HEALTH), and crits taken 0.20 vs 0.12 a jump (0.08 x CRIT_BACK_COST 0.3 =
+	 * 0.024). A hit on an uppercut's jump that really pays (about 7 HP, 0.7) still outweighs it.
+	 */
+	static final float LATE_SWING_COST = 0.075f;
 	static final int JUMP_IN_SWING_TICKS = 1;
 	/**
 	 * Run 49 (8 Nov 19:35): the jump's ticks counted from their ground flag turning to air, as the user's 5 Nov numbers were
@@ -4717,6 +4727,11 @@ public final class SchoolSession implements AgentSession {
 					|| gft == Technique.T1A.ordinal() || gft == Technique.T1B.ordinal() || gft == Technique.T1C.ordinal() ? 1 : 2;
 			guardFreeBy[gfc]++;
 			guardFreeSwungBy[gfc] += action[ActionSpace.ATTACK] == 1 ? 1 : 0;
+			if (mode == Mode.TRAIN && action[ActionSpace.ATTACK] == 1) {
+				// Run 90: the real duels' price of a late swing at a jump (LATE_SWING_COST), which the bots do not charge.
+				enterReward -= LATE_SWING_COST;
+				lateSwingCharged++;
+			}
 		}
 		// Run 54b: counters for PROBLEMS.md 1, 2, 10 (the swing back in their combo) and 4 (the T1c funnel after its punish crit).
 		if (mode == Mode.TRAIN && review < 0) {
