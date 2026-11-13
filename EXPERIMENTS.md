@@ -1610,3 +1610,20 @@ T1c rate (T1C_AT_LANDING).
 
 **Deploy.** T6_AFTER_PUNISH = 0.3, after run 88c's verdict. Judge: hit back within 30 ticks after its punish crit below
 70%, critted back below 28%, punish crit 50-65%, Make them miss not worse in the benchmark.
+
+### 13 Nov 16:21-17:36: run 88c's same-session benchmark (U session)
+
+| Benchmark | Total (se) | Skills | h2h | Bots | Verdict |
+|---|---|---|---|---|---|
+| run88cU (run 88c at 2.5 h, airyield) vs run35wU1 | **+3.70** (0.99) | +6.74 | -0.48 | +1.81 | **BETTER** |
+| run87U (run87-0552) vs run35wU1 | +2.73 (0.92) | +6.22 | -2.53 | +1.02 | BETTER |
+| run88cU vs run87U | +0.89 (1.03) | +0.37 | +2.05 | +0.79 | TIE |
+
+88c vs 87, test by test:
+- Better: Jump-in defence +1.65 (0.73), Three-block hit +1.22 (0.64), Make them miss +0.21, Crits +0.34.
+- Worse: Punish crit -0.56 (0.46), Getting out of combos -0.24.
+
+**Verdict.** Run 88c (the combo swing, not at falling opponents) is kept. Its checks: air hold level with B (23/23, 16/16),
+z +0.7 and +0.4. Run 89 (the teacher's T6 after its punish crit, share 0.3) goes on top of it after the session.
+
+run35wU2 (the drift reference) is scored when the session ends.
