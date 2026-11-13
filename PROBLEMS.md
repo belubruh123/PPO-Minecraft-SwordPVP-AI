@@ -812,3 +812,20 @@ redeploy.
 **Jump-ins:** A 0 hits at ground tick 0-1, 5 late; B 0 and 25 late.
 
 **Next.** Run 88b's redeploy was asked for at 07:35, together with agent 26's hit-back counter.
+
+## 13 Nov 08:22: the hit-back counter (agent 26's measurement) over run 88b's first 40 minutes
+
+After its 249 punish crits in training:
+- hit back within 12 ticks: 113 (45%);
+- within 30 ticks: 175 (70%);
+- of those, crits: 70 (28%).
+
+In the user's real duels: 82% within 30 ticks, 16% of them crits.
+
+So the training bots answer its punish crit nearly as often as real players do (70% vs 82%), and crit back MORE (28% vs 16%).
+The bots are not the gap here (agent 26's branch "near 82%"). The next step for item 4 is the network's own answer after its
+punish crit. Agent 26 proposed a short S-tap option chosen by the decider; it is not in the document beyond the general
+S-tap. Weigh it against the T1c that works now (crit again 5 of its last 11 punish crits).
+
+Run 88b, first windows: the punish crit was 63% and then 69%, so not lower yet. The keep given back in the remaining cases:
+9, swung 0. The rule swings itself in most of these cases now. The first check on run 88b is due at about 08:30.
