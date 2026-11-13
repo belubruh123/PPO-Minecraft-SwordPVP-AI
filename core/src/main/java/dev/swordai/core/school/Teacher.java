@@ -24,7 +24,7 @@ public final class Teacher {
 	 * (make them miss their answer: a short S as they swing, then the sprint hit) instead of T1c. The keys go where T6's always go
 	 * (no new option layer: T6's own moments, a benchmark strength, stay as they are). 0 = off.
 	 */
-	public static final float T6_AFTER_PUNISH = 0f;
+	public static final float T6_AFTER_PUNISH = 0.3f; // run 89 on, 13 Nov after run 88c benchmarked BETTER (+3.70)
 	/** Of a target, the share on the teacher's key; the rest is spread over the other keys of the head. */
 	static final float SURE = 0.99f;
 	/** A key the target holds at least this much of is one the teacher asks for (alone, or with others alike). */
