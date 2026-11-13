@@ -1012,3 +1012,23 @@ jump-in from ground tick 2 on, rising OR falling. That part is in the user's que
 
 **Item 9 stays OPEN** (only the user's real duels close an item). Its status: accuracy-compensated, hits about 3-5% fewer,
 not a lockout.
+
+## 13 Nov 18:23 review (run 89 since 17:41 on top of run 88c; the 16:10 check was run 88c at 2.6 h)
+
+**16:10 check: ROUNDS WON A 25/44 (57%), B 19/44 (43%), z +1.5.** Only A won 11, only B won 5. This is run 88c's best check.
+- Damage a minute: A 408 dealt / 410 taken, B 378/392. Net a fight A -0.3, B -2.3.
+- Their third hit: A 29%, B 32%.
+- Outside their combo (on the ground, sword ready): A 235 ticks, swung 52%, held-falling 18%, held otherwise 30%; B 380 ticks, 53/16/31. The rates are level; A has fewer ticks (item 9).
+- Late jump-in hits: A rising 3 / falling 0, B 18 / 6.
+
+**Training since the redeploy (40 min, run 89):**
+- Aim: swings 98% on target and landed.
+- Punish crit chances critted: 70% of 300. It has been 63-73% all day, above the band but as a floor guard that is fine.
+- Run 54: after its 13 punish crits, T1c 1 and critted back 2. Any hit taken within 30 ticks: 6/13 (46%), crits 2. Real duels: 82%.
+- Run 89 is working: the teacher showed T6 on 11 ticks after its punish crit, and it chose its own S on 2.
+- In their combo: 215 ticks, swung 63 (29%), jump-in guard 21, in the air 28 (13%).
+- Combo held by uppercut 8, lunge/hop 3, strafing 19. K2 17/24.
+
+**Benchmark (same session):** run 88c beat the installed model on both references (+3.70, +2.96). Head-to-head was level (-0.48, +0.72). Weakest test: Make them miss, rate 45% vs 56-62% but level in HP. Run 89's T6 lesson aims there and at item 4.
+
+**3-hour rule:** item 2's queued follow-up (their crit openers, A -1.8 HP a fight, queued 12 Nov 07:00) has not been done. Research agent 31 (Sonnet) launched 18:30, read-only: split their crit openers into jump-ins under the user's rule / legal / after its whiff or hit (T6) / after its punish crit / other, A vs B over the last checks; one bottleneck, a test, ranked fixes.
