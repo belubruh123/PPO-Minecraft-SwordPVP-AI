@@ -1093,3 +1093,15 @@ Split (first-hit damage, 3 checks):
 - T10 (the doc): "jump, and sprint-hit the opponent at the peak of your jump". The jump-in guard arms on any take-off from 3.3-6.5 blocks (agent 27), so it holds A's swing against the uppercut's jump from ground tick 2 on. B has no guard.
 - So item 11's uppercutter loss is mostly the price of the user's rule ("jumps in any direction", 8 Nov). It goes to the user's 20:30 question, now sharper: should an uppercut's jump (T10) count as a jump-in for the no-swing rule? Not changed without the user's word.
 - A is hit in the air about 5x as often as B against every bot (its own take-offs; agent 31). Damage taken is level, so it is not a cost by itself.
+
+## 13 Nov 19:23 check: run 89's second (1.6 hours)
+
+- **ROUNDS WON: A 20/44 (45%), B 16/44 (36%), z +0.9.** Only A won 11, only B won 7.
+- Net a fight: A -7.9, B -14.2, so A-B +6.3 (se 6.9). Damage a minute: A 368 dealt / 419 taken, B 327 / 419.
+- Their third hit: **A 31% (29/94), B 49% (34/70).**
+- Swings: A 336 at 98% = 329 hits; B 348 at 87% = 302. A lands more hits again.
+- Outside their combo (ground, ready): A 244 ticks, swung 43 / held-falling 24 / held otherwise 32; B 307, 53 / 14 / 33. A's extra holds are on falling opponents (K2, right by the doc).
+- Late jump-in hits: A 4 rising / 1 falling, B 22 / 4. Jump-ins punished with its crit: A 22/60 (37%), B 12/64 (19%).
+- B1 49/56 (88%) vs 29/65 (45%).
+- Behind: uppercutter -22.2 (A 0-3), fight-spacer -21.0, stun-escaper -15.2, fight-timer -14.0, fight-jumpin -10.5.
+- Training (72 updates, 564 punish crits): any hit within 30 ticks 65% (run 88c 61%), critted back 25% (23%). The teacher showed T6 on 562 ticks; its own S 45. Item 4 has not moved yet. Verdict after the third check.
