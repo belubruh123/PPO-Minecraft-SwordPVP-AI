@@ -382,8 +382,14 @@ final class RoundRecorder {
 		if (takenRow >= 3) {
 			combosTaken++;
 		}
-		return String.format(Locale.ROOT, "%s vs %s (%d ms): %.1f s, hits %d dealt / %d taken, damage %.0f / %.0f",
-				result.toUpperCase(Locale.ROOT), opponent, oppPingMillis, timeline.size() / 20f, dealt, taken, damageDealt, damageTaken);
+		// 13 Nov 23:00 (the user: "dealt and taken are wrong, it won but has lower dealt"): a server that hides the other player's
+		// health leaves damage dealt at 0, and a hit count weighs a crit (1.5x damage) as a plain hit. So the crits are shown with the
+		// hits, a crit-weighted count (a crit as 1.5 hits) is given, and an unreadable damage dealt says so instead of 0.
+		String dmgDealt = damageDealt > 0f ? String.format(Locale.ROOT, "%.0f", damageDealt) : "hidden by the server";
+		// The prefix up to "taken" stays as it was: tools/duelday.py and roundidx.py split on " dealt / ".
+		return String.format(Locale.ROOT, "%s vs %s (%d ms): %.1f s, hits %d dealt / %d taken, damage %s / %.0f; crits %d dealt / %d likely taken, crit-weighted hits %.1f / %.1f",
+				result.toUpperCase(Locale.ROOT), opponent, oppPingMillis, timeline.size() / 20f, dealt, taken, dmgDealt, damageTaken,
+				ownCrits, takenCrit, dealt + 0.5f * ownCrits, taken + 0.5f * takenCrit);
 	}
 
 	/** The round's file: the summary on top, the reasons, then the timeline a tick a line. */
