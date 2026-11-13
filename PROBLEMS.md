@@ -1056,3 +1056,16 @@ Split (first-hit damage, 3 checks):
 - Run 89 stays the only change until it is judged.
 - The one class worth watching is their double crit after its own non-punish crit (+2.4, se 0.8, about 3 se). If run 89's T6 lesson after its punish crit works (item 4), the same T6 answer after its other crits is the next single change.
 - Scripts in tools/a31 (pairs.json is data, not committed).
+
+## 13 Nov 18:34 check: run 89's first (50 minutes; on top of run 88c)
+
+- **ROUNDS WON: A 19/44 (43%), B 17/44 (39%), z +0.4.** Only A won 11, only B won 9. A hard seed set for both.
+- Net a fight: A -3.1, B -12.7, so A-B **+9.6 (se 5.8)**. Damage a minute: A 384 dealt / 405 taken, B 327 / 406.
+- Their third hit: **A 36% (27/75), B 49% (38/78).**
+- Swings: A 341 at 97% landed = 330 hits; B 356 at 88% = 313. **A landed more hits than B** (item 9).
+- Outside their combo (ground, ready): A 242 ticks, swung 49 / held-falling 17 / held otherwise 34; B 338, 47 / 22 / 31.
+- In their combo: A swung 34% of 421 ticks, B 40% of 434.
+- Late jump-in hits: A 4 rising / 0 falling, B 14 / 3. Jump-ins punished with its crit: A 11/53 (21%), B 8/57 (14%).
+- Techniques: B1 45/56 (80%) vs B 38/68; T6 2/12 (17%) vs 1/10; T6a 3/17 vs 0/18; T1c 6/6.
+- **Uppercutter -37.3 (se 8.4)**, A 0-3 vs B 2-1. On run 88c/89: -13.5, -11.8, -37.3, pooled about -19 a fight. A deals 240-317 a minute against it vs B 356-447, while damage taken is level. That is item 11. It ties to the user's 20:30 question (the jump-in guard holds against uppercuts, lunges and hops in their combo; 0 of 90 holds were jump crits).
+- Run 89 verdict after 3 checks.
