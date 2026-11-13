@@ -1315,3 +1315,14 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Outside their combo: A swung 47%, B 52%. In their combo: A 36%, B 38%. Swings: A 357, B 390.
 - Jump keys a minute: A 65 / 84, B 42 / 35. The on-moment jumps are back to 84 from 122.
 - Comboable bot: longest run 6. Punish crit 64%.
+
+## 14 Nov 04:34 check: run 93's third (about 2.5 h)
+
+- **ROUNDS WON: A 27/45 (60%), B 16/45 (36%), z +2.5.** Only A won 15, only B won 4. The best check since run 88c.
+- Net A-B +10.2 (se 4.8). Damage a minute: A 398 dealt / 363 taken, B 358 / 384.
+- Their third hit: A 27%, B 32%. Swings: A 398, B 411 (3% fewer; was 8-11%). Aim: A 98% on them, B 91%.
+- Outside their combo: A swung 52%, B 59%. In their combo: A 34%, B 46%.
+- Jump keys a minute (off / on moments): A 76 / 101, B 46 / 29. Still jumps far more than B.
+- Behind on fight-jumpin (-14.9) and mixer* (-15.8); jump-in-critter -7.0. Late hits on jump-ins (tick 2+): A 14 rising + 3 falling, B 18 + 3.
+- Comboable bot, 02:00-04:55 summed per 10 min: about 180 fights, runs to 3+ only 4, longest 6 once (03:1x); most windows longest 0-2. Flat for 3 h: the 3-hour rule hit item 12. Agent 37 (Opus, max effort, worktree) launched 04:58 for a structural diagnosis of where the chain breaks after hit 1 and whether the bot is comboable at all. The share stays at 0.25 until it reports (more fights cannot help if 4 in 180 ever reach 3).
+- Punish crit 67%.
