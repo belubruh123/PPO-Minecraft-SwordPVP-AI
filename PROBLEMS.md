@@ -1277,3 +1277,11 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Outside their combo (ground, ready): A swung 47% (at 23:02: 26%), held otherwise 39%; B 52%, 30%. Swings: A 362, B 385.
 - Jump keys a minute (off / on moments): A 59 / 84, B 38 / 38. At 16:10: A 71 / 91, B 45 / 31. Fewer, but still above B.
 - Punish crit 65%.
+
+## 14 Nov 01:52 review: run 92 flat over its last hour
+
+- 00:52-01:50 (44 updates), per update: follow-ups 29.3 (3rd+ 10.1), their 2nd+ 54.8, own untaught take-offs 93.3, too close 37.1, edge hits 40.0.
+- About flat against its first half-hour. Run 92's second check is playing (01:52).
+- The 5-hour usage window is at 54%, so the next builder is Sonnet: agent 36 (Sonnet, high effort, worktree) builds run 93, switched off.
+  - Run 93 is a "comboable" bot (full knockback, small ping, backs off) in 25% of training fights, plus a long-combo bonus from the 4th hit (agent 32's plan item 3).
+  - Turned on if run 92's follow-ups stay flat.
