@@ -5,7 +5,10 @@ Written 13 Nov 02:55, before the duels, so that the result cannot be argued afte
 
 ## Setup
 
-- The profile's A/B pool (`swordai/school/ab/pool.txt`) holds two arms: `installed` (run35-0657) and `run85` (run85-1727).
+- **Since 13 Nov 21:23 (the user: "install the best model so far by 22:10")** the profile's A/B pool (`swordai/school/ab/pool.txt`)
+  holds `run88c` (run88c-1615, weight 3, option `airyield`) and `installed` (run35-0657, weight 1): about 75% of duels play run 88c.
+  Backup: `swordai/backup-before-ab-20261113-212350`. The decision rule below compares run88c against installed.
+- Before that (13 Nov 02:43 to 21:23): `installed` (run35-0657) and `run85` (run85-1727), weight 1 each.
   Each duel draws one arm at random. The user is not told which arm plays.
 - A third arm is added only if the user can play about 90 rounds or more, and only with a checkpoint whose pooled benchmark
   is at least as good as run85-1727 against the averaged reference.

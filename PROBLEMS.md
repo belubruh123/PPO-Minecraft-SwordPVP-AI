@@ -1127,3 +1127,12 @@ Split (first-hit damage, 3 checks):
 - Run 89b (T6 taught) redeploy asked 20:13.
 
 **Duel arm.** The same-session run 85 vs run 89 benchmark is dropped. The linked estimate already puts run 88c level with run 85 (both +0.9 over run 87), so a 40-minute direct test would most likely read TIE. A swap would also need a new jar in the user's profile. The training time goes to run 89b instead. The pool stays installed vs run85-1727 for 14 Nov.
+
+## 13 Nov 21:23: run88c-1615 installed as the main duel arm (the user's word)
+
+- The user (~21:00): "Help me install the best model so far by 22:10 and I will run duels on real ppl later".
+- Pool now: run88c (run88c-1615, weight 3, airyield) and installed (run35-0657, weight 1), rules on. The jar is the 21:22 build.
+- Before installing, fixed a mismatch (9840527): in the user's game the "airyield" option also turned on run 88's air yield (dropped from training at 12:25). The benchmark never played that. Now the arm plays exactly what was benchmarked.
+- Backup: DRL AI/swordai/backup-before-ab-20261113-212350 (old jar, checkpoint, the installed-vs-run85 pool).
+- Verified by cmp: the jar matches build/libs, and run88c.bin matches run88c-1615 (sha1 21eff2966213).
+- After the duels: tools/duelday.py 20261113 (and 14) for run88c vs installed, by docs/DUEL-DAY.md's rule.
