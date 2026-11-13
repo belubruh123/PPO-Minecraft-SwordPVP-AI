@@ -1136,3 +1136,4 @@ Split (first-hit damage, 3 checks):
 - Backup: DRL AI/swordai/backup-before-ab-20261113-212350 (old jar, checkpoint, the installed-vs-run85 pool).
 - Verified by cmp: the jar matches build/libs, and run88c.bin matches run88c-1615 (sha1 21eff2966213).
 - After the duels: tools/duelday.py 20261113 (and 14) for run88c vs installed, by docs/DUEL-DAY.md's rule.
+- 21:35, the user: "The opponent aren't the same so yeah". The pool is now run88c alone (weight 1, airyield), so every duel plays run 88c. The 75/25 pool is kept as ab/pool-7525-20261113-2123.txt. Judge run 88c against the earlier real-duel record (12-13 Nov installed/run85 rounds), knowing the opponents differ.
