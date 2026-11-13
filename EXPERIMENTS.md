@@ -1627,3 +1627,12 @@ T1c rate (T1C_AT_LANDING).
 z +0.7 and +0.4. Run 89 (the teacher's T6 after its punish crit, share 0.3) goes on top of it after the session.
 
 run35wU2 (the drift reference) is scored when the session ends.
+
+**Drift reference (17:36).** run35wU2 (the installed model again, benchmarked last) vs run35wU1: -0.24 (0.92), a TIE, so the session hardly drifted.
+
+| Network | vs U1 (first) | vs U2 (last) | Mean |
+|---|---|---|---|
+| run88cU | +3.70 BETTER | +2.96 BETTER | **+3.33** |
+| run87U | +2.73 BETTER | +2.23 BETTER | +2.48 |
+
+Run 88c is BETTER than the installed model against both references, and ahead of run 87 against both. Kept; run 89 goes on top.
