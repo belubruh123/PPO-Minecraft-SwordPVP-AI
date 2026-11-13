@@ -986,3 +986,29 @@ kept as run87-pre88c.bin.
 **Outside their combo:** A swung less than B (B 58%).
 
 **Jump-ins:** A 0 at ground tick 0-1, 4 late; B 0 and 22 late.
+
+## 13 Nov ~16:45: agent 30 (Sonnet) on item 9 (swings about 11% less than the 23 Oct model)
+
+**Mostly not a swing lockout.** Last five checks, outside their combo, on the ground, sword ready, in reach:
+
+| What | A | B |
+|---|---|---|
+| Ticks in that situation | 193-284 | 288-380 (A has about 35-40% fewer) |
+| Swung | 42-52% | 50-58% |
+| Held with them falling (K2, correct by the doc) | | about 3-5 points less than A |
+| Held otherwise | | about 3-6 points less than A |
+| Crosshair off them | level | level |
+| On its body but no pick | 6-12% | 15-22% |
+
+- The whiff guard and the pick do NOT cost A swings; A loses fewer there than B.
+- A's swings land 96-98%, against B's 86-92%. So the hit gap (about 3-5%) is much smaller than the swing gap (9-11%).
+- The doc favours selective hits (T6 make them miss, K2, hit selecting T4/T6 both fine).
+- What is left:
+  - fewer ready ticks in reach (position and time);
+  - the in-combo swing (A 32-36% vs B 39-47%), where the jump-in guard holds 5-10% of A's ticks (B 0%).
+
+**Its suggestion, NOT applied:** loosen the guard in their combo for rising opponents. The user's rule forbids a swing at a
+jump-in from ground tick 2 on, rising OR falling. That part is in the user's question (20:30).
+
+**Item 9 stays OPEN** (only the user's real duels close an item). Its status: accuracy-compensated, hits about 3-5% fewer,
+not a lockout.
