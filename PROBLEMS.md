@@ -957,3 +957,18 @@ word.
 
 **Next.** Run 88c's redeploy was asked for at 13:34 (the combo swing, not at falling opponents). The network before it is
 kept as run87-pre88c.bin.
+
+## 13 Nov 14:32 check: run 88c's first (48 minutes; the combo swing, not at falling opponents)
+
+**Rounds won:** A 22 of 45 (49%), B 19 of 45 (42%); only A won 10, only B won 7; z +0.7.
+**Damage:** A 400 dealt / 390 taken, B 382 / 399. A deals more and takes less.
+
+**Their combos.** Their third hit after the second: A 39% (36 of 93), B 22%, so A is still worse.
+- In their combo, sword ready: A swung 35%, B 40%.
+- **Held in the air: A 23%, B 23%, level for the first time today.** A was at 25-28% under run 87 and 21% under run 88b.
+
+**Outside their combo:** A swung 43%, B 57%.
+
+**Jump-ins:** A 0 at ground tick 0-1, 7 late; B 0 and 27 late.
+
+**Next.** Run 88c's same-session benchmark is at 16:15.
