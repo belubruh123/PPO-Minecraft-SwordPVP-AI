@@ -1254,3 +1254,18 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Its hits' mean distance against the bots: 2.34.
 - Punish crit chances critted 55%. One training loop (a second "loop" in the review was a short-lived subshell).
 - First run 92 check about 01:00.
+
+## 14 Nov 00:52 review: run 92 at about 37 minutes (28 updates), first half vs second half, per update
+
+| Counter | First half | Second half |
+|---|---|---|
+| Own untaught take-offs | 90.6 | 78.1 |
+| Their 2nd+ hits | 62.9 | 52.4 |
+| Combo follow-ups | 32.7 (3rd+ 12.6) | 28.2 (10.4) |
+| Too-close ticks | 33.0 | 41.6 |
+| Edge hits | 33.1 | 35.0 |
+| Air hits | 12.0 | 11.6 |
+| Swings | 55.9 | 75.9 |
+
+- Jumps and their 2nd+ hits are falling. Follow-ups are slightly down and too-close ticks up.
+- Punish crit 63%. The first run 92 check is due about 01:00.
