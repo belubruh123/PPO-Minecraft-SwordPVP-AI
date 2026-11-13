@@ -1336,3 +1336,11 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Behind on uppercutter (-10.8), fight-jumpin (-7.1), stun-escaper (-6.4).
 - Agent 37 found the comboable bot was doing the document's C3 fly-out (S held 12-20 ticks after every hit, out of reach and back head-on after the combo window): even a perfect sprint chaser chained 3+ in 1% of its runs. Run 93b makes it stunned instead (no swing, walks back in). Redeploy asked 05:24, right after this check.
 - 05:52 review, run 93b's first 20 min (redeployed 05:31): comboable bot 18 fights, runs to 3+ 5 (0.28 a fight, was about 0.02), longest 11, two runs of 10+; after its hits there its next hit within 20 ticks 68% (mean gap 13-15), their hit later 30%, trades 0, neither 1. The chain now exists in training; next judge whether it carries to the checks (their third hit, follow-ups) and then shorten the stun (12-16) once "next" holds 60%+ for an hour.
+
+## 14 Nov 06:25 and 07:14 checks (run 93b, missed by the review timer, logged 07:20)
+
+- **06:25 ROUNDS WON: A 26/46 (57%), B 19/46 (41%), z +1.6.** Net A-B +5.8. Damage a minute: A 415 / 402, B 371 / 395. Their third hit A 30%, B 32%. Outside their combo: A swung 44%, B 54%. Swings A 381, B 414. Jump keys a minute: A 61 / 88, B 43 / 30. fight-jumpin -10.5.
+- **07:14 ROUNDS WON: A 22/44 (50%), B 17/44 (39%), z +1.1.** Net A-B +4.5. Damage a minute: A 383 / 405, B 365 / 418. Their third hit A 35%, B 35%. Outside their combo: A swung 47%, B 52%. Swings A 359, B 374. Jump keys a minute: A 60 / 101, B 37 / 40.
+- Run 93b in training (05:31-07:20, comboable bot): 115 fights, runs to 3+ 29 (0.25 a fight, run 93 about 0.02), runs of 10+ in most half-hours (longest 11); next hit within 20 ticks 51% (69% in the first half hour, 39-50% since 06:30), their hit later 47%, trades 0. Not yet carried into the checks (their third hit unchanged).
+- Item 10 (in the air / jumps) flat 3+ h: A jumps 1.5x B off technique moments and 2.5-3x on them in five checks running (03:44-07:14). Agent 38 (Sonnet, worktree) launched 07:25: where A's extra jumps come from (teacher, rules, exemptions, own) and the top fix.
+- The review timer skipped 06:22, 06:52 and 07:22; a backup timer (minutes 28 and 58) now covers it.
