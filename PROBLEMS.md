@@ -880,3 +880,20 @@ uppercut/lunge/hop, jump crit, other", from the server's truth.
 
 Run 75 already gives W and the sprint back while the guard holds in their combo. Next, if the counter shows most holds are
 against T10/T11 (item 11's bots), teach C3/C4/K3 on those ticks.
+
+## 13 Nov 09:23 check (run 88b at 1.7 hours)
+
+**Rounds won:** A 23 of 44 (52%), B 20 of 44 (45%); only A won 7, only B won 4; z +0.9.
+**Damage:** A 359 dealt / 396 taken, B 363 / 373.
+
+**Their combos.** Their third hit after the second: A 42%, B 36%, so A is worse this check.
+- In their combo, sword ready: A swung 38% (33-37% before), B 42%.
+- Held in the air: **A 21%** (25-28% in the four checks before), B 17%. Run 88b's effect is starting to show.
+
+**Outside their combo:** A swung 44%, B 47%.
+
+**Jump-ins:** A 0 at ground tick 0-1, 1 late; B 0 and 19 late.
+
+**Guard holds by the bot's technique** (first window): uppercut/lunge/hop 3, jump crit 0, other 8. Too few to judge yet.
+
+**Next.** The tournament starts at 10:15.
