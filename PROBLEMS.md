@@ -829,3 +829,26 @@ S-tap. Weigh it against the T1c that works now (crit again 5 of its last 11 puni
 
 Run 88b, first windows: the punish crit was 63% and then 69%, so not lower yet. The keep given back in the remaining cases:
 9, swung 0. The rule swings itself in most of these cases now. The first check on run 88b is due at about 08:30.
+
+## 13 Nov 08:34 check: the first on run 88b (50 minutes in)
+
+**Rounds won:** A 24 of 45 (53%), B 20 of 45 (44%); only A won 10, only B won 6; z +1.0.
+**Damage:** A 371 dealt / 391 taken, B 427 / 419.
+
+**Their combos.** Their third hit after the second: A 27%, B 30%, so A is better this time.
+- In their combo, sword ready: A swung 37% (33-34% before run 88b), B 45%.
+- Held in the air: A 28%, B 14%, unchanged for A.
+
+**Outside their combo:** A swung 50%, B 56%.
+
+**Punish crit by the game:** A 12%, B 3%. **Jump-ins:** A 0 at ground tick 0-1, 8 late; B 0 and 29 late.
+
+**Why the air hold did not move.** Run 88b's switch is on in the checks: Fighter.comboProvenOff, set per tick, and MIN_HITS is
+2. The training counter shows what is left:
+- In their combo with the sword ready, the network itself did not swing while in the air in 41 of 166 ready ticks, with no
+  rule holding it.
+- That is its own learned habit. Run 88b only changes what it is taught from now on, so it needs training time.
+- Judge at the 09:20 check and in the 10:15 tournament.
+
+**Agent 27 (Sonnet, 08:56):** jump-in vs uppercut, lunge and hop (items 3 and 11). Does the jump-in guard also hold the swing
+against T10, T11a and T11b?
