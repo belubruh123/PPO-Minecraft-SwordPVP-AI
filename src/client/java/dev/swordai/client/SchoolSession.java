@@ -206,7 +206,7 @@ public final class SchoolSession implements AgentSession {
 	 * the document's K2 forbids (their crit follows). The client's view of their fall (Body.falling), the same in training and
 	 * in the user's game.
 	 */
-	static final boolean COMBO_PROVEN_OFF_C = false;
+	static final boolean COMBO_PROVEN_OFF_C = true; // run 88c on 13 Nov after the 13:3x check
 
 	/** Whether A's rules make the swing in their combo now (runs 88b/88c); see Fighter#comboProvenOff. */
 	static boolean comboProvenOffNow(dev.swordai.core.pvp.Body them) {
