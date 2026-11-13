@@ -1547,3 +1547,22 @@ run35wT2 (the installed model again, for drift within the session) finishes afte
   - Mixed: Jump-in defence (-0.06 / -1.90) and Crits (-2.05 / +0.19).
   - No test is worse by more than 2 se.
 - **Duel arm:** unchanged (installed vs run85-1727). It is the top-ranked network.
+
+**12:37, the tournament's last benchmark: run35wT2 vs run35wT1** (the installed model twice, in the same session): +0.73
+(0.81) TIE; skills +1.73, h2h -0.68, bots +0.15.
+
+So even within one session the same network moves about 0.7.
+
+**Against the mean of T1 and T2** (subtract about 0.37 from the "vs T1" totals):
+
+| Network | Total |
+|---|---|
+| run85-1727 | about +1.4 |
+| run87-0552 | about +1.1 |
+| run52 | about -0.3 |
+| run88b | about -0.3 |
+| run30h | about -1.4 |
+
+The best two lean ahead of the installed model by about 1 se. That is not proven on this benchmark alone: earlier "BETTER" verdicts (+3.5 to +4.6) were inflated by the session effect. Real duels decide; the duel arm is the top network.
+
+**Training resumed at 12:37 from run87-0552.** A redeploy was asked for with runs 88/88b off.
