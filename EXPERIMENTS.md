@@ -1660,3 +1660,28 @@ Run 88c is BETTER than the installed model against both references, and ahead of
 **Revert** if a check's swings fall 10% under run 89's (336-341), W/S off at T4 or T7 in tech-review passes 50% (the C3 spread of 29 Oct), or rounds fall under B's in two checks.
 
 Deploy after the 20:10 check (run 89's third, which judges run 89 as built: the teacher only).
+
+### Run 90 (13 Nov 20:45): the jump-in guard learned in training (the user's word)
+
+**The user (13 Nov ~20:40), after the uppercutter finding:** "It should learn when to hold when not to even when player jump".
+
+**Why.** Against the uppercutter (last 5 checks, 10 fights a side), A deals 41.7 HP a fight vs B 55.7 and takes about the same.
+- A lands 5.5 hits vs B 7.1. Hits on the bot in the air: A 4.6, B 6.5, which is the whole gap.
+- The guard arms on any take-off from 3.3-6.5 blocks and holds the swing from ground tick 2 on. It cannot tell an uppercut's jump from a jump-in crit, and the network never learns which is which, because the swing is taken away and nothing is taught on those ticks.
+
+**Change (SchoolSession.GUARD_LEARNED, training only).** On the ticks the guard would have held (guardWould):
+- In Mode.TRAIN the swing is not held.
+- The technique teacher's swing head, the rules' swing (ruled) and the ruled pull's target (ruledTaught) are all taken off the swing head.
+- So only the outcome teaches it. KnockbackLag gives the opponent's knockback a ping, so a late knock-away on a jump-in crit still eats the crit in training.
+- K2_BROKEN (the doc's K2: never knock back a falling player, a reward cost) is unchanged, so this frees mostly the rising swings the doc allows (T8, K2) and the user's ping rule held.
+- Checks, benchmarks and the user's fights (FightSession) keep the guard.
+- A new switch, swordai/school/guard-off-check, plays a paired check with A's guard off (to touch when training shows it holds against jump crits on its own).
+- New counter: "run 90, the guard's ticks left to it in training by the bot's technique, ticks/swung: uppercut/lunge/hop, jump crit, other".
+
+**Learn-by.** Within about 2 h, the swing share on jump-crit ticks falls, and it is below the uppercut/lunge/hop share. Training's "LATE knock-away hits" and the "crits taken within ten ticks" after its K2-broken hits fall from their first-hour level. Flat past 3 h = bug hunt (is KnockbackLag's ping enough to make a late hit on a jump crit cost?).
+
+**Then.** One guard-off check: A's late hits on jump-ins at most half of B's, A's rounds not worse than the guarded checks, the uppercutter not worse.
+
+**Revert** if the checks (guard still on) fall under B in two checks, or the training late hits on jump crits rise for 2 h.
+
+Deployed on top of run 89b (20:26) at the user's word; the two are told apart by their own counters (after-punish-crit hit back for 89b; the run 90 line and the late hits for 90).

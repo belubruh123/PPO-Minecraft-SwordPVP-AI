@@ -675,6 +675,8 @@ public final class SchoolSession implements AgentSession {
 	 * school folder a check plays side A without the rules, to see how far the network is from taking over.
 	 */
 	static final String RULES_OFF_CHECK_FILE = "rules-off-check";
+	/** Run 90: a paired check in which A's jump-in guard does not hold (the network's own choice), while this file exists. */
+	static final String GUARD_OFF_CHECK_FILE = "guard-off-check";
 	/** With this file in the school folder a real fight (FightSession) is played without the rules: the network alone. */
 	static final String NO_RULES_FILE = "no-rules";
 	/** An empty file of this name in the school folder switches hit and out on for a real fight (FightSession), with the rules over the network. */
@@ -722,6 +724,7 @@ public final class SchoolSession implements AgentSession {
 	/** This fight is played without the installed model's rules (training: the share above; check: the flag file, side A only). */
 	private boolean ruleOff;
 	private boolean rulesOffCheck;
+	private boolean guardOffCheck;
 	/** Fights played without the rules since the last update: how many, damage, ticks, knockouts won and lost; and all of them since the start. */
 	private int ruleOffFights;
 	private float ruleOffDealt;
@@ -939,6 +942,8 @@ public final class SchoolSession implements AgentSession {
 	 * from beyond 3.3 blocks, so it holds against all of them (PROBLEMS.md 3 and 11).
 	 */
 	private final int[] comboGuardBy = new int[3];
+	private final int[] guardFreeBy = new int[3];
+	private final int[] guardFreeSwungBy = new int[3];
 	/** Run 54c: ticks in the air since its last take-off; its vertical speed on the tick before; hits in its own jump not paid. */
 	private int ownAirTicks;
 	private double prevVy;
@@ -980,6 +985,8 @@ public final class SchoolSession implements AgentSession {
 						ownKeepYield[0], ownKeepYieldSwung[0], ownKeepYield[1], ownKeepYieldSwung[1])
 				+ String.format(Locale.ROOT, " | the guard's holds in their combo by the bot's technique: uppercut/lunge/hop %d, jump crit %d, other %d",
 						comboGuardBy[0], comboGuardBy[1], comboGuardBy[2])
+				+ String.format(Locale.ROOT, " | run 90, the guard's ticks left to it in training by the bot's technique, ticks/swung: uppercut/lunge/hop %d/%d, jump crit %d/%d, other %d/%d",
+						guardFreeBy[0], guardFreeSwungBy[0], guardFreeBy[1], guardFreeSwungBy[1], guardFreeBy[2], guardFreeSwungBy[2])
 				+ String.format(Locale.ROOT, " | after its %d punish crits, any hit taken (real duels: 82%% within 30, 16%% crits): within 12 ticks %d, within 30 %d (crits %d)",
 						pcAnyCrits, pcBack12, pcBack30, pcBackCrit30)
 				+ String.format(Locale.ROOT, " | run 89, after its punish crit the teacher showed T6 on %d ticks, S its own on %d", t6AfterTaught, t6AfterBack)
@@ -1037,6 +1044,8 @@ public final class SchoolSession implements AgentSession {
 		}
 		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = comboOtherFalling = 0;
 		java.util.Arrays.fill(comboGuardBy, 0);
+		java.util.Arrays.fill(guardFreeBy, 0);
+		java.util.Arrays.fill(guardFreeSwungBy, 0);
 		airJumpHitsFree = 0;
 		counterHits = 0;
 		readyTicks = readySwung = readyHeldFalling = readyHeldOther = 0;
@@ -2418,6 +2427,15 @@ public final class SchoolSession implements AgentSession {
 	static final boolean JUMP_IN_GUARD = true;
 	/** The same rule in training (run 39); its own switch so that training can go back without the user's fights losing it. */
 	static final boolean JUMP_IN_GUARD_TRAINING = true;
+	/**
+	 * Run 90 (13 Nov 20:45), the user: "It should learn when to hold when not to even when player jump". In training (Mode.TRAIN)
+	 * the jump-in guard no longer holds the swing. On the ticks it would have held, the swing is the network's own: no teacher,
+	 * no rule's swing and no ruled pull on the swing head, so only the fight's outcome teaches it. The opponent's knockback comes a
+	 * ping late (KnockbackLag), so a late knock-away on a jump-in crit still eats the crit, as in the user's real duels, while a
+	 * hit on an uppercut's or a hop's jump pays (uppercutter: B lands about 1.9 more hits a fight on it in the air, the whole gap).
+	 * Checks, benchmarks and the user's fights (FightSession) keep the guard until training shows it holds on its own.
+	 */
+	static final boolean GUARD_LEARNED = true;
 	static final int JUMP_IN_SWING_TICKS = 1;
 	/**
 	 * Run 49 (8 Nov 19:35): the jump's ticks counted from their ground flag turning to air, as the user's 5 Nov numbers were
@@ -2693,6 +2711,7 @@ public final class SchoolSession implements AgentSession {
 			installedBody.patchedUp = installed.patchedUp;
 			sparCheck = mode == Mode.CHECK && Files.exists(SwordFiles.schoolDir().resolve(SPAR_CHECK_FILE));
 			rulesOffCheck = mode == Mode.CHECK && Files.exists(SwordFiles.schoolDir().resolve(RULES_OFF_CHECK_FILE));
+			guardOffCheck = mode == Mode.CHECK && Files.exists(SwordFiles.schoolDir().resolve(GUARD_OFF_CHECK_FILE));
 			if (SPAR_SHARE > 0f && mode == Mode.TRAIN || sparCheck) {
 				sparring = LoadedFighter.loadFrom(teacherFile, icfg, SwordFiles.installedCopy().resolve("curriculum.properties"));
 			}
@@ -4418,10 +4437,17 @@ public final class SchoolSession implements AgentSession {
 		} else if (jumpInTookOff(them) && jumpInWatched(reader.duel)) {
 			jumpInAir = true;
 		}
-		boolean k2Hold = JUMP_IN_GUARD_TRAINING && (JUMP_IN_HOLD_THROUGH_HIT || !inCombo) && jumpInAir && jumpInTick(them) > JUMP_IN_SWING_TICKS
+		boolean guardWould = JUMP_IN_GUARD_TRAINING && (JUMP_IN_HOLD_THROUGH_HIT || !inCombo) && jumpInAir && jumpInTick(them) > JUMP_IN_SWING_TICKS
 				&& !((JUMP_IN_HOLD_THROUGH_HIT || JUMP_IN_LET_CRIT) && critSwingNow(me))
 				|| K2_GUARD && !inCombo && ((me.isSprinting() || reader.duel.me.sprinting)
 				&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, fightLag + K2_MARGIN) || step.teacherTechnique == Technique.K2.ordinal());
+		// Run 90: in training the guard's ticks are the network's to learn (GUARD_LEARNED); checks and benchmarks keep the hold.
+		boolean k2Hold = guardWould && !(GUARD_LEARNED && (mode == Mode.TRAIN || guardOffCheck));
+		boolean guardFree = guardWould && !k2Hold;
+		if (guardFree) {
+			// Neither "swing" nor "don't" is taught here either: the outcome decides.
+			step.teacherHeads &= ~(1 << ActionSpace.ATTACK);
+		}
 		// Run 75: the guard holding the swing in their combo, on the ground.
 		boolean guardHeldTheirCombo = GUARD_GIVE_WAY && k2Hold && clock.ticksSinceHitTaken <= COMBO_GAP
 				&& clock.ticksSinceHitDealt > clock.ticksSinceHitTaken && me.onGround();
@@ -4540,7 +4566,15 @@ public final class SchoolSession implements AgentSession {
 				comboExitTicks++;
 				comboExitBack += action[ActionSpace.FORWARD] == dev.swordai.core.rl.BackNudge.BACK ? 1 : 0;
 			}
+			if (guardFree) {
+				// Run 90: on the guard's ticks the rules do not swing for it.
+				ruled &= ~ActionSpace.mask(ActionSpace.ATTACK);
+			}
 			ruledTaught = ruleOff ? (sceneNow != null && mode == Mode.TRAIN ? 0 : keys & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH)) : ruled;
+			if (guardFree) {
+				// Run 90: nor is the rules' swing (or hold) a target there.
+				ruledTaught &= ~ActionSpace.mask(ActionSpace.ATTACK);
+			}
 			if (ruleOff) {
 				ruled = 0;
 			}
@@ -4675,6 +4709,15 @@ public final class SchoolSession implements AgentSession {
 			}
 		}
 		countReady(0, charge, reader.duel.them.falling() || truth.botFalling(), k2Hold);
+		if (guardFree && review < 0) {
+			// Run 90: what it does on the ticks the guard left to it, by what the bot was really doing (server truth).
+			int gft = truth.botTechnique();
+			int gfc = gft == Technique.T10.ordinal() || gft == Technique.T11A.ordinal() || gft == Technique.T11B.ordinal()
+					|| gft == Technique.T11C.ordinal() ? 0 : gft == Technique.T8.ordinal() || gft == Technique.T1.ordinal()
+					|| gft == Technique.T1A.ordinal() || gft == Technique.T1B.ordinal() || gft == Technique.T1C.ordinal() ? 1 : 2;
+			guardFreeBy[gfc]++;
+			guardFreeSwungBy[gfc] += action[ActionSpace.ATTACK] == 1 ? 1 : 0;
+		}
 		// Run 54b: counters for PROBLEMS.md 1, 2, 10 (the swing back in their combo) and 4 (the T1c funnel after its punish crit).
 		if (mode == Mode.TRAIN && review < 0) {
 			boolean theirCombo = clock.ticksSinceHitTaken <= 20 && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken;
