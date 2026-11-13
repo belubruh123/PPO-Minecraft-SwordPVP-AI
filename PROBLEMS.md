@@ -1191,3 +1191,16 @@ The fair test of run 90 is a check without the guard. **guard-off-check armed at
 - Their third hit: 29% each. Late jump-in hits: A 4 / 0, B 22 / 8.
 - The guard-off file was armed after this check had started, so it played guarded.
 - Run 91's redeploy asked 23:03.
+
+## 13 Nov 23:22 review: run 91's baseline (its first 3 updates)
+
+Run 91's learn-by counters, a training update each:
+
+| Counter | Before (runs 89b + 90, 21:24-23:10, 76 updates) | Run 91, first 3 updates |
+|---|---|---|
+| Its combo follow-ups paid | 27.2 (3rd+ 8.3) | 19.0 (3rd+ 2.7) |
+| Hit in the air from its own jump | 14.1 | 17.0 |
+| Their 2nd+ hits in a row | 0 (no counter) | 62.7 |
+
+- Expected within about 2 h: follow-ups and 3rd+ rising above the old level, air hits and their 2nd+ hits falling.
+- First check about 24:05.
