@@ -1150,3 +1150,26 @@ Split (first-hit damage, 3 checks):
 - The jump-crit share is now under the uppercut share, the first sign, on few ticks.
 - After its punish crit (21:24-21:51, 200 punish crits): any hit within 30 ticks 72%, crits 27%, critted back 24%; 20:54-21:20 74/26/23. Run 88c was 61/25/23 and run 89 65/27/25. Worse, possibly the sword spent on run 90's late swings or the T6 back-off being hit. Its own S on T6 ticks is 5%. On watch: run 89b's revert rule is the hit-back not below 61% after 3 checks.
 - No real duels yet (user's Minecraft closed). The next check is about 22:10.
+
+## 13 Nov 22:12 check: the first with runs 89b + 90 (89b since 20:26, 90 since 20:51; redeploy 21:21)
+
+- **ROUNDS WON: A 15/45 (33%), B 18/45 (40%), z -0.7.** Only A won 7, only B won 10. The first check since run 88c where B leads.
+- Net a fight: A -8.2, B -5.4, so A-B -2.8 (se 4.9). Damage a minute: A 369 dealt / 421 taken, B 367 / 401.
+- Their third hit: A 28% (27/98), B 29% (25/87).
+- Swings: A 350 at 97%, B 406 at 87%. Hits: A 339, B 354.
+- **Outside their combo (ground, ready): A swung 34%, held-falling 24%, held otherwise 42%; B 58 / 19 / 23.** Run 88c/89 checks: A swung 43-55%, held otherwise 28-34%.
+- In their combo: A swung 34%, guard 13% (earlier checks 5-10%), air 20%; B 46%, guard 0%, air 20%.
+- Uppercutter -38.1 (A 0-4); lunger -12.2; fight-jumpin -18.7. The checks keep the guard, so run 90 cannot help there yet.
+- Late jump-in hits: A 4 rising / 0 falling, B 20 / 6.
+
+**Reading.** The check's guard holds land in "held otherwise". Run 90 trains without the guard, while the checks hold with it, so the network now goes for swings at jumps that the check's guard blocks. The trained and the checked fighter no longer match.
+
+The fair test of run 90 is a check without the guard. **guard-off-check armed at 22:22 for the next check (about 22:57)**; a background job removes the file after it.
+
+**Training 21:52-22:22 (21 updates):**
+- Run 90's guard ticks swung: uppercut/lunge/hop 4% (474), jump crit 3% (32), other 6%. Late hits 72 rising / 22 falling. The shares are not separating yet (2 h).
+- After its punish crit: hit within 30 ticks 72%, crits 24%, critted back 23%; its own S on T6 ticks 8%, T6 own 43%.
+
+**Decision rule for tonight:**
+- If the guard-off check is not better than this guarded one (rounds, net) AND its late hits on jump-ins are more than half of B's, run 90 comes out.
+- Run 89b is judged at its third check by the hit back after its punish crit (now 72% vs run 88c's 61%).
