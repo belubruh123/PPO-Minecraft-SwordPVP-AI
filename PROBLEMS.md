@@ -852,3 +852,31 @@ Run 88b, first windows: the punish crit was 63% and then 69%, so not lower yet. 
 
 **Agent 27 (Sonnet, 08:56):** jump-in vs uppercut, lunge and hop (items 3 and 11). Does the jump-in guard also hold the swing
 against T10, T11a and T11b?
+
+## 13 Nov ~09:05: agent 27 (Sonnet) on items 3 and 11, jump-in vs uppercut, lunge and hop
+
+**What it found.** The jump-in guard (k2Hold) cannot tell what the opponent is doing.
+- It arms on any take-off from 3.3 to 6.5 blocks flat, in any direction (JUMP_IN_ANY_DIRECTION).
+- It looks at no sprint flag, no toward-speed, and not at whether they are in a combo.
+- So it holds against lunges (T11a: the same take-off as a jump-in crit) and hops (T11b: each hop from outside reach re-arms
+  it). It holds against uppercuts (T10) when the knockback has put it beyond 3.3.
+- It is active in THEIR combo, which is where hops, lunges and uppercuts happen.
+- The ATTACK head is not taught on held ticks.
+- Habits lumps jump-in and lunge together ("T8/T11a"). The actor cannot tell a jump-in crit from a lunge at take-off; that is
+  intention. It can tell hops by their flat speed.
+
+**Its proposal, NOT applied.** Do not arm the guard for a take-off inside their combo. The user's critical rule has no combo
+exception: "never hit a jump-in after ground tick 1, rising or falling". On 8 Nov the user said jumps in ANY direction count.
+A lunge IS a jump-in and hops are jumps. Disarming would let a jump-crit inside their combo be hit late, exactly what the user
+forbids, and that needs the user's own word.
+
+**Done instead (counter only, live with the next redeploy).** "the guard's holds in their combo by the bot's technique:
+uppercut/lunge/hop, jump crit, other", from the server's truth.
+
+**The fix the rule allows.** Better keys WHILE the guard holds, from the doc, never a swing:
+- C3: hold S;
+- C4: sprint-jump toward them;
+- K3: make them hit it while it falls.
+
+Run 75 already gives W and the sprint back while the guard holds in their combo. Next, if the counter shows most holds are
+against T10/T11 (item 11's bots), teach C3/C4/K3 on those ticks.

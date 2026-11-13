@@ -920,6 +920,12 @@ public final class SchoolSession implements AgentSession {
 	private final int[] t1cJumpByLanding = new int[3];
 	private int t1cLandSince = -1;
 	private int comboReadyTicks, comboSwung, comboGuard, comboOwnAir, comboOther, comboAirLifted, comboAirFalling, comboOtherFalling;
+	/**
+	 * Agent 27 (13 Nov, counter only): the jump-in guard's holds in their combo by what the bot was really doing (the server's
+	 * truth): an uppercut/lunge/hop (T10, T11a-c), a jump crit (T1 family, T8), anything else. The guard looks only at a take-off
+	 * from beyond 3.3 blocks, so it holds against all of them (PROBLEMS.md 3 and 11).
+	 */
+	private final int[] comboGuardBy = new int[3];
 	/** Run 54c: ticks in the air since its last take-off; its vertical speed on the tick before; hits in its own jump not paid. */
 	private int ownAirTicks;
 	private double prevVy;
@@ -959,6 +965,8 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | guard in their combo: rules gave way %d, taught to back off %d", guardGaveWay, guardBackTaught)
 				+ String.format(Locale.ROOT, " | its own jump in their combo, the keep given back: training %d (swung %d), checks %d (swung %d)",
 						ownKeepYield[0], ownKeepYieldSwung[0], ownKeepYield[1], ownKeepYieldSwung[1])
+				+ String.format(Locale.ROOT, " | the guard's holds in their combo by the bot's technique: uppercut/lunge/hop %d, jump crit %d, other %d",
+						comboGuardBy[0], comboGuardBy[1], comboGuardBy[2])
 				+ String.format(Locale.ROOT, " | after its %d punish crits, any hit taken (real duels: 82%% within 30, 16%% crits): within 12 ticks %d, within 30 %d (crits %d)",
 						pcAnyCrits, pcBack12, pcBack30, pcBackCrit30)
 				+ String.format(Locale.ROOT, " | run 88, the keep in the air from their 2nd hit given back: training %d (swung %d), checks %d (swung %d)",
@@ -1013,6 +1021,7 @@ public final class SchoolSession implements AgentSession {
 			java.util.Arrays.fill(r, 0);
 		}
 		comboReadyTicks = comboSwung = comboGuard = comboOwnAir = comboOther = comboAirLifted = comboAirFalling = comboOtherFalling = 0;
+		java.util.Arrays.fill(comboGuardBy, 0);
 		airJumpHitsFree = 0;
 		counterHits = 0;
 		readyTicks = readySwung = readyHeldFalling = readyHeldOther = 0;
@@ -4669,6 +4678,10 @@ public final class SchoolSession implements AgentSession {
 					comboSwung++;
 				} else if (k2Hold) {
 					comboGuard++;
+					int gbt = truth.botTechnique();
+					comboGuardBy[gbt == Technique.T10.ordinal() || gbt == Technique.T11A.ordinal() || gbt == Technique.T11B.ordinal()
+							|| gbt == Technique.T11C.ordinal() ? 0 : gbt == Technique.T8.ordinal() || gbt == Technique.T1.ordinal()
+							|| gbt == Technique.T1A.ordinal() || gbt == Technique.T1B.ordinal() || gbt == Technique.T1C.ordinal() ? 1 : 2]++;
 				} else if (!ActionSpace.unlocked(keys, ActionSpace.ATTACK)) {
 					// Run 57: the swing was not open (crosshair off them or the sword's lock): no choice was the network's.
 					comboLocked++;
