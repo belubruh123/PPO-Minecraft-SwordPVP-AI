@@ -1326,3 +1326,12 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Behind on fight-jumpin (-14.9) and mixer* (-15.8); jump-in-critter -7.0. Late hits on jump-ins (tick 2+): A 14 rising + 3 falling, B 18 + 3.
 - Comboable bot, 02:00-04:55 summed per 10 min: about 180 fights, runs to 3+ only 4, longest 6 once (03:1x); most windows longest 0-2. Flat for 3 h: the 3-hour rule hit item 12. Agent 37 (Opus, max effort, worktree) launched 04:58 for a structural diagnosis of where the chain breaks after hit 1 and whether the bot is comboable at all. The share stays at 0.25 until it reports (more fights cannot help if 4 in 180 ever reach 3).
 - Punish crit 67%.
+
+## 14 Nov 05:19 check: run 93's fourth (about 3.3 h); run 93b asked for at 05:24
+
+- **ROUNDS WON: A 26/44 (59%), B 22/44 (50%), z +0.9.** Only A won 12, only B won 8.
+- Net A-B +5.1 (se 4.9). Damage a minute: A 409 dealt / 393 taken, B 398 / 414.
+- Their third hit: A 22%, B 14% (worse than B this time). Swings: A 383, B 408. Aim A 97%, B 89%.
+- Jump keys a minute (off / on moments): A 63 / 97, B 32 / 38.
+- Behind on uppercutter (-10.8), fight-jumpin (-7.1), stun-escaper (-6.4).
+- Agent 37 found the comboable bot was doing the document's C3 fly-out (S held 12-20 ticks after every hit, out of reach and back head-on after the combo window): even a perfect sprint chaser chained 3+ in 1% of its runs. Run 93b makes it stunned instead (no swing, walks back in). Redeploy asked 05:24, right after this check.
