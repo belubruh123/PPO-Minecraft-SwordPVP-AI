@@ -1173,3 +1173,12 @@ The fair test of run 90 is a check without the guard. **guard-off-check armed at
 **Decision rule for tonight:**
 - If the guard-off check is not better than this guarded one (rounds, net) AND its late hits on jump-ins are more than half of B's, run 90 comes out.
 - Run 89b is judged at its third check by the hit back after its punish crit (now 72% vs run 88c's 61%).
+
+## 13 Nov 22:59 review: run 91 built; its redeploy held for the 22:57 check
+
+- The user's real duels (22:42-22:48, 14 rounds, 10-4) were reviewed round by round (EXPERIMENTS.md "Run 91", memory swordai-combo-first-13nov).
+- In every lost round: 52-66% in the air, 19-22 take-offs (11-16 right after a hit, mistimed jump resets), mostly crits, 12-15 hits taken with its sword empty, its longest run 2-3, theirs up to 4.
+- Aim by the game log: crosshair 0.3-1.0 deg off on average, every swing on target. The user's "shaky aim" is the camera swinging with the jumping and moving.
+- Run 91 is committed (acf52dc): combo first, jump and crit bonuses off, combo hits paid more, their 2nd+ hits cost; checks play like training.
+- The round line's damage fix is committed (ae2f495). Its redeploy request was held at 22:59, because a paired check started at 22:57 (the 89b + 90 build). It goes in when that check ends (about 23:35).
+- The user's Minecraft: two instances of another profile (not DRL AI). Training runs at 41 steps a second (slower). No new DRL AI rounds since 22:48.
