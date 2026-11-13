@@ -112,6 +112,13 @@ public final class Style {
 	/** Run 83: hops (T11b) and the uppercut (T10) after its own sprint hit only once that hit stunned (PvpPlayer#TEACH_STUN_GATE). The teacher's; the bots keep theirs. */
 	public boolean hopsAfterStun = false;
 	/**
+	 * Run 92 (13 Nov ~24:00): no hops (T11b) or uppercut (T10) after its own sprint hit, nor the backing edge's T10/T11a in its own
+	 * combo; the ordinary fight's gap while the sword comes back, then W and the sprint hit from the edge (PvpPlayer#TEACH_SPACE_AFTER_HIT;
+	 * real rounds: after its own hit it took off within 5 ticks 41%, then was hit within 3 ticks 44%, after S 11%). The teacher's;
+	 * the bots (the hopper, the lunger) keep theirs.
+	 */
+	public boolean spaceAfterHit = false;
+	/**
 	 * Every hit that throws it up, of any kind, is answered by the punish crit (B1) when one can come, before the jump reset
 	 * or any other answer: the drill of the user's method (27 Oct), where the decision model's output is forced to the punish
 	 * crit on the punish crit's own cases so that the network learns to land it whenever it is told to. In the full fights the
@@ -186,6 +193,7 @@ public final class Style {
 		s.jumpAlong = jumpAlong;
 		s.t1cAtLanding = t1cAtLanding;
 		s.hopsAfterStun = hopsAfterStun;
+		s.spaceAfterHit = spaceAfterHit;
 		s.punishFirst = punishFirst;
 		s.answerCrit = answerCrit;
 		s.closeIn = closeIn;

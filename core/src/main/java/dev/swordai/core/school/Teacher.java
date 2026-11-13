@@ -159,7 +159,10 @@ public final class Teacher {
 		s.aimNoise = 0f;
 		s.turnRate = 180f;
 		s.swingCharge = 0.9f;
-		s.spacing = 3.0f;
+		// Run 92 (13 Nov ~24:00): the S-tap's gap at the edge of reach while the sword comes back: S under 2.8, standing to 3.3
+		// (PvpPlayer#ordinary with Style#spaceAfterHit). Real rounds: in range it was under 2.5 blocks 51% of the time and its
+		// hits landed at 1.60 blocks; inside 3.0 its sword was empty 65% of the time. 3.0 before.
+		s.spacing = dev.swordai.core.pvp.PvpPlayer.TEACH_SPACE_AFTER_HIT ? 3.1f : 3.0f;
 		s.wtap = 2;
 		s.stap = 0;
 		s.strafe = 0.3f;
@@ -171,7 +174,10 @@ public final class Teacher {
 		// Run 79 (agent 12): T1c's jump at once on landing from its punish crit, "immediately jump and crit again" (PvpPlayer#T1C_AT_LANDING).
 		s.t1cAtLanding = dev.swordai.core.pvp.PvpPlayer.T1C_AT_LANDING;
 		// Run 83 (agent 16): hops and the uppercut after its own sprint hit only once it stunned (PvpPlayer#TEACH_STUN_GATE).
-		s.hopsAfterStun = dev.swordai.core.pvp.PvpPlayer.TEACH_STUN_GATE;
+		// Run 92 (13 Nov ~24:00): none at all after its own sprint hit; the gap at the edge of reach instead (PvpPlayer#TEACH_SPACE_AFTER_HIT:
+		// real rounds, after its own hit it took off within 5 ticks 41% and was then hit within 3 ticks 44%, after S 11%).
+		s.hopsAfterStun = dev.swordai.core.pvp.PvpPlayer.TEACH_STUN_GATE && !dev.swordai.core.pvp.PvpPlayer.TEACH_SPACE_AFTER_HIT;
+		s.spaceAfterHit = dev.swordai.core.pvp.PvpPlayer.TEACH_SPACE_AFTER_HIT;
 		// Jump resets wherever the file has them (T9 on a sprint hit, T9b, T9c), not only from their second hit in a row: the
 		// user, 24 Oct 22:50, "remove jump reset barrier cause I didn't even see it manage to pull a jump reset".
 		s.resetsInCombosOnly = false;

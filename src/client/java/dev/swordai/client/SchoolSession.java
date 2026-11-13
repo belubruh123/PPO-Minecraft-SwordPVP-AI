@@ -129,8 +129,39 @@ public final class SchoolSession implements AgentSession {
 	 * a technique asks for the jump (the teacher's jump key, or the decider's told technique is a jump one: jump resets T9a-c,
 	 * uppercut/lunge/hops T10/T11, K3, T1c, C6) or it is a timed jump reset (a hit taken this tick or the tick before). About
 	 * 0.5 HP at PER_HEALTH; real rounds had about 11 take-offs per 10 s.
+	 * Run 92 (13 Nov ~24:00): agents 32-34 on the same 14 rounds: in the air 60% of the ticks, 82% of the take-offs its own, 159 of
+	 * 302 within 12 ticks after a hit taken (reflex jumps), which the timed-jump-reset exemption (a hit taken this tick or the tick
+	 * before) let go. Now only a jump a technique asks for (jumpTechniqueNow) is let off, and the cost is 0.08 (0.05 before). A
+	 * rule's jump (the jump reset rule r) is not its own and is never charged.
 	 */
-	static final float OWN_JUMP_COST = 0.05f;
+	static final float OWN_JUMP_COST = 0.08f;
+	/**
+	 * Run 92 (13 Nov ~24:00), agent 33 on the user's 14 real rounds of 13 Nov: in range it was under 2.5 blocks 51% of the time (old
+	 * won rounds 40%), the first hit of an exchange went 21 to 42 against it (mostly under 1 block), inside 3.0 its sword was empty
+	 * 65% of the time and 61% of the hits it took came then; nothing in training charged it. The document's S-tap: "stay just out of
+	 * their reach while staying in yours"; T4: "too close, and they hit you through your deflection". Each tick (training) closer
+	 * than TOO_CLOSE_WITHIN blocks (eye to hitbox) with its own sword under TOO_CLOSE_CHARGE and theirs at TOO_CLOSE_CHARGE or more
+	 * (the server's, as READY_JUMP_COST reads it) costs this. In its own combo too: a hit from that close leaves it there.
+	 */
+	static final float TOO_CLOSE_COST = 0.01f;
+	static final float TOO_CLOSE_WITHIN = 1.5f;
+	static final float TOO_CLOSE_CHARGE = 0.9f;
+	/**
+	 * Run 92 (13 Nov ~24:00): its hits landed at 1.60 blocks in the user's real rounds (agent 33), and the first hit of an exchange
+	 * went 21:42 against it. A sprint hit landed from EDGE_HIT_FROM to EDGE_HIT_TO blocks (eye to hitbox when the swing was chosen)
+	 * pays this in training: the document's T7 three-block hit ("sprint-hit the opponent before they are close enough to hit you
+	 * back"), T3 (a stun "knocks the opponent far enough away that they can't hit you back"). Not on one falling (K2: "don't
+	 * knockback-hit someone who is falling, whether during a combo or while they are critting you").
+	 */
+	static final float EDGE_HIT = 0.1f;
+	static final float EDGE_HIT_FROM = 2.3f;
+	static final float EDGE_HIT_TO = 3.0f;
+	/**
+	 * Run 92 (13 Nov ~24:00), agent 34 on the user's 14 real rounds: the run at a rising jumper (rule m) hit first 37% of the time,
+	 * 10% when their sword was ready, about -1 hit a round. A's rules (training, checks; benchmarks only with BENCH_MEET_FILE) and
+	 * the user's game do not run into a jump-in crit coming nor at a ready sword (Fighter#meetNotIncoming). B is untouched.
+	 */
+	static final boolean MEET_NOT_INCOMING = true;
 	/** Run 91b: whether a technique asks for a jump on this tick (see OWN_JUMP_COST). */
 	private boolean jumpTechniqueNow(dev.swordai.core.school.SchoolRollout.Step step) {
 		int jo = ActionSpace.OFFSETS[ActionSpace.JUMP];
@@ -712,6 +743,12 @@ public final class SchoolSession implements AgentSession {
 	/** Run 88 in a benchmark: only with this file in the school folder (bench-run.sh AIR_YIELD=1), as the user's game has it only for an "airyield" arm. */
 	static final String BENCH_AIR_YIELD_FILE = "bench-air-yield";
 	private boolean benchAirYield;
+	/**
+	 * Run 92 (13 Nov ~24:00) in a benchmark: A's rule m not into a jump-in crit coming nor a ready sword (MEET_NOT_INCOMING; real
+	 * rounds: it hit first 10% of those) only with this file in the school folder, so that a benchmark plays the rules its reference did.
+	 */
+	static final String BENCH_MEET_FILE = "bench-meet-not-incoming";
+	private boolean benchMeetNotIncoming;
 	static final float RULED_PULL = 0.3f;
 	/**
 	 * Run 30e: the pull on the rules' keys follows a budget instead of staying at RULED_PULL (the adaptive controller of the body keys' copying,
@@ -973,6 +1010,15 @@ public final class SchoolSession implements AgentSession {
 	private int lateSwingCharged;
 	private int theirRowCharged;
 	private int ownJumpCharged;
+	/**
+	 * Run 92's counters (training): ticks charged TOO_CLOSE_COST; sprint hits paid EDGE_HIT; its hits and their summed distance at the
+	 * swing; rule m runs started by A's rules ([0] training, [1] checks) and of those into a jump-in crit coming or a ready sword.
+	 */
+	private int tooCloseCharged, edgeHitsPaid, ownHitsMeasured;
+	private double ownHitDistSum;
+	private final int[] meetStarts = new int[2], meetStartsIntoReady = new int[2];
+	/** Run 92: eye to hitbox when the last step's keys were chosen, the distance of the swing they made (EDGE_HIT). */
+	private float reachAtClick;
 	/** Run 54c: ticks in the air since its last take-off; its vertical speed on the tick before; hits in its own jump not paid. */
 	private int ownAirTicks;
 	private double prevVy;
@@ -1019,6 +1065,9 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, ", late swings charged %d", lateSwingCharged)
 				+ String.format(Locale.ROOT, " | run 91, their 2nd+ hits in a row charged %d", theirRowCharged)
 				+ String.format(Locale.ROOT, ", its own untaught take-offs charged %d", ownJumpCharged)
+				+ String.format(Locale.ROOT, " | run 92, too close (under %.1f, its sword empty, theirs ready) ticks charged %d; edge sprint hits (%.1f-%.1f) paid %d; its hits' mean distance %.2f (%d hits); rule m runs started by A's rules %d, into a ready sword or a jump-in crit %d (%s)",
+						TOO_CLOSE_WITHIN, tooCloseCharged, EDGE_HIT_FROM, EDGE_HIT_TO, edgeHitsPaid, ownHitsMeasured > 0 ? ownHitDistSum / ownHitsMeasured : 0.0,
+						ownHitsMeasured, meetStarts[0], meetStartsIntoReady[0], MEET_NOT_INCOMING ? "stopped" : "run")
 				+ String.format(Locale.ROOT, " | after its %d punish crits, any hit taken (real duels: 82%% within 30, 16%% crits): within 12 ticks %d, within 30 %d (crits %d)",
 						pcAnyCrits, pcBack12, pcBack30, pcBackCrit30)
 				+ String.format(Locale.ROOT, " | run 89, after its punish crit the teacher showed T6 on %d ticks, S its own on %d", t6AfterTaught, t6AfterBack)
@@ -1081,6 +1130,9 @@ public final class SchoolSession implements AgentSession {
 		lateSwingCharged = 0;
 		theirRowCharged = 0;
 		ownJumpCharged = 0;
+		tooCloseCharged = edgeHitsPaid = ownHitsMeasured = 0;
+		ownHitDistSum = 0.0;
+		meetStarts[0] = meetStartsIntoReady[0] = 0;
 		airJumpHitsFree = 0;
 		counterHits = 0;
 		readyTicks = readySwung = readyHeldFalling = readyHeldOther = 0;
@@ -3510,6 +3562,10 @@ public final class SchoolSession implements AgentSession {
 				if (benchAirYield) {
 					SwordAi.LOGGER.info("school bench {}: run 88's air yield on (bench-air-yield)", benchTag);
 				}
+				benchMeetNotIncoming = Files.exists(SwordFiles.schoolDir().resolve(BENCH_MEET_FILE));
+				if (benchMeetNotIncoming) {
+					SwordAi.LOGGER.info("school bench {}: run 92's rule m not into a ready sword on ({})", benchTag, BENCH_MEET_FILE);
+				}
 				continue;
 			}
 			if (p[0].equals("network")) {
@@ -3926,6 +3982,23 @@ public final class SchoolSession implements AgentSession {
 				float reward = PER_HEALTH * (DEALT_WEIGHT * facts.damageDealt - facts.damageTaken) + (facts.koDealt ? KNOCKOUT : 0f) - (facts.koTaken ? KNOCKOUT : 0f);
 				reward += enterReward;
 				enterReward = 0f;
+				// Run 92: too close with its own sword empty and theirs ready (TOO_CLOSE_COST); a sprint hit from the edge of reach, not on
+				// one falling (EDGE_HIT), by the distance when its swing was chosen.
+				if (TOO_CLOSE_COST > 0f && facts.reachDist < TOO_CLOSE_WITHIN && me.getAttackStrengthScale(0f) < TOO_CLOSE_CHARGE
+						&& truth.botCharge() >= TOO_CLOSE_CHARGE) {
+					reward -= TOO_CLOSE_COST;
+					tooCloseCharged++;
+				}
+				if (facts.hitsDealt > 0) {
+					float hitDist = clicked ? reachAtClick : facts.reachDist;
+					ownHitDistSum += hitDist;
+					ownHitsMeasured++;
+					if (EDGE_HIT > 0f && facts.sprintHit && hitDist >= EDGE_HIT_FROM && hitDist <= EDGE_HIT_TO
+							&& !(reader.duel.them.falling() || truth.botFalling())) {
+						reward += EDGE_HIT;
+						edgeHitsPaid++;
+					}
+				}
 				// Run 55: a hit that breaks into their combo, on one not falling (C4, K2).
 				// Run 55b: only from the ground (the gap measured was on the ground); in the air after their hit the punish crit
 				// (B1, the user's must-keep) waits for the way down, and a rising swing must not be paid over it.
@@ -4139,6 +4212,7 @@ public final class SchoolSession implements AgentSession {
 		// ---- decide and act ----
 		float charge = me.getAttackStrengthScale(0f);
 		chargeAtClick = charge;
+		reachAtClick = facts.reachDist;
 		sprintAtClick = truth.agentSprinting();
 		critAtClick = facts.falling && !me.onGround() && !sprintAtClick && charge > 0.9f;
 		liftAimedNow = false;
@@ -4196,6 +4270,8 @@ public final class SchoolSession implements AgentSession {
 			// Run 74: the reach aim for A's rules only; B keeps the 23 Oct aim.
 			installed.fighter.reachAim(REACH_AIM && !installedPlays && !teacherPlaysA);
 			installed.fighter.comboProvenOff(comboProvenOffNow(reader.duel.them) && !installedPlays && !teacherPlaysA && (benchTag == null || benchAirYield));
+			// Run 92: A's rule m not into a jump-in crit coming nor a ready sword (MEET_NOT_INCOMING); B keeps its own.
+			installed.fighter.meetNotIncoming(MEET_NOT_INCOMING && !installedPlays && !teacherPlaysA && (benchTag == null || benchMeetNotIncoming));
 			boolean firstReset = RESET_FIRST_HIT_TRAIN && mode == Mode.TRAIN && !installedPlays && !teacherPlaysA && facts.sprintsTaken > 0;
 			installed.fighter.firstSprintHitReset(firstReset);
 			firstHitResetTicks += firstReset ? 1 : 0;
@@ -4537,6 +4613,11 @@ public final class SchoolSession implements AgentSession {
 			}
 			// For a benchmark episode's file: the rules that had keys, as a real fight with the rules on records them (FightSession).
 			benchRules = ruleOff ? 0 : installed.fighter.rules();
+			if (review < 0 && installed.fighter.meetStarted()) {
+				// Run 92: rule m's runs started by A's rules (stopped or not), and those into a ready sword or a jump-in crit coming.
+				meetStarts[mode == Mode.CHECK ? 1 : 0]++;
+				meetStartsIntoReady[mode == Mode.CHECK ? 1 : 0] += installed.fighter.meetStartedIntoReady() ? 1 : 0;
+			}
 			// Only heads still open: a rule's swing waits for the sword, the crosshair and the golden rule like the network's.
 			ruled = installed.fighter.ruledHeads() & keys;
 			int ruledRaw = ruled;
@@ -4726,8 +4807,9 @@ public final class SchoolSession implements AgentSession {
 		// Run 43: a take-off on the ground by the network (not a rule's jump) marks the air until it stands again.
 		if (me.onGround()) {
 			ownJumpAir = action[ActionSpace.JUMP] == 1 && (ruled & (1 << ActionSpace.JUMP)) == 0;
-			if (ownJumpAir && mode == Mode.TRAIN && review < 0 && OWN_JUMP_COST > 0f && clock.ticksSinceHitTaken > 1 && !jumpTechniqueNow(step)) {
-				// Run 91b: its own take-off that no technique asked for and that is not a timed jump reset costs OWN_JUMP_COST.
+			if (ownJumpAir && mode == Mode.TRAIN && review < 0 && OWN_JUMP_COST > 0f && !jumpTechniqueNow(step)) {
+				// Run 91b: its own take-off that no technique asked for costs OWN_JUMP_COST. Run 92: the jump on the tick of a hit taken
+				// or the tick after is no longer let off by itself (the reflex jumps of the real rounds).
 				enterReward -= OWN_JUMP_COST;
 				ownJumpCharged++;
 			}
@@ -5593,6 +5675,10 @@ public final class SchoolSession implements AgentSession {
 				+ "sprint hits outside its combos on one falling: on the server {}, as seen {} | lost view: A {} of {} ticks off the screen ({} times), "
 				+ "B {} of {} ticks ({} times)", k2Held, ruleTicks, k2Truth, k2Seen, lostTicks[0], viewTicks[0], lostTimes[0], lostTicks[1], viewTicks[1],
 				lostTimes[1]);
+		// Run 92: rule m's runs started by A's rules in the check, and those into a ready sword or a jump-in crit coming.
+		SwordAi.LOGGER.info("school check run 92 | rule m runs started by A's rules {}, into a ready sword or a jump-in crit {} ({})", meetStarts[1],
+				meetStartsIntoReady[1], MEET_NOT_INCOMING && (benchTag == null || benchMeetNotIncoming) ? "stopped" : "run");
+		meetStarts[1] = meetStartsIntoReady[1] = 0;
 		k2Held = 0;
 		ruleTicks = 0;
 		k2Truth = 0;

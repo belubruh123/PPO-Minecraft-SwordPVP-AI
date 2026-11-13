@@ -82,6 +82,18 @@ public final class PvpPlayer {
 	public static final boolean TEACH_STUN_GATE = true;
 	static final int HOP_CHECK_TICKS = 2;
 	private int hopCheckAt = -1;
+	/**
+	 * Run 92 (13 Nov ~24:00): the stun gate did not stop it. In the user's 14 real rounds of 13 Nov it was in the air 60% of the
+	 * ticks; after its own hit it took off within 5 ticks 41% of the time and was then hit within 3 ticks 44% (after S 11%); its
+	 * runs of hits were 1 hit 123 times, 2 31, 3+ 13. The teacher still began hops or the uppercut after nearly every own sprint
+	 * hit (their knockback reads as "flying out") and the decider copies the label about 90%. Now, for the teacher's style
+	 * (Style#spaceAfterHit), no hops (T11b) and no uppercut (T10) after its own sprint hit, nor the backing edge's uppercut or
+	 * lunge (T10, T11a) while in its own combo (their going away is its hit's knockback, not their S: the document's lunge is
+	 * for "players who hold S out of a trade (C3)"). It keeps the S-tap's gap while its sword comes back (part 0: "stay just out
+	 * of their reach while staying in yours"): S under spacing - 0.3, standing to spacing + 0.2, no W into reach; with the
+	 * sword back, W and the sprint hit from the edge (T7: "before they are close enough to hit you back").
+	 */
+	public static final boolean TEACH_SPACE_AFTER_HIT = true;
 	static final float T1C_WALK_FROM = 4.0f;
 
 	/**
@@ -769,11 +781,13 @@ public final class PvpPlayer {
 			// file, first then; hops (T11b) hold the other moments ("hops hold a combo"). With both certain, hops always came
 			// first and the uppercut never (24 Oct: no T10 moment in the whole night).
 			boolean stunHit = was == Plan.T4 || was == Plan.T5 || was == Plan.T6;
-			if (style.onlyWhenItWorks && stunHit && roll(Technique.T10)) {
+			if (!style.spaceAfterHit && style.onlyWhenItWorks && stunHit && roll(Technique.T10)) {
 				later(Plan.T10);
 				return;
 			}
-			if (style.hopsAfterStun) {
+			if (style.spaceAfterHit) {
+				// Run 92: no hops and no uppercut after its own sprint hit: the ordinary fight's spacing until the sword is back.
+			} else if (style.hopsAfterStun) {
 				// Run 83: decided once the knockback shows (the stun), HOP_CHECK_TICKS on.
 				hopCheckAt = tick + HOP_CHECK_TICKS;
 			} else {
@@ -896,7 +910,10 @@ public final class PvpPlayer {
 		// a lunge after them when farther (T11a: "chases players holding S"). With the lunge checked first and certain the
 		// uppercut never came here, only after a stun of its own (24 Oct: about ten moments an update, and falling); the
 		// user: the uppercut matters more than hops and lunges.
-		if (backingTicks >= 3 && !backRolled && me.onGround && d.reach > Duel.REACH - 0.3 && d.reach < Duel.REACH + 3.0) {
+		// Run 92: for Style#spaceAfterHit not in its own combo, where their going away is its own hit's knockback.
+		boolean ownCombo = sinceMyHit <= COMBO_TICKS && sinceMyHit < sinceTheirHit;
+		if (backingTicks >= 3 && !backRolled && me.onGround && d.reach > Duel.REACH - 0.3 && d.reach < Duel.REACH + 3.0
+				&& !(style.spaceAfterHit && ownCombo)) {
 			backRolled = true;
 			if (d.reach < Duel.REACH + 1.0 && roll(Technique.T10)) {
 				begin(Plan.T10);
@@ -1332,6 +1349,8 @@ public final class PvpPlayer {
 		Body them = d.them;
 		k.technique = Technique.BASE;
 		boolean ready = me.charge >= style.swingCharge;
+		// Run 92: with the sword not back, Style#spaceAfterHit walks in only from beyond spacing + 0.2 (the gap at the edge of reach).
+		double inFrom = style.spaceAfterHit && !ready ? Math.max(Duel.REACH, style.spacing) + 0.2 : Duel.REACH + 0.2;
 		if (wtapLeft > 0) {
 			// W-tap: W let go for a moment after a hit, to start the sprint again.
 			wtapLeft--;
@@ -1339,7 +1358,7 @@ public final class PvpPlayer {
 		} else if (stapLeft > 0) {
 			stapLeft--;
 			k.forward = -1;
-		} else if (d.reach > Duel.REACH + 0.2) {
+		} else if (d.reach > inFrom) {
 			k.forward = 1;
 			k.sprint = true;
 		} else if (!ready && d.reach < style.spacing - 0.3) {

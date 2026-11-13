@@ -454,6 +454,8 @@ final class FightSession implements AgentSession {
 				fighter.crosshairOnOpponent(onOpponent());
 				// Runs 88b/88c: an "airyield" arm's rules swing in their combo (not at a falling opponent with 88c).
 				fighter.comboProvenOff(arm != null && arm.airYield && SchoolSession.comboProvenOffNow(reader.duel.them));
+				// Run 92: the rules' run at a rising jumper (m) not into a jump-in crit coming nor a ready sword (real rounds: hit first 10%).
+				fighter.meetNotIncoming(SchoolSession.MEET_NOT_INCOMING);
 				fighter.decide(observer.frame, rulesBody);
 			}
 			// The golden rule (K2): what is seen of them is a round trip behind the server by the time a hit gets there.

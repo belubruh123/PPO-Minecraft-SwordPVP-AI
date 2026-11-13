@@ -64,6 +64,13 @@ public final class Fighter {
 	private final boolean punishInCombo;
 	/** Run 88b: the punish crit's keep in a combo (FallWatch.proven) off for this tick's decision; see {@link #comboProvenOff}. */
 	private boolean comboProvenOff;
+	/** Run 92: the run at a rising jumper (MeetJump) not into a jump-in crit coming nor a ready sword; see {@link #meetNotIncoming}. */
+	private boolean meetNotIncoming;
+	/**
+	 * Run 92's counter: the run at a jumper as MeetJump has it (before {@link #meetNotIncoming}) on the last decision and the one
+	 * before, and whether the last decision started one: at all, and into a jump-in crit coming or their sword ready.
+	 */
+	private boolean meetWas, meetStarted, meetStartedIntoReady;
 	private final boolean meetWhenComing;
 	private final boolean dodgeJump;
 	private final EdgeHold edgeHold;
@@ -267,6 +274,9 @@ public final class Fighter {
 		takenSince = 0;
 		ticksBack = 0;
 		dealtRow = 0;
+		meetWas = false;
+		meetStarted = false;
+		meetStartedIntoReady = false;
 		if (jumpIn != null) {
 			// The opponent of the next round is the one of the last.
 			jumpIn.newRound();
@@ -418,6 +428,14 @@ public final class Fighter {
 		boolean incoming = holdRule && critTrade.incoming() && !critTrade.knockAway();
 		// An opponent coming at it through the air, still on its way up, is run at and hit at once; see MeetJump.
 		boolean meet = meetRule && swingMinCharge > 0f && MeetJump.applies(obs.vec, meetWhenComing) && (jumpIn == null || jumpIn.kind() == JumpIn.NONE);
+		// Run 92: into a jump-in crit coming (CritTrade) or their sword ready, as the observation reads it; see meetNotIncoming.
+		boolean meetIntoReady = meet && (incoming || obs.vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_OPP_CHARGE] >= CritTrade.OPP_READY);
+		meetStarted = meet && !meetWas;
+		meetStartedIntoReady = meetStarted && meetIntoReady;
+		meetWas = meet;
+		if (meetNotIncoming && meetIntoReady) {
+			meet = false;
+		}
 		// On the ground the swing is made at once; in the air it stays the swing it would have been.
 		boolean meetSwings = meet && body.onGround;
 		int when = owes && punishRule && !meetSwings ? AnswerRule.when(obs.vec, fallWatch.punishable(), punishInCombo && !comboProvenOff && fallWatch.proven(), punishWait, keepWithin) : AnswerRule.NOW;
@@ -682,6 +700,29 @@ public final class Fighter {
 	 */
 	public void comboProvenOff(boolean on) {
 		comboProvenOff = on;
+	}
+
+	/**
+	 * Run 92 (13 Nov ~24:00), agent 34 on the user's 14 real rounds: the run at a rising jumper (rule m, MeetJump: W and the sprint
+	 * at them) hit first 37% of the time, 10% when their sword was ready, about -1 hit a round; it ran into their jump-in crit even
+	 * when CritTrade had one coming. When on, rule m is not run into a jump-in crit coming (CritTrade#incoming, where this fighter
+	 * has the hold rule) nor at a sword that is ready (the observation's SC_OPP_CHARGE at CritTrade.OPP_READY): the document's
+	 * "Jump in at you (falling, critting) -> Don't KB-hit them (K2); let it land, punish crit (B1)", and T8 fails when "the hit
+	 * comes late". The keys are the network's there. Off by default; the school sets it per tick for A's rules only, the user's
+	 * game for its rules (SchoolSession.MEET_NOT_INCOMING).
+	 */
+	public void meetNotIncoming(boolean on) {
+		meetNotIncoming = on;
+	}
+
+	/** Run 92's counter: the last decision started a run at a jumper (MeetJump, whether or not {@link #meetNotIncoming} let it go on). */
+	public boolean meetStarted() {
+		return meetStarted;
+	}
+
+	/** Run 92's counter: and that start was into a jump-in crit coming or their ready sword (the ones {@link #meetNotIncoming} stops). */
+	public boolean meetStartedIntoReady() {
+		return meetStartedIntoReady;
 	}
 
 	public void hitAndOut(boolean on) {
