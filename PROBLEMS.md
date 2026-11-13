@@ -1239,3 +1239,18 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Punish crit chances critted 57% (band 50-65). Their third hit 1 of 10 in the last window.
 - No check since 23:02 (A 18-18). The next one is about 00:30, run 91b's first.
 - Agent 35 (Opus, max effort, worktree) is building run 92. It is reviewed before deploy.
+
+## 14 Nov 00:22 review: run 92's first 4 updates (00:17-00:21), per update
+
+| Counter | Run 92 | Run 91b start | Before 91 |
+|---|---|---|---|
+| Its combo follow-ups | 32.0 (3rd+ 11.5) | 22.2 (9.4) | 27.2 (8.3) |
+| Their 2nd+ hits | 52.0 | 54.2 | |
+| Hit in the air from its own jump | 11.0 | 14.2 | 14.1 |
+| Own untaught take-offs charged | 84.0 (now with reflex jumps) | | |
+| Too-close ticks | 32.5 | | |
+| Edge sprint hits | 34.8 | | |
+
+- Its hits' mean distance against the bots: 2.34.
+- Punish crit chances critted 55%. One training loop (a second "loop" in the review was a short-lived subshell).
+- First run 92 check about 01:00.
