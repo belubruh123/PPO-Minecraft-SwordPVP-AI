@@ -171,7 +171,10 @@ final class FightSession implements AgentSession {
 			school = new SchoolFighter(l, loaded.cfg.aimResponse,
 					mc.hasSingleplayerServer() ? loaded.cfg.swingMinCharge : loaded.cfg.swingMinChargeOnline, loaded.cfg.playTemperature);
 			school.whiffGuard(loaded.cfg.whiffGuard);
-			school.airKeepYield(arm != null && arm.airYield);
+			// 13 Nov 21:10: an "airyield" arm plays what the benchmark's "airyield" played: the combo swing off at opponents not
+			// falling (run 88c, comboProvenOff below) and run 88's air yield only while SchoolSession.AIR_KEEP_YIELD is on (off since
+			// 12:25; the benchmark gates it the same way). Before, an airyield arm also turned run 88's yield on.
+			school.airKeepYield(arm != null && arm.airYield && SchoolSession.AIR_KEEP_YIELD);
 			if (rulesOn) {
 				school.rulesFrom(fighter);
 				rulesBody.patchedUp = loaded.patchedUp;
