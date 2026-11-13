@@ -1746,3 +1746,30 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - training: charged take-offs and "hit in the air from its own jump" (14.1 an update before) fall; combo follow-ups (27.2) rise;
 - checks: A's jump keys a minute fall toward B's;
 - real duels: air share under 45%, sprint swings above crit swings.
+
+### Run 92 (14 Nov 00:05): combo-first package (agents 32-34's findings, built by agent 35, Opus, max effort, worktree; merged as c6fad2d)
+
+**Changes:**
+- **Teacher:** TEACH_SPACE_AFTER_HIT (PvpPlayer, Style.spaceAfterHit, Teacher spacing 3.1).
+  - After its own sprint hit there are no hops and no uppercut (T4/T5/T6 into uppercut included), and no T10/T11a from the backing edge in its own combo.
+  - While its sword is not back, no W inside spacing + 0.2.
+  - The bots are unchanged.
+  - Agent 35's note: with the overlay on, the spacing itself is not taught in BASE moments. The training effect is that the hop/uppercut labels after its hit are gone.
+- **Shaping (training):**
+  - TOO_CLOSE_COST 0.01 a tick under 1.5 blocks with its sword under 0.9 and theirs at 0.9 or more;
+  - EDGE_HIT +0.1 for a sprint hit from 2.3 to 3.0 blocks (not on a falling target);
+  - OWN_JUMP_COST 0.08, with the hit-tick exemption removed (only technique-asked jumps are free).
+- **Rules overlay rule m (run at a rising jumper):** Fighter.meetNotIncoming. It stops if a jump-in crit is incoming or their sword reads 0.9 or more.
+  - Set for A's overlay in training and checks only (B unchanged), and in real duels (FightSession).
+  - In benchmarks only with school/bench-meet-not-incoming.
+
+**Counters.** Training: "run 92, too close ... charged; edge sprint hits paid; its hits' mean distance; rule m runs started, into a ready sword (stopped)". Checks: "school check run 92 | rule m runs ...".
+
+**Learn-by (about 2 h):**
+- its hits' mean distance rising toward 2.3+ (real duels 1.60);
+- too-close ticks falling;
+- own untaught take-offs (35.6 an update at run 91b's start) falling;
+- combo follow-ups and 3rd+ rising;
+- checks: A's rounds and its jump keys a minute against B's.
+
+**Revert** a part if swings fall 15%, the punish crit falls under 50%, or A loses 2 checks running with no rise in follow-ups.
