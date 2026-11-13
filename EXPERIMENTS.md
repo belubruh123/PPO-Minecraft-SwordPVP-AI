@@ -1788,3 +1788,20 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **Counter:** "run 93, comboable bot (...): fights N, its longest own run of hits there L, runs reaching 3/5/10 hits; long-combo hits paid P".
 - **Learn-by (2-3 h):** the longest run and runs reaching 5/10 rise in those fights. Then the checks' follow-ups and their third hit improve, and real duels show runs of 3+.
 - **Revert** if the checks fall under B in 2 checks running, or swings fall a further 10%.
+
+## Run 93b (14 Nov ~05:30): the comboable bot stunned after each hit, not fleeing (agent 37)
+
+- **Why:** run 93's comboable bot reached 3 hits in a row only 4 times in about 180 fights (02:00-04:55); the longest was 6, once, and most 10-minute windows topped at 0-2. Flat for 3 h: the 3-hour rule on PROBLEMS item 12.
+- **Agent 37's diagnosis** (Opus, max effort, a worktree; game-physics simulation tools/combosim/ComboSim.java with core's PvpPlayer, Teacher and comboable()):
+  - After each hit it took, the bot held S for backAfterHit 12-20 ticks without swinging. That is the document's C3 fly-out, the way OUT of a combo: S held through the knockback carried it about 4.5 blocks (3.2 without S).
+  - It came back only after its S, sword ready, 15-25 ticks after the hit (past COMBO_GAP 20) and head-on, where the side that sees later loses the first hit.
+  - A perfect sprint chaser in the simulation had 3+ runs in 1% of its runs (none at a 4-tick view lag); after 47% of its hits neither side hit within 20 ticks, 4.4 blocks apart. The run 92 teacher: 19 such runs in 300 fights.
+  - Nothing else blocks a chain: TOO_CLOSE needs under 1.5 blocks; K2 is exempt in its own combo; the jump-in guard ignores knockback lifts; the counter is correct.
+- **Change:** Specialists.COMBOABLE_STUNNED = true. The same 12-20 tick draw is now Style.stunAfterHit: from the tick it feels the hit, it fights as if its sword were not back (no swing, part 0's S-tap spacing, walks in again), with no S of its own. Every other bot and the teacher are unchanged (stunAfterHit 0).
+  - Simulation: the perfect chaser's 3+ runs 1% -> 8% of its runs (10+ runs 18 -> 94); a noisy half-trained policy's 3+ runs 0.04 -> 0.55 a fight, at every view lag.
+- **Counter:** appended to the run 93 line: "run 93b (stunned), after its hits there: its next hit within 20 ticks N (mean gap), their hit first within 3 (trade) N, later N, neither within 20 N (distance then)".
+- **Learn-by (1-2 h):** runs reaching 3 from about 0.02 to 0.3+ a fight; longest 5+ in most 10-minute windows; long-combo hits paid above 0; "next hit within 20" 40-50%+ of the four outcomes, "neither" 10% or less, trades 10-25%, mean gap 13-16.
+- **Falsifying test:** if runs to 3 stay at 1 per 25 comboable fights or fewer and "later" or "neither within 20" at 3.0 blocks or less dominates, the break is on the AI's side (follow-up keys, aim, rules), not the bot.
+- **Next (agent 37's plan, ranked):** shorten the stun (12-16, then 10-14) once "next hit within 20" holds 60%+ for an hour (waiting at the edge of reach then beats rushing: spacing and gap control); give C3 back as about 0.3 of fights and tell T11a after its hit against S-holders; a copy target for the follow-up window if late follow-ups dominate.
+- **Revert** if A falls under B in two checks running. Checks do not use this bot.
+- Checks before it: 04:34 A 27/45 vs B 16/45 (z +2.5, +10.2 HP); 05:19 A 26/44 vs B 22/44 (z +0.9, +5.1 HP; uppercutter -10.8; their third hit A 22%, B 14%).
