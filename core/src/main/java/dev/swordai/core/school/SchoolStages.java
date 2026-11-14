@@ -1059,9 +1059,22 @@ public final class SchoolStages {
 		return n == 0 ? Float.NaN : s / n;
 	}
 
+	/**
+	 * Run 95c (14 Nov ~12:25): the jumping family (T-E: uppercut T10, lunge T11a, hops T11b, sprint cut T11c) is not drilled while the
+	 * user's "jump once then combo" holds (14 Nov 09:30: "Teach it not to jump when not needed ... or else just sprint hit and start
+	 * combo"; SchoolSession.JUMP_ONCE charges and un-teaches exactly these jumps in the near fight, so the stage can never be passed and
+	 * its four jumping bots, fought from the ground, sent the camera's find-them lesson from 2 to 60-100 an update, 180-degree sweeps
+	 * for bots in the air overhead). Its bots stay in the rehearsal share. The stage counts as passed at once and the spiral skips it.
+	 */
+	public static final boolean SKIP_JUMPING = true;
+	static final int JUMPING_STAGE = 4;
+
 	/** Whether the stage is passed (see the class comment); the last stage never is. */
 	public boolean passed() {
 		Stage s = current();
+		if (SKIP_JUMPING && stage == JUMPING_STAGE) {
+			return true;
+		}
 		if (stage == STAGES.length - 1) {
 			return false;
 		}
@@ -1088,9 +1101,12 @@ public final class SchoolStages {
 
 	/** On to the next stage (round the spiral: after the last family, the one done least); returns its name. */
 	public String advance() {
-		if (!ALL_AT_ONCE && stage >= FAMILIES - 1) {
+		if (!ALL_AT_ONCE && (stage >= FAMILIES - 1 || SKIP_JUMPING && stage + 1 == JUMPING_STAGE)) {
 			int least = 0;
 			for (int f = 1; f < FAMILIES; f++) {
+				if (SKIP_JUMPING && f == JUMPING_STAGE) {
+					continue;
+				}
 				if (familyMastery(f) < familyMastery(least)) {
 					least = f;
 				}

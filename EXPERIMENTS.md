@@ -1840,3 +1840,9 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 
 - **95b:** a crit exchange (a needed near-fight jump) needs them in the air by their own jump: not within CRIT_EXCHANGE_AFTER_HIT 12 ticks of its own hit. Run 95's first 31 updates: 49 "needed" take-offs an update against 6 charged; its own hit lifts them, so every hop after its hit counted as a crit exchange. The needed take-offs are now counted by reason (crit exchange, told, jump reset in their combo).
 - **93c:** the comboable bot's stun 12-20 -> 12-16 ticks (Specialists.STUN_SPREAD 5), agent 37's plan step 2, once "its next hit within 20" held 60%+ (64% over 57 fights since 09:41; 70% and 64% in the last two full 10-minute windows; runs to 3+ 0.49 a fight, longest 11). Watch: runs to 3+ should stay 0.3+ a fight and "next" 50%+; if "later" (their hit first) dominates, go back to 12-20.
+
+## Run 95c (14 Nov ~12:30): the school skips the jumping stage (T-E) while "jump once then combo" holds
+
+- **Why:** at 12:05 the school passed T-D and went on to T-E, "jumping (T10, T11)" (uppercut, lunge, hops, sprint cut; bots stun-escaper, uppercutter, lunger, hopper). Run 95 charges and un-teaches exactly those jumps in the near fight (the user, 14 Nov 09:30), so T-E can never be passed, and fought from the ground its jumping bots sent the camera's find-them lesson (findBlind, "off the screen") from 2 an update (11:40-12:05, and 1-10 in the last T-E, 04:40-05:30, when it jumped along) to 62-104 an update: 180-degree yaw sweeps for bots in the air overhead, the "crazier movement to aim" the user complains about.
+- **Change:** SchoolStages.SKIP_JUMPING: T-E counts as passed at once and the spiral skips it; its bots stay in the rehearsal share (the uppercutter, hopper and lunger still come up).
+- **Watch:** "off the screen" back to under 10 an update; the stage after T-E in the log; check "lost view" lines.
