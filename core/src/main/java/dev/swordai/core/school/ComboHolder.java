@@ -46,7 +46,9 @@ public final class ComboHolder {
 	/** The label of each hold, for the logs. */
 	public static final Technique[] LABELS = {Technique.BASE, Technique.BASE, Technique.T6A, Technique.T11B, Technique.T10, Technique.T11A};
 	/** How often each hold is drawn for a follow-up (the lunge also comes whenever they back out, see {@link #awayNow}). */
-	public static final float[] WEIGHTS = {0.2f, 0.2f, 0.2f, 0.16f, 0.14f, 0.1f};
+	// Run 97b (14 Nov ~21:55, the user: "I prefer uppercuts ... dont use hop when combo"): the hop share (0.16; 0 hits landed from hops in 262 updates)
+	// goes to the uppercut (82% of its uppercut holds were followed by its own next hit first).
+	public static final float[] WEIGHTS = {0.2f, 0.2f, 0.2f, 0f, 0.3f, 0.1f};
 	/** In its own combo while its last hit is at most this old (SchoolSession.COMBO_GAP). */
 	public static final int COMBO_GAP = 20;
 	/** The sword comes back about this much a tick (Body.SWORD_TICKS 12.5). */
