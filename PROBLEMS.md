@@ -1409,3 +1409,13 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **ROUNDS WON: A 18/44 (41%), B 18/44 (41%), z 0.0.** Net A-B +1.0 (se 5.3). Damage a minute: A 368 / 407, B 344 / 389. Their third hit: A 28%, B 32%. Outside their combo: A swung 49%, B 47%. Swings A 359, B 380. Jump keys a minute: A 102 / 77, B 49 / 34.
 - Since runs 96 + 97: z +0.6, +2.5, +1.7, 0.0.
 - Run 97 in training, 16:08-19:43: stunned bot 178 fights, runs to 3/5/10 52/31/7 (0.29 to 3+ a fight); breaker 187 fights, 48/14/0 (0.26 a fight, no run of 10 yet); own-combo take-offs 344, hit in the air rising 74 (22%; target under 15%), falling 85. Punish crit 50% (at the floor).
+
+## 14 Nov 20:14 check (runs 96 + 97, about 4 h)
+
+- **ROUNDS WON: A 20/46 (43%), B 17/46 (37%), z +0.9.** Net A-B +0.4 (se 4.3). Damage a minute: A 360 / 386, B 363 / 393.
+- Their third hit: A 31%, B 38%. Outside their combo: A swung 42%, B 50%; crosshair off them A 39% (on its body 11%, so about 28% fully off), B 34% (18%, about 16%). Held otherwise with the crosshair on them: A 34 ticks, B 41 (both mostly 2.6+).
+- uppercutter +29.2 (A 3-0), fight-jumpin +22.2 (A 2-1, B 0-3).
+- Take-offs by source: A rule 120, technique 32, own 2-12 10, own other 111; B rule 162, own 0. Jump keys a minute: A 92 / 94, B 47 / 32.
+- Run 97, last 30 updates: stunned 31 fights (runs 3/5/10: 12/7/2), breaker 37 (8/1/1); own-combo take-offs 75, hit rising 19 (25%).
+- Punish crit 51%, told and landed 37%.
+- The outside-combo swing gap is now a crosshair-off-them gap (28% vs 16% fully off). Agent 40 (Sonnet, worktree) launched 20:20 to find why and fix the camera lesson.
