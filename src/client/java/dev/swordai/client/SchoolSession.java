@@ -1059,7 +1059,7 @@ public final class SchoolSession implements AgentSession {
 	 * second and third hits in a row with none of its own between (the user's real fights, 24 Oct 22:05: comboed, "like 3 sprint
 	 * hits before it even press S or do any react").
 	 */
-	private final long[][] swingCount = new long[2][17];
+	private final long[][] swingCount = new long[2][22];
 	/** Their hits in a row in this fight, none of its own between. */
 	private int theirRow;
 	/** Ticks what it sees of them is behind the game this fight. */
@@ -5609,6 +5609,8 @@ public final class SchoolSession implements AgentSession {
 				+ (c[5] == 0 ? "" : String.format(Locale.ROOT, "; outside their combo on the ground, sword ready, them in reach: %d ticks, swung %.0f%%, held with them falling %.0f%%, held otherwise %.0f%%",
 						c[5], 100.0 * c[6] / c[5], 100.0 * c[7] / c[5], 100.0 * c[8] / c[5]))
 				+ (c[5] == 0 ? "" : String.format(Locale.ROOT, ", crosshair off them %.0f%% (on its body but no pick %.0f%%)", 100.0 * c[9] / c[5], 100.0 * c[10] / c[5]))
+				+ (c[17] == 0 ? "" : String.format(Locale.ROOT, ", held otherwise with the crosshair on them %d ticks (under 2.0 blocks %d, 2.0-2.6 %d, 2.6+ %d; not sprinting %d)",
+						c[17], c[18], c[19], c[20], c[21]))
 				+ (c[11] == 0 ? "" : String.format(Locale.ROOT, "; in their combo, sword ready, them in reach: %d ticks, swung %.0f%%, crosshair off them %.0f%%",
 						c[11], 100.0 * c[12] / c[11], 100.0 * c[13] / c[11]))
 				+ (c[11] == 0 ? "" : String.format(Locale.ROOT, ", held with the crosshair on them: by the jump-in guard %.0f%%, in the air %.0f%%, on the ground %.0f%%",
@@ -5658,6 +5660,13 @@ public final class SchoolSession implements AgentSession {
 			c[7]++;
 		} else {
 			c[8]++;
+			// Run 95d (counter only; the user, 14 Nov 14:40: "maybe it learned to only swing in air and land crit and forgot sprint
+			// hitting"): the held-otherwise ticks with the crosshair on them, by distance, and not sprinting.
+			if (onOpponent()) {
+				c[17]++;
+				c[facts.reachDist < 2.0f ? 18 : facts.reachDist < 2.6f ? 19 : 20]++;
+				c[21] += mc.player.isSprinting() ? 0 : 1;
+			}
 		}
 		if (!onOpponent()) {
 			c[9]++;
