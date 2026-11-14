@@ -149,6 +149,8 @@ public final class SchoolSession implements AgentSession {
 	static final boolean JUMP_ONCE = true;
 	static final float JUMP_IN_REOPEN = 5f;
 	static final float CRIT_EXCHANGE_DIST = 4.5f;
+	/** Run 95b: ticks after its own hit in which their being in the air is its knockback's lift, not a crit of theirs coming. */
+	static final int CRIT_EXCHANGE_AFTER_HIT = 12;
 	static final float NEAR_JUMP_COST = 0.25f;
 	static final float NEAR_NO_JUMP_PULL = 0.5f;
 	/**
@@ -160,6 +162,8 @@ public final class SchoolSession implements AgentSession {
 	private boolean jumpInOpen = true;
 	private int dropAt = -1;
 	private int jumpInsTaken, jumpInReopened, nearJumpCharged, nearJumpNeededTakeoffs, nearNoJumpTaught, teacherJumpFlipped, comboDropped;
+	/** Run 95b: the needed near-fight take-offs by reason (crit exchange, told, the jump reset in their combo). */
+	private final int[] nearJumpNeededBy = new int[3];
 	/**
 	 * Run 92 (13 Nov ~24:00), agent 33 on the user's 14 real rounds of 13 Nov: in range it was under 2.5 blocks 51% of the time (old
 	 * won rounds 40%), the first hit of an exchange went 21 to 42 against it (mostly under 1 block), inside 3.0 its sword was empty
@@ -207,14 +211,21 @@ public final class SchoolSession implements AgentSession {
 	 * or its jump reset in their combo (their 2nd+ hit, the document's T9a; the told T9a/T9b/T9c).
 	 */
 	private boolean nearJumpNeeded(Technique told) {
-		if (!reader.duel.them.onGround && facts.reachDist <= CRIT_EXCHANGE_DIST) {
-			return true;
+		return nearJumpReason(told) != 0;
+	}
+
+	/** Run 95b: why a near-fight take-off is needed: 0 not, 1 a crit exchange, 2 a told crit/K3/C6/T9a-c, 3 the jump reset in their combo. */
+	private int nearJumpReason(Technique told) {
+		// Run 95b: in the air by their own jump, not lifted by its hit (the first 10 minutes of run 95 counted 50 "needed" take-offs an
+		// update against 7 charged: the knockback lift of its own hits made every hop after them a "crit exchange").
+		if (!reader.duel.them.onGround && facts.reachDist <= CRIT_EXCHANGE_DIST && clock.ticksSinceHitDealt > CRIT_EXCHANGE_AFTER_HIT) {
+			return 1;
 		}
 		if (told == Technique.K3 || told == Technique.T1 || told == Technique.T1C || told == Technique.C6 || told == Technique.T9A
 				|| told == Technique.T9B || told == Technique.T9C) {
-			return true;
+			return 2;
 		}
-		return theirRow >= 2 && clock.ticksSinceHitTaken <= 1;
+		return theirRow >= 2 && clock.ticksSinceHitTaken <= 1 ? 3 : 0;
 	}
 
 	/** Run 91b: whether a technique asks for a jump on this tick (see OWN_JUMP_COST). */
@@ -1171,9 +1182,9 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, ", late swings charged %d", lateSwingCharged)
 				+ String.format(Locale.ROOT, " | run 91, their 2nd+ hits in a row charged %d", theirRowCharged)
 				+ String.format(Locale.ROOT, ", its own untaught take-offs charged %d (run 94: reflex after their first hit charged extra %d)", ownJumpCharged, reflexFirstCharged)
-				+ String.format(Locale.ROOT, " | run 95 (%s): jump-ins %d (reopened at %.0f+ blocks %d), near-fight take-offs not needed charged %d, needed %d; \"no jump\" taught %d (the teacher's jump turned %d); combos dropped %d",
-						JUMP_ONCE ? "on" : "off", jumpInsTaken, JUMP_IN_REOPEN, jumpInReopened, nearJumpCharged, nearJumpNeededTakeoffs, nearNoJumpTaught,
-						teacherJumpFlipped, comboDropped)
+				+ String.format(Locale.ROOT, " | run 95 (%s): jump-ins %d (reopened at %.0f+ blocks %d), near-fight take-offs not needed charged %d, needed %d (crit exchange %d, told %d, jump reset in their combo %d); \"no jump\" taught %d (the teacher's jump turned %d); combos dropped %d",
+						JUMP_ONCE ? "on" : "off", jumpInsTaken, JUMP_IN_REOPEN, jumpInReopened, nearJumpCharged, nearJumpNeededTakeoffs, nearJumpNeededBy[0],
+						nearJumpNeededBy[1], nearJumpNeededBy[2], nearNoJumpTaught, teacherJumpFlipped, comboDropped)
 				+ String.format(Locale.ROOT, " | run 92, too close (under %.1f, its sword empty, theirs ready) ticks charged %d; edge sprint hits (%.1f-%.1f) paid %d; its hits' mean distance %.2f (%d hits); rule m runs started by A's rules %d, into a ready sword or a jump-in crit %d (%s)",
 						TOO_CLOSE_WITHIN, tooCloseCharged, EDGE_HIT_FROM, EDGE_HIT_TO, edgeHitsPaid, ownHitsMeasured > 0 ? ownHitDistSum / ownHitsMeasured : 0.0,
 						ownHitsMeasured, meetStarts[0], meetStartsIntoReady[0], MEET_NOT_INCOMING ? "stopped" : "run")
@@ -1246,6 +1257,7 @@ public final class SchoolSession implements AgentSession {
 		ownJumpCharged = 0;
 		reflexFirstCharged = 0;
 		jumpInsTaken = jumpInReopened = nearJumpCharged = nearJumpNeededTakeoffs = nearNoJumpTaught = teacherJumpFlipped = comboDropped = 0;
+		java.util.Arrays.fill(nearJumpNeededBy, 0);
 		tooCloseCharged = edgeHitsPaid = ownHitsMeasured = 0;
 		comboableFights = comboableLongest = comboableRuns3 = comboableRuns5 = comboableRuns10 = longComboPaid = 0;
 		cbFollowed = cbTraded = cbTheirFirst = cbTimedOut = cbGapSum = 0;
@@ -5035,6 +5047,7 @@ public final class SchoolSession implements AgentSession {
 					nearJumpCharged++;
 				} else {
 					nearJumpNeededTakeoffs++;
+					nearJumpNeededBy[Math.max(0, nearJumpReason(learner.told()) - 1)]++;
 				}
 			} else if (ownJumpAir && mode == Mode.TRAIN && review < 0 && OWN_JUMP_COST > 0f && !jumpTechniqueNow(step)) {
 				// Run 91b: its own take-off that no technique asked for costs OWN_JUMP_COST. Run 92: the jump on the tick of a hit taken
