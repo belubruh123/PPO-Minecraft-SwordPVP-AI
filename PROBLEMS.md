@@ -1426,3 +1426,11 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Their third hit: A 22%, B 34%. Outside their combo: A swung 49%, B 49% (level). Swings A 391, B 380 (A more).
 - **Aim: crosshair off them A 33% (on its body 16%, so 17% fully off), B 38% (21%, 17% fully off). The 20:14 gap (28% vs 16% fully off) is closed.** Lost view: A 31 of 8545 ticks (9 times), B 16 of 8580 (4 times).
 - Take-offs by source: A rule 84, technique 16, own 2-12 7, own other 136 (rising: 42, 92, 87, 111, 136 since run 95); B rule 155, own 0. Jump keys a minute: A 82 / 79, B 34 / 38. Run 97's jumps in its own combo (the user asked for them) keep A's own take-offs high; real duels decide whether they hold combos or shake the aim.
+
+## 14 Nov 22:14 check (run 98, about 1.7 h); runs 97b + 99 redeploy asked 22:16
+
+- **ROUNDS WON: A 23/45 (51%), B 16/45 (36%), z +1.8.** Only A won 11, only B won 4. **Net A-B +18.1 (se 6.5).** Damage a minute: A 413 / 381, B 327 / 408.
+- Their third hit: A 26%, B 36%. Outside their combo: A swung 46%, B 52%. Swings A 382, B 371.
+- Crosshair off them: A 33% (on its body 13%, about 20% fully off), B 35% (21%, about 14%).
+- Take-offs by source: A rule 100, technique 31, own 2-12 8, own other 112; B rule 174, own 0. Jump keys a minute: A 72 / 82, B 37 / 43.
+- **Punish crit chances critted 47% (under the 50% floor) in training at 22:15.** Watch at the next review.
