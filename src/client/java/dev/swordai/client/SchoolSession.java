@@ -170,7 +170,7 @@ public final class SchoolSession implements AgentSession {
 	private int dropAt = -1;
 	private int jumpInsTaken, jumpInReopened, nearJumpCharged, nearJumpNeededTakeoffs, nearNoJumpTaught, teacherJumpFlipped, comboDropped;
 	/** Run 95b: the needed near-fight take-offs by reason (crit exchange, told, the jump reset in their combo). */
-	private final int[] nearJumpNeededBy = new int[3];
+	private final int[] nearJumpNeededBy = new int[4];
 	/**
 	 * Run 92 (13 Nov ~24:00), agent 33 on the user's 14 real rounds of 13 Nov: in range it was under 2.5 blocks 51% of the time (old
 	 * won rounds 40%), the first hit of an exchange went 21 to 42 against it (mostly under 1 block), inside 3.0 its sword was empty
@@ -221,7 +221,11 @@ public final class SchoolSession implements AgentSession {
 		return nearJumpReason(told) != 0;
 	}
 
-	/** Run 95b: why a near-fight take-off is needed: 0 not, 1 a crit exchange, 2 a told crit/K3/C6/T9a-c, 3 the jump reset in their combo. */
+	/**
+	 * Run 95b: why a near-fight take-off is needed: 0 not, 1 a crit exchange, 2 a told crit/K3/C6/T9a-c, 3 the jump reset in their combo,
+	 * 4 (run 97) its own combo alive (its last hit within COMBO_GAP, none taken since): the hops, uppercuts and lunges that hold a combo
+	 * (T10, T11a-c; the user, 14 Nov 14:50: "hold combo with hops lunge and upper cut") are neither charged nor taught "no jump" there.
+	 */
 	private int nearJumpReason(Technique told) {
 		// Run 95b: in the air by their own jump, not lifted by its hit (the first 10 minutes of run 95 counted 50 "needed" take-offs an
 		// update against 7 charged: the knockback lift of its own hits made every hop after them a "crit exchange").
@@ -232,7 +236,10 @@ public final class SchoolSession implements AgentSession {
 				|| told == Technique.T9B || told == Technique.T9C) {
 			return 2;
 		}
-		return theirRow >= 2 && clock.ticksSinceHitTaken <= 1 ? 3 : 0;
+		if (theirRow >= 2 && clock.ticksSinceHitTaken <= 1) {
+			return 3;
+		}
+		return clock.ticksSinceHitDealt <= COMBO_GAP && clock.ticksSinceHitTaken > clock.ticksSinceHitDealt ? 4 : 0;
 	}
 
 	/** Run 91b: whether a technique asks for a jump on this tick (see OWN_JUMP_COST). */
@@ -548,6 +555,28 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final float LONG_COMBO = 0.3f;
 	static final int LONG_COMBO_FROM = 4;
+	/**
+	 * Run 97 (agent 39; the user, 14 Nov 14:50: "it needs to learn to hold combo make sure its opponent is designed to teach it hold combo
+	 * with hops lunge and upper cut and some regular sprint hit and random strafe with A D tapping and S tapping and regular W tap. With
+	 * also upper cut or any jump combo style always had it's combo be broken by opponent so make sure it si stable to hold combo like
+	 * that"). This share of the comboable fights is played against the combo breaker (Specialists#comboBreaker): the comboable bot that
+	 * also gets out of a held combo the document's ways (T8 at one rising into its reach, the T9a jump reset in a set rhythm, the C3
+	 * back-out, a swing back at an empty sword or one too close), so that only holds timed as the document has them keep it in.
+	 * 0 = off (no extra draw of the random stream).
+	 */
+	static final float COMBO_BREAKER_SHARE = 0.5f;
+	/**
+	 * Run 97: in its own combo against the comboable bots, the combo-hold teacher's (ComboHolder) W/S, A/D, sprint and jump keys are a
+	 * copy target at HOLD_PULL, taught only where the moment went better than the critic expected (SchoolPpo#teach, holdPull): a hold
+	 * drawn for each follow-up (ground sprint hits after a W-tap or an S-tap, A/D taps, T11b hops, T10 uppercuts, T11a lunges at a
+	 * back-out), each timed as the document has it. Where a technique teacher speaks, it keeps its keys.
+	 */
+	static final boolean HOLD_COPY = true;
+	static final float HOLD_PULL = 0.3f;
+	/** Run 97: the logs' kinds of its own follow-up hits in its combo (by its own state at the hit) and the run-up of a lunge's take-off. */
+	static final String[] HOLD_KINDS = {"ground", "strafe held", "hop (falling, from a stand)", "uppercut (rising or at the peak)",
+			"lunge (falling, from a run)", "not a sprint hit"};
+	static final double LUNGE_RUN_UP = 0.15;
 	/**
 	 * Run 56 (10 Nov 06:50), the user: "fight back with a combo: learn how to start a combo and hold a combo with uppercut/hop/lunge
 	 * and strafe". The document: T10 uppercut (jump, sprint-hit at the peak; "best time: right after you stun them", "deflection
@@ -1129,6 +1158,21 @@ public final class SchoolSession implements AgentSession {
 	 * last update, runs that reached 3, 5 and 10 hits, and the LONG_COMBO hits paid.
 	 */
 	private boolean fightComboable;
+	/**
+	 * Run 97 (training, comboable fights): this fight against the combo breaker (COMBO_BREAKER_SHARE); the combo-hold teacher and whether
+	 * its combo is alive this tick; fights and runs reaching 3/5/10 hits by the bot (0 stunned, 1 breaker); its own follow-up hits by kind
+	 * (HOLD_KINDS) and what came first after each (its next hit, theirs, neither within COMBO_GAP); its own take-offs in its combo and the
+	 * hits it took in the air from one (rising, falling); the teacher's taught ticks by hold (ComboHolder.NAMES).
+	 */
+	private boolean fightBreaker;
+	private final dev.swordai.core.school.ComboHolder holder = new dev.swordai.core.school.ComboHolder();
+	private boolean holderOn;
+	private final int[][] holdRuns = new int[2][4];
+	private final int[][] holdOut = new int[HOLD_KINDS.length][4];
+	private int holdAt = -1, holdKind;
+	private int holdTakeoffs, holdHitRising, holdHitFalling;
+	private boolean holdJumpAir, holdTakeoffRun;
+	private final int[] holdTaught = new int[dev.swordai.core.school.ComboHolder.METHODS];
 	private int comboableFights, comboableLongest, comboableRuns3, comboableRuns5, comboableRuns10, longComboPaid;
 	/**
 	 * Run 93b (agent 37), training, fights against the comboable bot: after each of its hits (no hit taken that tick), what came
@@ -1166,6 +1210,24 @@ public final class SchoolSession implements AgentSession {
 	private int uppercutComboHits, fallingJumpComboHits, strafeComboHits;
 	private int counterHits;
 
+	/** Run 97: its follow-ups against the comboable bots by kind, as hits: its next first / theirs first / neither. */
+	private String holdOutLine() {
+		StringBuilder b = new StringBuilder();
+		for (int k = 0; k < HOLD_KINDS.length; k++) {
+			b.append(String.format(Locale.ROOT, " %s %d: %d/%d/%d;", HOLD_KINDS[k], holdOut[k][0], holdOut[k][1], holdOut[k][2], holdOut[k][3]));
+		}
+		return b.toString();
+	}
+
+	/** Run 97: the combo-hold teacher's taught ticks by hold. */
+	private String holdTaughtLine() {
+		StringBuilder b = new StringBuilder();
+		for (int m = 0; m < holdTaught.length; m++) {
+			b.append(String.format(Locale.ROOT, " %s %d%s", dev.swordai.core.school.ComboHolder.NAMES[m], holdTaught[m], m + 1 < holdTaught.length ? "," : ""));
+		}
+		return b.toString();
+	}
+
 	private String jumpAlongLine() {
 		String s = String.format(Locale.ROOT, " | came into reach by a jump that kept the rule %d, walking in %d; its own jumps %d, off beyond their reach and rising out of it %d, crits from those %d; jumped along with their jump-in %d, crits then %d, punish crits then %d"
 						+ " | after its %d punish crits: crit again from its own jump (T1c) %d, critted back by them %d; its own jump after them %d, hits from it %d (sprint hits %d)"
@@ -1189,9 +1251,9 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, ", late swings charged %d", lateSwingCharged)
 				+ String.format(Locale.ROOT, " | run 91, their 2nd+ hits in a row charged %d", theirRowCharged)
 				+ String.format(Locale.ROOT, ", its own untaught take-offs charged %d (run 94: reflex after their first hit charged extra %d)", ownJumpCharged, reflexFirstCharged)
-				+ String.format(Locale.ROOT, " | run 95 (%s): jump-ins %d (reopened at %.0f+ blocks %d), near-fight take-offs not needed charged %d, needed %d (crit exchange %d, told %d, jump reset in their combo %d); \"no jump\" taught %d (the teacher's jump turned %d); combos dropped %d",
+				+ String.format(Locale.ROOT, " | run 95 (%s): jump-ins %d (reopened at %.0f+ blocks %d), near-fight take-offs not needed charged %d, needed %d (crit exchange %d, told %d, jump reset in their combo %d, run 97 its own combo %d); \"no jump\" taught %d (the teacher's jump turned %d); combos dropped %d",
 						JUMP_ONCE ? "on" : "off", jumpInsTaken, JUMP_IN_REOPEN, jumpInReopened, nearJumpCharged, nearJumpNeededTakeoffs, nearJumpNeededBy[0],
-						nearJumpNeededBy[1], nearJumpNeededBy[2], nearNoJumpTaught, teacherJumpFlipped, comboDropped)
+						nearJumpNeededBy[1], nearJumpNeededBy[2], nearJumpNeededBy[3], nearNoJumpTaught, teacherJumpFlipped, comboDropped)
 				+ String.format(Locale.ROOT, " | run 96: ready sword held at them on the ground charged %d ticks", readyHoldCharged)
 				+ String.format(Locale.ROOT, " | run 92, too close (under %.1f, its sword empty, theirs ready) ticks charged %d; edge sprint hits (%.1f-%.1f) paid %d; its hits' mean distance %.2f (%d hits); rule m runs started by A's rules %d, into a ready sword or a jump-in crit %d (%s)",
 						TOO_CLOSE_WITHIN, tooCloseCharged, EDGE_HIT_FROM, EDGE_HIT_TO, edgeHitsPaid, ownHitsMeasured > 0 ? ownHitDistSum / ownHitsMeasured : 0.0,
@@ -1201,6 +1263,10 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, "; run 93b (%s), after its hits there: its next hit within %d ticks %d (mean gap %.1f), their hit first within %d (trade) %d, later %d, neither within %d %d (distance then %.2f)",
 						Specialists.COMBOABLE_STUNNED ? "stunned" : "walks back", COMBO_GAP, cbFollowed, cbFollowed > 0 ? cbGapSum / (double) cbFollowed : 0.0,
 						CB_TRADE_TICKS, cbTraded, cbTheirFirst, COMBO_GAP, cbTimedOut, cbTimedOut > 0 ? cbTimeoutDistSum / cbTimedOut : 0.0)
+				+ String.format(Locale.ROOT, " | run 97 (breaker share %.2f, hold copy %s at %.2f): fights stunned %d, breaker %d; runs reaching 3/5/10 hits stunned %d/%d/%d, breaker %d/%d/%d; its follow-ups there by kind (hits: its next first / theirs first / neither within %d):%s; its own take-offs in its combo %d, hit in the air rising %d, falling %d; the hold teacher's ticks by hold:%s",
+						COMBO_BREAKER_SHARE, HOLD_COPY ? "on" : "off", HOLD_PULL, holdRuns[0][0], holdRuns[1][0], holdRuns[0][1], holdRuns[0][2], holdRuns[0][3],
+						holdRuns[1][1], holdRuns[1][2], holdRuns[1][3], COMBO_GAP, holdOutLine(), holdTakeoffs, holdHitRising, holdHitFalling, holdTaughtLine())
+				+ dev.swordai.server.TechniqueBot.breakLine()
 				+ String.format(Locale.ROOT, " | after its %d punish crits, any hit taken (real duels: 82%% within 30, 16%% crits): within 12 ticks %d, within 30 %d (crits %d)",
 						pcAnyCrits, pcBack12, pcBack30, pcBackCrit30)
 				+ String.format(Locale.ROOT, " | run 89, after its punish crit the teacher showed T6 on %d ticks, S its own on %d", t6AfterTaught, t6AfterBack)
@@ -1269,6 +1335,14 @@ public final class SchoolSession implements AgentSession {
 		java.util.Arrays.fill(nearJumpNeededBy, 0);
 		tooCloseCharged = edgeHitsPaid = ownHitsMeasured = 0;
 		comboableFights = comboableLongest = comboableRuns3 = comboableRuns5 = comboableRuns10 = longComboPaid = 0;
+		for (int[] r : holdRuns) {
+			java.util.Arrays.fill(r, 0);
+		}
+		for (int[] r : holdOut) {
+			java.util.Arrays.fill(r, 0);
+		}
+		java.util.Arrays.fill(holdTaught, 0);
+		holdTakeoffs = holdHitRising = holdHitFalling = 0;
 		cbFollowed = cbTraded = cbTheirFirst = cbTimedOut = cbGapSum = 0;
 		cbTimeoutDistSum = 0f;
 		ownHitDistSum = 0.0;
@@ -3411,6 +3485,7 @@ public final class SchoolSession implements AgentSession {
 		EpisodePlan plan;
 		sparFight = false;
 		fightComboable = false;
+		fightBreaker = false;
 		rivalNow = 0;
 		if (review >= 0) {
 			// The old stage's own episode: its bot (standing, strafing, hopping out of view, fighting) at a skill drawn from
@@ -3527,7 +3602,10 @@ public final class SchoolSession implements AgentSession {
 				// the stages' progress and the scenes (endFight, keepScene).
 				fightComboable = true;
 				fightBot = Specialists.STRAIGHT_SPRINTER;
-				fightStyle = Specialists.comboable(new Random(fightStyleSeed ^ 0x93C0B0L));
+				// Run 97: COMBO_BREAKER_SHARE of them against the combo breaker (the comboable bot that escapes badly held combos).
+				fightBreaker = COMBO_BREAKER_SHARE > 0f && rng.nextFloat() < COMBO_BREAKER_SHARE;
+				fightStyle = fightBreaker ? Specialists.comboBreaker(new Random(fightStyleSeed ^ 0x93C0B0L))
+						: Specialists.comboable(new Random(fightStyleSeed ^ 0x93C0B0L));
 				plan.style = fightStyle;
 			}
 			if (sparFight) {
@@ -3587,6 +3665,11 @@ public final class SchoolSession implements AgentSession {
 		teacher.punishFirst = punishDrill;
 		teacher.start(checkTaught != null ? checkTaught : stages.taught(), cfg.swingMinCharge, seed ^ 0x7EAC4L);
 		teacher.seenLag(agentLag);
+		holder.start(seed ^ 0x40D97L);
+		holder.seenLag(agentLag);
+		holderOn = false;
+		holdAt = -1;
+		holdJumpAir = false;
 		fightLag = agentLag;
 		learner.teacherForcing = punishDrill ? 1f : sceneNow != null ? 1f - SCENE_DECIDER_SHARE : TEACHER_FORCING;
 		learner.resetIntent();
@@ -4316,6 +4399,10 @@ public final class SchoolSession implements AgentSession {
 							comboableRuns3 += rewardRow == 3 ? 1 : 0;
 							comboableRuns5 += rewardRow == 5 ? 1 : 0;
 							comboableRuns10 += rewardRow == 10 ? 1 : 0;
+							int[] runsBy = holdRuns[fightBreaker ? 1 : 0];
+							runsBy[1] += rewardRow == 3 ? 1 : 0;
+							runsBy[2] += rewardRow == 5 ? 1 : 0;
+							runsBy[3] += rewardRow == 10 ? 1 : 0;
 						}
 						// Run 56: held with an uppercut, a lunge or a hop (a sprint hit out of its own jump), or while strafing.
 						// Run 68: not in the T1c window on one falling (K2, "while they are critting you"): there the crit is the answer.
@@ -4359,6 +4446,31 @@ public final class SchoolSession implements AgentSession {
 					}
 					if (facts.hitsDealt > 0 && facts.hitsTaken == 0) {
 						cbFollowAt = fightTicks;
+					}
+					// Run 97: its follow-up hits by how it held them (its own state at the hit), and what came first after each; the hits it
+					// took in the air from its own take-off in its combo (the user: "upper cut or any jump combo style always had it's combo
+					// be broken").
+					if (holdAt >= 0 && fightTicks - holdAt > COMBO_GAP) {
+						holdOut[holdKind][3]++;
+						holdAt = -1;
+					}
+					if (holdAt >= 0 && (facts.hitsTaken > 0 || facts.hitsDealt > 0)) {
+						holdOut[holdKind][facts.hitsTaken > 0 ? 2 : 1]++;
+						holdAt = -1;
+					}
+					if (facts.hitsTaken > 0 && holdJumpAir && !facts.onGround) {
+						if (prevVy > 0.0) {
+							holdHitRising++;
+						} else {
+							holdHitFalling++;
+						}
+						holdJumpAir = false;
+					}
+					if (facts.hitsDealt > 0 && facts.hitsTaken == 0 && rewardRow >= 2) {
+						holdKind = !facts.sprintHit ? 5 : !ownJumpAir || facts.onGround ? (lastStrafe ? 1 : 0)
+								: prevVy > -0.1 ? 3 : holdTakeoffRun ? 4 : 2;
+						holdOut[holdKind][0]++;
+						holdAt = fightTicks;
 					}
 				}
 				if (COMBO_DROP_COST > 0f && mode == Mode.TRAIN && review < 0) {
@@ -4450,6 +4562,13 @@ public final class SchoolSession implements AgentSession {
 			keys &= basics[review].headMask;
 		}
 		teacher.tick(reader.duel, reader.events, onOpponent());
+		if (fightComboable) {
+			// Run 97: the combo-hold teacher on the fight as the network sees it (its strafe of the last tick, for the A/D taps).
+			holder.ownStrafe(hasLastAction ? ActionSpace.strafeAxis(lastAction) : 0);
+			holderOn = holder.tick(reader.duel, reader.events);
+		} else {
+			holderOn = false;
+		}
 		liftTaught |= liftedFor >= 0 && teacher.technique() == Technique.B1;
 		if (liftedFor >= 0 && learner.told() == Technique.B1) {
 			liftTold = true;
@@ -4533,6 +4652,7 @@ public final class SchoolSession implements AgentSession {
 		step.teacherWeight = 0f;
 		step.letGoPull = 0f;
 		step.jumpPull = 0f;
+		step.holdPull = 0f;
 		// A teacher with no pull leaves its keys to the installed model (NO_PULL_YIELDS): its target would replace the installed
 		// model's on those keys and teach nothing. The technique's moment is still judged on its own keys (perf, below).
 		float[] pulls = stages.techPulls();
@@ -4826,6 +4946,22 @@ public final class SchoolSession implements AgentSession {
 				nearNoJumpTaught++;
 			}
 		}
+		// Run 97 (HOLD_COPY): in its own combo against the comboable bots, the combo-hold teacher's movement keys, by the outcome. The rules
+		// give way on them (RULES_YIELD: the heads a teacher teaches), and B's follow-up keys (OWN_FOLLOWUP_AWR) leave them.
+		if (HOLD_COPY && fightComboable && holderOn && mode == Mode.TRAIN && review < 0 && step.letGoPull == 0f
+				&& (step.teacherTechnique < 0 || step.teacherTechnique == base)) {
+			int heads = holder.target(step.teacher);
+			if (heads != 0) {
+				step.teacherHeads |= heads;
+				step.holdPull = HOLD_PULL;
+				// The jump is the hold teacher's here (its take-offs, no jump between them), not the file teacher's (JUMP_EVERYWHERE).
+				step.jumpPull = 0f;
+				if (step.teacherTechnique < 0) {
+					step.teacherTechnique = base;
+				}
+				holdTaught[holder.method()]++;
+			}
+		}
 		if (k2Hold) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 			// Neither "swing" nor "don't" is taught on a tick the rule holds.
@@ -5046,6 +5182,13 @@ public final class SchoolSession implements AgentSession {
 		// Run 43: a take-off on the ground by the network (not a rule's jump) marks the air until it stands again.
 		if (me.onGround()) {
 			ownJumpAir = action[ActionSpace.JUMP] == 1 && (ruled & (1 << ActionSpace.JUMP)) == 0;
+			// Run 97: its own take-off in its combo against the comboable bots (a run-up: sprinting at them, a lunge's), for the logs.
+			holdJumpAir = ownJumpAir && fightComboable && mode == Mode.TRAIN && clock.ticksSinceHitDealt <= COMBO_GAP
+					&& clock.ticksSinceHitTaken > clock.ticksSinceHitDealt;
+			if (holdJumpAir) {
+				holdTakeoffs++;
+				holdTakeoffRun = me.isSprinting() && reader.duel.iClose > LUNGE_RUN_UP;
+			}
 			if (JUMP_ONCE && ownJumpAir && mode == Mode.TRAIN && review < 0) {
 				// Run 95: its one jump-in spends the engagement's; in the near fight a jump not needed costs NEAR_JUMP_COST.
 				if (jumpInOpen) {
@@ -5761,6 +5904,7 @@ public final class SchoolSession implements AgentSession {
 	private void endFight(boolean won, boolean lost) {
 		if (fightComboable && mode == Mode.TRAIN) {
 			comboableFights++;
+			holdRuns[fightBreaker ? 1 : 0][0]++;
 		}
 		// Full fights only (7 Nov, run 48b): a replay without the rules goes on to the replay's own tally below (won, 3 in a row,
 		// learned). Since run 30f (1 Nov) about half the replays were played without the rules and returned here uncounted, and

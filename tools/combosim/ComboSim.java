@@ -21,8 +21,10 @@ import java.util.Random;
  * Specialists.comboable()? Run (Git Bash, from the repo root; JDK as in tools/compile-check.sh):
  *   J=C:/Users/jerem/.gradle/jdks/eclipse_adoptium-25-amd64-windows.2/bin; mkdir -p /d/tmp-combosim
  *   "$J/javac" -nowarn -d /d/tmp-combosim $(find core/src/main/java -name '*.java') tools/combosim/ComboSim.java
- *   "$J/java" -cp /d/tmp-combosim ComboSim FIGHTS [trace|x] [POLICY-PREFIX|""] [TRACE-IF-LONGEST] [run93|stun|none|stunA-B] [GATE]
+ *   "$J/java" -cp /d/tmp-combosim ComboSim FIGHTS [trace|x] [POLICY-PREFIX|""] [TRACE-IF-LONGEST] [run93|stun|breaker|none|stunA-B] [GATE]
  * e.g. ComboSim 300 x "" 99 run93 (every policy against run 93's bot), ComboSim 300 x "" 99 stun (run 93b's).
+ * Agent 39 (run 97): ComboSim 300 x "" 99 breaker plays Specialists.comboBreaker (the stunned bot that escapes T8/T9a/C3/empty-sword);
+ * the holder policies are ComboHolder (the combo-hold teacher); -DtraceAll=true traces every fight, -DtraceChars=N the length.
  * Physics as the game's LivingEntity.travel: acceleration AND friction by the ground state
  * BEFORE the move (ToyFight uses the state after it, which makes a knockback flight about 40% longer), the hurt
  * knockback 0.4 before the sprint hit's extra 0.5 (Player.attack), the bot's knockback and its feeling of the hit
@@ -64,6 +66,73 @@ public class ComboSim {
 		boolean sprinting;
 		int sinceJump = 1000, airTicks, sinceSwing = 1000, sinceHurt = 1000;
 		float yaw;
+		/** Agent 39: the speed toward the other on the first air tick of its last own take-off (a sprint-jump about 0.45, a hop under 0.3). */
+		double takeoffSpeed;
+		boolean ownJumpAir;
+	}
+
+	// Agent 39 (run 97): its hits by hold (as SchoolSession counts the network's: 0 ground sprint hit, 1 strafe-held, 2 hop, 3 uppercut,
+	// 4 lunge, 5 other), and after each, what came first: its next hit within COMBO_GAP, their hit within it, neither.
+	static final String[] HOLDS = {"ground", "strafe", "hop", "uppercut", "lunge", "other"};
+	int[][] holdOut = new int[6][4]; // hits, then next own first, theirs first, neither
+	int holdAt = -1, holdKind;
+	int[] taughtHold = new int[6]; // the holder's own hold at its hits (the teacher's draw)
+	// Its own take-offs in its own combo, and of those hit in the air (rising, falling) before landing.
+	int comboTakeoffs, comboAirHitRising, comboAirHitFalling;
+
+	/** The hold of A's hit now, from its body as SchoolSession reads it. */
+	int holdOf(boolean sprintHit) {
+		Side a = s[0];
+		if (!sprintHit) {
+			return 5;
+		}
+		if (a.b.onGround || !a.ownJumpAir) {
+			return a.keys.strafe != 0 ? 1 : 0;
+		}
+		if (a.b.vy > -0.1) {
+			return 3;
+		}
+		return a.takeoffSpeed >= 0.35 ? 4 : 2;
+	}
+
+	boolean comboJumpNow;
+
+	void holdTick() {
+		if (holdAt >= 0 && t - holdAt > COMBO_GAP) {
+			holdOut[holdKind][3]++;
+			holdAt = -1;
+		}
+	}
+
+	/** B's hits that broke an open follow-up of A's, by B's technique at the swing: the T9a jump reset's crit (B1), T8, other. */
+	int[] brokenBy = new int[3];
+
+	/** At A's hit (i 0) or B's (1): the open follow-up resolved, and A's follow-up hit registered. */
+	void holdHit(int i, boolean sprintHit) {
+		if (holdAt >= 0) {
+			holdOut[holdKind][i == 0 ? 1 : 2]++;
+			holdAt = -1;
+			if (i == 1) {
+				Technique bt = s[1].keys.technique;
+				brokenBy[bt == Technique.B1 ? 0 : bt == Technique.T8 ? 1 : 2]++;
+			}
+		}
+		if (i == 1 && s[0].ownJumpAir && comboJumpNow && !s[0].b.onGround) {
+			if (s[0].b.vy > 0) {
+				comboAirHitRising++;
+			} else {
+				comboAirHitFalling++;
+			}
+			comboJumpNow = false;
+		}
+		if (i == 0 && row >= 2) {
+			holdKind = holdOf(sprintHit);
+			holdOut[holdKind][0]++;
+			holdAt = t;
+			if (holdNow >= 0) {
+				taughtHold[holdNow]++;
+			}
+		}
 	}
 
 	final Side[] s = {new Side(), new Side()};
@@ -215,6 +284,7 @@ public class ComboSim {
 				swing(i);
 			}
 		}
+		holdTick();
 		cbTick();
 		// 4. move
 		for (int i = 0; i < 2; i++) {
@@ -244,7 +314,7 @@ public class ComboSim {
 			Body a = s[0].b, b = s[1].b;
 			trace.append(String.format(Locale.ROOT, "%4d dist %.2f seenA %.2f | A %s ch %.2f %s v%.2f | B %s ch %.2f %s v%.2f", t,
 					Duel.eyeToBox(a, b), s[0].view.reach, s[0].keys.brief(), charge(s[0], true), a.onGround ? "g" : "a",
-					Math.hypot(a.vx, a.vz), s[1].keys.brief(), charge(s[1], false), b.onGround ? "g" : "a", Math.hypot(b.vx, b.vz)) + note + " row " + row + "\n");
+					Math.hypot(a.vx, a.vz), s[1].keys.brief(), charge(s[1], false), b.onGround ? "g" : "a", Math.hypot(b.vx, b.vz)) + note + " row " + row + (holdNow >= 0 ? " h" + holdNow : "") + "\n");
 			note = "";
 		}
 		t++;
@@ -261,6 +331,7 @@ public class ComboSim {
 			x.sprinting = true;
 		}
 		x.sinceJump = Math.min(x.sinceJump + 1, 1000);
+		boolean jumpedNow = false;
 		if (k.jump && me.onGround) {
 			v[1] = JUMP;
 			if (x.sprinting) {
@@ -268,6 +339,7 @@ public class ComboSim {
 				v[2] += Math.cos(Math.toRadians(x.yaw)) * SPRINT_JUMP;
 			}
 			x.sinceJump = 0;
+			jumpedNow = true;
 		}
 		double f = k.forward * 0.98, st = k.strafe * 0.98;
 		double len = Math.sqrt(f * f + st * st);
@@ -305,6 +377,24 @@ public class ComboSim {
 		}
 		x.fall = ground ? 0 : me.y < prevY ? x.fall + (prevY - me.y) : x.fall;
 		x.airTicks = ground ? 0 : x.airTicks + 1;
+		if (jumpedNow) {
+			Body o = s[1 - i].b;
+			double dx = o.x - me.x, dz = o.z - me.z, dd = Math.max(1e-6, Math.hypot(dx, dz));
+			x.ownJumpAir = true;
+			x.takeoffSpeed = (me.vx * dx + me.vz * dz) / dd;
+			if (i == 0) {
+				comboJumpNow = row > 0 && t - lastOwnHit <= COMBO_GAP;
+				comboTakeoffs += comboJumpNow ? 1 : 0;
+				if (comboJumpNow) {
+					note += " TAKEOFF(h" + holdNow + ")";
+				}
+			}
+		} else if (ground) {
+			x.ownJumpAir = false;
+			if (i == 0) {
+				comboJumpNow = false;
+			}
+		}
 	}
 
 	void swing(int i) {
@@ -359,6 +449,7 @@ public class ComboSim {
 			row = 0;
 			lastOwnHit = -1000;
 		}
+		holdHit(i, kind == Events.SPRINT);
 	}
 
 	void ownHit() {
@@ -402,6 +493,70 @@ public class ComboSim {
 	}
 
 	// ---------------------------------------------------------------- policies
+
+	/**
+	 * Agent 39 (run 97): the combo-hold teacher (ComboHolder) in its own combo; outside it the chaser (W and the sprint, the swing with the
+	 * sword back and them in reach), as the chaser and the naive jumper open, so that the three differ only in the holds (in training the
+	 * network opens its combos itself). The holder's hold at each of its hits is kept in {@link #holdNow} for the per-hold counters.
+	 */
+	static Policy holder(Style teacherStyle, float[] weights) {
+		dev.swordai.core.school.ComboHolder h = new dev.swordai.core.school.ComboHolder();
+		return new Policy() {
+			public void start(long seed, int lag) {
+				h.start(seed);
+				h.seenLag(lag);
+				if (weights != null) {
+					System.arraycopy(weights, 0, dev.swordai.core.school.ComboHolder.WEIGHTS, 0, weights.length);
+				}
+			}
+
+			public void tick(Duel d, Events e, Keys k) {
+				// Its own strafe of the last tick (in training the network's), for the strafe hold's taps.
+				h.ownStrafe(k.strafe);
+				k.clear();
+				k.forward = 1;
+				k.sprint = true;
+				k.attack = d.me.charge >= GATE && d.reach <= Duel.REACH;
+				if (h.tick(d, e)) {
+					k.copyFrom(h.keys());
+					holdNow = h.method();
+				} else {
+					holdNow = -1;
+				}
+			}
+		};
+	}
+
+	/** The holder's hold this tick (-1 outside its combo), read by the sim at its hits. */
+	static int holdNow = -1;
+
+	/**
+	 * A naive jump holder: the chaser (W and the sprint at them, the swing with the sword back and them in reach), and in its own combo a
+	 * sprint-jump at them every time it is on the ground (hops and uppercuts taken off at once, so it rises into their reach): a holder
+	 * without the document's timing.
+	 */
+	static Policy naiveJumper() {
+		return new Policy() {
+			int sinceHit = 1000, sinceTaken = 1000;
+
+			public void start(long seed, int lag) {
+				sinceHit = 1000;
+				sinceTaken = 1000;
+			}
+
+			public void tick(Duel d, Events e, Keys k) {
+				sinceHit = e.iHit != Events.NONE ? 0 : Math.min(sinceHit + 1, 1000);
+				sinceTaken = e.theyHit != Events.NONE ? 0 : Math.min(sinceTaken + 1, 1000);
+				k.clear();
+				k.forward = 1;
+				k.sprint = true;
+				k.attack = d.me.charge >= GATE && d.reach <= Duel.REACH;
+				boolean combo = sinceHit <= COMBO_GAP && sinceHit < sinceTaken;
+				k.jump = combo && d.me.onGround && sinceHit >= 1;
+				holdNow = combo ? 4 : -1;
+			}
+		};
+	}
 
 	/** A PvpPlayer (the bot, or the teacher in the agent's seat). */
 	static Policy player(Style st, boolean teacherLag) {
@@ -468,6 +623,7 @@ public class ComboSim {
 	}
 
 	static int traceLongest = 0;
+	static int TRACE_CHARS = Integer.getInteger("traceChars", 14000);
 	static String botVariant = "run93";
 
 	/**
@@ -501,16 +657,24 @@ public class ComboSim {
 		double cbDistAll = 0;
 		List<Integer> allGaps = new ArrayList<>();
 		long backTicks = 0, ticks = 0;
+		int[][] holdAll = new int[6][4];
+		int[] taughtAll = new int[6];
+		int[] breaksAll = new int[4];
+		int[] brokenAll = new int[3];
+		int takeoffsAll = 0, airRisingAll = 0, airFallingAll = 0;
 		for (int f = 0; f < fights; f++) {
 			Random rng = new Random(seed0 + f * 7919L);
 			ComboSim sim = new ComboSim();
-			Style bot = Specialists.comboable(new Random(rng.nextLong()));
+			holdNow = -1;
+			long botSeed = rng.nextLong();
+			boolean breaker = botVariant.equals("breaker");
+			Style bot = breaker ? Specialists.comboBreaker(new Random(botSeed)) : Specialists.comboable(new Random(botSeed));
 			int window = Math.max(bot.stunAfterHit, bot.backAfterHit);
 			bot.stunAfterHit = 0;
 			bot.backAfterHit = 0;
 			switch (botVariant) {
 				case "run93" -> bot.backAfterHit = window;
-				case "stun" -> bot.stunAfterHit = window;
+				case "stun", "breaker" -> bot.stunAfterHit = window;
 				case "none" -> {
 				}
 				default -> {
@@ -529,7 +693,16 @@ public class ComboSim {
 			sim.s[1].seenLag = Math.max(0, bot.lag);
 			sim.s[1].ping = Math.max(1, bot.ping);
 			sim.s[1].feelLate = true;
-			sim.s[1].pol = player(bot, false);
+			PvpPlayer botP = new PvpPlayer();
+			sim.s[1].pol = new Policy() {
+				public void start(long seed, int lag) {
+					botP.start(bot, seed);
+				}
+
+				public void tick(Duel d, Events e, Keys k) {
+					botP.tick(d, e, k);
+				}
+			};
 			sim.s[1].pol.start(rng.nextLong(), 0);
 			sim.place(3f + 6f * rng.nextDouble(), rng);
 			if (printTrace) {
@@ -561,11 +734,24 @@ public class ComboSim {
 			cb[2] += sim.cbTheirFirst;
 			cb[3] += sim.cbTimedOut;
 			cbDistAll += sim.cbDist;
-			if (sim.trace != null && sim.longest >= traceLongest && !traced) {
+			for (int h = 0; h < 6; h++) {
+				for (int c = 0; c < 4; c++) {
+					holdAll[h][c] += sim.holdOut[h][c];
+				}
+				taughtAll[h] += sim.taughtHold[h];
+			}
+			botP.drainBreaks(breaksAll);
+			for (int c = 0; c < 3; c++) {
+				brokenAll[c] += sim.brokenBy[c];
+			}
+			takeoffsAll += sim.comboTakeoffs;
+			airRisingAll += sim.comboAirHitRising;
+			airFallingAll += sim.comboAirHitFalling;
+			if (sim.trace != null && sim.longest >= traceLongest && (!traced || Boolean.getBoolean("traceAll"))) {
 				traced = true;
 				System.out.println("fight " + f + " agentLag " + agentLag + " bot " + bot.describe() + " back " + bot.backAfterHit + " closeIn "
 						+ bot.closeIn + " spacing " + bot.spacing + " swingCharge " + bot.swingCharge);
-				System.out.println(sim.trace.substring(0, Math.min(sim.trace.length(), 14000)));
+				System.out.println(sim.trace.substring(0, Math.min(sim.trace.length(), TRACE_CHARS)));
 			}
 		}
 		allGaps.sort(null);
@@ -591,6 +777,15 @@ public class ComboSim {
 		lagLine.append(String.format(Locale.ROOT, "%n   after its hits (%d): next hit within 20 %.0f%%, their hit first within 3 %.0f%%, later %.0f%%, neither within 20 %.0f%% (distance then %.2f)",
 				cbAll, 100.0 * cb[0] / Math.max(1, cbAll), 100.0 * cb[1] / Math.max(1, cbAll), 100.0 * cb[2] / Math.max(1, cbAll),
 				100.0 * cb[3] / Math.max(1, cbAll), cbDistAll / Math.max(1, cb[3])));
+		lagLine.append("\n   follow-ups by hold (hits: next own first / theirs first / neither):");
+		for (int h = 0; h < 6; h++) {
+			if (holdAll[h][0] > 0) {
+				lagLine.append(String.format(Locale.ROOT, " %s %d: %d/%d/%d;", HOLDS[h], holdAll[h][0], holdAll[h][1], holdAll[h][2], holdAll[h][3]));
+			}
+		}
+		lagLine.append(String.format(Locale.ROOT, "%n   take-offs in its combo %d, hit in the air rising %d, falling %d; the holder's draws at its follow-ups %s; the bot's escapes T8 %d, T9a %d, C3 %d, empty/close %d; follow-ups broken by its T9a crit %d, T8 %d, other %d",
+				takeoffsAll, airRisingAll, airFallingAll, Arrays.toString(taughtAll), breaksAll[0], breaksAll[1], breaksAll[2], breaksAll[3],
+				brokenAll[0], brokenAll[1], brokenAll[2]));
 		return lagLine + "\n" + String.format(Locale.ROOT,
 				"%-34s fights %d hits %d taken %d | runs %d: 1=%d 2=%d 3+=%d 5+=%d 10+=%d longest %d | own-hit gaps p25/p50/p75 %s/%s/%s, <=20: %d of %d | bot S %.0f%% of ticks",
 				name, fights, totalHits, totalTaken, runsN, runHist[1], runHist[2], reach3, reach5, reach10, longestAll,
@@ -621,10 +816,15 @@ public class ComboSim {
 		teacherNoSpacing.p[Technique.T11B.ordinal()] = 0f;
 		teacherNoSpacing.p[Technique.T11C.ordinal()] = 0f;
 		String[] names = {"chaser (W+sprint, swing at 1.0)", "lunger (T11a at a backer)", "teacher (run 92/93)", "teacher, pre-run-92 (hops)",
-				"teacher, no space, no hops/T10", "noisy (half-trained)"};
+				"teacher, no space, no hops/T10", "noisy (half-trained)", "holder (run 97 mix)", "holder, ground only", "holder, jumps only",
+				"naive jumper (rises into reach)"};
+		float[] mix = dev.swordai.core.school.ComboHolder.WEIGHTS.clone();
+		float[] groundOnly = {0.34f, 0.33f, 0.33f, 0f, 0f, 0f};
+		float[] jumpsOnly = {0f, 0f, 0f, 0.4f, 0.35f, 0.25f};
 		@SuppressWarnings("unchecked")
 		java.util.function.Supplier<Policy>[] pols = new java.util.function.Supplier[] {ComboSim::chaser, () -> lunger(0.45f, 3.0, 5.5),
-				() -> player(teacher, true), () -> player(teacherOld, true), () -> player(teacherNoSpacing, true), ComboSim::noisy};
+				() -> player(teacher, true), () -> player(teacherOld, true), () -> player(teacherNoSpacing, true), ComboSim::noisy,
+				() -> holder(teacher, mix), () -> holder(teacher, groundOnly), () -> holder(teacher, jumpsOnly), ComboSim::naiveJumper};
 		for (int i = 0; i < pols.length; i++) {
 			if (only != null && !names[i].startsWith(only)) {
 				continue;

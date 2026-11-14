@@ -199,6 +199,34 @@ public final class Specialists {
 	}
 
 	/**
+	 * Run 97 (agent 39; the user, 14 Nov 14:50: "make sure its opponent is designed to teach it hold combo with hops lunge and upper cut and
+	 * some regular sprint hit and random strafe ... upper cut or any jump combo style always had it's combo be broken by opponent so make
+	 * sure it is stable to hold combo like that"): the combo breaker, the stunned comboable bot ({@link #comboable}, the same draws first)
+	 * that gets out of a badly held combo the document's ways, each rolled per hit it takes after a short stun ({@link Style#breakStun}):
+	 * T8 on one rising into its reach from its own jump (a hop, uppercut or lunge taken off too near), the T9a jump reset of a hit in a
+	 * set rhythm with the crit falling, the C3 back-out (jump and S: the lunge's moment, T11a), and the swing back at one in its reach
+	 * with an empty sword or too close. A hold timed as the document has it (falling into reach, from the edge of reach, the rhythm
+	 * varied, the lunge after an S) still chains (agent 39's ComboSim numbers, EXPERIMENTS.md run 97).
+	 */
+	public static Style comboBreaker(Random rng) {
+		Style s = comboable(rng);
+		s.name = "combo-breaker";
+		s.breakRising = BREAK_RISING_LEAST + (1f - BREAK_RISING_LEAST) * rng.nextFloat();
+		s.breakRhythm = BREAK_RHYTHM_LEAST + 0.4f * rng.nextFloat();
+		s.breakBackOut = BREAK_BACK_OUT_LEAST + 0.2f * rng.nextFloat();
+		s.breakEmpty = BREAK_EMPTY_LEAST + 0.4f * rng.nextFloat();
+		s.breakStun = BREAK_STUN_LEAST + rng.nextInt(3);
+		return s;
+	}
+
+	/** Run 97: the least of each escape's chance drawn for a combo breaker (each drawn up from here), and of its short stun, ticks. */
+	public static final float BREAK_RISING_LEAST = 0.6f;
+	public static final float BREAK_RHYTHM_LEAST = 0.4f;
+	public static final float BREAK_BACK_OUT_LEAST = 0.15f;
+	public static final float BREAK_EMPTY_LEAST = 0.5f;
+	public static final int BREAK_STUN_LEAST = 3;
+
+	/**
 	 * Run 93b (agent 37, 14 Nov 05:30): the comboable bot is stunned after each hit it takes (Style#stunAfterHit: no swing, and the
 	 * spacing of a sword coming back) instead of walking back with S (Style#backAfterHit). The walk back was the document's C3, the
 	 * way OUT of a combo ("jump and hold S, so that you fly out of the trade"): S held through its knockback carried it about 4.5

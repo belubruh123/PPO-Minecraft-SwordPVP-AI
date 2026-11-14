@@ -156,6 +156,28 @@ public final class Style {
 	 */
 	public int stunAfterHit = 0;
 	/**
+	 * Run 97 (agent 39; the user, 14 Nov 14:50: "upper cut or any jump combo style always had it's combo be broken by opponent so make
+	 * sure it is stable to hold combo like that"): the combo breaker ({@link Specialists#comboBreaker}), a stunned comboable bot that
+	 * gets out of a badly held combo the document's ways. After each hit it takes, rolled once per hit with these chances, and only
+	 * once {@link #breakStun} ticks have gone by (a short stun first):
+	 * <ul>
+	 * <li>{@link #breakRising}: T8, "if the opponent jumps at you and you hit them as they are rising from their jump, that is usually a
+	 * free stun": the swing at one rising into its reach from a jump of its own (a hop, uppercut or lunge taken off too near);</li>
+	 * <li>{@link #breakRhythm}: T9a, "most players combo to a set rhythm, so they are not hard to jump-reset out of": a hit that comes as
+	 * many ticks after the last as that one did after the one before is jump-reset, and the crit comes on the way down (T9: "it gets
+	 * crits");</li>
+	 * <li>{@link #breakBackOut}: C3, "jump and hold S, so that you fly out of the trade" (the lunge's moment, T11a);</li>
+	 * <li>{@link #breakEmpty}: the swing back at one in its reach with its sword far from back (not going away), or too close (part 0's
+	 * S-tap, "stay just out of their reach"; T4, "too close, and they hit you through").</li>
+	 * </ul>
+	 * Otherwise it is the stunned comboable bot ({@link #stunAfterHit}). All 0 for every other bot and the teacher.
+	 */
+	public float breakRising = 0f;
+	public float breakRhythm = 0f;
+	public float breakBackOut = 0f;
+	public float breakEmpty = 0f;
+	public int breakStun = 0;
+	/**
 	 * What it takes the other to do before it has seen anything, by {@link Habits} index; below zero for
 	 * no belief. A counter specialist expects the thing it counters (the crit-breaker expects double crits).
 	 */
@@ -217,6 +239,11 @@ public final class Style {
 		s.hitSelect = hitSelect;
 		s.backAfterHit = backAfterHit;
 		s.stunAfterHit = stunAfterHit;
+		s.breakRising = breakRising;
+		s.breakRhythm = breakRhythm;
+		s.breakBackOut = breakBackOut;
+		s.breakEmpty = breakEmpty;
+		s.breakStun = breakStun;
 		System.arraycopy(believe, 0, s.believe, 0, believe.length);
 		s.heldOut = heldOut;
 		return s;

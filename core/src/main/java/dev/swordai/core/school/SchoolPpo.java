@@ -397,6 +397,12 @@ public final class SchoolPpo implements AutoCloseable {
 				if (everyJump) {
 					pull = r.jumpPull[i] * (float) Math.min(TEACH_AWR_MOST, Math.exp(adv / TEACH_AWR_BETA));
 				}
+				// Run 97: the combo-hold teacher's movement keys in its own combo (ComboHolder), at its own pull, only where the moment went
+				// better than the critic expected (advantage-weighted, as RULED_AWR and FROM_THE_FIGHT): its hops, uppercuts and lunges
+				// are learned where they held the combo, not copied where the comboable bot broke it.
+				if (byTech && r.holdPull[i] > 0f && (HOLD_HEADS & (1 << h)) != 0) {
+					pull = adv > 0f ? r.holdPull[i] * (float) Math.min(TEACH_AWR_MOST, Math.exp(adv / TEACH_AWR_BETA)) : 0f;
+				}
 				// Learned from the fight (SchoolStages#FROM_THE_FIGHT): a technique's keys only where the moment went better than expected.
 				boolean b1Swing = SchoolStages.B1_SWING_ALWAYS && h == ActionSpace.ATTACK && which == dev.swordai.core.pvp.Technique.B1.ordinal();
 				if (SchoolStages.FROM_THE_FIGHT && byTech && !camera && adv <= 0f && !b1Swing && !everyJump
@@ -533,6 +539,8 @@ public final class SchoolPpo implements AutoCloseable {
 	 * techniques cost the school 10 to 20 a fight against the installed model (06:16, 09:29 checks).
 	 */
 	static final float TEACH_AWR_BETA = 1f;
+	/** Run 97: the heads the combo-hold teacher (ComboHolder, SchoolRollout#holdPull) teaches: W/S, A/D, the sprint key, the jump. */
+	static final int HOLD_HEADS = ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.STRAFE, ActionSpace.SPRINT, ActionSpace.JUMP);
 	static final float TEACH_AWR_MOST = 1.5f; // 3 for the first hour: with the full pulls it taught the escapes' S up to six times over
 
 	/** One update over a rollout whose advantages are computed. */

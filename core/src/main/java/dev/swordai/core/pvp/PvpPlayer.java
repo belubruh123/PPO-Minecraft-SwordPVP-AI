@@ -162,6 +162,27 @@ public final class PvpPlayer {
 	private boolean selectRolled;
 	/** Run 93b: ticks left of the stun after a hit taken (Style#stunAfterHit): the sword counts as not back. */
 	private int stunLeft;
+	/**
+	 * Run 97 (Style#breakRising etc., the combo breaker): this hit's escapes armed (the swing at one rising into its reach, the swing at
+	 * one in its reach with an empty sword), the tick of the hit taken before and the ticks between the two before that (the rhythm).
+	 */
+	private boolean escRising;
+	private boolean escEmpty;
+	private int takenAt = -1000;
+	private int takenGap = 1000;
+	/** Run 97: the breaker's escapes made, by kind (BREAK_RISING, BREAK_RHYTHM, BREAK_BACK_OUT, BREAK_EMPTY), for the logs. */
+	private final int[] breaks = new int[4];
+	public static final int BREAK_RISING = 0;
+	public static final int BREAK_RHYTHM = 1;
+	public static final int BREAK_BACK_OUT = 2;
+	public static final int BREAK_EMPTY = 3;
+	/** Run 97: a hit this many ticks off the gap of the two before it is still in their rhythm (T9a). */
+	static final int RHYTHM_TOLERANCE = 1;
+	/** Run 97: their sword under this is "empty" (the swing back at one in reach); under TOO_CLOSE blocks it is "too close" whatever. */
+	static final float BREAK_EMPTY_CHARGE = 0.6f;
+	static final double BREAK_TOO_CLOSE = 1.5;
+	/** Run 97: their own take-off this recent, and still rising, is "rising into its reach" (T8). */
+	static final int BREAK_RISING_TICKS = 8;
 
 	public void start(Style s, long seed) {
 		style = s;
@@ -213,6 +234,23 @@ public final class PvpPlayer {
 		selectLeft = 0;
 		selectRolled = false;
 		stunLeft = 0;
+		escRising = false;
+		escEmpty = false;
+		takenAt = -1000;
+		takenGap = 1000;
+	}
+
+	/** Run 97: the combo breaker's escapes made since the last call, by kind (BREAK_RISING ... BREAK_EMPTY), added into {@code into}; then zeroed. */
+	public void drainBreaks(int[] into) {
+		for (int i = 0; i < breaks.length; i++) {
+			into[i] += breaks[i];
+			breaks[i] = 0;
+		}
+	}
+
+	/** Run 97: whether this style breaks combos (Style#breakRising etc.). */
+	private boolean breaker() {
+		return style.breakRising > 0f || style.breakRhythm > 0f || style.breakBackOut > 0f || style.breakEmpty > 0f;
 	}
 
 	public Style style() {
@@ -414,6 +452,12 @@ public final class PvpPlayer {
 		}
 		if (plan == Plan.NONE && !done) {
 			ordinary(d, k);
+		}
+		// Run 97: the combo breaker's swings in its stun (breakSwing); the hit on one rising is the document's T8.
+		int brk = !k.attack && breaker() ? breakSwing(d) : 0;
+		if (brk != 0) {
+			k.attack = true;
+			k.technique = brk == 1 ? Technique.T8 : Technique.BASE;
 		}
 		// Run 59: the answer to their crit (hitTaken).
 		if (answerUntil >= tick && tick >= answerFrom && d.reach <= Duel.REACH && me.charge >= ANSWER_CHARGE && stunLeft == 0) {
@@ -641,6 +685,9 @@ public final class PvpPlayer {
 			stapLeft = style.backAfterHit;
 			wtapLeft = 0;
 		}
+		if (breaker() && breakOut(d, e)) {
+			return;
+		}
 		// Run 59: their crit (a punish crit) answered at once, as real players do: a swing back a reaction later if the sword is
 		// ready and they are in reach (see the end of tick; the golden rule K2 still holds a knockback hit on a faller).
 		if (e.theyHit == Events.CRIT && style.answerCrit > 0f && rng.nextFloat() < style.answerCrit) {
@@ -733,6 +780,67 @@ public final class PvpPlayer {
 			// Run 60: out of the trade as real players fly out (36% two blocks farther 8 ticks after its sprint hit; bots 8-12%).
 			begin(Plan.C3);
 		}
+	}
+
+	/**
+	 * Run 97, the combo breaker (Style#breakRising etc.), on the tick a hit of theirs is felt: this hit's escapes rolled. The swings
+	 * (T8 at one rising into its reach, the swing back at an empty sword) are armed for {@link #breakSwing}; the jump reset in their
+	 * rhythm (T9a) and the back-out (C3) start here. Returns whether a plan took over.
+	 */
+	private boolean breakOut(Duel d, Events e) {
+		int gap = tick - takenAt;
+		// In their rhythm: this hit came as many ticks after the last as that one after the one before (T9a: "most players combo to a
+		// set rhythm"), both inside a combo.
+		boolean inRhythm = takenGap <= COMBO_TICKS && gap <= COMBO_TICKS && Math.abs(gap - takenGap) <= RHYTHM_TOLERANCE;
+		takenGap = gap;
+		takenAt = tick;
+		escRising = rng.nextFloat() < style.breakRising;
+		escEmpty = rng.nextFloat() < style.breakEmpty;
+		if (inRhythm && wasOnGround && rng.nextFloat() < style.breakRhythm) {
+			// T9a: "they usually hit you the moment you land on the ground with every hit, and that is when to jump reset". The jump with
+			// the hit (a person who reads the rhythm presses it on time, at its timing skill; a tick or two late else, which is no reset),
+			// then the crit on the way down ("the jump reset ... gets crits", T9).
+			jumpAt = tick + (rng.nextFloat() < style.timing ? 0 : 1 + rng.nextInt(2));
+			jumpFor = Technique.T9A;
+			thrownUpAt = tick;
+			pending = Plan.NONE;
+			end();
+			begin(Plan.B1);
+			breaks[BREAK_RHYTHM]++;
+			return true;
+		}
+		if (rng.nextFloat() < style.breakBackOut) {
+			// C3, the late one ("this can work for getting out of combos"): jump and S a reaction after the hit.
+			pending = Plan.NONE;
+			end();
+			later(Plan.C3);
+			breaks[BREAK_BACK_OUT]++;
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Run 97, the combo breaker's swings in the stun after a hit, once Style#breakStun ticks have gone by: at one rising into its reach
+	 * from a jump of its own (T8: "usually a free stun"), or at one walking into its reach with its sword far from back, or too close
+	 * (the S-tap's "stay just out of their reach"). Its own sword must be back, as for any swing. Returns 0 for no swing, 1 for the hit on
+	 * one rising (T8), 2 for the swing back at an empty sword or too close.
+	 */
+	private int breakSwing(Duel d) {
+		if (stunLeft <= 0 || sinceTheirHit < style.breakStun || plan != Plan.NONE || d.reach > Duel.REACH || d.me.charge < style.swingCharge) {
+			return 0;
+		}
+		Body them = d.them;
+		if (escRising && sinceTheyTookOff <= BREAK_RISING_TICKS && them.rising()) {
+			breaks[BREAK_RISING]++;
+			return 1;
+		}
+		boolean empty = d.reach < BREAK_TOO_CLOSE || them.charge < BREAK_EMPTY_CHARGE && d.theyClose > 0.03;
+		if (escEmpty && empty && inReachTicks >= Math.max(1, style.reaction / 2)) {
+			breaks[BREAK_EMPTY]++;
+			return 2;
+		}
+		return 0;
 	}
 
 	/** The jump reset: on the tick the hit is felt, or a tick or two late for a press that is not exact. */

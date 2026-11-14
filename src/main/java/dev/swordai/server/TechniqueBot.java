@@ -95,6 +95,23 @@ public final class TechniqueBot {
 	}
 	/** The bot's own swing on the last tick, for its next tick's events. */
 	private boolean swungLast;
+	/**
+	 * Run 97: the combo breaker's escapes (Style#breakRising etc.) since the last update line, by kind (PvpPlayer.BREAK_RISING: T8 at
+	 * one rising into its reach; BREAK_RHYTHM: the T9a jump reset in their rhythm; BREAK_BACK_OUT: C3; BREAK_EMPTY: the swing back at an
+	 * empty sword or one too close). The server thread adds, the school's update line reads and zeroes.
+	 */
+	private static final int[] breaks = new int[4];
+
+	/** The combo breaker's escapes since the last call, for the school's update line; then zeroed. */
+	public static String breakLine() {
+		synchronized (breaks) {
+			String s = String.format(java.util.Locale.ROOT,
+					" | run 97, the combo breaker's escapes: T8 at its rising jump %d, T9a jump reset in its rhythm %d, C3 back-out %d, swing back at an empty sword or too close %d",
+					breaks[PvpPlayer.BREAK_RISING], breaks[PvpPlayer.BREAK_RHYTHM], breaks[PvpPlayer.BREAK_BACK_OUT], breaks[PvpPlayer.BREAK_EMPTY]);
+			java.util.Arrays.fill(breaks, 0);
+			return s;
+		}
+	}
 
 	public static int lastTechnique() {
 		return lastTechnique;
@@ -212,6 +229,9 @@ public final class TechniqueBot {
 		botWasOnGround = bot.onGround();
 
 		player.tick(view, events, keys);
+		synchronized (breaks) {
+			player.drainBreaks(breaks);
+		}
 		boolean cj = player.inCritJump();
 		if (cj && !wasInCritJump) {
 			critJumps++;

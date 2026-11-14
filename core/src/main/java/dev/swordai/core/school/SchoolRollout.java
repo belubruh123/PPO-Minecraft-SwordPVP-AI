@@ -62,6 +62,11 @@ public final class SchoolRollout {
 	public final float[] letGoPull;
 	/** The file teacher's jump key taught at every moment, its own pull (0: none); see SchoolPpo#teach. */
 	public final float[] jumpPull;
+	/**
+	 * Run 97: the combo-hold teacher's (ComboHolder) own pull on its movement heads of the step (W/S, A/D, the sprint key, the jump;
+	 * 0: none), taught only where the moment went better than the critic expected; see SchoolPpo#teach.
+	 */
+	public final float[] holdPull;
 	/** The technique teacher that spoke (a {@link Technique} ordinal), or -1: for the logs. */
 	public final int[] teacherTechnique;
 	/** 1 when the step's policy loss counts, 0 when the step was one where nothing could be decided. */
@@ -104,6 +109,7 @@ public final class SchoolRollout {
 		teacherWeight = new float[capacity];
 		letGoPull = new float[capacity];
 		jumpPull = new float[capacity];
+		holdPull = new float[capacity];
 		teacherTechnique = new int[capacity];
 		policyWeight = new float[capacity];
 		botTechnique = new int[capacity];
@@ -147,6 +153,7 @@ public final class SchoolRollout {
 		teacherWeight[i] = s.teacherWeight;
 		letGoPull[i] = s.letGoPull;
 		jumpPull[i] = s.jumpPull;
+		holdPull[i] = s.holdPull;
 		teacherTechnique[i] = s.teacherTechnique;
 		policyWeight[i] = s.policyWeight;
 		botTechnique[i] = s.botTechnique;
@@ -173,6 +180,7 @@ public final class SchoolRollout {
 		public float teacherWeight;
 		public float letGoPull;
 		public float jumpPull;
+		public float holdPull;
 		public int teacherTechnique = -1;
 		public float policyWeight = 1f;
 		public int botTechnique = -1;
