@@ -1846,3 +1846,15 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **Why:** at 12:05 the school passed T-D and went on to T-E, "jumping (T10, T11)" (uppercut, lunge, hops, sprint cut; bots stun-escaper, uppercutter, lunger, hopper). Run 95 charges and un-teaches exactly those jumps in the near fight (the user, 14 Nov 09:30), so T-E can never be passed, and fought from the ground its jumping bots sent the camera's find-them lesson (findBlind, "off the screen") from 2 an update (11:40-12:05, and 1-10 in the last T-E, 04:40-05:30, when it jumped along) to 62-104 an update: 180-degree yaw sweeps for bots in the air overhead, the "crazier movement to aim" the user complains about.
 - **Change:** SchoolStages.SKIP_JUMPING: T-E counts as passed at once and the spiral skips it; its bots stay in the rehearsal share (the uppercutter, hopper and lunger still come up).
 - **Watch:** "off the screen" back to under 10 an update; the stage after T-E in the log; check "lost view" lines.
+
+## Run 96 (14 Nov ~14:40): swing a ready sword; jump along with their jump-in (the user's direction)
+
+- **The user, 14 Nov 14:45:** "it should only hold hit when other go for a jump in and what's more just jump in with them and usually those ppl choose to jump in at right distance which you can learn as well and also jump in along with them gets both of player gets critted".
+- **Why:** the 13:35 check: outside their combo, on the ground, sword ready and them in reach, A held "otherwise" 39% of the ticks (B 24%; A 29-32% before run 95). It crits less (4 crits, was 13-20) and lands more hits than B (357 vs 344), so it is not crit-spamming: it hesitates on the ground.
+- **Change:**
+  - READY_HOLD_COST 0.01 a tick (training): its sword ready (0.95+), them in reach (3.0) and on the ground (not jumping in, not falling), crosshair on them, itself on the ground, no rule holding the swing, and no swing.
+  - JUMP_ALONG_CRIT 0 -> 0.3 (run 51's, the user 9 Nov; run 91 had zeroed it): its crit on them when it took off within 4 ticks of their jump-in. With JUMP_ONCE that jump is "needed" (a crit exchange), so it is not charged.
+  - ENTER_BY_JUMP 0 -> 0.1: its one jump-in an engagement paid when it took off beyond 3.0 and came into reach falling (the right jump-in distance, learned by the outcome).
+  - Counter: run 95d's check split of held-otherwise ticks (crosshair on them, by distance, not sprinting); training "run 96: ready sword held at them on the ground charged N ticks".
+- **Learn-by (1-2 h):** the held-otherwise share in checks falls toward B's 24%; outside-combo swings rise to B's; jump-along crits ("its crits on them at tick 2+ (jump along, let through)") rise; rounds back above B.
+- **Revert** if their third hit rises above B's in two checks (swinging into their combos) or punish crit falls under 50%.

@@ -158,6 +158,13 @@ public final class SchoolSession implements AgentSession {
 	 * still under JUMP_IN_REOPEN blocks: the combo it did not go on with costs this (training, every fight).
 	 */
 	static final float COMBO_DROP_COST = 0.1f;
+	/**
+	 * Run 96 (the user, 14 Nov 14:45: "it should only hold hit when other go for a jump in"): training, its sword ready (0.95+), them in
+	 * reach (3.0) and on the ground (not jumping in, not falling), its crosshair on them, itself on the ground, no rule holding the swing:
+	 * each tick it does not swing costs this. The 13:35 check: outside their combo A held "otherwise" 39% of those ticks, B 24%.
+	 */
+	static final float READY_HOLD_COST = 0.01f;
+	private int readyHoldCharged;
 	/** Run 95: the one jump-in of this engagement is still open. */
 	private boolean jumpInOpen = true;
 	private int dropAt = -1;
@@ -1185,6 +1192,7 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | run 95 (%s): jump-ins %d (reopened at %.0f+ blocks %d), near-fight take-offs not needed charged %d, needed %d (crit exchange %d, told %d, jump reset in their combo %d); \"no jump\" taught %d (the teacher's jump turned %d); combos dropped %d",
 						JUMP_ONCE ? "on" : "off", jumpInsTaken, JUMP_IN_REOPEN, jumpInReopened, nearJumpCharged, nearJumpNeededTakeoffs, nearJumpNeededBy[0],
 						nearJumpNeededBy[1], nearJumpNeededBy[2], nearNoJumpTaught, teacherJumpFlipped, comboDropped)
+				+ String.format(Locale.ROOT, " | run 96: ready sword held at them on the ground charged %d ticks", readyHoldCharged)
 				+ String.format(Locale.ROOT, " | run 92, too close (under %.1f, its sword empty, theirs ready) ticks charged %d; edge sprint hits (%.1f-%.1f) paid %d; its hits' mean distance %.2f (%d hits); rule m runs started by A's rules %d, into a ready sword or a jump-in crit %d (%s)",
 						TOO_CLOSE_WITHIN, tooCloseCharged, EDGE_HIT_FROM, EDGE_HIT_TO, edgeHitsPaid, ownHitsMeasured > 0 ? ownHitDistSum / ownHitsMeasured : 0.0,
 						ownHitsMeasured, meetStarts[0], meetStartsIntoReady[0], MEET_NOT_INCOMING ? "stopped" : "run")
@@ -1257,6 +1265,7 @@ public final class SchoolSession implements AgentSession {
 		ownJumpCharged = 0;
 		reflexFirstCharged = 0;
 		jumpInsTaken = jumpInReopened = nearJumpCharged = nearJumpNeededTakeoffs = nearNoJumpTaught = teacherJumpFlipped = comboDropped = 0;
+		readyHoldCharged = 0;
 		java.util.Arrays.fill(nearJumpNeededBy, 0);
 		tooCloseCharged = edgeHitsPaid = ownHitsMeasured = 0;
 		comboableFights = comboableLongest = comboableRuns3 = comboableRuns5 = comboableRuns10 = longComboPaid = 0;
@@ -2689,7 +2698,7 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final boolean JUMP_IN_LET_CRIT = true;
 	static final int JUMP_ALONG_TICKS = 4;
-	static final float JUMP_ALONG_CRIT = 0f; // run 91 (13 Nov 23:00, the user after real duels: combo first, jump less, crit only when needed): was 0.3
+	static final float JUMP_ALONG_CRIT = 0.3f; // run 96 (14 Nov 14:45, the user: "just jump in with them ... jump in along with them gets both of player gets critted"); run 91 had set it to 0
 	/**
 	 * Run 51b (9 Nov 07:00), the user: "jump in crit has a rule where you jump out side the opponent's reach so it cannot knock
 	 * you away when you are rising and enter your reach when you are falling and land a crit on them" (as their 2 Nov tip). The
@@ -2704,7 +2713,7 @@ public final class SchoolSession implements AgentSession {
 	 * its own approach: falling from its own jump that kept the rule pays ENTER_BY_JUMP; on the ground walking or sprinting in
 	 * (its own closing speed at least ENTER_OWN_CLOSE) costs ENTER_BY_WALK. Their walking in is not its approach.
 	 */
-	static final float ENTER_BY_JUMP = 0f; // run 91 (13 Nov 23:00, the user after real duels: combo first, jump less, crit only when needed): was 0.2
+	static final float ENTER_BY_JUMP = 0.1f; // run 96 (the user: "those ppl choose to jump in at right distance which you can learn as well"): its one jump-in an engagement (JUMP_ONCE) paid when it took off beyond 3.0 and came into reach falling; run 91 had 0, before 0.2
 	static final float ENTER_BY_WALK = 0f; // 0.1 from 07:03 to 07:21 on 9 Nov: the opponent off its screen rose from about 2 to 32 an update within 15 minutes and damage fell to 192 dealt, 499 taken a minute
 	static final double ENTER_OWN_CLOSE = 0.05;
 
@@ -5092,6 +5101,12 @@ public final class SchoolSession implements AgentSession {
 			}
 		}
 		countReady(0, charge, reader.duel.them.falling() || truth.botFalling(), k2Hold);
+		if (READY_HOLD_COST > 0f && mode == Mode.TRAIN && review < 0 && me.onGround() && charge >= 0.95f && facts.reachDist <= 3.0f
+				&& onOpponent() && action[ActionSpace.ATTACK] == 0 && !k2Hold && reader.duel.them.onGround && !truth.botFalling()) {
+			// Run 96: a ready sword held with them on the ground, in reach, under the crosshair (see READY_HOLD_COST).
+			enterReward -= READY_HOLD_COST;
+			readyHoldCharged++;
+		}
 		if (guardFree && review < 0) {
 			// Run 90: what it does on the ticks the guard left to it, by what the bot was really doing (server truth).
 			int gft = truth.botTechnique();
