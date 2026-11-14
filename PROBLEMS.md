@@ -1356,3 +1356,10 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **Uppercutter +49.0** (was -10.8), stun-escaper +40.2, deflector +22.2, reverse-deflector +21.0. Behind: mixer* -17.0, fight-timer -3.5.
 - Late knock-away hits on jump-ins (tick 2+): A 25 rising + 3 falling, B 20 + 3 (A worse; the guard is off in checks since run 91, on in real duels).
 - Take-offs by source (A only; B's count was broken, fixed in run 94b, redeployed 08:40): A rule 114, technique 28, own 0-1 after their first hit 2, own 0-1 in their combo 0, own 2-12 4, own other 77 (first four check-summary lines). Most of A's jumps are the 23 Oct rules overlay's (letter J / r) and its own "other" jumps away from hits.
+
+## 14 Nov 09:32 check: run 94b's (the last before run 95, redeploy asked 09:33)
+
+- **ROUNDS WON: A 18/44 (41%), B 17/44 (39%), z +0.2.** Only A won 9, only B won 8. Net A-B +7.1 (se 6.8). Damage a minute: A 376 / 396, B 342 / 409.
+- Their third hit: A 27%, B 36%. Outside their combo: A swung 43%, B 55% (behind again). Swings A 355, B 361. Jump reset (T9) A 93%, B 100%.
+- Jump keys a minute (off / on moments): A 92 / 96, B 46 / 37. mixer* -42.0; uppercutter +2.3; fight-jumpin both lost.
+- **Take-offs by source, first check with B counted (5 summary lines): A rule 113, technique 37, own 0-1 after their first hit 2, own 0-1 in their combo 1, own 2-12 6, own other 109. B rule 159, technique 0, own 2-12 2, own other 1.** B's network almost never jumps by itself; all of B's jumps are its 23 Oct rules' (more than A's rules make). A's extra jumps over B are ALL the network's own (other 109 + technique 37), away from any hit taken. So the rules overlay is not the cause; the network's own jumps are (copy of the teacher's jump at every moment, hops/uppercut/lunge teaching). Run 95 targets exactly those.
