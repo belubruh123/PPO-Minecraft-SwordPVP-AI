@@ -1403,3 +1403,9 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **18:35 ROUNDS WON: A 23/45 (51%), B 17/45 (38%), z +1.7.** Net A-B +7.4 (se 6.2). Damage a minute: A 408 / 378, B 374 / 390. Their third hit: A 21%, B 28%. Outside their combo: A swung 48%, B 56%. Swings A 397, B 408.
 - Jump keys a minute (18:35): A 100 / 58, B 48 / 17. Take-offs by source (18:35): A rule 80, technique 26, own 2-12 3, own other 87; B rule 129, own 0. Run 97's own-combo jumps keep A's own take-offs near 90 (13:35: 42).
 - Since runs 96 + 97: z +0.6, +2.5, +1.7; their third hit A 30/?/21% vs B 52/?/28%.
+
+## 14 Nov 19:24 check (runs 96 + 97, about 3.3 h)
+
+- **ROUNDS WON: A 18/44 (41%), B 18/44 (41%), z 0.0.** Net A-B +1.0 (se 5.3). Damage a minute: A 368 / 407, B 344 / 389. Their third hit: A 28%, B 32%. Outside their combo: A swung 49%, B 47%. Swings A 359, B 380. Jump keys a minute: A 102 / 77, B 49 / 34.
+- Since runs 96 + 97: z +0.6, +2.5, +1.7, 0.0.
+- Run 97 in training, 16:08-19:43: stunned bot 178 fights, runs to 3/5/10 52/31/7 (0.29 to 3+ a fight); breaker 187 fights, 48/14/0 (0.26 a fight, no run of 10 yet); own-combo take-offs 344, hit in the air rising 74 (22%; target under 15%), falling 85. Punish crit 50% (at the floor).
