@@ -1396,3 +1396,10 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Run 95d split, held otherwise with the crosshair on them: A 38 ticks (under 2.0: 4, 2.0-2.6: 10, 2.6+: 24), B 39 (1, 5, 33). The hesitation with them under the crosshair is small and mostly at the edge of reach, as B's; the rest of A's holds are crosshair-off ticks.
 - Take-offs by source: A rule 130, technique 16, own 2-12 7, own other 92 (13:35: 42), B rule 162, own 0. Run 97 frees jumps in its own combo, so A's own take-offs rose again (agent 39's named risk). Jump keys a minute: A 87 / 63, B 48 / 15.
 - Run 97 in training (16:08-16:43): stunned bot 33 fights, runs to 3+ 0.36 a fight (10+ three times); breaker 32 fights, 0.25 a fight (5+ three times); breaker escapes C3 87, T9a 8, swing back 7, T8 4; own-combo take-offs 27, hit rising 9 (33%).
+
+## 14 Nov 17:46 and 18:35 checks (runs 96 + 97)
+
+- **17:46 ROUNDS WON: A 29/45 (64%), B 20/45 (44%), z +2.5** (only A won 11, only B won 2): the best check today.
+- **18:35 ROUNDS WON: A 23/45 (51%), B 17/45 (38%), z +1.7.** Net A-B +7.4 (se 6.2). Damage a minute: A 408 / 378, B 374 / 390. Their third hit: A 21%, B 28%. Outside their combo: A swung 48%, B 56%. Swings A 397, B 408.
+- Jump keys a minute (18:35): A 100 / 58, B 48 / 17. Take-offs by source (18:35): A rule 80, technique 26, own 2-12 3, own other 87; B rule 129, own 0. Run 97's own-combo jumps keep A's own take-offs near 90 (13:35: 42).
+- Since runs 96 + 97: z +0.6, +2.5, +1.7; their third hit A 30/?/21% vs B 52/?/28%.
