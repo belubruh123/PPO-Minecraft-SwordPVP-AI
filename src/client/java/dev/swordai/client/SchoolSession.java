@@ -573,6 +573,13 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final boolean HOLD_COPY = true;
 	static final float HOLD_PULL = 0.3f;
+	/**
+	 * Run 98 (agent 40): the camera lesson (findAim) was gated by pulled(pulls, technique) and taught at the technique label's pull. The
+	 * ordinary fight's label (BASE) has pull 0 (SchoolStages#PULL_CAP 0, BASE not in RUN_TAUGHT), so the lesson never ran on the plain
+	 * ground ticks (about 30 of 4146 steps an update) and the crosshair stayed off them on 39% of the ready ticks outside their combo
+	 * (11-14 20:14 check; B 34%). With CAM_PULL > 0 the lesson runs on every such tick, at this pull on yaw and pitch.
+	 */
+	static final float CAM_PULL = 0.5f;
 	/** Run 97: the logs' kinds of its own follow-up hits in its combo (by its own state at the hit) and the run-up of a lunge's take-off. */
 	static final String[] HOLD_KINDS = {"ground", "strafe held", "hop (falling, from a stand)", "uppercut (rising or at the peak)",
 			"lunge (falling, from a run)", "not a sprint hit"};
@@ -4653,6 +4660,7 @@ public final class SchoolSession implements AgentSession {
 		step.letGoPull = 0f;
 		step.jumpPull = 0f;
 		step.holdPull = 0f;
+		step.camPull = 0f;
 		// A teacher with no pull leaves its keys to the installed model (NO_PULL_YIELDS): its target would replace the installed
 		// model's on those keys and teach nothing. The technique's moment is still judged on its own keys (perf, below).
 		float[] pulls = stages.techPulls();
@@ -4737,7 +4745,7 @@ public final class SchoolSession implements AgentSession {
 				seenSide = facts.yawErrDeg > 0f ? 1 : -1;
 			}
 		}
-		if (mode == Mode.TRAIN && OVERLAY && !(REACH_TARGET ? pickNow : onOpponent()) && pulled(pulls, step.teacherTechnique >= 0 ? step.teacherTechnique : base)) {
+		if (mode == Mode.TRAIN && OVERLAY && !(REACH_TARGET ? pickNow : onOpponent()) && (CAM_PULL > 0f || pulled(pulls, step.teacherTechnique >= 0 ? step.teacherTechnique : base))) {
 			double dx = bot.getX() - me.getX();
 			double dz = bot.getZ() - me.getZ();
 			double dy = bot.getY() + bot.getBbHeight() * 0.5 - me.getEyeY();
@@ -4788,6 +4796,7 @@ public final class SchoolSession implements AgentSession {
 				if (step.teacherTechnique < 0) {
 					step.teacherTechnique = Technique.BASE.ordinal();
 				}
+				step.camPull = CAM_PULL;
 				findAim++;
 			}
 		}

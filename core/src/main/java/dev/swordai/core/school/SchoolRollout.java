@@ -67,6 +67,8 @@ public final class SchoolRollout {
 	 * 0: none), taught only where the moment went better than the critic expected; see SchoolPpo#teach.
 	 */
 	public final float[] holdPull;
+	/** Run 98: the camera lesson's own pull on the step's yaw and pitch heads (SchoolSession#CAM_PULL; 0: none), whatever the technique label's pull. */
+	public final float[] camPull;
 	/** The technique teacher that spoke (a {@link Technique} ordinal), or -1: for the logs. */
 	public final int[] teacherTechnique;
 	/** 1 when the step's policy loss counts, 0 when the step was one where nothing could be decided. */
@@ -110,6 +112,7 @@ public final class SchoolRollout {
 		letGoPull = new float[capacity];
 		jumpPull = new float[capacity];
 		holdPull = new float[capacity];
+		camPull = new float[capacity];
 		teacherTechnique = new int[capacity];
 		policyWeight = new float[capacity];
 		botTechnique = new int[capacity];
@@ -154,6 +157,7 @@ public final class SchoolRollout {
 		letGoPull[i] = s.letGoPull;
 		jumpPull[i] = s.jumpPull;
 		holdPull[i] = s.holdPull;
+		camPull[i] = s.camPull;
 		teacherTechnique[i] = s.teacherTechnique;
 		policyWeight[i] = s.policyWeight;
 		botTechnique[i] = s.botTechnique;
@@ -181,6 +185,7 @@ public final class SchoolRollout {
 		public float letGoPull;
 		public float jumpPull;
 		public float holdPull;
+		public float camPull;
 		public int teacherTechnique = -1;
 		public float policyWeight = 1f;
 		public int botTechnique = -1;
