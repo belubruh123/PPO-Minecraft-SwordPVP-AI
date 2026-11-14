@@ -1821,3 +1821,17 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **Learn-by (1-2 h):** the reflex extra charge falls; the check's A jump keys fall toward 45 / 65.
 - **Falsifying test:** if they do not fall, the exempt teacher keys or the rule-r copy are the source. Next then: the teacher's plain T9 only at T9a/b/c moments (needs the user's word: it reverses their 24 Oct "remove jump reset barrier"), or OWN_JUMP_COST 0.15.
 - **Revert** if rounds fall more than 2 se, "jump reset (T9)" in checks falls under 90%, or punish crit chances critted under 50%.
+
+## Run 95 (14 Nov ~09:45): jump once, then combo; always start a combo (the user's direction)
+
+- **The user, 14 Nov 09:30:** "Teach it not to jump when not needed. I mean yeah it is fine to go for a jump in but after once jump in you should start doing some combo until opponent run away or back out I think 5-6 block before going to jump in and near fight unless it is them critting you back or pcritting or else just sprint hit and start combo with all the method you know and teach it to always start a combo ALWAYS".
+- **Why now:** the check's jump keys a minute stay A 60-76 / 79-101 against B 32-46 / 29-40. In the 08:22 check A's take-offs were rule 114, technique 28, its own "other" 77. JUMP_EVERYWHERE (SchoolStages, pull 1.0, by the outcome) copies the teacher's jump key at every moment, and the teacher jumps for T9 on every sprint hit taken and for its hops, so the copy target itself keeps teaching jumps that OWN_JUMP_COST 0.08 cannot outweigh (agent 38).
+- **Change (training only; checks, benchmarks and the user's game unchanged):**
+  - JUMP_ONCE: one jump-in per engagement, open at the fight's start and again once they are 5+ blocks away (JUMP_IN_REOPEN), spent by its take-off or closed by the first hit either way.
+  - In the near fight a take-off is needed only for a crit exchange (they are in the air within 4.5 blocks: critting it, it crits back), the told T1/T1c/K3/C6, or a jump reset in their combo (their 2nd+ hit; the told T9a/T9b/T9c). The jump reset in their combo stays, as the combo escape the user asked for on 13 Nov.
+  - Any other take-off of its own there costs NEAR_JUMP_COST 0.25 (was OWN_JUMP_COST 0.08 with T10/T11 exempt). On the ground the jump's copy target is "no jump" at NEAR_NO_JUMP_PULL 0.5, by the outcome; the teacher's own jump and the rules' jump are not taught there.
+  - COMBO_DROP_COST 0.1: after its hit, neither its next hit nor theirs within COMBO_GAP while still under 5 blocks.
+  - COMBOABLE_SHARE 0.25 -> 0.4.
+- **Counter:** "run 95 (on): jump-ins N (reopened at 5+ blocks N), near-fight take-offs not needed charged N, needed N; "no jump" taught N (the teacher's jump turned N); combos dropped N".
+- **Learn-by (1-2 h):** near-fight take-offs charged fall by half; the check's A jump keys (own "other" and technique take-offs) fall toward B's; the comboable runs to 3+ stay at 0.25+ a fight; combos dropped fall.
+- **Revert / adjust** if the rounds fall more than 2 se in two checks, punish crit chances critted falls under 50%, or their third hit rises above B's in two checks (losing the jump reset). The 23 Oct rules overlay's own jumps (114 of A's take-offs at 08:22) are untouched: the next check's take-offs-by-source line for B decides whether A's overlay jump rules are the next change.
