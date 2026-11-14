@@ -1419,3 +1419,10 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Run 97, last 30 updates: stunned 31 fights (runs 3/5/10: 12/7/2), breaker 37 (8/1/1); own-combo take-offs 75, hit rising 19 (25%).
 - Punish crit 51%, told and landed 37%.
 - The outside-combo swing gap is now a crosshair-off-them gap (28% vs 16% fully off). Agent 40 (Sonnet, worktree) launched 20:20 to find why and fix the camera lesson.
+
+## 14 Nov 21:25 check: run 98's first (camera lesson on plain ground ticks, about 55 min)
+
+- **ROUNDS WON: A 23/44 (52%), B 12/44 (27%), z +2.4.** Only A won 16, only B won 5. **Net A-B +17.0 (se 5.6), the largest margin of these runs.** Damage a minute: A 414 dealt / 384 taken, B 339 / 414.
+- Their third hit: A 22%, B 34%. Outside their combo: A swung 49%, B 49% (level). Swings A 391, B 380 (A more).
+- **Aim: crosshair off them A 33% (on its body 16%, so 17% fully off), B 38% (21%, 17% fully off). The 20:14 gap (28% vs 16% fully off) is closed.** Lost view: A 31 of 8545 ticks (9 times), B 16 of 8580 (4 times).
+- Take-offs by source: A rule 84, technique 16, own 2-12 7, own other 136 (rising: 42, 92, 87, 111, 136 since run 95); B rule 155, own 0. Jump keys a minute: A 82 / 79, B 34 / 38. Run 97's jumps in its own combo (the user asked for them) keep A's own take-offs high; real duels decide whether they hold combos or shake the aim.
