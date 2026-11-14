@@ -212,7 +212,7 @@ public final class Specialists {
 	 */
 	public static final boolean COMBOABLE_STUNNED = true;
 	/** Run 93c: the stun draw is 12 + 0..STUN_SPREAD-1 ticks (run 93b: 9, i.e. 12-20; run 93c: 5, i.e. 12-16). */
-	public static final int STUN_SPREAD = 5;
+	public static final int STUN_SPREAD = 9; // run 93d (12:30): back to 12-20; with 12-16 "next" fell 64% -> 46% (68 fights) under run 95
 
 	/**
 	 * A specialist that does other things too (the user, 24 Oct 22:50: an opponent for each case "that is suitable to use the
