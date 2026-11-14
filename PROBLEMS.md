@@ -1371,3 +1371,12 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Jump keys a minute (off / on moments): A 85 / 90 (09:32: 92 / 96), B 43 / 35.
 - Take-offs by source: A rule 114, technique 37, own 0-1 after their first hit 1, in their combo 0, own 2-12 3, own other 86 (09:32: 109). B rule 145, own other 0. A's own jumps fell about 20% in 50 minutes; still the whole gap to B.
 - fight-jumpin -19.2 (A 0-4).
+
+## 14 Nov 12:34 check: run 95b's first (about 50 min after the 11:44 restart); 95c + 93d redeploy asked 12:34
+
+- **ROUNDS WON: A 20/45 (44%), B 16/45 (36%), z +0.9.** Only A won 12, only B won 8. Net A-B +8.4 (se 4.8). Damage a minute: A 394 / 390, B 362 / 409.
+- Their third hit: A 28%, B 31%. Outside their combo: A swung 49%, B 47% (level). Swings A 392, B 394. Jump reset (T9) A 98%, B 100%.
+- **Take-offs by source: A rule 95, technique 33, own 0-1 after their first hit 2, in their combo 1, own 2-12 1, own other 58** (09:32: 109, 10:32: 86). B rule 131, own 0. A's own jumps have nearly halved since run 95.
+- Jump keys a minute (off / on moments): A 84 / 131, B 44 / 39 (the on-moment count rose; key ticks, not take-offs, in the stage-E check).
+- Lost view: A 41 of 8895 ticks (11 times), B 42 of 8726 (8 times): the checks are clean; the training find-them spike was the jumping stage (run 95c skips it).
+- uppercutter -2.9 (both 0-4), fight-jumpin -2.3.
