@@ -186,7 +186,7 @@ public final class SchoolFighter {
 		}
 		// The rules give way to a technique it learned while the decider has chosen it (SchoolStages#RULES_YIELD).
 		if (ruled != 0 && SchoolStages.RULES_YIELD && sinceHitTaken > SchoolStages.YIELD_AFTER_HIT
-				&& SchoolStages.runTaught(learner.told().ordinal())) {
+				&& SchoolStages.runTaught(learner.told().ordinal()) && !(SchoolStages.STARTERS_TAUGHT && SchoolStages.starter(learner.told().ordinal()))) {
 			ruled &= ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
 		}
 		// Run 62: in its own combo, while the decider has chosen an uppercut, a lunge or hops, those keys are the network's.

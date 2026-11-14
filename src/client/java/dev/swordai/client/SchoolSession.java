@@ -397,6 +397,9 @@ public final class SchoolSession implements AgentSession {
 	 */
 	private final int[][] takeoffSrc = new int[2][6];
 	private int firstHitResetTicks;
+	/** Run 99: stun starts (a hit of its own with no combo open) by the told technique (T4, T5, T6, T7, T8, other) and its sprint key then. */
+	private final int[] stunStart = new int[6];
+	private final int[] stunStartSprint = new int[6];
 	/**
 	 * Run 84 (agent 19, 12 Nov 08:40; the benchmark's head-to-head against the installed model, -4.87 HP a fight, 3 se worse):
 	 * C takes 3.2 hits a fight in chains of 6+ against the installed model's 0.65, and its chains end within 15 ticks after a
@@ -1284,6 +1287,9 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | its follow-ups' pay held %d ticks: paid %d, dropped by their hit %d", HELD_TICKS, heldPaid, heldDropped)
 				+ String.format(Locale.ROOT, " | after its own ground hit, B's movement as an outcome target: %d ticks", ownFollowTaught)
 				+ String.format(Locale.ROOT, " | sprint hits taken with the first-hit jump reset open: %d", firstHitResetTicks)
+				+ String.format(Locale.ROOT, " | run 99, stun starts by told starter T4/T5/T6/T7/T8/other: %d/%d/%d/%d/%d/%d, sprinting at the first hit: %d/%d/%d/%d/%d/%d",
+						stunStart[0], stunStart[1], stunStart[2], stunStart[3], stunStart[4], stunStart[5],
+						stunStartSprint[0], stunStartSprint[1], stunStartSprint[2], stunStartSprint[3], stunStartSprint[4], stunStartSprint[5])
 				+ String.format(Locale.ROOT, " | run 86, its own take-offs after their 2nd hit: their next hit within %d ticks anyway (charged) %d, out %d",
 						COMBO_TAKEOFF_WINDOW, comboTakeoffFail, comboTakeoffOut)
 				+ String.format(Locale.ROOT, " | run 84, their combo from their 2nd hit, W/S/sprint/jump the network's: %d ticks, S pressed %d; their 3rd hit after their 2nd: those fights %d/%d, other fights %d/%d",
@@ -1324,6 +1330,8 @@ public final class SchoolSession implements AgentSession {
 		heldPaid = heldDropped = 0;
 		ownFollowTaught = 0;
 		firstHitResetTicks = 0;
+		java.util.Arrays.fill(stunStart, 0);
+		java.util.Arrays.fill(stunStartSprint, 0);
 		comboExitTicks = comboExitBack = 0;
 		comboTakeoffFail = comboTakeoffOut = 0;
 		for (int[] r : comboExitRow) {
@@ -4431,6 +4439,14 @@ public final class SchoolSession implements AgentSession {
 					}
 					lastOwnHitAt = fightTicks;
 				}
+				if (facts.hitsDealt > 0 && facts.hitsTaken == 0 && !(cbFollowAt >= 0 && fightTicks - cbFollowAt <= COMBO_GAP)) {
+					// Run 99: a stun start (no combo of its own open) by the starter it was told, with its sprint key at the hit.
+					Technique toldNow = learner.told();
+					int si = toldNow == Technique.T4 ? 0 : toldNow == Technique.T5 ? 1 : toldNow == Technique.T6 ? 2 : toldNow == Technique.T7 ? 3
+							: toldNow == Technique.T8 ? 4 : 5;
+					stunStart[si]++;
+					stunStartSprint[si] += me.isSprinting() ? 1 : 0;
+				}
 				if (fightComboable) {
 					// Run 93b (agent 37): what came after each of its hits on the comboable bot (no hit taken that tick), the break points.
 					int since = fightTicks - cbFollowAt;
@@ -5024,7 +5040,8 @@ public final class SchoolSession implements AgentSession {
 				// a check (as in a real fight) while the decider has chosen it (SchoolStages#runTaught).
 				int body = ActionSpace.ALL_HEADS & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
 				int give = mode == Mode.TRAIN ? step.teacherHeads & body
-						: dev.swordai.core.school.SchoolStages.runTaught(learner.told().ordinal()) ? body : 0;
+						: dev.swordai.core.school.SchoolStages.runTaught(learner.told().ordinal())
+								&& !(dev.swordai.core.school.SchoolStages.STARTERS_TAUGHT && dev.swordai.core.school.SchoolStages.starter(learner.told().ordinal())) ? body : 0;
 				ruled &= ~give;
 			}
 			if (dev.swordai.core.school.SchoolStages.COMBO_JUMPS_TAUGHT && (mode == Mode.TRAIN || dev.swordai.core.school.SchoolStages.COMBO_JUMP_YIELD_IN_FIGHTS)

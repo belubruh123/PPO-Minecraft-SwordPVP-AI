@@ -302,6 +302,24 @@ public final class SchoolStages {
 	 * the shared trunk). Revert if swings in a check fall 10% under run 89's (336-341) or W/S off at T4/T7 passes 50% (the C3 spread).
 	 */
 	public static final boolean T6_TAUGHT = true;
+	/**
+	 * Run 99 (agent 41, the user 14 Nov 22:00: "start combo really easily with all sort of way"): the document's ways to start a stun
+	 * (T4 deflection, T5 reverse deflection, T7 three-block hit, T8 the rising jumper) were in no RUN_TAUGHT set, so techPulls gave
+	 * their moments a pull of 0 (PULL_CAP 0) and nothing taught the network the teacher's sprint hit there: tech-review 14 Nov, sprint
+	 * off the teacher at 54% (T4), 56% (T5), 40% (T7), 42% (T9c). Taught at the run's pull by the outcome (FROM_THE_FIGHT), their sprint
+	 * hit's keys (W, strafe, sprint, swing) into their own option layers alone (no S, no jump: nothing spreads, run 25/65's failure).
+	 * No rule gives way. Revert if W/S off at T4/T7 passes 60%, swings in a check fall 10%, or the starts below do not rise in 2 h.
+	 */
+	public static final boolean STARTERS_TAUGHT = true;
+	public static final int STARTER_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.FORWARD,
+			dev.swordai.core.rl.ActionSpace.STRAFE, dev.swordai.core.rl.ActionSpace.SPRINT, dev.swordai.core.rl.ActionSpace.ATTACK);
+
+	/** The stun starters of run 99: T4, T5, T7, T8. */
+	public static boolean starter(int technique) {
+		return technique == Technique.T4.ordinal() || technique == Technique.T5.ordinal() || technique == Technique.T7.ordinal()
+				|| technique == Technique.T8.ordinal();
+	}
+
 	public static final int T1C_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP,
 			dev.swordai.core.rl.ActionSpace.FORWARD, dev.swordai.core.rl.ActionSpace.SPRINT, dev.swordai.core.rl.ActionSpace.ATTACK);
 	public static final int T9B_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP,
@@ -359,6 +377,9 @@ public final class SchoolStages {
 		// Run 71: the counter jumps' keys (T1c, T9b) into their own layers alone.
 		if (COUNTER_JUMPS_TAUGHT && GATED && counterJump(technique)) {
 			return gatedHeads(technique);
+		}
+		if (STARTERS_TAUGHT && GATED && starter(technique)) {
+			return STARTER_GATED_HEADS;
 		}
 		int whole = technique == Technique.B1.ordinal() ? B1_TAUGHT_HEADS : technique == Technique.T9.ordinal() ? T9_TAUGHT_HEADS
 				: technique == Technique.C3.ordinal() ? C3_TAUGHT_HEADS : dev.swordai.core.rl.ActionSpace.ALL_HEADS;
