@@ -1434,3 +1434,9 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Crosshair off them: A 33% (on its body 13%, about 20% fully off), B 35% (21%, about 14%).
 - Take-offs by source: A rule 100, technique 31, own 2-12 8, own other 112; B rule 174, own 0. Jump keys a minute: A 72 / 82, B 37 / 43.
 - **Punish crit chances critted 47% (under the 50% floor) in training at 22:15.** Watch at the next review.
+
+## 14 Nov 22:41: the user tests the current best; work stops for the day
+
+- **Installed in the user's profile (the user asked):** run98-2210 (the 22:14 check's network: A 23/45 vs B 16/45, z +1.8, +18.1 HP a fight; sha1 e99de0ca33d9) as the only A/B arm, rules on, with the 20:35 jar (swordai-0.16.0, run 98's code). Backup: swordai/backup-before-ab-20261114-2240xx; the previous pool (run88c alone) is in pool-with-installed-20261114-2240.txt and the backup.
+- **Training stopped** (stop marker set 22:40). The 22:16 redeploy (runs 97b + 99) FAILED its core tests at 22:21 ("expected <127> but was <92>", TeacherDuelReport) and left training down; runs 97b and 99 are committed but have not trained. Fix that test before the next start.
+- The thirty-minute review timer is off until the user says to resume. Renew the watchdog task (expires about 15 Nov 04:20) when work resumes.
