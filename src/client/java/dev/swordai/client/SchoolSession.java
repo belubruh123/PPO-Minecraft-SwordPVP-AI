@@ -163,6 +163,20 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final boolean MEET_NOT_INCOMING = true;
 	/** Run 91b: whether a technique asks for a jump on this tick (see OWN_JUMP_COST). */
+	/**
+	 * Run 94 (94b: both sides): in checks, a take-off on the ground (the jump key pressed this tick) counted by source for side 0 (A)
+	 * or 1 (B): a rule's jump; a technique's; its own 0-1 ticks after their first hit; its own 0-1 ticks in their combo; its own 2-12
+	 * ticks after a hit taken; its own other.
+	 */
+	private void countTakeoff(int side, int ruledBits, dev.swordai.core.school.SchoolRollout.Step step) {
+		if (mode != Mode.CHECK || action[ActionSpace.JUMP] != 1) {
+			return;
+		}
+		int src = (ruledBits & (1 << ActionSpace.JUMP)) != 0 ? 0 : jumpTechniqueNow(step) ? 1
+				: clock.ticksSinceHitTaken <= 1 ? (theirRow <= 1 ? 2 : 3) : clock.ticksSinceHitTaken <= 12 ? 4 : 5;
+		takeoffSrc[side][src]++;
+	}
+
 	private boolean jumpTechniqueNow(dev.swordai.core.school.SchoolRollout.Step step) {
 		int jo = ActionSpace.OFFSETS[ActionSpace.JUMP];
 		if ((step.teacherHeads & (1 << ActionSpace.JUMP)) != 0 && step.teacher[jo + 1] > 0.5f) {
@@ -4391,6 +4405,10 @@ public final class SchoolSession implements AgentSession {
 			System.arraycopy(chosen, 0, action, 0, ActionSpace.HEADS);
 			perfB.tick(step.teacherTechnique, step.teacherHeads, step.teacher, action, ActionSpace.ALL_HEADS, facts.damageDealt, facts.damageTaken);
 			ruledNow = installed.fighter.ruledHeads();
+			if (me.onGround()) {
+				// Run 94b: B's take-offs by source too (B's step returns below, before A's count).
+				countTakeoff(1, ruledNow, step);
+			}
 			traceCrit(1, action[ActionSpace.ATTACK] == 1);
 			traceJumpIn(1);
 			logHits(1, action[ActionSpace.ATTACK] == 1, truth.botFalling());
@@ -4925,12 +4943,7 @@ public final class SchoolSession implements AgentSession {
 					reflexFirstCharged++;
 				}
 			}
-			if (mode == Mode.CHECK && action[ActionSpace.JUMP] == 1) {
-				int side = installedPlays ? 1 : 0;
-				int src = (ruled & (1 << ActionSpace.JUMP)) != 0 ? 0 : jumpTechniqueNow(step) ? 1
-						: clock.ticksSinceHitTaken <= 1 ? (theirRow <= 1 ? 2 : 3) : clock.ticksSinceHitTaken <= 12 ? 4 : 5;
-				takeoffSrc[side][src]++;
-			}
+			countTakeoff(0, ruled, step);
 			if (ownJumpAir && mode == Mode.TRAIN && review < 0 && clock.ticksSinceHitTaken <= COMBO_GAP
 					&& clock.ticksSinceHitDealt > clock.ticksSinceHitTaken) {
 				if (COMBO_TAKEOFF_FAIL && !ruleOff && theirRow >= 2 && comboTakeoffAt < 0) {
