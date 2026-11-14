@@ -1345,3 +1345,14 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Item 10 (in the air / jumps) flat 3+ h: A jumps 1.5x B off technique moments and 2.5-3x on them in five checks running (03:44-07:14). Agent 38 (Sonnet, worktree) launched 07:25: where A's extra jumps come from (teacher, rules, exemptions, own) and the top fix.
 - The review timer skipped 06:22, 06:52 and 07:22; a backup timer (minutes 28 and 58) now covers it.
 - 07:52 review, run 94's first 20 min (redeployed 07:31): its own untaught take-offs charged 66 an update (the 50 updates before: 89), reflex extra 1-5 an update. The told T9 in training fell to 57% done (own 18/47; was 98% with the rule's first-hit reset): the teacher still tells T9 on first sprint hits, the network now mostly skips those. Watch the check's "jump reset (T9)" (revert under 90%) and the new take-offs-by-source line. Comboable bot (run 93b) 25 fights: runs to 3+ 0.24 a fight, longest 11. Punish crit 57%.
+
+## 14 Nov 08:22 check: run 94's first (with run 93b)
+
+- **ROUNDS WON: A 22/45 (49%), B 15/45 (33%), z +1.8.** Only A won 11, only B won 4.
+- **Net A-B +13.7 (se 4.5), the best net since run 88c.** Damage a minute: A 389 dealt / 368 taken, B 348 / 414.
+- **Their third hit: A 29%, B 42%** (07:14: 35% / 35%). Swings: A 389, B 369 (A more for the first time in these checks). Aim A 97%, B 89%.
+- Outside their combo: A swung 51%, B 50% (level for the first time since run 55d).
+- Jump keys a minute (off / on moments): A 67 / 79, B 42 / 40 (on-moment jumps 101 -> 79). Jump reset (T9) 139/139 (100%): run 94's revert gate holds.
+- **Uppercutter +49.0** (was -10.8), stun-escaper +40.2, deflector +22.2, reverse-deflector +21.0. Behind: mixer* -17.0, fight-timer -3.5.
+- Late knock-away hits on jump-ins (tick 2+): A 25 rising + 3 falling, B 20 + 3 (A worse; the guard is off in checks since run 91, on in real duels).
+- Take-offs by source (A only; B's count was broken, fixed in run 94b, redeployed 08:40): A rule 114, technique 28, own 0-1 after their first hit 2, own 0-1 in their combo 0, own 2-12 4, own other 77 (first four check-summary lines). Most of A's jumps are the 23 Oct rules overlay's (letter J / r) and its own "other" jumps away from hits.
