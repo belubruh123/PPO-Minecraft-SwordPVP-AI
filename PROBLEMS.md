@@ -1363,3 +1363,11 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Their third hit: A 27%, B 36%. Outside their combo: A swung 43%, B 55% (behind again). Swings A 355, B 361. Jump reset (T9) A 93%, B 100%.
 - Jump keys a minute (off / on moments): A 92 / 96, B 46 / 37. mixer* -42.0; uppercutter +2.3; fight-jumpin both lost.
 - **Take-offs by source, first check with B counted (5 summary lines): A rule 113, technique 37, own 0-1 after their first hit 2, own 0-1 in their combo 1, own 2-12 6, own other 109. B rule 159, technique 0, own 2-12 2, own other 1.** B's network almost never jumps by itself; all of B's jumps are its 23 Oct rules' (more than A's rules make). A's extra jumps over B are ALL the network's own (other 109 + technique 37), away from any hit taken. So the rules overlay is not the cause; the network's own jumps are (copy of the teacher's jump at every moment, hops/uppercut/lunge teaching). Run 95 targets exactly those.
+
+## 14 Nov 10:32 check: run 95's first (about 50 min); 95b + 93c redeploy asked 10:33
+
+- **ROUNDS WON: A 23/45 (51%), B 17/45 (38%), z +1.6.** Only A won 10, only B won 4. Net A-B +8.7 (se 5.1). Damage a minute: A 391 / 389, B 351 / 402.
+- Their third hit: A 25%, B 28%. Outside their combo: A swung 51%, B 59%. Swings A 376, B 380. Jump reset (T9) A 95%, B 100%.
+- Jump keys a minute (off / on moments): A 85 / 90 (09:32: 92 / 96), B 43 / 35.
+- Take-offs by source: A rule 114, technique 37, own 0-1 after their first hit 1, in their combo 0, own 2-12 3, own other 86 (09:32: 109). B rule 145, own other 0. A's own jumps fell about 20% in 50 minutes; still the whole gap to B.
+- fight-jumpin -19.2 (A 0-4).
