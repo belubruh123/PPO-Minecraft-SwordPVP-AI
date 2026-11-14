@@ -187,7 +187,9 @@ public final class Specialists {
 		s.rhythm = false;
 		// Longer than the 12-13 ticks the AI's sword takes to come back, so that the next hit of a held combo can land inside it
 		// (run 93b: the stun; run 93: the walk back). The same draw for both.
-		int window = 12 + rng.nextInt(9);
+		// Run 93c (14 Nov ~10:25, agent 37's plan step 2): 12-16 once "its next hit within 20" held 60%+ (64% over 57 fights since 09:41, 70% and 64% in
+		// the last two full 10-minute windows): a tighter stun makes waiting at the edge of reach, not rushing, the way to hold it.
+		int window = 12 + rng.nextInt(STUN_SPREAD);
 		if (COMBOABLE_STUNNED) {
 			s.stunAfterHit = window;
 		} else {
@@ -209,6 +211,8 @@ public final class Specialists {
 	 * a noisy half-trained policy's 3+ runs 0.04 -> 0.55 a fight, at every view lag. false: run 93 as it was.
 	 */
 	public static final boolean COMBOABLE_STUNNED = true;
+	/** Run 93c: the stun draw is 12 + 0..STUN_SPREAD-1 ticks (run 93b: 9, i.e. 12-20; run 93c: 5, i.e. 12-16). */
+	public static final int STUN_SPREAD = 5;
 
 	/**
 	 * A specialist that does other things too (the user, 24 Oct 22:50: an opponent for each case "that is suitable to use the

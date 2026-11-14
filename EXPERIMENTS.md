@@ -1835,3 +1835,8 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **Counter:** "run 95 (on): jump-ins N (reopened at 5+ blocks N), near-fight take-offs not needed charged N, needed N; "no jump" taught N (the teacher's jump turned N); combos dropped N".
 - **Learn-by (1-2 h):** near-fight take-offs charged fall by half; the check's A jump keys (own "other" and technique take-offs) fall toward B's; the comboable runs to 3+ stay at 0.25+ a fight; combos dropped fall.
 - **Revert / adjust** if the rounds fall more than 2 se in two checks, punish crit chances critted falls under 50%, or their third hit rises above B's in two checks (losing the jump reset). The 23 Oct rules overlay's own jumps (114 of A's take-offs at 08:22) are untouched: the next check's take-offs-by-source line for B decides whether A's overlay jump rules are the next change.
+
+## Run 95b + 93c (14 Nov ~10:30, one redeploy after the 10:2x check)
+
+- **95b:** a crit exchange (a needed near-fight jump) needs them in the air by their own jump: not within CRIT_EXCHANGE_AFTER_HIT 12 ticks of its own hit. Run 95's first 31 updates: 49 "needed" take-offs an update against 6 charged; its own hit lifts them, so every hop after its hit counted as a crit exchange. The needed take-offs are now counted by reason (crit exchange, told, jump reset in their combo).
+- **93c:** the comboable bot's stun 12-20 -> 12-16 ticks (Specialists.STUN_SPREAD 5), agent 37's plan step 2, once "its next hit within 20" held 60%+ (64% over 57 fights since 09:41; 70% and 64% in the last two full 10-minute windows; runs to 3+ 0.49 a fight, longest 11). Watch: runs to 3+ should stay 0.3+ a fight and "next" 50%+; if "later" (their hit first) dominates, go back to 12-20.
