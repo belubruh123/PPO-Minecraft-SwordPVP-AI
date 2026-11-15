@@ -1641,3 +1641,11 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Jumps a minute off/on its moments: A 48/71, B 35/40 (the 21:38 network was 91/101). Late knock-away hits on jump-ins (rising): A 9, B 19.
 - Punish crit chances critted 59% of 300; told and landed 43%.
 - Agent 49 (human-like bots) started 00:43.
+
+## 16 Nov 01:14 review
+
+- Training runs (run35 base + run 112 memory). Run 113 (human-like bots) is merged; it goes live right after the check of about 01:20.
+- **Skill rates (last 40 moments):** K2 95, T7 90, T1a 88, T4 85, K3 85, C1 83, T6a 80, T9a 80, T5 78, T9b 78, C3 78, C7 78, C4 75, B1 73, C6 63, T9c 60.
+  - Under 60%: T6 52, T2 48, C2 45, T9 38 (the rules), T1c 35, T1 30.
+- Punish crit chances critted 58% of 300; told and landed 44%.
+- **Lead for the crit family (T1, T1c, T2 under 50%):** their deciding key is the second jump right after its own hit. In a trade (hit taken on the same tick), the late-jump guard strips that jump. Count it: the guard's strips with a technique told.
