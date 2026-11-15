@@ -99,8 +99,22 @@ class JumpAlongTest {
 		assertEquals(SchoolStages.T9B_GATED_HEADS, SchoolStages.gatedHeads(Technique.T9B.ordinal()));
 		assertEquals(SchoolStages.T9B_GATED_HEADS, SchoolStages.taughtHeads(Technique.T9B.ordinal()));
 		assertTrue(SchoolStages.runTaught(Technique.T1C.ordinal()) && SchoolStages.runTaught(Technique.T9B.ordinal()));
-		// A technique with no layer of its own keeps every head in the shared network, as before.
-		assertEquals(0, SchoolStages.gatedHeads(Technique.T7.ordinal()));
-		assertEquals(dev.swordai.core.rl.ActionSpace.ALL_HEADS, SchoolStages.taughtHeads(Technique.T7.ordinal()));
+		// A technique with no layer of its own keeps every head in the shared network, as before. Agent 42 (15 Nov): this used T7,
+		// but run 99 (SchoolStages.STARTERS_TAUGHT) made T7 a stun starter whose lesson is only its sprint hit's keys, so T7's taught
+		// heads became STARTER_GATED_HEADS (92) by intent, not ALL_HEADS (127): the 14 Nov 22:21 redeploy failed on that outdated
+		// expectation. T6 (run 89b: taught, not gated) is the plain case now; the starters are checked on their own below.
+		assertEquals(0, SchoolStages.gatedHeads(Technique.T6.ordinal()));
+		assertEquals(dev.swordai.core.rl.ActionSpace.ALL_HEADS, SchoolStages.taughtHeads(Technique.T6.ordinal()));
+	}
+
+	/** Run 99: a stun starter (T4, T5, T7, T8) is taught only the W/S, strafe, sprint and swing keys (no jump), in the shared trunk. */
+	@Test
+	void theStunStartersAreTaughtTheirSprintHitKeysOnly() {
+		org.junit.jupiter.api.Assumptions.assumeTrue(SchoolStages.STARTERS_TAUGHT && SchoolStages.GATED, "the starters are not taught");
+		for (Technique t : new Technique[] {Technique.T4, Technique.T5, Technique.T7, Technique.T8}) {
+			assertEquals(SchoolStages.STARTER_GATED_HEADS, SchoolStages.taughtHeads(t.ordinal()), t + "'s taught keys");
+			assertEquals(0, SchoolStages.gatedHeads(t.ordinal()), t + " has no option layer of its own");
+		}
+		assertEquals(0, SchoolStages.STARTER_GATED_HEADS & (1 << dev.swordai.core.rl.ActionSpace.JUMP), "no jump in a starter's lesson");
 	}
 }
