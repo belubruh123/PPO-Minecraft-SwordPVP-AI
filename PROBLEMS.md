@@ -1482,3 +1482,12 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - Taking them away may leave it in their combo more. One check is noisy (z about 1.6 on the third hit); judge after the next check.
   - If the third hit stays worse, the document's answer is C3 done right ("hold S right before you get stunned") and C4. A late jump is not the answer.
 - Punish crit chances critted 67% (above the 50-65% band).
+
+## 15 Nov 14:31 check: runs 102 + 103 (late-jump guard; Carpet PvP sword bot in 15% of training fights)
+
+- **ROUNDS WON: A 18/45 (40%), B 14/45 (31%), z about +0.9.** Net A-B +9.4 HP a fight (se 6.5). Dealt/taken: A 369 / 399, B 330 / 418.
+- Their third hit: **A 34% (30 of 87), B 49% (38 of 78), A better again.** It was 44% vs 31% at 13:09. Outside their combo: both swung 50%; crosshair off A 35%, B 32%.
+- Late knock-away hits on jump-ins (rising): A 21, B 30. Take-offs: A rule 10, technique 2, own 2-12 1, own other 11; B rule 16.
+- **Carpet PvP sword bot (skilled/expert), training since 13:41:** 31 fights, all lost. HP a fight dealt 38, taken 75. Of its 218 hits taken on the ground, 111 knocked it far (51%). Their combos of 3+: 38; its own: 1. No sign of learning yet in 31 fights.
+- Copied crit spammer: 40 fights, all won. Hit back within 12 ticks after its punish crits 3 of 12 (25%), still soft.
+- Punish crit chances critted 64%.
