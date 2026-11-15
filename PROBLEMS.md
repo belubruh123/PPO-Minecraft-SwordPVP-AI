@@ -1440,3 +1440,10 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **Installed in the user's profile (the user asked):** run98-2210 (the 22:14 check's network: A 23/45 vs B 16/45, z +1.8, +18.1 HP a fight; sha1 e99de0ca33d9) as the only A/B arm, rules on, with the 20:35 jar (swordai-0.16.0, run 98's code). Backup: swordai/backup-before-ab-20261114-2240xx; the previous pool (run88c alone) is in pool-with-installed-20261114-2240.txt and the backup.
 - **Training stopped** (stop marker set 22:40). The 22:16 redeploy (runs 97b + 99) FAILED its core tests at 22:21 ("expected <127> but was <92>", TeacherDuelReport) and left training down; runs 97b and 99 are committed but have not trained. Fix that test before the next start.
 - The thirty-minute review timer is off until the user says to resume. Renew the watchdog task (expires about 15 Nov 04:20) when work resumes.
+
+## 15 Nov 10:00 check: run 100's first (crit-spammer replica, runs 97b + 99 now training too)
+
+- **ROUNDS WON: A 21/46 (46%), B 18/46 (39%), z +0.7.** Net A-B +1.0 (se 5.1). Damage a minute: A 365 / 394, B 362 / 397.
+- Their third hit: A 38%, B 31% (worse than B this time). Outside their combo: A swung 57%, B 50% (A ahead).
+- Replica in training (to 09:55): 31 fights, won 15, lost 16, HP net +1.0 a fight; after its 12 punish crits there, hit back within 12 ticks 25% (real lost rounds 79%), within 30 50%; longest crit run 2 (real median 2, p75 3). The replica is softer than the real crit spammers: tune it (next agent slot, after 10:40).
+- The watchdog task was renewed by the user (next run 09:56); install-watchdog.ps1 now uses -Force.
