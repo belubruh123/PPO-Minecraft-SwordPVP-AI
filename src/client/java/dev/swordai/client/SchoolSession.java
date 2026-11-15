@@ -1760,7 +1760,8 @@ public final class SchoolSession implements AgentSession {
 	static final Technique[][] KIND_TECHS = {
 			{Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2, Technique.C1, Technique.K3},
 			{Technique.T8, Technique.K2, Technique.K3, Technique.B1},
-			{},
+			// Run 111 (the user, 22:25: no one gets a combo on it): the combo-escape scenes practise the get-out part.
+			{Technique.C3, Technique.C4, Technique.T9A, Technique.T6, Technique.T6A},
 			{Technique.B1, Technique.T1C},
 			{Technique.T2, Technique.C6, Technique.C7},
 			{Technique.T2, Technique.C6, Technique.C7},
@@ -1986,7 +1987,8 @@ public final class SchoolSession implements AgentSession {
 	 */
 	private boolean sceneEscaped;
 	/** Run 66: the share of training fights that are a combo-escape scene, ahead of the repeat queue (run 57's focus never ran under it). */
-	static final float COMBO_SCENE_SHARE = 0.15f;
+	// Run 111 (the user, 22:25: "not being able to let ANY ... ONE PERSON TO GET IN COMBO"): 0.15 -> 0.3.
+	static final float COMBO_SCENE_SHARE = 0.3f;
 	private int comboScenePicks;
 	private int comboEscapes;
 	private final int[] kindFights = new int[KINDS];

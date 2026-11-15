@@ -2064,3 +2064,18 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
   - SchoolSession: told T10/T11 no longer count as needed near-fight jumps, so those jumps get the no-jump lesson.
   - Tests: school + pvp packages 67 passed, 4 aborted (known), 0 failed. compile-check OK.
 - **Lesson (the user's test against the checks):** the 21:38 check said A 17-12 (+11.4 HP) against the 23 Oct model, but against a human it lost every round. The bots' checks did not predict the human result again (PROBLEMS.md 8).
+
+## Run 111 (15 Nov 22:36): training from run35; no one gets a combo on it
+
+- **The user (22:25-22:30):**
+  - "start training. I WANT A GREATEST MODEL that cna counter any forms of combo jsut not being able to let ANY FUCKING SINGLE ONE PERSON TO GET IN COMBO 100%".
+  - "prevent ppl do double crit it's punish crit into combo or any other way and if any one stuns and combos it it should make it back to it's own combo by countering it and also make the network bigger and have memory".
+- **Base:** training starts again from run35 (27.7M steps), the network the user calls "near perfect" on humans; it loads into the current code with the new parts fresh. The new2134 lineage (47.1M steps) is saved as school/checkpoint-new2134-lineage-1115-2235.bin.
+- **The list:** the get-out part joins the user's list.
+  - C3 (hold S right before the stun) and C4 (attack right before holding S) are included and favoured, weights C3 3, C4 2. T9a, T6 and T6a get weights 2, 1.5, 1.5.
+  - C3 is taught in its own W/S layer (it spread through the trunk on 29 Oct); C4 through C4_GATED_HEADS.
+  - The combo-escape scenes practise C3, C4, T9a, T6, T6a, and their share goes 0.15 -> 0.3.
+  - Run 110 holds: no hops, lunges or uppercuts.
+- **Memory and a bigger network:** agent 48 (worktree), behaviour-preserving (new parts start at zero, so run35 plays the same at step 0).
+- **Measure:** their third hit after their second (checks), real-round combos taken, crits taken after its punish crit.
+- **Checks:** school tests 35 passed, 4 aborted (known), 0 failed; compile-check OK; run35 test-loaded into the current SchoolLearner.

@@ -391,6 +391,13 @@ public final class SchoolStages {
 			EXCLUDED[t.ordinal()] = true;
 		}
 		// Run 110 (the user, 22:15: "just dont teach hop lunge and uppercut"): T10, T11a and T11b are off the list.
+		// Run 111 (the user, 15 Nov 22:25: "I WANT A GREATEST MODEL that cna counter any forms of combo jsut not being able to let ANY
+		// FUCKING SINGLE ONE PERSON TO GET IN COMBO 100%"): the get-out part joins the list: C3 (hold S right before the stun, fly out) and
+		// C4 (attack right before holding S), heaviest, with T9a (their combo's rhythm) and T6/T6a (make them miss, strafe).
+		for (Technique t : new Technique[] {Technique.C3, Technique.C4}) {
+			INCLUDED[t.ordinal()] = true;
+			EXCLUDED[t.ordinal()] = false;
+		}
 		for (Technique t : new Technique[] {Technique.T4, Technique.T5, Technique.T6, Technique.T6A, Technique.T7, Technique.T9, Technique.T2, Technique.B1, Technique.T1, Technique.T1A, Technique.T1C, Technique.C6, Technique.K2,
 				Technique.K3, Technique.T9A, Technique.T9B, Technique.T9C, Technique.C1, Technique.C2, Technique.C7}) {
 			INCLUDED[t.ordinal()] = true;
@@ -408,9 +415,17 @@ public final class SchoolStages {
 		WEIGHT[Technique.T1.ordinal()] = 2f;
 		WEIGHT[Technique.T1C.ordinal()] = 2f;
 		WEIGHT[Technique.T9B.ordinal()] = 2f;
+		// Run 111: the combo escape heaviest of all.
+		FAVOURED[Technique.C3.ordinal()] = true;
+		FAVOURED[Technique.C4.ordinal()] = true;
+		WEIGHT[Technique.C3.ordinal()] = 3f;
+		WEIGHT[Technique.C4.ordinal()] = 2f;
+		WEIGHT[Technique.T9A.ordinal()] = 2f;
+		WEIGHT[Technique.T6.ordinal()] = 1.5f;
+		WEIGHT[Technique.T6A.ordinal()] = 1.5f;
 		// T8 is not on the user's list (excluded); K2 and K3 are on it again (no longer LATER).
 		for (Technique t : new Technique[] {Technique.T1, Technique.T1A, Technique.T2, Technique.C6, Technique.C1, Technique.C7,
-				Technique.T6A, Technique.K2, Technique.T9A, Technique.T9C, Technique.C2}) {
+				Technique.T6A, Technique.K2, Technique.T9A, Technique.T9C, Technique.C2, Technique.C3, Technique.C4}) {
 			RUN104_TAUGHT[t.ordinal()] = true;
 		}
 	}
@@ -458,8 +473,12 @@ public final class SchoolStages {
 		if (technique == Technique.T9C.ordinal()) {
 			return CRIT_GATED_HEADS;
 		}
-		if (technique == Technique.C2.ordinal()) {
+		if (technique == Technique.C2.ordinal() || technique == Technique.C3.ordinal()) {
+			// Run 111: C3's S in its own layer (taught in the trunk on 29 Oct, the S spread into every technique within 25 minutes).
 			return dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.FORWARD);
+		}
+		if (technique == Technique.C4.ordinal()) {
+			return C4_GATED_HEADS;
 		}
 		return STARTER_GATED_HEADS; // C1, C7, T6a: sprint hits and the strafe, no jump
 	}
