@@ -2091,3 +2091,29 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **The same play at load:** run35, checkpoint.bin and run98-2210 all load with max logit difference 0.0.
 - **Cost:** act + update +28%; replay memory +30 MB; TeacherReplay now allocates as it fills (it held about 330 MB from the start).
 - **Checks:** school + nn tests 55 passed, 0 failed, 5 aborted (known); compile-check OK. Redeploy asked 23:31; its tests gate the restart.
+
+## Run 113 (agent 49, merged 16 Nov 01:15): HUMAN_BOTS, a person's limits and adaptation for the bots
+
+- **The user (22:50):** the bots are anti-human. Too perfect, so the AI learns tricks that adaptable players counter.
+- **Bots against humans, both measured on the AI** (122 real rounds 13-15 Nov, aggregates only, no names; bots from school/hits.csv):
+  - Distance at their hits, p50: humans 1.53, bots 2.64-2.73.
+  - Whiffs: humans 27%, bots about 5%.
+  - Swings with the sword under 0.9: humans 30%, bots about 0.
+  - Runs of 3+ hits: humans 2.5%, bots 5.5-8.3%.
+  - AI beaten to the hit (its sword ready when hit): humans 0.36, bots 0.56-0.63.
+  - Hit-back after the AI's hit: not faster in bots.
+- **The causes in code:**
+  - PvpPlayer swings the tick the exact distance crosses its line, at full charge, with no distance or click error.
+  - The S-tap spacing reads the exact distance.
+  - One reaction per fight, and C3 with no reaction.
+  - The specialists never adapt.
+  - TechniqueBot hits wherever it sees the AI.
+- **Change (Human.HUMAN_BOTS, the bots only; the teacher, AI, rewards, guards and rules unchanged):**
+  - Distance misjudged per window: N(bias -0.1..0.3, sd 0.35..0.65), clipped +-1.4.
+  - Early clicks (charge 0.7-0.9) in 15-45% of windows, else late by about 0.5-2 ticks.
+  - Reaction drawn per reaction (log-normal, sd 0.35).
+  - Adaptation (part-7 adapt() for all but the comboable and combo-breaker bots) and a failure memory that cuts a failing technique to 30%.
+  - Its own seeded stream, so fights stay deterministic.
+- **Toy fight (teacher against 21 bots x 25 fights):** the teacher wins 50% -> 76%; real players lose to the AI about 76%.
+- **Risks:** bots weaker, so watch the training win rate (lower distSd if far above about 60%). Whiffs and the swing gap did not move.
+- **Tests:** school + pvp 79 passed, 4 aborted, 0 failed (TickMemoryTest now skips the identity for checkpoints saved after run 112 went live). Redeploy after the next check.
