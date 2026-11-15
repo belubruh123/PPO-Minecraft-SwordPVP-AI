@@ -1595,3 +1595,9 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - The 21:38 bot check (A 17-12, +11.4 HP) did not predict this. Item 8 (the bots do not fight like real players) stands, worse.
 - **run35 + the 14 Nov jar** (the pool's "installed" arm, restored 22:09): the user, after testing it on a human, calls it "near perfect". It stays installed.
 - Run 110: hops, lunges and uppercuts are no longer taught (the user's word). Training stays paused until the user says.
+
+## 15 Nov 22:42 review (short: 5-hour window at 83%)
+
+- Training runs from run35 since 22:33 (1 loop, 1 client). No paired check yet on the run35 base; the first is due about 23:18.
+- Punish crit chances critted 53% of 300; told the punish crit and landed it 38%. Damage a minute 324 dealt / 480 taken (the first minutes on the new base).
+- Agent 48 (bigger network with memory) is still working.
