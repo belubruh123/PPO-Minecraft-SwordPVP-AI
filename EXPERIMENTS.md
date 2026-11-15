@@ -2126,3 +2126,19 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
   - What teaches it: run 96's cost on a held ready sword was 0.01 a tick and charged about 4 ticks an update, too weak against the K2/jump-in holds it learned (K2 98%).
 - **Fix:** the cost is 0.03 a tick: sword ready, them in reach on the ground (not jumping in, not falling), crosshair on them, itself on the ground, no rule holding the swing. The user's 14 Nov rule: "it should only hold hit when other go for a jump in".
 - **Watch:** held-otherwise and swung outside their combo against B, K2 broken, and late jump-in hits.
+
+## Run 115 (agent 50, merged 16 Nov 04:10): the ordinary swing taught (SWING_TAUGHT, SWING_PULL 0.3)
+
+- **Structural diagnosis (the swing hold, flat 3+ h):** the whole A-vs-B gap is on the ground, sword ready, them in reach on the ground and not falling, crosshair on them.
+  - 03:37 check: A held 134 of 423 ticks, B 56 of 425. Under 2.0 / 2.0-2.6 / 2.6+ blocks: A 49/46/39, B 2/8/46.
+- **Who holds it: the network, by its own choice.** In checks the K2/jump-in guard is off (GUARD_LEARNED); the swing gate is 0.88 on both sides; no play temperature; RULES_YIELD off; the rules hold only on the hit tick or in the air.
+  - The swing head's entropy is 0.009-0.014 in every update since 15 Nov, so these are sure holds.
+- **Bottleneck:** nothing teaches the swing on those ticks. The basics teacher's swing has pull 0 (BASE not taught, NO_PULL_YIELDS), and PPO cannot move a near-sure hold (gradient about 1-p), which is why READY_HOLD_COST did nothing.
+- **When it started:** the training swung share (swung / (swung + held otherwise)) was 72-86% in the old lineage, 85% for run35 at step 0, 70-77% until 22:53, and 45-64% from about 4 updates after the 23:02 reload (anchor = run35).
+  - Settling it would take a check with A = run35 itself: PAIRS=45 bash tools/net-check.sh D:/swordai/run/ab-keep/run35-0657.bin run35-step0.
+- **Fix:** in training, the swing is taught (target 1, BASE, the shared trunk) at its own pull 0.3 (step.swingPull).
+  - Where: on the ground, charge 0.95+, reach 3.0 or less, crosshair pick, them on the ground and not falling, not mid jump-in, no guard tick, outside their combo, swing open, and no technique teacher teaching the swing.
+  - K2, the jump-in hold, the T4/T6/crit waits and the rules' keys are kept; the jump is untouched. Checks, benchmarks and the user's game are unchanged.
+- **New counters:** training "run 115: the ordinary swing taught N ticks". In checks, A's held-with-crosshair-on ticks are split by holder: a rule or gate, network sure (under 10%), 10-50%, 50%+.
+- **Disproof test:** holds mostly "rule or gate" or mostly 50%+; or the training swung share at 60% or less after about 20 updates with 20+ taught ticks each. If it works, close holds (under 2.6 blocks) in checks fall from about 95 toward B's 10.
+- **Tests:** school + pvp 78 passed, 5 aborted (known), 0 failed; compile-check OK. Redeploy right after the next check.
