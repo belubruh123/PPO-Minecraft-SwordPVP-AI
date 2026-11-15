@@ -408,6 +408,11 @@ public final class SchoolPpo implements AutoCloseable {
 				if (byTech && camera && r.camPull[i] > 0f) {
 					pull = Math.max(pull, r.camPull[i]);
 				}
+				// Run 115: the ordinary fight's swing (sword ready, them in reach on the ground, crosshair on them) at its own pull, the same
+				// gap as run 98's camera: the label's pull is 0, and PPO cannot move a swing head this sure (see SchoolSession#SWING_TAUGHT).
+				if (byTech && h == ActionSpace.ATTACK && r.swingPull[i] > 0f) {
+					pull = Math.max(pull, r.swingPull[i]);
+				}
 				// Learned from the fight (SchoolStages#FROM_THE_FIGHT): a technique's keys only where the moment went better than expected.
 				boolean b1Swing = SchoolStages.B1_SWING_ALWAYS && h == ActionSpace.ATTACK && which == dev.swordai.core.pvp.Technique.B1.ordinal();
 				if (SchoolStages.FROM_THE_FIGHT && byTech && !camera && adv <= 0f && !b1Swing && !everyJump

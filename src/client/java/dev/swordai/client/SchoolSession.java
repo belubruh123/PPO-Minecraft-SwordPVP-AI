@@ -168,6 +168,31 @@ public final class SchoolSession implements AgentSession {
 	// A won 30 rounds and B 35. At 0.01 it was charged about 4 ticks an update.
 	static final float READY_HOLD_COST = 0.03f;
 	private int readyHoldCharged;
+	/**
+	 * Run 115 (agent 50, 16 Nov ~04:30; the user, 15 Nov 22:05: "Not hitting when 2 blocks in distance", and 14 Nov: "it should only
+	 * hold hit when other go for a jump in"). Training: on the ground, its sword ready (0.95+), them in reach (3.0) under the crosshair
+	 * (the game's pick), them on the ground and not falling, outside their combo, the swing open (no rule, guard or gate holding it) and
+	 * no technique teacher on the swing: the swing is taught at SWING_PULL, labelled the ordinary fight (BASE, the shared trunk).
+	 *
+	 * <p>Why a lesson and not a cost: the paired checks put the whole gap in this one cell. The 03:37 check: held with the crosshair on
+	 * them A 134 ticks of 423 (32%), B 56 of 425 (13%); under 2.6 blocks A 95, B 10; crosshair off (24% vs 27%) and them falling (20% vs
+	 * 16%) alike. In a check nothing but the network holds it there (the guard is off, GUARD_LEARNED; the whiff guard is the pick the
+	 * counter splits off; both sides' swing gate is the installed 0.88; sampled at temperature 1; RULES_YIELD off; the rules are B's
+	 * code). The swing head's entropy is 0.009-0.014 in every update since 15 Nov: a hold that sure has a policy gradient of about
+	 * 1 - p, and the swing is never drawn there, so no reward can move it (READY_HOLD_COST 0.01 -> 0.03, runs 96 and 114: no change, A
+	 * swung 33% then 31%). Only copy targets move it, and on these ticks no target says "swing": the basics teacher's pull is 0 (PULL_CAP
+	 * 0, BASE_PULL_LEAST 0, BASE not in RUN_TAUGHT, NO_PULL_YIELDS), so its swing is left to the anchor's chances and to the holding
+	 * lessons (T6 in the trunk at three times, the rules' keep): the same gap run 98 found for the camera (CAM_PULL). The training
+	 * counter: run35 at step 0 swung 85% of (swung + held otherwise) (22:34), 70-77% to 22:53, 45-58% from 4 updates after the 23:02
+	 * reload (the anchor became run35), 51-64% since; the old lineage 72-86% with checks of 42-64%.
+	 *
+	 * <p>Not on: them falling (K2) or in the air (a jump-in: the user's critical rule, and the guard's ticks), their combo, a technique's
+	 * moment that teaches the swing (T4, T6, the crits' wait keep their own lesson), the rules' keys (RULED_PULL), the old stages. The
+	 * jump is not touched (no own late jumps, no hops, lunges or uppercuts). Checks, benchmarks and the user's game unchanged.
+	 */
+	static final boolean SWING_TAUGHT = true;
+	static final float SWING_PULL = 0.3f;
+	private int swingTaught;
 	/** Run 95: the one jump-in of this engagement is still open. */
 	private boolean jumpInOpen = true;
 	private int dropAt = -1;
@@ -1129,7 +1154,9 @@ public final class SchoolSession implements AgentSession {
 	 * second and third hits in a row with none of its own between (the user's real fights, 24 Oct 22:05: comboed, "like 3 sprint
 	 * hits before it even press S or do any react").
 	 */
-	private final long[][] swingCount = new long[2][22];
+	private final long[][] swingCount = new long[2][26];
+	/** Run 115 (counter only): A's swing was open to the network on this tick (no rule's key, guard or gate on it). */
+	private boolean readyOpenNow;
 	/** Their hits in a row in this fight, none of its own between. */
 	private int theirRow;
 	/** Ticks what it sees of them is behind the game this fight. */
@@ -1349,6 +1376,7 @@ public final class SchoolSession implements AgentSession {
 						JUMP_ONCE ? "on" : "off", jumpInsTaken, JUMP_IN_REOPEN, jumpInReopened, nearJumpCharged, nearJumpNeededTakeoffs, nearJumpNeededBy[0],
 						nearJumpNeededBy[1], nearJumpNeededBy[2], nearJumpNeededBy[3], nearNoJumpTaught, teacherJumpFlipped, comboDropped)
 				+ String.format(Locale.ROOT, " | run 96: ready sword held at them on the ground charged %d ticks", readyHoldCharged)
+				+ String.format(Locale.ROOT, " | run 115 (%s): the ordinary swing taught %d ticks", SWING_TAUGHT ? "on" : "off", swingTaught)
 				+ String.format(Locale.ROOT, " | run 92, too close (under %.1f, its sword empty, theirs ready) ticks charged %d; edge sprint hits (%.1f-%.1f) paid %d; its hits' mean distance %.2f (%d hits); rule m runs started by A's rules %d, into a ready sword or a jump-in crit %d (%s)",
 						TOO_CLOSE_WITHIN, tooCloseCharged, EDGE_HIT_FROM, EDGE_HIT_TO, edgeHitsPaid, ownHitsMeasured > 0 ? ownHitDistSum / ownHitsMeasured : 0.0,
 						ownHitsMeasured, meetStarts[0], meetStartsIntoReady[0], MEET_NOT_INCOMING ? "stopped" : "run")
@@ -1452,6 +1480,7 @@ public final class SchoolSession implements AgentSession {
 		reflexFirstCharged = 0;
 		jumpInsTaken = jumpInReopened = nearJumpCharged = nearJumpNeededTakeoffs = nearNoJumpTaught = teacherJumpFlipped = comboDropped = 0;
 		readyHoldCharged = 0;
+		swingTaught = 0;
 		java.util.Arrays.fill(nearJumpNeededBy, 0);
 		tooCloseCharged = edgeHitsPaid = ownHitsMeasured = 0;
 		comboableFights = comboableLongest = comboableRuns3 = comboableRuns5 = comboableRuns10 = longComboPaid = 0;
@@ -5036,6 +5065,7 @@ public final class SchoolSession implements AgentSession {
 		step.jumpPull = 0f;
 		step.holdPull = 0f;
 		step.camPull = 0f;
+		step.swingPull = 0f;
 		// A teacher with no pull leaves its keys to the installed model (NO_PULL_YIELDS): its target would replace the installed
 		// model's on those keys and teach nothing. The technique's moment is still judged on its own keys (perf, below).
 		float[] pulls = stages.techPulls();
@@ -5504,6 +5534,20 @@ public final class SchoolSession implements AgentSession {
 				guardBackTaught++;
 			}
 		}
+		boolean theirComboNow = clock.ticksSinceHitTaken <= 20 && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken;
+		if (SWING_TAUGHT && mode == Mode.TRAIN && review < 0 && me.onGround() && charge >= 0.95f && facts.reachDist <= 3.0f && pickNow
+				&& them.onGround && !truth.botFalling() && !them.falling() && !jumpInAir && !guardWould && !k2Hold && !theirComboNow
+				&& ActionSpace.unlocked(keys, ActionSpace.ATTACK) && (step.teacherHeads & (1 << ActionSpace.ATTACK)) == 0
+				&& (step.teacherTechnique < 0 || step.teacherTechnique == base)) {
+			// Run 115: the ordinary fight's swing, at its own pull (see SWING_TAUGHT).
+			int off = ActionSpace.OFFSETS[ActionSpace.ATTACK];
+			step.teacher[off] = 0f;
+			step.teacher[off + 1] = 1f;
+			step.teacherHeads |= 1 << ActionSpace.ATTACK;
+			step.teacherTechnique = base;
+			step.swingPull = SWING_PULL;
+			swingTaught++;
+		}
 		// The body's keys only (run 30b): the camera is a fine choice among 15 and 11 bins (the aim rule picks one from the camera's
 		// push), and in the first updates of run 30b it was 53% of the rules' head-ticks at cross-entropy 3.4 to 5.1 and 20%
 		// agreement, while the network without the rules already lands 97% of its swings to the installed model's 89%.
@@ -5635,6 +5679,7 @@ public final class SchoolSession implements AgentSession {
 				}
 			}
 		}
+		readyOpenNow = ActionSpace.unlocked(keys, ActionSpace.ATTACK);
 		countReady(0, charge, reader.duel.them.falling() || truth.botFalling(), k2Hold);
 		if (READY_HOLD_COST > 0f && mode == Mode.TRAIN && review < 0 && me.onGround() && charge >= 0.95f && facts.reachDist <= 3.0f
 				&& onOpponent() && action[ActionSpace.ATTACK] == 0 && !k2Hold && reader.duel.them.onGround && !truth.botFalling()) {
@@ -6164,6 +6209,8 @@ public final class SchoolSession implements AgentSession {
 				+ (c[5] == 0 ? "" : String.format(Locale.ROOT, ", crosshair off them %.0f%% (on its body but no pick %.0f%%)", 100.0 * c[9] / c[5], 100.0 * c[10] / c[5]))
 				+ (c[17] == 0 ? "" : String.format(Locale.ROOT, ", held otherwise with the crosshair on them %d ticks (under 2.0 blocks %d, 2.0-2.6 %d, 2.6+ %d; not sprinting %d)",
 						c[17], c[18], c[19], c[20], c[21]))
+				+ (side != 0 || c[17] == 0 ? "" : String.format(Locale.ROOT, " (run 115, held by: a rule or gate %d; the network sure, swing chance under 10%%, %d; 10-50%% %d; 50%%+ %d)",
+						c[22], c[23], c[24], c[25]))
 				+ (c[11] == 0 ? "" : String.format(Locale.ROOT, "; in their combo, sword ready, them in reach: %d ticks, swung %.0f%%, crosshair off them %.0f%%",
 						c[11], 100.0 * c[12] / c[11], 100.0 * c[13] / c[11]))
 				+ (c[11] == 0 ? "" : String.format(Locale.ROOT, ", held with the crosshair on them: by the jump-in guard %.0f%%, in the air %.0f%%, on the ground %.0f%%",
@@ -6219,6 +6266,18 @@ public final class SchoolSession implements AgentSession {
 				c[17]++;
 				c[facts.reachDist < 2.0f ? 18 : facts.reachDist < 2.6f ? 19 : 20]++;
 				c[21] += mc.player.isSprinting() ? 0 : 1;
+				if (side == 0) {
+					// Run 115 (counter only): who held it: a rule's key or the swing gate (not open), else the network, by its own swing
+					// chance as it drew (under 10%: a sure hold no reward reaches; 50%+: a likely swing it happened not to draw).
+					if (!readyOpenNow) {
+						c[22]++;
+					} else {
+						int ao = ActionSpace.OFFSETS[ActionSpace.ATTACK];
+						float[] lg = learner.lastLogits();
+						double pSwing = 1.0 / (1.0 + Math.exp(lg[ao] - lg[ao + 1]));
+						c[pSwing < 0.1 ? 23 : pSwing < 0.5 ? 24 : 25]++;
+					}
+				}
 			}
 		}
 		if (!onOpponent()) {
