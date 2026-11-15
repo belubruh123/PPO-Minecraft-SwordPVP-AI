@@ -1693,3 +1693,14 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - In the last training update, ready with them in reach: 145 ticks, swung 57 (39%), held otherwise 33, held with them falling 8, swing not open 47.
 - The first check with run 114 is about 03:33.
 - Punish crit chances critted 52% of 300; told and landed 44%.
+
+## 16 Nov 03:37 check (run 114, about 50 min in) and 03:43 review
+
+- **ROUNDS WON: A 25/44 (57%), B 28/44 (64%), z about -0.8.** Net A-B -10.1 HP a fight (se 4.0). Dealt/taken: A 380 / 373, B 404 / 336.
+- Their third hit after their second: **A 21% (15 of 71), B 12% (9 of 74)**. Worse than at 02:22 (13% vs 19%).
+- **Outside their combo, ready and in reach: A swung 31% (held otherwise 49%), B 57% (27%).** Run 114 has not helped so far.
+- Jumps a minute off/on its moments: A 58/90, B 31/34. Late knock-away hits on jump-ins (rising): A 14, B 18.
+- **Skill rates:** K2 100, T9a 95, B1 93, T1a 93, T4 93, T7 93, C3 90, C1 88, C7 88, C6 85, T6a 80, C4 80, K3 80, T5 78, T9c 78, T9b 68, T2 63, C2 63.
+  - Under 60%: T1c 55, T6 52, T9 50 (the rules), T1 30.
+- Punish crit chances critted 52% of 300; told and landed 47%.
+- **The swing hold has been flat for 3+ hours (31-40% vs B 54-57% since 00:31).** By the 3-hour rule, agent 50 (03:45) does a structural diagnosis: who holds the key, one bottleneck with a test that could disprove it, and run35 itself or the training since.
