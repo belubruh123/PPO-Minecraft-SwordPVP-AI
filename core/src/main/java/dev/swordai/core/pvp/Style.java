@@ -74,6 +74,12 @@ public final class Style {
 	 * moments in a 40-moment window.
 	 */
 	public float t1bShare = -1f;
+	/**
+	 * Run 107 (agent 47; see PvpPlayer#punishesForDouble): for the double crit after its own crit (T1), a punish-crit chance is counted
+	 * only where a punish crit could come, they coming down (falling) within reach after the lift of its hit, or trying one. False for
+	 * every bot (their behaviour and the benchmark stay as they were); the school's teacher (Teacher#CRIT_READS).
+	 */
+	public boolean punishChanceInReach = false;
 	/** From how far it jumps in for such a crit: eye to hitbox at take-off. */
 	public float critFrom = 2.2f;
 	/**
@@ -250,6 +256,7 @@ public final class Style {
 		s.jumpInLands = jumpInLands;
 		s.c1BeforeB1 = c1BeforeB1;
 		s.t1bShare = t1bShare;
+		s.punishChanceInReach = punishChanceInReach;
 		s.swingEarly = swingEarly;
 		s.rhythm = rhythm;
 		s.noJumps = noJumps;

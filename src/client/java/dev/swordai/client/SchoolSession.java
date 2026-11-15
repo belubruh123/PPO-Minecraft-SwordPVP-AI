@@ -1384,6 +1384,7 @@ public final class SchoolSession implements AgentSession {
 						stunStartSprint[0], stunStartSprint[1], stunStartSprint[2], stunStartSprint[3], stunStartSprint[4], stunStartSprint[5])
 				// Run 104: each included technique's rate, priority and pull, the weakest-technique fights and the scene kinds picked.
 				+ stages.run104Line() + (dev.swordai.core.school.SchoolStages.ALL_TO_70 ? ";" + priorityKindLine() : "")
+				+ run107Line()
 				+ String.format(Locale.ROOT, " | run 86, its own take-offs after their 2nd hit: their next hit within %d ticks anyway (charged) %d, out %d",
 						COMBO_TAKEOFF_WINDOW, comboTakeoffFail, comboTakeoffOut)
 				+ String.format(Locale.ROOT, " | run 84, their combo from their 2nd hit, W/S/sprint/jump the network's: %d ticks, S pressed %d; their 3rd hit after their 2nd: those fights %d/%d, other fights %d/%d",
@@ -2549,6 +2550,35 @@ public final class SchoolSession implements AgentSession {
 		return n == 0 ? b.append(" none").toString() : b.toString();
 	}
 
+	/**
+	 * Run 107 (Teacher#CRIT_READS): their hit felt this many ticks after the game's crit of theirs is that crit (the server's crit is
+	 * drained at the step, the client feels the hit on the same tick or a tick or two later).
+	 */
+	static final int GAME_CRIT_TICKS = 3;
+	/** Run 107: ticks left in which a hit of theirs felt is the game's crit drained before (0: none pending). */
+	private int gameCritLeft;
+	/** Run 107: their hits felt that the game had as crits, and of those the ones the client's look had as crits too (for the log). */
+	private long gameCritsFelt;
+	private long gameCritsLookedSo;
+
+	/**
+	 * Run 107: " | run 107, the teacher's crit reads (on true): ticks taken for one that punish-crits 12% of 4100; its own crits 7, ...":
+	 * what opens T1 (its own crit against one read as punish-critting), C1 (their crit, by the game too, against one read as double
+	 * critting) and C2 (its double crit sprint-hit), since the last line.
+	 */
+	private String run107Line() {
+		long[] r = new long[dev.swordai.core.pvp.PvpPlayer.READS];
+		teacher.drainReads(r);
+		String s = String.format(Locale.ROOT, " | run 107, the teacher's crit reads (on %s): ticks taken for one that punish-crits (T1) %.0f%% of %d; "
+				+ "its own crits (not punish, not a double's 2nd) %d, against one so read %d; T1 starts %d; their crits felt %d (the game's, of them looked "
+				+ "so %d), the teacher saw as crits %d by the look and %d by the game only, with a double crit expected %d; C1 starts %d; their sprint hits "
+				+ "on its double crit %d, C2 starts %d", Teacher.CRIT_READS, r[0] == 0 ? 0.0 : 100.0 * r[1] / r[0], r[0], r[2], r[3], r[8], gameCritsFelt,
+				gameCritsLookedSo, r[4], r[5], r[6], r[7], r[9], r[10]);
+		gameCritsFelt = 0;
+		gameCritsLookedSo = 0;
+		return s;
+	}
+
 	/** Run 66: one of the combo scenes (their combo it did not get out of), COMBO_SCENE_SHARE of the time; null otherwise. */
 	private Scene comboScenePick() {
 		if (rng.nextFloat() >= COMBO_SCENE_SHARE) {
@@ -3589,6 +3619,7 @@ public final class SchoolSession implements AgentSession {
 	private void beginFight(Truth truth) {
 		sceneNow = null;
 		critsPending = 0;
+		gameCritLeft = 0;
 		jumpInFrom = -1;
 		punishFrom = -1;
 		deflectFrom = -1;
@@ -4879,7 +4910,19 @@ public final class SchoolSession implements AgentSession {
 			// The keys the old stage plays with (the camera alone in the aim stages).
 			keys &= basics[review].headMask;
 		}
-		teacher.tick(reader.duel, reader.events, onOpponent());
+		// Run 107 (Teacher#CRIT_READS): their hit felt within GAME_CRIT_TICKS of the game's crit of theirs is that crit, for the teacher's
+		// C1 and double-crit read (the client's look caught 19% of them); the network's own inputs (reader.events) stay as they are.
+		if (facts.critsTaken > 0) {
+			gameCritLeft = GAME_CRIT_TICKS;
+		}
+		boolean theirHitFelt = reader.events.theyHit != dev.swordai.core.pvp.Events.NONE;
+		boolean gameCrit = theirHitFelt && gameCritLeft > 0;
+		gameCritLeft = theirHitFelt ? 0 : Math.max(0, gameCritLeft - 1);
+		if (gameCrit && mode == Mode.TRAIN) {
+			gameCritsFelt++;
+			gameCritsLookedSo += reader.events.theyHit == dev.swordai.core.pvp.Events.CRIT ? 1 : 0;
+		}
+		teacher.tick(reader.duel, reader.events, onOpponent(), gameCrit);
 		if (fightComboable) {
 			// Run 97: the combo-hold teacher on the fight as the network sees it (its strafe of the last tick, for the A/D taps).
 			holder.ownStrafe(hasLastAction ? ActionSpace.strafeAxis(lastAction) : 0);

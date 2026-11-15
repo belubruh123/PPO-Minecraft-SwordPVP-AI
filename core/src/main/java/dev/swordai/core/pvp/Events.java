@@ -26,6 +26,12 @@ public final class Events {
 	public boolean iSwung;
 	/** Their arm began a swing this tick (hit or miss). */
 	public boolean theySwung;
+	/**
+	 * Run 107 (agent 47): their hit of this tick was a crit by the game (the server's own crit: the particles and the sound a player
+	 * sees), where whatever drives the fighter knows it; false where it does not. The school sets it for its teacher only
+	 * (Teacher#CRIT_READS): read off the client's view of their fall, 117 of 609 of the bots' crits (19%) came out as crits (15 Nov).
+	 */
+	public boolean theyCritGame;
 
 	public void clear() {
 		iHit = NONE;
@@ -33,6 +39,7 @@ public final class Events {
 		theyHitAirTick = -1;
 		iSwung = false;
 		theySwung = false;
+		theyCritGame = false;
 	}
 
 	public void copyFrom(Events o) {
@@ -41,6 +48,7 @@ public final class Events {
 		theyHitAirTick = o.theyHitAirTick;
 		iSwung = o.iSwung;
 		theySwung = o.theySwung;
+		theyCritGame = o.theyCritGame;
 	}
 
 	public void mirrorOf(Events o) {
@@ -49,6 +57,7 @@ public final class Events {
 		theyHitAirTick = -1;
 		iSwung = o.theySwung;
 		theySwung = o.iSwung;
+		theyCritGame = false;
 	}
 
 	/** The kind of a hit from how it was made, as the game decides it. */

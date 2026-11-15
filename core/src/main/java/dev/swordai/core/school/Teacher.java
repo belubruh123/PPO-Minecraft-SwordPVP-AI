@@ -29,6 +29,32 @@ public final class Teacher {
 	public static final float C1_BEFORE_B1 = 0.5f;
 	/** Run 105 (Style#t1bShare): below 0 = as before (T1b on every double crit while it is in the family). */
 	public static final float T1B_SHARE = 0.5f; // run 89 on, 13 Nov after run 88c benchmarked BETTER (+3.70)
+	/**
+	 * Run 107 (agent 47, 15 Nov 20:30; the user's list, 17:55: T1 "USEFUL FOR CRITTING IMPORTANT", C1, C2 to 60% then 90%). T1, C1 and C2
+	 * had about no moments (30 updates to 20:28: T1 2, C1 0, C2 2; the others 50-250), so neither the network nor the priority could
+	 * work on them. The cause was the teacher's read of the opponent, not the bots:
+	 * <ul>
+	 * <li>C1 opens on their crit against one expected to double crit (both judged from their crits). The teacher read their crits off
+	 * the client's view of their fall, and only 117 of the bots' 609 crits by the game (19%; 48 updates, 18:22-20:32) looked like crits
+	 * there; so the second crit of a double critter was about never seen, nor C1. Now their crit by the game (the server's crit, its
+	 * particles; SchoolSession hands it in) counts too, for C1 and the double-crit read only (Events#theyCritGame).</li>
+	 * <li>T1 opens on its own crit against one "that tries to punish-crit you"; T1a, the bait, on each approach against such a one. Every
+	 * lift of its hits was a chance, and in the game about 30% of lifts come down in reach (the network's own, 58 updates: after
+	 * their sprint hits 508 of 1699, after plain hits 614 of 2146; its hits are 72-84% sprint hits): one that punish-crits every time
+	 * it can is then seen trying on about 30% of the chances, under the 0.3 the read asks, so the teacher took nobody for a punisher.
+	 * T1a 1.4 moments an update (79 in 58; the toy, the teacher against the same bots: 17-95 a 4000 ticks), T1 2 in 30 updates after
+	 * about 7 own crits an update. Now, for T1 after its own crit only, a chance is counted where they come down in reach (B1: the crit
+	 * "on the way down") or try (Style#punishChanceInReach, PvpPlayer#punishesForDouble), the teacher's only. T1a keeps the old read:
+	 * read anew, it took every approach (the toy: 47 -> 118 a 4000 ticks, from the three-block hit T7) and more take-offs than the
+	 * user's "combo first, jump less" allows. T1 adds no take-off but the second jump right after a crit the network made itself.</li>
+	 * <li>C2 opens when its double crit (T1, T1c) is sprint-hit: it follows T1.</li>
+	 * <li>Of the double crits, half were thrown around them as T1b, which is not on the user's list: all go to T1 while it is excluded.</li>
+	 * </ul>
+	 * Nothing pressed for the network: these only open the moments of the techniques the teacher already shows (PPO and the pull do the
+	 * rest); no bot, share, guard or rule changes; the other techniques lose only the moments C1 and T1 now take (B1 after a double
+	 * critter's crit, the ordinary fight after its own crit). false = as before.
+	 */
+	public static final boolean CRIT_READS = true;
 	/** Of a target, the share on the teacher's key; the rest is spread over the other keys of the head. */
 	static final float SURE = 0.99f;
 	/** A key the target holds at least this much of is one the teacher asks for (alone, or with others alike). */
@@ -196,7 +222,11 @@ public final class Teacher {
 		// Run 105 (agent 46): C1 before the punish crit against one expected to double crit, half the times (B1 keeps the other half
 		// and every other punishable hit); plain T1 half of its double crits, T1b the other half.
 		s.c1BeforeB1 = C1_BEFORE_B1;
-		s.t1bShare = T1B_SHARE;
+		// Run 107: T1b is not on the user's list (17:55; SchoolStages.EXCLUDED, "rest can no need to be learn unless the ones on list are
+		// all above 90"), so its half of the double crits goes to T1 while it is excluded (the same random draw is made).
+		s.t1bShare = CRIT_READS && SchoolStages.ALL_TO_70 && SchoolStages.excluded(Technique.T1B.ordinal()) ? 0f : T1B_SHARE;
+		// Run 107: a punish-crit chance only where they come down in reach (see CRIT_READS).
+		s.punishChanceInReach = CRIT_READS;
 		s.jumpInLands = true;
 		return s;
 	}
@@ -208,8 +238,29 @@ public final class Teacher {
 
 	/** @param aimed the opponent is under the crosshair and in reach: a swing the teacher asks for is only taught then */
 	public void tick(Duel d, Events e, boolean aimed) {
+		tick(d, e, aimed, false);
+	}
+
+	/**
+	 * @param theirCritInGame their hit of this tick was a crit by the game (the server's crit; see CRIT_READS): used, with CRIT_READS on,
+	 *                        for C1 and the double-crit read only; the events passed in are not changed
+	 */
+	public void tick(Duel d, Events e, boolean aimed, boolean theirCritInGame) {
+		if (CRIT_READS && theirCritInGame && e.theyHit != Events.NONE) {
+			seen.copyFrom(e);
+			seen.theyCritGame = true;
+			e = seen;
+		}
 		player.tick(d, e, keys);
 		this.aimed = aimed;
+	}
+
+	/** Run 107: the events handed to the teacher's player when the game's crit is added (a copy, so the caller's stay as they are). */
+	private final Events seen = new Events();
+
+	/** Run 107: the teacher's crit reads since the last call (PvpPlayer#drainReads, READ_TICKS ... READ_C2), added into {@code into}. */
+	public void drainReads(long[] into) {
+		player.drainReads(into);
 	}
 
 	private boolean aimed;
