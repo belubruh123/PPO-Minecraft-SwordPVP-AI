@@ -232,11 +232,13 @@ public final class SchoolSession implements AgentSession {
 		if (!reader.duel.them.onGround && facts.reachDist <= CRIT_EXCHANGE_DIST && clock.ticksSinceHitDealt > CRIT_EXCHANGE_AFTER_HIT) {
 			return 1;
 		}
-		if (told == Technique.K3 || told == Technique.T1 || told == Technique.T1C || told == Technique.C6 || told == Technique.T9A
-				|| told == Technique.T9B || told == Technique.T9C) {
+		if (told == Technique.K3 || told == Technique.T1 || told == Technique.T1C || told == Technique.C6
+				|| !LATE_JUMP_GUARD && (told == Technique.T9A || told == Technique.T9B || told == Technique.T9C)) {
 			return 2;
 		}
-		if (theirRow >= 2 && clock.ticksSinceHitTaken <= 1) {
+		// Run 102: its own jump reset is not needed (its own were 1-3 ticks late in real rounds and knocked it far 44-88%): the rules'
+		// JumpReset makes the jump on the hit tick (knocked far 5%).
+		if (!LATE_JUMP_GUARD && theirRow >= 2 && clock.ticksSinceHitTaken <= 1) {
 			return 3;
 		}
 		return clock.ticksSinceHitDealt <= COMBO_GAP && clock.ticksSinceHitTaken > clock.ticksSinceHitDealt ? 4 : 0;
@@ -249,7 +251,7 @@ public final class SchoolSession implements AgentSession {
 			return true;
 		}
 		Technique t = learner.told();
-		return t == Technique.T9A || t == Technique.T9B || t == Technique.T9C || t == Technique.T10 || t == Technique.T11A
+		return !LATE_JUMP_GUARD && (t == Technique.T9A || t == Technique.T9B || t == Technique.T9C) || t == Technique.T10 || t == Technique.T11A
 				|| t == Technique.T11B || t == Technique.T11C || t == Technique.K3 || t == Technique.T1C || t == Technique.C6;
 	}
 	/**
@@ -1201,6 +1203,12 @@ public final class SchoolSession implements AgentSession {
 	 * (C1 a sprint hit, T2 standing crit, T1c). Training and checks; B (installed) has none. The user's real game: CritBackRead.REAL_GAME.
 	 */
 	static final boolean CRIT_BACK_READ = true;
+	/**
+	 * Run 102 (the user, 15 Nov 12:00: "dont jump reset unless you are certain and have a rate above of 95%"): A's rules take its own
+	 * jump away in the 3 ticks after a ground hit the rules' JumpReset did not jump with (Fighter.lateJumpGuard), and the jump
+	 * resets are no longer "needed" near-fight jumps of its own (nearJumpReason 2/3) nor taught (SchoolStages.JUMP_RESETS_TAUGHT).
+	 */
+	static final boolean LATE_JUMP_GUARD = true;
 	private final dev.swordai.core.rl.CritBackRead critBackRead = new dev.swordai.core.rl.CritBackRead();
 	/** Run 101 counters (training): ticks the read had the lift, fights it switched on, its windows, what the network did there, HP. */
 	private final int[] readTicks = new int[1];
@@ -1316,6 +1324,8 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | run 100, crit spammer replica (share %.2f): fights %d (won %d, lost %d), HP net a fight %+.1f (dealt %.1f, taken %.1f); after its %d punish crits there, hit back within 12 ticks %d, within 30 %d (crits %d; lost real rounds: 79%% within 12); their crits %d, runs of 2+ in a row %d, longest %d",
 						CRIT_SPAMMER_SHARE, rpFights, rpWon, rpLost, rpFights > 0 ? (rpDealt - rpTaken) / rpFights : 0.0, rpFights > 0 ? rpDealt / rpFights : 0.0,
 						rpFights > 0 ? rpTaken / rpFights : 0.0, rpPunish, rpBack12, rpBack30, rpBackCrit30, rpCrits, rpRows2, rpRowMost)
+				+ String.format(Locale.ROOT, " | run 102, late-jump guard (on %s): its own jumps taken away in the %d ticks after a ground hit %d, the rules' jump resets on the hit tick %d (A's rules, training and checks, since the restart)",
+						LATE_JUMP_GUARD, dev.swordai.core.rl.Fighter.LATE_JUMP_TICKS, installed != null ? installed.fighter.lateJumpStripped() : 0, installed != null ? installed.fighter.resetTakeOffs() : 0)
 				+ String.format(Locale.ROOT, " | run 101, crit-back read (on %s; 2+ crits back within %d ticks of its punish crits in the fight): fights it switched the rules' punish crit off in %d, windows %d, lift ticks %d, there the network swung %d times: sprint hits %d, crits %d, other hits %d; HP dealt %.1f, taken %.1f",
 						CRIT_BACK_READ, dev.swordai.core.rl.CritBackRead.WITHIN, readOnFights, readWindows, readTicks[0], readSwings, readSprintHits, readCritHits, readOtherHits, readDealt, readTaken)
 				+ String.format(Locale.ROOT, " | run 89, after its punish crit the teacher showed T6 on %d ticks, S its own on %d", t6AfterTaught, t6AfterBack)
@@ -4735,6 +4745,8 @@ public final class SchoolSession implements AgentSession {
 			// Run 101: against one that crit back after its punish crits (CritBackRead), A's rules leave the punish crit to the network.
 			boolean readOn = CRIT_BACK_READ && !installedPlays && !teacherPlaysA && critBackRead.on() && liftedFor >= 0 && !me.onGround();
 			installed.fighter.critBackRead(readOn);
+			// Run 102: no late jump of its own after a ground hit (A's rules only; see Fighter.LATE_JUMP_TICKS).
+			installed.fighter.lateJumpGuard(LATE_JUMP_GUARD && !installedPlays && !teacherPlaysA);
 			if (readOn && !readWas && mode == Mode.TRAIN) {
 				readWindows++;
 				if (!readSwitchedThisFight) {

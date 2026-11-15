@@ -1459,3 +1459,14 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - The crit-back read: after 2+ crits back within 12 ticks of its punish crits in a fight, A's rules stop forcing the punish crit in the lift, so the network chooses C1, T2 or T1c by the outcome. It applies in training and checks, and in FightSession behind CritBackRead.REAL_GAME. It reaches the user's game only with a new jar.
   - Compile check OK; core tests 50/50 (agent). Redeploy asked for at 11:06, right after the check.
 - **11:55, run 101 live (since the 11:11 restart):** replica fights 47 (AI won 37, lost 11). After its 18 punish crits there, they hit back within 12 ticks only 3 times (17%) and within 30 ticks 7 times (39%); longest crit run 2. **Still soft:** the fix that worked in the toy (56%) did not carry into the arena. The read switched on in 2 fights (6 windows): 2 swings in 61 lift ticks, 1 sprint hit and 1 crit. Punish crit chances critted 54%. Next agent (about 12:57): find why the replica's crit back fails in the arena (distance, W, sword charge after the AI's punish crit, the server bot's air movement), from live traces, not the toy.
+
+## 15 Nov 12:00 check (run 101 live), and the user's stun report (run 102)
+
+- **ROUNDS WON: A 21/44 (48%), B 11/44 (25%), z about +2.2.** Net A-B +14.0 HP a fight (se 5.1). Dealt/taken: A 383 / 387, B 326 / 416.
+- Their third hit: A 39% (26 of 66), B 37% (28 of 76). Outside their combo: A swung 50%, crosshair off 31%; B swung 54%, off 29%. Swings on them: A 96%, B 87%.
+- Take-offs by source: A rule 7, technique 1, own 0-1 after their first hit 0, own 0-1 in their combo 0, own 2-12 1, own other 6. B: rule 7.
+- **The user, 12:00:** it gets stunned too easily; bad jump resets make the knock-away worse; no jump reset unless certain, above 95%.
+  - In 63 real rounds, its own jumps 1-3 ticks after a ground hit got it knocked far 44-88%. With no jump it was 21%, and with the rules' reactive jump reset 5%.
+  - The rounds' rule letters show those late jumps were the network's own ("c" is only the camera after a hit).
+  - In the checks its own jumps after hits are rare (own 0-1 = 0), so the late jumps are a real-game behaviour.
+  - Run 102 (the late-jump guard) is in EXPERIMENTS.md.

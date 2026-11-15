@@ -86,6 +86,8 @@ final class FightSession implements AgentSession {
 	private int lastOwnHurt;
 	/** Run 101: the opponent read for crit spammers (CritBackRead); in the real game it is on as in training (CritBackRead.REAL_GAME). */
 	private final CritBackRead critBack = new CritBackRead();
+	/** Run 102: the late-jump guard in the real game, as in training (Fighter.lateJumpGuard); false = the old behaviour. */
+	static final boolean LATE_JUMP_GUARD = true;
 	/** Ticks since a hit taken on the ground lifted it, -1 when not lifted (the rules leave W to the network in its fall). */
 	private int liftedFor = -1;
 	private boolean groundBefore = true;
@@ -458,6 +460,8 @@ final class FightSession implements AgentSession {
 				// Runs 88b/88c: an "airyield" arm's rules swing in their combo (not at a falling opponent with 88c).
 				critBack.tick(reader.events.iHit == dev.swordai.core.pvp.Events.CRIT && liftedFor >= 0, reader.events.theyHit == dev.swordai.core.pvp.Events.CRIT);
 				fighter.critBackRead(CritBackRead.REAL_GAME && critBack.on() && liftedFor >= 0 && !me.onGround());
+				// Run 102: no late jump of its own after a ground hit (the user, 15 Nov: no jump reset unless 95%+ certain).
+				fighter.lateJumpGuard(LATE_JUMP_GUARD);
 				fighter.comboProvenOff(arm != null && arm.airYield && SchoolSession.comboProvenOffNow(reader.duel.them));
 				// Run 92: the rules' run at a rising jumper (m) not into a jump-in crit coming nor a ready sword (real rounds: hit first 10%).
 				fighter.meetNotIncoming(SchoolSession.MEET_NOT_INCOMING);

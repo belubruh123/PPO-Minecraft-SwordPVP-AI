@@ -310,6 +310,7 @@ public final class Fighter {
 		if (oppWindow != null) {
 			oppWindow.reset();
 		}
+		lateJumpLeft = 0;
 		System.arraycopy(ActionSpace.DEFAULTS, 0, action, 0, ActionSpace.HEADS);
 	}
 
@@ -479,6 +480,22 @@ public final class Fighter {
 		}
 		// A hit of a combo it is taking: it jumps with it, W and the sprint key down; see JumpReset.
 		int reset = jumpReset == null ? 0 : jumpReset.plan(obs.vec, keys, JumpReset.hitOnThisTick(obs.vec));
+		if (reset != 0) {
+			resetTakeOffs++;
+		}
+		// Run 102: no jump of its own in the LATE_JUMP_TICKS ticks after a hit taken on the ground that the rule did not jump with.
+		boolean lateGuard = false;
+		if (lateJumpGuard) {
+			if (lateJumpLeft > 0) {
+				lateGuard = true;
+				lateJumpLeft--;
+			}
+			if (reset == 0 && JumpReset.hitOnThisTick(obs.vec) && obs.vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_ON_GROUND] >= 0.5f) {
+				lateJumpLeft = LATE_JUMP_TICKS;
+			}
+		} else {
+			lateJumpLeft = 0;
+		}
 		if (reset != 0 || letGo || punish != CritTrade.NONE) {
 			// The jump made with a hit, and the critical hit it is about to make, come first.
 			meet = false;
@@ -523,7 +540,7 @@ public final class Fighter {
 		}
 		boolean busy = owes || backOut || reset != 0 || dodge || hold || punish != CritTrade.NONE;
 		// The jumps that are made for it, and its keys in the air of them; see JumpIn.
-		int jump = jumpIn == null ? 0 : jumpIn.plan(obs.vec, keys, crosshairOnOpponent, busy || meet, dealtRow);
+		int jump = jumpIn == null ? 0 : jumpIn.plan(obs.vec, keys, crosshairOnOpponent, busy || meet || lateGuard, dealtRow);
 		keys = JumpIn.keys(keys, jump);
 		// Run at, but not hit to knock away where its crit comes down anyway; see CritTrade.
 		boolean meetSwing = meet && meetSwings && !owes && !holdCrit && ruleReady && crosshairOnOpponent && ActionSpace.unlocked(keys, ActionSpace.ATTACK);
@@ -564,6 +581,14 @@ public final class Fighter {
 		learner.setSwingBias(nudged ? (answer ? answerNudge : keep ? -answerNudge : 0f) : 0f);
 		learner.act(obs, keys, false, false, temperature, action);
 		int ruled = 0;
+		if (lateGuard) {
+			// Run 102: its own jump here is late (the rules' JumpReset was not on this hit); taught as no jump (ruled).
+			if (action[ActionSpace.JUMP] == 1) {
+				lateJumpStripped++;
+			}
+			action[ActionSpace.JUMP] = 0;
+			ruled |= ActionSpace.mask(ActionSpace.JUMP);
+		}
 		if (nudged) {
 			answerForced = answer && action[ActionSpace.ATTACK] == 1;
 		}
@@ -703,6 +728,34 @@ public final class Fighter {
 	 * Hit and out on or off for this fighter, whatever the config says ({@code Config.hitAndOutRule}): the school switches it for the
 	 * side it plays for, and a fighter that plays against it (the installed model in a check) keeps it off.
 	 */
+	/**
+	 * Run 102 (the user, 15 Nov 12:00: "getting stuns too easily ... the bad jump reset make the knock away worse so dont jump reset
+	 * unless you are certain and have a rate above of 95%"). In 63 real rounds of run98, a hit taken on the ground knocked it far
+	 * (0.55+ blocks a tick away within 5 ticks) 21% of the time with no jump, 5% with the rules' JumpReset on the hit tick (80 jumps),
+	 * but 79-88% with its own jump 1 tick late (217), 69% 2 ticks late (45) and 44% 3 ticks late (18): the network sees the hit a
+	 * frame late, and a jump keeps the knockback (air drag is lower than ground friction). So in these ticks after a ground hit that
+	 * the rule did not jump with, its own jump key is taken away (and taught as no jump), and no other rule takes off. The session sets
+	 * it: A's rules in training and checks; the real game behind FightSession.LATE_JUMP_GUARD.
+	 */
+	public static final int LATE_JUMP_TICKS = 3;
+	private boolean lateJumpGuard;
+	private int lateJumpLeft;
+	private int lateJumpStripped;
+	private int resetTakeOffs;
+
+	public void lateJumpGuard(boolean on) {
+		lateJumpGuard = on;
+	}
+
+	/** Its own jumps taken away by the late-jump guard, and the rules' jump resets made, since this fighter was made (counters). */
+	public int lateJumpStripped() {
+		return lateJumpStripped;
+	}
+
+	public int resetTakeOffs() {
+		return resetTakeOffs;
+	}
+
 	/** Run 101: the opponent read says it crits back after punish crits; see {@link CritBackRead}. Set per tick by the session: the read is on and it is in the air from their hit (the lift). */
 	private boolean critBackRead;
 	/** Ticks the read took the punish crit away from the rules (counter). */

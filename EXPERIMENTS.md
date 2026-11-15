@@ -1904,3 +1904,31 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **Read (CritBackRead, Fighter#critBackRead):** a crit of theirs within 12 ticks of its punish crit, twice in the fight: from then on, in the lift (hit taken on the ground, still in the air) the rules' answer, the keep for the fall and the instant punish are off (owes false), so the keys are the network's (C1 sprint hit, T2, T1c). Elsewhere the punish crit is as before. Training and checks (SchoolSession.CRIT_BACK_READ, A only); the real game (FightSession) too, behind CritBackRead.REAL_GAME = true (same as training; false = old behaviour).
 - **Counter:** "run 101, crit-back read": fights it switched on, windows, lift ticks, the network's swings there (sprint hits, crits, other hits), HP dealt and taken in those ticks.
 - **Learn-by (2 h):** replica fights hit back within 12 ticks 65%+ (real 79%), crit runs of 2-3; in the read's windows the network's sprint hits or crits, and HP there at least as good as under the rule (else set the constants false). Revert if the punish crit share against other bots falls (the read needs 2 crit backs in one fight, so only crit spammers should trigger it).
+
+## Run 102 (15 Nov 12:40): no late jump of its own after a ground hit; its own jump resets not taught (the user: stunned too easily)
+
+- **The user, 15 Nov 12:00:** "Turns out to have problem of getting stuns too easily so focus on how to counter being stun. I guess the bad jump reset make the knock away worse so dont jump reset unless you are certain and have a rate above of 95%".
+- **Evidence (63 real rounds of run98 since 14 Nov 22:40, scratchpad jr.py).** A hit is "knocked far" when its away speed reaches 0.55 blocks a tick or more within 5 ticks.
+
+  | Its jump around a hit taken on the ground | Hits | Knocked far |
+  |---|---|---|
+  | none | 213 | 21% |
+  | the rules' JumpReset on the hit tick | 80 | 5% |
+  | its own, same tick, W | 13 | 8% |
+  | its own, same tick, S | 26 | 31% |
+  | its own, 1 tick late (W 135, S 82) | 217 | 79-88% |
+  | its own, 2 ticks late | 45 | 69% |
+  | its own, 3 ticks late | 18 | 44% |
+  | in the air from its own jump 1-8 ticks before | 105 | 47% |
+
+  The network sees the hit a frame late, so its "jump resets" come 1-3 ticks late. A late jump keeps the knockback, because air drag is lower than ground friction: the doc's T9 risk, "mistime the jump and you get sent flying". Only the rules' reactive jump reset meets the user's 95% bar.
+- **Change:**
+  - Fighter.lateJumpGuard: in the 3 ticks after a hit taken on the ground that the rules' JumpReset did not jump with, its own jump is taken away and ruled (taught as no jump), and JumpIn does not take off.
+  - SchoolSession.LATE_JUMP_GUARD: A's rules in training and checks; B unchanged.
+  - FightSession.LATE_JUMP_GUARD = true: the real game, once installed.
+  - nearJumpReason: the told T9a-c (reason 2) and its own jump reset in their combo (reason 3) are no longer "needed", so they get the "no jump" lesson and the near-jump cost.
+  - SchoolStages.JUMP_RESETS_TAUGHT = false: T9b is no longer taught; T9a already was not.
+- **Counter:** "run 102, late-jump guard": its own jumps taken away, and the rules' jump resets on the hit tick. Checks: take-offs by source, with own 0-1 and own 2-12 expected to fall.
+- **Learn-by (1-2 h):** own take-offs 0-12 ticks after a hit near 0 in checks; their third hit and "comboed" not up; ROUNDS WON not falling. Real rounds are the judge: knocked far after a ground hit should fall from 21-88% to about the no-jump 21% or the rule's 5%.
+- **Next if this holds:** the rules' reactive jump reset (95% in real rounds) on the first sprint hit too, the stun itself (doc C5/T9). Run 82 had it in training only; turned off in run 94.
+- **Revert:** LATE_JUMP_GUARD = false if checks fall 2 in a row, or real rounds show more stuns.

@@ -98,7 +98,10 @@ class JumpAlongTest {
 		assertEquals(SchoolStages.T1C_GATED_HEADS, SchoolStages.taughtHeads(Technique.T1C.ordinal()));
 		assertEquals(SchoolStages.T9B_GATED_HEADS, SchoolStages.gatedHeads(Technique.T9B.ordinal()));
 		assertEquals(SchoolStages.T9B_GATED_HEADS, SchoolStages.taughtHeads(Technique.T9B.ordinal()));
-		assertTrue(SchoolStages.runTaught(Technique.T1C.ordinal()) && SchoolStages.runTaught(Technique.T9B.ordinal()));
+		assertTrue(SchoolStages.runTaught(Technique.T1C.ordinal()));
+		// Run 102 (15 Nov): T9b, a jump reset of its own, is taught only with SchoolStages.JUMP_RESETS_TAUGHT (the user: no jump reset
+		// unless certain, above 95%).
+		assertEquals(SchoolStages.JUMP_RESETS_TAUGHT, SchoolStages.runTaught(Technique.T9B.ordinal()));
 		// A technique with no layer of its own keeps every head in the shared network, as before. Agent 42 (15 Nov): this used T7,
 		// but run 99 (SchoolStages.STARTERS_TAUGHT) made T7 a stun starter whose lesson is only its sprint hit's keys, so T7's taught
 		// heads became STARTER_GATED_HEADS (92) by intent, not ALL_HEADS (127): the 14 Nov 22:21 redeploy failed on that outdated

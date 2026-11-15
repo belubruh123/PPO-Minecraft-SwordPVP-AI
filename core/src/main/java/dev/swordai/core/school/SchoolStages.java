@@ -295,6 +295,11 @@ public final class SchoolStages {
 	 */
 	public static final boolean COUNTER_JUMPS_TAUGHT = true;
 	/**
+	 * Run 102 (the user, 15 Nov 12:00: no jump reset unless certain, above 95%): its own jump resets (T9a-c) are not taught; in real
+	 * rounds its own were 1-3 ticks late and knocked it far 44-88%, the rules' JumpReset on the hit tick 5%.
+	 */
+	public static final boolean JUMP_RESETS_TAUGHT = false;
+	/**
 	 * Run 89b (13 Nov 20:00): run 89's teacher shows T6 (make them miss) after its punish crit (Teacher.T6_AFTER_PUNISH), but T6 was
 	 * not in RUN_TAUGHT, so techPulls gave its moments a pull of 0 and the network was never pulled toward it (its own S on 58 of 737
 	 * ticks, hit back within 30 ticks 66% vs run 88c's 61%). T6 taught at the run's pull, by the outcome (TEACH_AWR, FROM_THE_FIGHT):
@@ -442,7 +447,7 @@ public final class SchoolStages {
 		}
 		if (COUNTER_JUMPS_TAUGHT) {
 			RUN_TAUGHT[Technique.T1C.ordinal()] = true;
-			RUN_TAUGHT[Technique.T9B.ordinal()] = true;
+			RUN_TAUGHT[Technique.T9B.ordinal()] = JUMP_RESETS_TAUGHT;
 		}
 		if (T6_TAUGHT) {
 			RUN_TAUGHT[Technique.T6.ordinal()] = true;
