@@ -2162,3 +2162,14 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **ROUNDS WON: A 33/44 (75%), B 30/44 (68%), z about +0.9.** Net A-B +2.5 HP a fight (se 3.9). Dealt/taken: A 444 / 333, B 410 / 325.
 - Their third hit after their second: A 22% (12 of 54), B 17% (11 of 64). Outside their combo, ready and in reach: A swung 43%, B 58%.
 - Jumps a minute off/on its moments: A 43/55, B 29/31.
+
+## Run 117 (16 Nov 06:50): swing when ready and in reach about 90% (the user)
+
+- **The user (06:45):** "I would rather have it swung when ready in reach 90% and risk air swing that aren't in reach then now. Tho still only swing when charged".
+- **SWING_PULL 0.3 -> 1.0.**
+- **SWING_LOOSE** (training):
+  - The swing is taught also in their combo (swing back, PROBLEMS.md 1) and with itself in the air.
+  - It is taught where the crosshair is on their body up to 3.3 blocks, though the game's pick says out of reach. The whiff guard lets those swings through in training.
+- **Kept:** charged only (0.95 for the lesson, and the swing gate). Never at one falling at it or jumping in (K2, the jump-in guard). Never over a technique teacher's swing or hold.
+- The real game's whiff guard is unchanged (the installed jar is run35's); loosen it at the next install only with the user's word.
+- **Watch:** "ready, them in reach: swung" in training and checks (target about 90%), whiffs, their third hit, K2 broken, and late jump-in hits.

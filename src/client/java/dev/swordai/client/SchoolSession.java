@@ -205,7 +205,17 @@ public final class SchoolSession implements AgentSession {
 	 * jump is not touched (no own late jumps, no hops, lunges or uppercuts). Checks, benchmarks and the user's game unchanged.
 	 */
 	static final boolean SWING_TAUGHT = true;
-	static final float SWING_PULL = 0.3f;
+	// Run 117 (the user, 16 Nov 06:45: "I would rather have it swung when ready in reach 90% and risk air swing that aren't in reach then
+	// now. Tho still only swing when charged"): 0.3 -> 1.0, and see SWING_LOOSE.
+	static final float SWING_PULL = 1.0f;
+	/**
+	 * Run 117: the ordinary swing is taught also in their combo (swing back, PROBLEMS.md 1) and with itself in the air, and where the
+	 * crosshair is on their body up to SWING_LOOSE_REACH though the game's pick (3.0) says out of reach; the whiff guard lets those swings
+	 * through in training (the user takes the swing that hits air). Still charged only (0.95, and the swing gate), never at one falling
+	 * at it or jumping in (K2, the jump-in guard), never over a technique teacher's swing or hold.
+	 */
+	static final boolean SWING_LOOSE = true;
+	static final float SWING_LOOSE_REACH = 3.3f;
 	private int swingTaught;
 	/** Run 95: the one jump-in of this engagement is still open. */
 	private boolean jumpInOpen = true;
@@ -4972,7 +4982,7 @@ public final class SchoolSession implements AgentSession {
 			freshFreed += pickNow && !stale ? 1 : 0;
 			freshClosed += !pickNow && stale ? 1 : 0;
 		}
-		if (cfg.whiffGuard && !pickNow) {
+		if (cfg.whiffGuard && !pickNow && !(SWING_LOOSE && mode == Mode.TRAIN && facts.onBody && facts.reachDist <= SWING_LOOSE_REACH)) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 		}
 		if (review >= 0) {
@@ -5570,8 +5580,9 @@ public final class SchoolSession implements AgentSession {
 			}
 		}
 		boolean theirComboNow = clock.ticksSinceHitTaken <= 20 && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken;
-		if (SWING_TAUGHT && mode == Mode.TRAIN && review < 0 && me.onGround() && charge >= 0.95f && facts.reachDist <= 3.0f && pickNow
-				&& them.onGround && !truth.botFalling() && !them.falling() && !jumpInAir && !guardWould && !k2Hold && !theirComboNow
+		boolean swingReach = SWING_LOOSE ? pickNow || facts.onBody && facts.reachDist <= SWING_LOOSE_REACH : facts.reachDist <= 3.0f && pickNow;
+		if (SWING_TAUGHT && mode == Mode.TRAIN && review < 0 && (SWING_LOOSE || me.onGround()) && charge >= 0.95f && swingReach
+				&& them.onGround && !truth.botFalling() && !them.falling() && !jumpInAir && !guardWould && !k2Hold && (SWING_LOOSE || !theirComboNow)
 				&& ActionSpace.unlocked(keys, ActionSpace.ATTACK) && (step.teacherHeads & (1 << ActionSpace.ATTACK)) == 0
 				&& (step.teacherTechnique < 0 || step.teacherTechnique == base)) {
 			// Run 115: the ordinary fight's swing, at its own pull (see SWING_TAUGHT).
