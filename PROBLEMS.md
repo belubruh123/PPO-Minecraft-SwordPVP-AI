@@ -1553,3 +1553,17 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **Punish crit chances critted: 48% of the last 300** (target 50-65%). Aim on them 64-92%.
 - **Cause chain for the lowest skills:** T1, C1 and C2 are starved, not stuck. T1 got 2 moments in 30 updates, C2 got 2, C1 none. Their situations need the network's own crit to be punish-critted (T1), a double crit coming (C1), or its double crit sprint-hit (C2), and those rarely happen. botFor() needs past moments to find their bots, so the priority (T1 p6.01) brings only 3 fights an update. Agent 47 (worktree) is finding the exact cause and building their setups (run 107).
 - No paired check since 19:10; the hourly loop started 20:22.
+
+## 15 Nov 21:19 review: run 106 measures T10/T11; run 107 (agent 47) merged, queued after the 21:34 check
+
+- Training runs (1 loop, 1 client). The next paired check is about 21:34 (the cycle loop restarted with the 20:48 redeploy).
+- **Skill rates (stage window, last 40 moments):** K2 100, T5 93, T7 93, T4 88, T6 85, T9a 83, C6 83, K3 80, T6a 80, B1 78, T1a 78, C7 78, T9c 68, T1c 63, T9b 63, T9 58.
+  - Under 60%: T10 36 (14 moments), T11a 36 (11), T2 33, C1 25, T1 15 (20), C2 13, T11b 0 (2 moments).
+  - T10 and T11a are off mostly on W/S (32-46%) and sprint (38% for T11a).
+- **Punish crit chances critted: 51% of the last 300** (target 50-65%). Told the punish crit and landed it: 33%. Damage a minute 408 dealt / 242 taken.
+- **Without the rules,** full fights lose badly (bots 11-43, league 6-21). With the rules: bots 23-27, league 14-11.
+- **Cause chain, T1/C1/C2 (agent 47):**
+  - The teacher's read of the opponent kept their moments closed. Their crits were read off the client's view of the fall, which caught 19% of game crits, so C1 never saw a double crit.
+  - Punish-crit chances counted every lift, but only about 30% come down in reach, so no bot was ever read as a punisher and T1 never opened. C2 needs T1.
+  - Run 107 fixes the reads, teacher only. Merged as 68f55e0; tests: 57 passed, 0 failed. Redeploy after the 21:34 check.
+- **T2 at 33% (STUCK):** off on the jump 45%; the network's own share is 21%. Next after run 107.
