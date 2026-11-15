@@ -1762,3 +1762,10 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Run 117 is live: redeploy 07:06-07:08, 0 test failures; training runs.
 - First update: ready with them in reach 128 ticks, swung 52 (41%); held otherwise only 3; held with them falling 14; swing not open 25. The swing taught 31 ticks; run 116 charged 7 own-combo take-offs.
 - The first check with runs 116 + 117 is about 07:53. Punish crit chances critted 51% of 300.
+
+## 16 Nov 07:43 review
+
+- Training runs (runs 116 + 117). Last update: ready with them in reach 95 ticks, swung 25, held otherwise 4, held with them falling 16 (K2), swing not open 11. Where it was free to choose (swung + held otherwise), it swung 86%.
+- **Skill rates:** K2 100, C6 98, T9a 95, C1 95, T5 93, C7 90, T4 88, T6a 88, K3 88, T1a 85, C3 85, B1 83, C2 83, C4 83, T7 78, T9c 60.
+  - Under 60%: T1c 55, T6 52, T2 45, T9b 45, T9 40 (the rules), T1 20.
+- Punish crit chances critted 50% of 300 (the bottom of the target). The first check with runs 116 + 117 is about 07:53.
