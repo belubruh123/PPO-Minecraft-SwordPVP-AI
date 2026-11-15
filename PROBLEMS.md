@@ -1728,3 +1728,15 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **Skill rates (last 40 moments):** T7 100, C6 100, T4 93, K2 93, T6a 90, T5 88, C3 88, T9a 80, T1a 78, K3 78, T9b 75, C1 75, C2 75, C4 73, C7 70, B1 68, T9c 65, T6 63.
   - Under 60%: T1 43, T1c 40, T2 33, T9 28 (the rules).
 - Punish crit chances critted 56% of 300; told and landed 43%.
+
+## 16 Nov 05:31 check: run 115 about 50 min in (the swing taught)
+
+- **ROUNDS WON: A 32/45 (71%), B 29/45 (64%), z about +0.8.** Net A-B +0.5 HP a fight (se 4.0). Dealt/taken: A 439 / 328, B 419 / 316.
+- **Their third hit after their second: A 11% (6 of 57), B 19% (11 of 58).**
+- **Outside their combo, ready and in reach: A swung 45% (03:37: 31%), B 59%.**
+  - A's close holds with the crosshair on them (under 2.6 blocks): **36 (03:37: 95)**, B 7. Swings: A 444, B 487.
+- **Run 115's split of A's held ticks:** a rule or gate 1; the network sure (swing chance under 10%) 27; 10-50% 17; 50%+ 6.
+  - So the holds are the network's, as agent 50 said, and they are getting less sure. The bottleneck stands, and the fix is moving it.
+- Jumps a minute off/on its moments: A 53/78, B 27/25. **Next: its jumps** (about twice B's, every check).
+- Techniques in the check: B1 65%, T2 25%, T4 53%, T5 60%, T6 60%, T1 0/7.
+- Punish crit chances critted 55% of 300; told and landed 44%.
