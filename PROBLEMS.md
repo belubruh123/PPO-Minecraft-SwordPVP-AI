@@ -1746,3 +1746,8 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Training runs (run 115). Last update: ready with them in reach 164 ticks, swung 56; the swing taught on 15 ticks.
 - Punish crit chances critted 56% of 300; told and landed 45%.
 - Agent 51 (06:14) does a structural diagnosis of the jumps: A jumps about twice as often as B in every check since 00:31 (05:31: 53/78 vs 27/25 a minute).
+
+## 16 Nov 06:21 check (run 115) and run 116 asked
+
+- **ROUNDS WON: A 33/44, B 30/44, z about +0.9.** Net +2.5 HP a fight. Their third hit: A 22%, B 17%. Swung (ready, in reach): A 43%, B 58%. Jumps a minute: A 43/55, B 29/31.
+- Run 116 (own-combo jumps charged and taught "no jump"; agent 51) asked 06:29. Details in EXPERIMENTS.md.
