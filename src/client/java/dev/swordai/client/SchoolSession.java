@@ -154,6 +154,20 @@ public final class SchoolSession implements AgentSession {
 	static final float NEAR_JUMP_COST = 0.25f;
 	static final float NEAR_NO_JUMP_PULL = 0.5f;
 	/**
+	 * Run 116 (16 Nov, agent 51; the user, 15 Nov 22:05: "it jump for no reason without like doing anything it just do a jump and stop
+	 * and breaks its own combo"): run 97's nearJumpReason 4 (its own combo alive, where hops, uppercuts and lunges held it) outlived
+	 * run 110, which stopped teaching those (SchoolStages.COMBO_JUMPS_TAUGHT false, ComboHolder.NO_COMBO_JUMPS). In its own combo every
+	 * take-off of its own stayed "needed": no NEAR_JUMP_COST, no "no jump" target, the one stretch of the near fight left so (the hold
+	 * teacher's "no jump" ran 0 ticks an update). The checks' jumps.csv (take-offs not within 3 ticks of a hit taken), those 4-15 ticks
+	 * after its own hit with none taken since, a fight: A 1.3 at 00:31 (two hours after the run35 restart), 1.6, 2.0, 2.0, 2.4, 2.9 at
+	 * 05:31; B 0.2-0.3 throughout; A's other take-offs flat at about 2.0 a fight (run35-0657's screen of 3 Nov: 1.3 against B's 0.4).
+	 * Of A's 662 in those six checks 280 came to nothing (no hit either way) and 225 were hit in the air. On (with combo jumps not
+	 * taught): reason 4 lapses, so its own take-off in its own combo costs NEAR_JUMP_COST and the ground there is taught "no jump"; the
+	 * told T2/T9b/T9c/T1/T1c/K3/C6 (reason 2), the crit exchange (reason 1) and the one jump-in stay free. Checks: "in its own combo"
+	 * take-offs by source on the take-offs line; training: "run 116 its own combo charged" on the run 95 line.
+	 */
+	static final boolean OWN_COMBO_JUMP_COST = true;
+	/**
 	 * Run 95 ("always start a combo ALWAYS"): after its hit (none taken that tick), neither its next hit nor theirs within COMBO_GAP while
 	 * still under JUMP_IN_REOPEN blocks: the combo it did not go on with costs this (training, every fight).
 	 */
@@ -238,6 +252,10 @@ public final class SchoolSession implements AgentSession {
 		int src = (ruledBits & (1 << ActionSpace.JUMP)) != 0 ? 0 : jumpTechniqueNow(step) ? 1
 				: clock.ticksSinceHitTaken <= 1 ? (theirRow <= 1 ? 2 : 3) : clock.ticksSinceHitTaken <= 12 ? 4 : 5;
 		takeoffSrc[side][src]++;
+		if (ownComboAlive()) {
+			// Run 116: those in its own combo, by source (a rule's, a technique's, its own).
+			comboTakeoffSrc[side][Math.min(src, 2)]++;
+		}
 	}
 
 	/**
@@ -273,7 +291,18 @@ public final class SchoolSession implements AgentSession {
 		if (!LATE_JUMP_GUARD && theirRow >= 2 && clock.ticksSinceHitTaken <= 1) {
 			return 3;
 		}
-		return clock.ticksSinceHitDealt <= COMBO_GAP && clock.ticksSinceHitTaken > clock.ticksSinceHitDealt ? 4 : 0;
+		// Run 116: its own combo alive is no reason any more while the combo jumps are not taught (OWN_COMBO_JUMP_COST).
+		return !ownComboJumpCharged() && ownComboAlive() ? 4 : 0;
+	}
+
+	/** Its own combo alive: its last hit within COMBO_GAP, none taken since (run 97's reason 4; run 116's counters). */
+	private boolean ownComboAlive() {
+		return clock.ticksSinceHitDealt <= COMBO_GAP && clock.ticksSinceHitTaken > clock.ticksSinceHitDealt;
+	}
+
+	/** Run 116: whether its own take-off in its own combo is charged and taught "no jump" (see OWN_COMBO_JUMP_COST). */
+	private static boolean ownComboJumpCharged() {
+		return OWN_COMBO_JUMP_COST && !dev.swordai.core.school.SchoolStages.COMBO_JUMPS_TAUGHT;
 	}
 
 	/** Run 91b: whether a technique asks for a jump on this tick (see OWN_JUMP_COST). */
@@ -434,6 +463,10 @@ public final class SchoolSession implements AgentSession {
 	 * ticks after a hit; its own later or with no hit taken lately. Printed with each check, cleared after it.
 	 */
 	private final int[][] takeoffSrc = new int[2][6];
+	/** Run 116: the checks' take-offs in its own combo (ownComboAlive) by source: a rule's, a technique's, its own; A then B. */
+	private final int[][] comboTakeoffSrc = new int[2][3];
+	/** Run 116: its own take-offs in its own combo charged NEAR_JUMP_COST in training (OWN_COMBO_JUMP_COST). */
+	private int ownComboJumpsCharged;
 	private int firstHitResetTicks;
 	/** Run 99: stun starts (a hit of its own with no combo open) by the told technique (T4, T5, T6, T7, T8, other) and its sprint key then. */
 	private final int[] stunStart = new int[6];
@@ -1375,6 +1408,7 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | run 95 (%s): jump-ins %d (reopened at %.0f+ blocks %d), near-fight take-offs not needed charged %d, needed %d (crit exchange %d, told %d, jump reset in their combo %d, run 97 its own combo %d); \"no jump\" taught %d (the teacher's jump turned %d); combos dropped %d",
 						JUMP_ONCE ? "on" : "off", jumpInsTaken, JUMP_IN_REOPEN, jumpInReopened, nearJumpCharged, nearJumpNeededTakeoffs, nearJumpNeededBy[0],
 						nearJumpNeededBy[1], nearJumpNeededBy[2], nearJumpNeededBy[3], nearNoJumpTaught, teacherJumpFlipped, comboDropped)
+				+ String.format(Locale.ROOT, ", run 116 (%s) its own combo charged %d", ownComboJumpCharged() ? "on" : "off", ownComboJumpsCharged)
 				+ String.format(Locale.ROOT, " | run 96: ready sword held at them on the ground charged %d ticks", readyHoldCharged)
 				+ String.format(Locale.ROOT, " | run 115 (%s): the ordinary swing taught %d ticks", SWING_TAUGHT ? "on" : "off", swingTaught)
 				+ String.format(Locale.ROOT, " | run 92, too close (under %.1f, its sword empty, theirs ready) ticks charged %d; edge sprint hits (%.1f-%.1f) paid %d; its hits' mean distance %.2f (%d hits); rule m runs started by A's rules %d, into a ready sword or a jump-in crit %d (%s)",
@@ -1479,6 +1513,7 @@ public final class SchoolSession implements AgentSession {
 		ownJumpCharged = 0;
 		reflexFirstCharged = 0;
 		jumpInsTaken = jumpInReopened = nearJumpCharged = nearJumpNeededTakeoffs = nearNoJumpTaught = teacherJumpFlipped = comboDropped = 0;
+		ownComboJumpsCharged = 0;
 		readyHoldCharged = 0;
 		swingTaught = 0;
 		java.util.Arrays.fill(nearJumpNeededBy, 0);
@@ -5633,6 +5668,7 @@ public final class SchoolSession implements AgentSession {
 				} else if (jumpNotNeeded) {
 					enterReward -= NEAR_JUMP_COST;
 					nearJumpCharged++;
+					ownComboJumpsCharged += ownComboAlive() ? 1 : 0;
 				} else {
 					nearJumpNeededTakeoffs++;
 					nearJumpNeededBy[Math.max(0, nearJumpReason(learner.told()) - 1)]++;
@@ -6566,6 +6602,11 @@ public final class SchoolSession implements AgentSession {
 				takeoffSrc[0][5], takeoffSrc[1][0], takeoffSrc[1][1], takeoffSrc[1][2], takeoffSrc[1][3], takeoffSrc[1][4], takeoffSrc[1][5]);
 		java.util.Arrays.fill(takeoffSrc[0], 0);
 		java.util.Arrays.fill(takeoffSrc[1], 0);
+		// Run 116: the take-offs in its own combo (its last hit within COMBO_GAP, none taken since) by source.
+		SwordAi.LOGGER.info("school check run 116 | take-offs in its own combo (rule | technique | own) A {} {} {} | B {} {} {}", comboTakeoffSrc[0][0],
+				comboTakeoffSrc[0][1], comboTakeoffSrc[0][2], comboTakeoffSrc[1][0], comboTakeoffSrc[1][1], comboTakeoffSrc[1][2]);
+		java.util.Arrays.fill(comboTakeoffSrc[0], 0);
+		java.util.Arrays.fill(comboTakeoffSrc[1], 0);
 		SwordAi.LOGGER.info("school check rules | A: the golden rule (K2) held the swing on {} ticks, the installed model's rules set keys on {} ticks; "
 				+ "sprint hits outside its combos on one falling: on the server {}, as seen {} | lost view: A {} of {} ticks off the screen ({} times), "
 				+ "B {} of {} ticks ({} times)", k2Held, ruleTicks, k2Truth, k2Seen, lostTicks[0], viewTicks[0], lostTimes[0], lostTicks[1], viewTicks[1],
