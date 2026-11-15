@@ -1534,3 +1534,11 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Late knock-away hits on jump-ins (rising): A 9, B 16. Swings: A 408 (97% on them), B 427 (87%).
 - Take-offs: A rule 11, technique 10, own 2-12 3, own other 16; B rule 10. Technique take-offs went up from 2-5 to 10, from run 104's crit layers; watch them.
 - Run 105 (window guard; the C1/T1 teacher fixes) was asked for at 17:25, right after the check.
+
+## 15 Nov 19:10 check: run 104c (the user's skill list); training paused 19:18 for the user's SMP
+
+- **ROUNDS WON: A 26/44 (59%), B 20/44 (45%), z about +1.3.** Net A-B +9.4 HP a fight (se 4.1, about +2.3 se). Dealt/taken: A 422 / 370, B 384 / 392.
+- Their third hit: A 31% (19 of 62), B 31% (20 of 65). Outside their combo: A swung 42% (lower), off 36%; B swung 50%, off 34%.
+- Late knock-away hits on jump-ins (rising): A 4, B 10. Take-offs: A rule 16, technique 7, own 0-1 after their first hit 1, own 2-12 1, own other 16; B rule 13.
+- **Skill rates at the stop (last 40 moments):** T9a 100, T7 98, K2 95, T1a 90, K3 85, T9c 80, C7 78, T4 78, C6 75, B1 73, T5 73, T6 73, T6a 73, T9 50, T1c 40, T2 40, T9b 28, C1 20, T1 18 (17 moments), C2 3. T10/T11a/T11b: no moments counted.
+- Training stopped with training-stop.sh at 19:18 (network saved 19:17); the review cron is paused until the user says go.
