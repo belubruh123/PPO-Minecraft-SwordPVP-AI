@@ -480,7 +480,8 @@ public final class Fighter {
 		}
 		// A hit of a combo it is taking: it jumps with it, W and the sprint key down; see JumpReset.
 		int reset = jumpReset == null ? 0 : jumpReset.plan(obs.vec, keys, JumpReset.hitOnThisTick(obs.vec));
-		if (reset != 0) {
+		if (lateJumpGuard && jumpReset != null && jumpReset.tookOff()) {
+			// Run 102b: the take-off itself (reset is non-zero for the whole jump's plan, up to JumpReset.AIR_TICKS).
 			resetTakeOffs++;
 		}
 		// Run 102: no jump of its own in the LATE_JUMP_TICKS ticks after a hit taken on the ground that the rule did not jump with.
