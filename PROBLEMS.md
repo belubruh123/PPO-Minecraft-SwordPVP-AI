@@ -1447,3 +1447,14 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Their third hit: A 38%, B 31% (worse than B this time). Outside their combo: A swung 57%, B 50% (A ahead).
 - Replica in training (to 09:55): 31 fights, won 15, lost 16, HP net +1.0 a fight; after its 12 punish crits there, hit back within 12 ticks 25% (real lost rounds 79%), within 30 50%; longest crit run 2 (real median 2, p75 3). The replica is softer than the real crit spammers: tune it (next agent slot, after 10:40).
 - The watchdog task was renewed by the user (next run 09:56); install-watchdog.ps1 now uses -Force.
+
+## 15 Nov 10:49 check, and run 101 (agent 43) merged
+
+- **ROUNDS WON: A 23/44 (52%), B 14/44 (32%), z about +2.0.** Net A-B +18.7 HP a fight (se 5.4). Dealt/taken in the check: A 409 / 360, B 336 / 399.
+- Their third hit: A 20% (16 of 80), B 31% (28 of 90). Outside their combo: A swung 64%, crosshair off 23%; B swung 56%, off 35%. Swings on them: A 98%, B 86%.
+- Late knock-away hits on jump-ins (rising): A 9, B 16.
+- **Run 101 (agent 43, commit 4ef3cad):**
+  - Why the replica was soft: after the AI's punish crit knocked it to 3.3-3.8 blocks, it let go of W in its fall. It came down out of reach, so its crit back was lost. The K2 hold also dropped its answer on a falling target.
+  - Fix: W held in the fall, the answer free of K2, B1 aborts only beyond 5.5 blocks. Toy hit back within 12 ticks went from 37% to 56%; the arena target is 70-80%.
+  - The crit-back read: after 2+ crits back within 12 ticks of its punish crits in a fight, A's rules stop forcing the punish crit in the lift, so the network chooses C1, T2 or T1c by the outcome. It applies in training and checks, and in FightSession behind CritBackRead.REAL_GAME. It reaches the user's game only with a new jar.
+  - Compile check OK; core tests 50/50 (agent). Redeploy asked for at 11:06, right after the check.
