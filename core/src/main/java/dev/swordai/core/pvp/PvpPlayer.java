@@ -200,6 +200,8 @@ public final class PvpPlayer {
 		wasOnGround = true;
 		theyWereOnGround = true;
 		punishWatching = false;
+		punishCounted = false;
+		reachChances = 0;
 		punishChances = 0;
 		punishTries = 0;
 		doubleWatching = false;
@@ -247,6 +249,35 @@ public final class PvpPlayer {
 		for (int i = 0; i < breaks.length; i++) {
 			into[i] += breaks[i];
 			breaks[i] = 0;
+		}
+	}
+
+	/**
+	 * Run 107: the crit reads of a style with {@link Style#punishChanceInReach} (the school's teacher) since the last
+	 * {@link #drainReads}, for its log: ticks, ticks it took them for one that punish-crits (T1's "only works if the opponent tries
+	 * to punish-crit you"); its own crits landed that were not a punish crit nor a double crit's second, and of those with them
+	 * taken for one that punish-crits (T1 opens there); their crits seen as crits, known by the game only, and with a double crit
+	 * expected (C1 opens there); the starts of C1 and of T1 (T1b with it); their sprint hits on its double crit, and the starts of C2.
+	 */
+	private final int[] reads = new int[READS];
+	public static final int READ_TICKS = 0;
+	public static final int READ_PUNISHES = 1;
+	public static final int READ_OWN_CRIT = 2;
+	public static final int READ_OWN_CRIT_PUNISHES = 3;
+	public static final int READ_THEIR_SEEN = 4;
+	public static final int READ_THEIR_GAME = 5;
+	public static final int READ_THEIR_DOUBLES = 6;
+	public static final int READ_C1 = 7;
+	public static final int READ_T1 = 8;
+	public static final int READ_DOUBLE_SPRINT_HIT = 9;
+	public static final int READ_C2 = 10;
+	public static final int READS = 11;
+
+	/** Run 107: {@link #reads} added into {@code into}; then zeroed. */
+	public void drainReads(long[] into) {
+		for (int i = 0; i < reads.length; i++) {
+			into[i] += reads[i];
+			reads[i] = 0;
 		}
 	}
 
@@ -335,6 +366,15 @@ public final class PvpPlayer {
 		return !style.onlyWhenItWorks || expect(Habits.PUNISH_CRIT, -1f) > 0.3f || rate(punishTries, punishChances) > 0.3f;
 	}
 
+	/**
+	 * Run 107: {@link #punishes} for the double crit after its own crit (T1), with the chances only where they came down in reach or
+	 * tried (Style#punishChanceInReach); as {@link #punishes} for every other style. The bait (T1a) keeps {@link #punishes}: on every
+	 * approach against one read so, it took the approaches from the three-block hit (T7) and doubled the take-offs in the toy.
+	 */
+	private boolean punishesForDouble() {
+		return style.punishChanceInReach ? punishes() || rate(punishTries, reachChances) > 0.3f : punishes();
+	}
+
 	/** Whether they go for double crits: seen landing them, or trying (a jump again soon after their crit). */
 	private boolean doubleCrits() {
 		return expect(Habits.DOUBLE_CRIT, tellDouble) > 0.3f || tellDouble < 0f && rate(doubleTries, doubleChances) > 0.3f;
@@ -352,15 +392,22 @@ public final class PvpPlayer {
 		if (e.iHit != Events.NONE && theyWereOnGround) {
 			punishWatching = true;
 			punishChances++;
+			punishCounted = false;
 		} else if (punishWatching) {
+			if (!punishCounted && them.falling() && d.reach <= Duel.REACH) {
+				// Run 107 (Style#punishChanceInReach): B1 is the crit "on the way down" after the lift; coming down in reach, they could.
+				punishCounted = true;
+				reachChances++;
+			}
 			if (sinceMyHit <= 18 && (e.theySwung && !them.onGround || e.theyHit == Events.CRIT)) {
+				reachChances += punishCounted ? 0 : 1;
 				punishTries++;
 				punishWatching = false;
 			} else if (sinceMyHit > 18 || them.onGround && sinceMyHit > 3 || e.theyHit != Events.NONE) {
 				punishWatching = false;
 			}
 		}
-		if (e.theyHit == Events.CRIT) {
+		if (theyCrit(e)) {
 			doubleWatching = true;
 			doubleChances++;
 			theirCritTick = tick;
@@ -372,6 +419,21 @@ public final class PvpPlayer {
 				doubleWatching = false;
 			}
 		}
+		if (style.punishChanceInReach) {
+			reads[READ_TICKS]++;
+			reads[READ_PUNISHES] += punishesForDouble() ? 1 : 0;
+			reads[READ_THEIR_SEEN] += e.theyHit == Events.CRIT ? 1 : 0;
+			reads[READ_THEIR_GAME] += e.theyHit != Events.CRIT && theyCrit(e) ? 1 : 0;
+			reads[READ_THEIR_DOUBLES] += theyCrit(e) && doubleCrits() ? 1 : 0;
+		}
+	}
+
+	/**
+	 * Run 107: their hit of this tick was a crit: by its look ({@link Events#theyHit}), or by the game where the drive knows it
+	 * ({@link Events#theyCritGame}, the school's teacher only; never set for a bot, so for them it is the look as before).
+	 */
+	private static boolean theyCrit(Events e) {
+		return e.theyHit == Events.CRIT || e.theyHit != Events.NONE && e.theyCritGame;
 	}
 
 	private static float rate(int tries, int chances) {
@@ -379,6 +441,10 @@ public final class PvpPlayer {
 	}
 
 	private boolean punishWatching;
+	/** Run 107: this watch's chance in reach is counted already ({@link #reachChances}). */
+	private boolean punishCounted;
+	/** Run 107: the punish-crit chances where they came down in reach after the lift, or tried (Style#punishChanceInReach). */
+	private int reachChances;
 	private int punishChances;
 	private int punishTries;
 	private boolean doubleWatching;
@@ -608,6 +674,11 @@ public final class PvpPlayer {
 	// ---- starting plans ---------------------------------------------------------------------------
 
 	private void begin(Plan p) {
+		if (style.punishChanceInReach) {
+			reads[READ_C1] += p == Plan.C1 ? 1 : 0;
+			reads[READ_T1] += p == Plan.T1 || p == Plan.T1B ? 1 : 0;
+			reads[READ_C2] += p == Plan.C2 ? 1 : 0;
+		}
 		plan = p;
 		planT = 0;
 		phase = 0;
@@ -735,6 +806,9 @@ public final class PvpPlayer {
 			thrownUpAt = tick;
 		}
 		pending = Plan.NONE;
+		if (style.punishChanceInReach && (plan == Plan.T1 || plan == Plan.T1B || plan == Plan.T1C) && e.theyHit == Events.SPRINT) {
+			reads[READ_DOUBLE_SPRINT_HIT]++;
+		}
 		if ((plan == Plan.T1 || plan == Plan.T1B || plan == Plan.T1C) && e.theyHit == Events.SPRINT && roll(Technique.C2)) {
 			// C2: the double crit was sprint-hit: S at once, out of the trade still up on damage.
 			begin(Plan.C2);
@@ -748,7 +822,7 @@ public final class PvpPlayer {
 			return;
 		}
 		end();
-		if (style.c1BeforeB1 > 0f && e.theyHit == Events.CRIT && doubleCrits() && roll(Technique.C1) && rng.nextFloat() < style.c1BeforeB1) {
+		if (style.c1BeforeB1 > 0f && theyCrit(e) && doubleCrits() && roll(Technique.C1) && rng.nextFloat() < style.c1BeforeB1) {
 			// Run 105 (Style#c1BeforeB1): C1, "when you expect a double crit, don't go for the punish crit. Sprint-hit them, which
 			// knocks them away". B1 below went first whenever their crit could be punished, so C1 had about no moments.
 			begin(Plan.C1);
@@ -764,7 +838,7 @@ public final class PvpPlayer {
 			begin(Plan.B1);
 			return;
 		}
-		if (e.theyHit == Events.CRIT && doubleCrits() && roll(Technique.C1)) {
+		if (theyCrit(e) && doubleCrits() && roll(Technique.C1)) {
 			// C1: a double crit is coming; no punish crit, a sprint hit when it comes up again.
 			begin(Plan.C1);
 			return;
@@ -906,6 +980,10 @@ public final class PvpPlayer {
 			// A punish crit: its own B1, or any crit before landing from their hit's lift (the school's punish crit teacher
 			// lets go of the sprint there without the B1 plan, and T1c had about no moments, 24 Oct 20:10).
 			boolean punishCrit = was == Plan.B1 || tick - thrownUpAt <= 18 && sinceLanded > tick - thrownUpAt && !d.me.onGround;
+			if (style.punishChanceInReach && !punishCrit) {
+				reads[READ_OWN_CRIT]++;
+				reads[READ_OWN_CRIT_PUNISHES] += punishesForDouble() ? 1 : 0;
+			}
 			if (was == Plan.T1A) {
 				begin(Plan.T1);
 			} else if (punishCrit && style.t6AfterPunish > 0f && rng.nextFloat() < style.t6AfterPunish) {
@@ -916,7 +994,7 @@ public final class PvpPlayer {
 				planAfterPunish = true;
 			} else if (punishCrit && roll(Technique.T1C)) {
 				begin(Plan.T1C);
-			} else if (punishes() && roll(Technique.T1)) {
+			} else if (punishesForDouble() && roll(Technique.T1)) {
 				// Any crit of mine against one that tries to punish-crit: "after your first crit, immediately jump and crit
 				// the other player again" (only from these plans before, so it hardly ever came).
 				// Run 105 (Style#t1bShare): the teacher's T1b at a share, so that plain T1 has moments of its own.
