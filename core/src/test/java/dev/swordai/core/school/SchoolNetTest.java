@@ -168,7 +168,8 @@ class SchoolNetTest {
 		for (int i = SchoolNet.SEEN_AT; i < SchoolNet.SIDE; i++) {
 			seen[i] = rng.nextFloat() * 2f - 1f;
 		}
-		assertEquals(SchoolNet.SEEN_AT + SchoolNet.SEEN, SchoolNet.SIDE, "the seen history ends the side input");
+		assertEquals(SchoolNet.SEEN_AT + SchoolNet.SEEN, SchoolNet.WIN_AT, "the memory's window follows the seen history");
+		assertEquals(SchoolNet.WIN_AT + (SchoolNet.MEMORY ? SchoolNet.WIN : 0), SchoolNet.SIDE, "the window ends the side input");
 		float[] a = new float[ActionSpace.TOTAL_LOGITS];
 		net.forward(ws, obs.base.peri, obs.base.fovea, obs.base.vec, obs.mem, quiet);
 		System.arraycopy(ws.logits, 0, a, 0, a.length);

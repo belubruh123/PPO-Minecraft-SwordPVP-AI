@@ -431,14 +431,14 @@ class SchoolLearnerTest {
 				assertEquals(headY[2 - back], s.pred[at + 2], 0f, "head y, " + back + " ticks back");
 				assertEquals(oppCharge[2 - back], s.pred[at + 7], 0f, "their sword, " + back + " ticks back");
 			}
-			for (int i = SchoolNet.SEEN_AT + 3 * SchoolNet.SEEN_PER; i < SchoolNet.SIDE; i++) {
+			for (int i = SchoolNet.SEEN_AT + 3 * SchoolNet.SEEN_PER; i < SchoolNet.SEEN_AT + SchoolNet.SEEN; i++) {
 				assertEquals(0f, s.pred[i], 0f, "an empty older frame");
 			}
 			// A new fight starts with nothing seen.
 			l.resetIntent();
 			fill(rng, s);
 			l.act(s, ActionSpace.ALL_HEADS, false, 1f, act);
-			for (int i = SchoolNet.SEEN_AT + SchoolNet.SEEN_PER; i < SchoolNet.SIDE; i++) {
+			for (int i = SchoolNet.SEEN_AT + SchoolNet.SEEN_PER; i < SchoolNet.SEEN_AT + SchoolNet.SEEN; i++) {
 				assertEquals(0f, s.pred[i], 0f, "the history of the fight before");
 			}
 		} finally {

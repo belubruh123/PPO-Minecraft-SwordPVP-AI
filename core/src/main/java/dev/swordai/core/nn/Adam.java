@@ -35,6 +35,13 @@ public final class Adam {
 		float stepSize = lr * (float) Math.sqrt(corr2) / corr1;
 
 		for (Param p : ps.params()) {
+			// A tensor added to a loaded network counts its bias correction from when it was added (Param#bornAt).
+			float size = stepSize;
+			if (p.bornAt > 0 && p.bornAt < ps.adamSteps) {
+				double steps = ps.adamSteps - p.bornAt;
+				size = lr * (float) Math.sqrt(1.0 - Math.pow(BETA2, steps)) / (float) (1.0 - Math.pow(BETA1, steps));
+			}
+			final float own = size;
 			final float[] w = p.w;
 			final float[] m = p.m;
 			final float[] v = p.v;
@@ -43,7 +50,7 @@ public final class Adam {
 				float gi = g[i] * k;
 				m[i] = BETA1 * m[i] + (1f - BETA1) * gi;
 				v[i] = BETA2 * v[i] + (1f - BETA2) * gi * gi;
-				w[i] -= stepSize * m[i] / ((float) Math.sqrt(v[i]) + EPS);
+				w[i] -= own * m[i] / ((float) Math.sqrt(v[i]) + EPS);
 			}
 		}
 		return norm;

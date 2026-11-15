@@ -8,6 +8,12 @@ public final class Param {
 	public final float[] v;
 	/** Index into the gradient buffers handed out by {@link ParamSet#newGrads()}. */
 	public final int id;
+	/**
+	 * The network's Adam step count when this tensor was added to a network loaded from a file that did not have it (0: it was
+	 * there all along). Its Adam bias correction counts its own steps from then, so its first steps are Adam's usual size instead
+	 * of the up to ten times larger ones a zero moment under an old step count gives. Not saved.
+	 */
+	public long bornAt;
 
 	Param(String name, int size, int id) {
 		this.name = name;

@@ -93,8 +93,67 @@ public final class SchoolNet {
 	public static final int SEEN = SEEN_FRAMES * SEEN_PER;
 	/** Where the seen history is in the side input. */
 	public static final int SEEN_AT = HIST_AT + HIST;
-	/** The side input: the {@link Predictor}'s guess, then the technique being done, then the history of its own keys, then what it has seen. */
-	public static final int SIDE = Predictor.OUT + INTENT + HIST + SEEN;
+	/**
+	 * Run 109 (the user, 15 Nov 22:30: "make the network bigger and have memory"; before: "you don't have any rnn like stuff like lstm
+	 * micro transformer ... it don't even know what it is doing when jump and just keep jump and jump for no reason"): a learned
+	 * short-term memory, {@link TickMemory}, a micro transformer over the last WIN_TICKS ticks of the fight (1.2 s: a jump is 12
+	 * ticks, a combo's rhythm 10-20 a hit). The window is part of the side input (WIN_AT), so the update stays feed-forward (no
+	 * hidden state, no back-propagation through time across steps, shuffled minibatches as before); SchoolLearner.Intent#pushTick
+	 * fills it, and every new fight empties it. WIN_PER numbers a tick, newest tick first (the ticks before this one: the keys of a
+	 * tick are known only once they are pressed):
+	 * <ul>
+	 * <li>0: a real tick of this fight (1; 0 = before the fight began, masked out);</li>
+	 * <li>1-3 W/S, 4-6 A/D (one-hot), 7 the sprint key, 8 the jump, 9 the swing: the keys really pressed that tick (from the next
+	 * tick's last-action part of the observation, so the rules' keys and a stripped jump count as pressed or not, as they were);</li>
+	 * <li>10 on the ground, 11-13 its speed up, forward, right, 14 its sword's charge, 15 its health;</li>
+	 * <li>16 its hit landed that tick, 17 their hit landed that tick, 18 their hits in a row (a quarter, up to 8);</li>
+	 * <li>19 their head seen, 20-21 its x and y on the screen, 22 how much of the screen they fill;</li>
+	 * <li>23-24 their speed towards it and up, 25 their sword as last seen to swing.</li>
+	 * </ul>
+	 * Its summary goes into the new tower and straight into the heads through layers that start at zero, made after every other
+	 * part: a network saved before loads with them new and plays exactly as it did. MEMORY off: the module is skipped and the window
+	 * is neither kept nor stored (the side input is as before); its tensors stay, so checkpoints read both ways.
+	 */
+	public static final boolean MEMORY = true;
+	public static final int WIN_TICKS = 24;
+	public static final int WIN_PER = 26;
+	public static final int WIN = WIN_TICKS * WIN_PER;
+	/** Where the window is in the side input (after the seen history; with MEMORY off, the end of the side input). */
+	public static final int WIN_AT = SEEN_AT + SEEN;
+	static final int MEM_DIM = 24;
+	static final int MEM_HEADS = 3;
+	static final int MEM_FFN = 32;
+	static final int MEM_OUT = 64;
+	/**
+	 * Run 109: a deeper new tower, EXTRA_BLOCKS more residual block(s) after its two (their output layers start at zero, so they start
+	 * as the identity: Net2Net). Off: skipped (their tensors stay, so checkpoints read both ways).
+	 */
+	public static final boolean DEEPER = true;
+	public static final int EXTRA_BLOCKS = 1;
+	/** The side input: the {@link Predictor}'s guess, then the technique being done, then the history of its own keys, then what it has seen, then the window. */
+	public static final int SIDE = Predictor.OUT + INTENT + HIST + SEEN + (MEMORY ? WIN : 0);
+	/**
+	 * Run 109: the side input as the buffers keep it (SchoolRollout, TeacherReplay): everything before the window as floats, the
+	 * window as bytes ({@link #keepWindow}): 0.6 KB a step instead of 2.5 KB, about 30 MB for the rollout and the replays together
+	 * instead of 125 MB. Its numbers are made to a byte's steps when the window is filled ({@link #winValue}), so the network acts
+	 * on exactly what it later learns from.
+	 */
+	public static final int SIDE_KEPT = WIN_AT;
+	static final float WIN_SCALE = 63f;
+	static final float WIN_LIMIT = 2f;
+
+	/** A number of the window as it is kept: between -2 and 2, in steps of 1/63. */
+	public static float winValue(float v) {
+		float c = Math.max(-WIN_LIMIT, Math.min(WIN_LIMIT, v));
+		return Math.round(c * WIN_SCALE) / WIN_SCALE;
+	}
+
+	/** The window of the side input {@code side}, as bytes into {@code out} ({@link #WIN} of them). */
+	public static void keepWindow(float[] side, byte[] out) {
+		for (int i = 0; i < out.length; i++) {
+			out[i] = (byte) Math.round(Math.max(-WIN_LIMIT, Math.min(WIN_LIMIT, side[WIN_AT + i])) * WIN_SCALE);
+		}
+	}
 
 	public final ParamSet params = new ParamSet();
 	private final Conv2d periConv1;
@@ -128,6 +187,14 @@ public final class SchoolNet {
 	 */
 	private final Param optionW;
 	private final Param optionB;
+	/** Run 109: the learned short-term memory and the layers its summary enters by (both from zero). */
+	private final TickMemory tickMemory;
+	private final Dense memNew;
+	private final Dense memHeads;
+	/** Run 109: the new tower's extra blocks. */
+	private final ResBlock[] moreBlocks = new ResBlock[EXTRA_BLOCKS];
+	/** For a test only: the network as it was before run 109 (the memory and the extra blocks skipped). */
+	boolean grownOff;
 
 	public SchoolNet(long seed) {
 		Random rng = new Random(seed);
@@ -166,6 +233,13 @@ public final class SchoolNet {
 		// Run 69a: after the history, so that a network saved before loads with them new, at zero (it plays as it did).
 		seenIn = new Dense(params, "new.seen", SEEN, NEW, rng, 0f);
 		seenHeads = new Dense(params, "seen.heads", SEEN, ActionSpace.TOTAL_LOGITS, rng, 0f);
+		// Run 109: after the seen history, so that a network saved before loads with them new; their ways in start at zero.
+		tickMemory = new TickMemory(params, "tm", WIN_TICKS, WIN_PER, MEM_DIM, MEM_HEADS, MEM_FFN, MEM_OUT, CAT, rng);
+		memNew = new Dense(params, "tm.new", MEM_OUT, NEW, rng, 0f);
+		memHeads = new Dense(params, "tm.heads", MEM_OUT, ActionSpace.TOTAL_LOGITS, rng, 0f);
+		for (int b = 0; b < moreBlocks.length; b++) {
+			moreBlocks[b] = new ResBlock(params, "new.block" + (newBlocks.length + b), NEW, BLOCK_HIDDEN, rng);
+		}
 		// Rows of the old tower's trunk from the memory, and rows of the heads from the new tower: zero.
 		zeroRows(oldTrunk, 3 * BRANCH, CAT);
 		zeroRows(heads, OLD, TOP);
@@ -234,6 +308,16 @@ public final class SchoolNet {
 		final float[] top = new float[TOP];
 		final ResBlock.Cache[] oldCaches = new ResBlock.Cache[oldBlocks.length];
 		final ResBlock.Cache[] newCaches = new ResBlock.Cache[newBlocks.length];
+		final ResBlock.Cache[] moreCaches = new ResBlock.Cache[moreBlocks.length];
+		final TickMemory.Cache tm = tickMemory.newCache();
+		final float[] memPre = new float[NEW];
+		final float[] memLogits = new float[ActionSpace.TOTAL_LOGITS];
+		final float[] dMemZ = new float[MEM_OUT];
+		final float[] dMemZPart = new float[MEM_OUT];
+		final float[] dNow = new float[CAT];
+		/** Whether the last forward ran the memory and the extra blocks. */
+		boolean memRan;
+		boolean moreRan;
 		/** The heads' logits before the keys chosen earlier in the tick are added in. */
 		final float[] base = new float[ActionSpace.TOTAL_LOGITS];
 		final float[] arJumpIn = new float[AR_JUMP];
@@ -267,6 +351,9 @@ public final class SchoolNet {
 			}
 			for (int b = 0; b < newBlocks.length; b++) {
 				newCaches[b] = newBlocks[b].newCache();
+			}
+			for (int b = 0; b < moreBlocks.length; b++) {
+				moreCaches[b] = moreBlocks[b].newCache();
 			}
 		}
 	}
@@ -317,8 +404,17 @@ public final class SchoolNet {
 		} else {
 			Arrays.fill(ws.seenPre, 0f);
 		}
+		ws.memRan = MEMORY && !grownOff;
+		if (ws.memRan) {
+			tickMemory.forward(ws.pred, WIN_AT, ws.cat, ws.tm);
+			memNew.forward(ws.tm.z, 0, ws.memPre, 0);
+			memHeads.forward(ws.tm.z, 0, ws.memLogits, 0);
+		} else {
+			Arrays.fill(ws.memPre, 0f);
+			Arrays.fill(ws.memLogits, 0f);
+		}
 		for (int i = 0; i < NEW; i++) {
-			ws.newT[i] = Math.max(0f, ws.newPre[i] + ws.predPre[i] + ws.intentPre[i] + ws.histPre[i] + ws.seenPre[i]);
+			ws.newT[i] = Math.max(0f, ws.newPre[i] + ws.predPre[i] + ws.intentPre[i] + ws.histPre[i] + ws.seenPre[i] + ws.memPre[i]);
 		}
 		System.arraycopy(ws.oldT, 0, ws.top, 0, OLD);
 		for (int b = 0; b < oldBlocks.length; b++) {
@@ -327,6 +423,12 @@ public final class SchoolNet {
 		System.arraycopy(ws.newT, 0, ws.top, OLD, NEW);
 		for (int b = 0; b < newBlocks.length; b++) {
 			newBlocks[b].forward(ws.top, OLD, ws.newCaches[b]);
+		}
+		ws.moreRan = DEEPER && !grownOff;
+		if (ws.moreRan) {
+			for (int b = 0; b < moreBlocks.length; b++) {
+				moreBlocks[b].forward(ws.top, OLD, ws.moreCaches[b]);
+			}
 		}
 		heads.forward(ws.top, 0, ws.base, 0);
 		intentHeads.forward(ws.pred, Predictor.OUT, ws.intentLogits, 0);
@@ -337,7 +439,7 @@ public final class SchoolNet {
 			Arrays.fill(ws.seenLogits, 0f);
 		}
 		for (int i = 0; i < ActionSpace.TOTAL_LOGITS; i++) {
-			ws.base[i] += ws.intentLogits[i] + ws.histLogits[i] + ws.seenLogits[i];
+			ws.base[i] += ws.intentLogits[i] + ws.histLogits[i] + ws.seenLogits[i] + ws.memLogits[i];
 		}
 		ws.option = optionOf(ws.pred);
 		if (ws.option >= 0) {
@@ -359,6 +461,20 @@ public final class SchoolNet {
 			}
 		}
 		System.arraycopy(ws.base, 0, ws.logits, 0, ActionSpace.TOTAL_LOGITS);
+	}
+
+	/**
+	 * Run 109: {@link #forward} on a side input as a buffer keeps it: everything before the window ({@code kept}, {@link #SIDE_KEPT}
+	 * numbers) and the window as bytes ({@code win}, see {@link #keepWindow}).
+	 */
+	public void forwardKept(Workspace ws, byte[] peri, byte[] fovea, float[] vec, float[] mem, float[] kept, byte[] win) {
+		System.arraycopy(kept, 0, ws.pred, 0, SIDE_KEPT);
+		if (MEMORY) {
+			for (int i = 0; i < WIN; i++) {
+				ws.pred[WIN_AT + i] = win[i] / WIN_SCALE;
+			}
+		}
+		forward(ws, peri, fovea, vec, mem, ws.pred);
 	}
 
 	/** The technique the side input tells (its one-hot), if it has gated keys; else -1. */
@@ -528,6 +644,11 @@ public final class SchoolNet {
 			}
 		}
 		Arrays.fill(ws.dOption, 0f);
+		if (ws.moreRan) {
+			for (int b = moreBlocks.length - 1; b >= 0; b--) {
+				moreBlocks[b].backward(ws.dTop, OLD, ws.moreCaches[b], ws.grads);
+			}
+		}
 		for (int b = newBlocks.length - 1; b >= 0; b--) {
 			newBlocks[b].backward(ws.dTop, OLD, ws.newCaches[b], ws.grads);
 		}
@@ -548,6 +669,18 @@ public final class SchoolNet {
 		oldTrunk.backward(ws.cat, 0, ws.dOld, 0, ws.dCatPart, 0, ws.grads);
 		for (int i = 0; i < CAT; i++) {
 			ws.dCat[i] += ws.dCatPart[i];
+		}
+		if (ws.memRan) {
+			// The memory's summary into the new tower and into the heads; its query reads the trunk's input.
+			memNew.backward(ws.tm.z, 0, ws.dNew, 0, ws.dMemZ, 0, ws.grads);
+			memHeads.backward(ws.tm.z, 0, ws.dLogits, 0, ws.dMemZPart, 0, ws.grads);
+			for (int i = 0; i < MEM_OUT; i++) {
+				ws.dMemZ[i] += ws.dMemZPart[i];
+			}
+			tickMemory.backward(ws.pred, WIN_AT, ws.cat, ws.dMemZ, ws.tm, ws.dNow, ws.grads);
+			for (int i = 0; i < CAT; i++) {
+				ws.dCat[i] += ws.dNow[i];
+			}
 		}
 		vecWideOut.backward(ws.wide, 0, ws.dOld, 0, ws.dWide, 0, ws.grads);
 		gate(ws.dWide, ws.wide);
@@ -579,6 +712,21 @@ public final class SchoolNet {
 			s += (double) v * v;
 		}
 		for (float v : seenHeads.weight.w) {
+			s += (double) v * v;
+		}
+		return (float) Math.sqrt(s);
+	}
+
+	/**
+	 * Run 109: the size of the layers the memory's summary enters by (root of the sum of squares): 0 until the network starts to
+	 * read its memory.
+	 */
+	public float memoryWeightNorm() {
+		double s = 0;
+		for (float v : memNew.weight.w) {
+			s += (double) v * v;
+		}
+		for (float v : memHeads.weight.w) {
 			s += (double) v * v;
 		}
 		return (float) Math.sqrt(s);

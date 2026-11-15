@@ -53,6 +53,8 @@ public final class TeacherReplay {
 	private final float[][] vec;
 	private final float[][] mem;
 	private final float[][] pred;
+	/** Run 109: the window of the side input, as bytes (SchoolNet#keepWindow). */
+	private final byte[][] win;
 	private final float[][] target;
 	private final byte[][] cond;
 	private final int[] heads;
@@ -69,16 +71,35 @@ public final class TeacherReplay {
 	public TeacherReplay(int capacity, boolean shadow) {
 		this.capacity = capacity;
 		this.shadow = shadow;
-		peri = new byte[capacity][ObsSpec.PERI_SIZE];
-		fovea = new byte[capacity][ObsSpec.FOVEA_SIZE];
-		vec = new float[capacity][ObsSpec.VEC];
-		mem = new float[capacity][SchoolObs.MEM];
-		pred = new float[capacity][SchoolNet.SIDE];
-		target = new float[capacity][ActionSpace.TOTAL_LOGITS];
-		cond = new byte[capacity][ActionSpace.HEADS];
+		peri = new byte[capacity][];
+		fovea = new byte[capacity][];
+		vec = new float[capacity][];
+		mem = new float[capacity][];
+		pred = new float[capacity][];
+		win = new byte[capacity][];
+		target = new float[capacity][];
+		cond = new byte[capacity][];
 		heads = new int[capacity];
 		technique = new int[capacity];
 		ruleOf = new int[capacity];
+	}
+
+	/**
+	 * Run 109: the row {@code j} made when it is first written, not all of them up front, so a replay takes memory as it fills (the
+	 * four of them held 330 MB from the first update on, whatever they held; the core tests have 384 MB).
+	 */
+	private void row(int j) {
+		if (peri[j] != null) {
+			return;
+		}
+		peri[j] = new byte[ObsSpec.PERI_SIZE];
+		fovea[j] = new byte[ObsSpec.FOVEA_SIZE];
+		vec[j] = new float[ObsSpec.VEC];
+		mem[j] = new float[SchoolObs.MEM];
+		pred[j] = new float[SchoolNet.SIDE_KEPT];
+		win[j] = new byte[SchoolNet.MEMORY ? SchoolNet.WIN : 0];
+		target[j] = new float[ActionSpace.TOTAL_LOGITS];
+		cond[j] = new byte[ActionSpace.HEADS];
 	}
 
 	public int size() {
@@ -167,13 +188,15 @@ public final class TeacherReplay {
 				continue;
 			}
 			int j = next;
+			row(j);
 			next = (next + 1) % capacity;
 			size = Math.min(capacity, size + 1);
 			System.arraycopy(r.peri[i], 0, peri[j], 0, ObsSpec.PERI_SIZE);
 			System.arraycopy(r.fovea[i], 0, fovea[j], 0, ObsSpec.FOVEA_SIZE);
 			System.arraycopy(r.vec[i], 0, vec[j], 0, ObsSpec.VEC);
 			System.arraycopy(r.mem[i], 0, mem[j], 0, SchoolObs.MEM);
-			System.arraycopy(r.pred[i], 0, pred[j], 0, SchoolNet.SIDE);
+			System.arraycopy(r.pred[i], 0, pred[j], 0, SchoolNet.SIDE_KEPT);
+			System.arraycopy(r.win[i], 0, win[j], 0, win[j].length);
 			System.arraycopy(r.teacher[i], 0, target[j], 0, ActionSpace.TOTAL_LOGITS);
 			for (int k = 0; k < ActionSpace.HEADS; k++) {
 				// Its own key where it is one the teacher asks for (one of several alike), else the teacher's.
@@ -234,13 +257,15 @@ public final class TeacherReplay {
 				continue;
 			}
 			int j = next;
+			row(j);
 			next = (next + 1) % capacity;
 			size = Math.min(capacity, size + 1);
 			System.arraycopy(r.peri[i], 0, peri[j], 0, ObsSpec.PERI_SIZE);
 			System.arraycopy(r.fovea[i], 0, fovea[j], 0, ObsSpec.FOVEA_SIZE);
 			System.arraycopy(r.vec[i], 0, vec[j], 0, ObsSpec.VEC);
 			System.arraycopy(r.mem[i], 0, mem[j], 0, SchoolObs.MEM);
-			System.arraycopy(r.pred[i], 0, pred[j], 0, SchoolNet.SIDE);
+			System.arraycopy(r.pred[i], 0, pred[j], 0, SchoolNet.SIDE_KEPT);
+			System.arraycopy(r.win[i], 0, win[j], 0, win[j].length);
 			java.util.Arrays.fill(target[j], 0f);
 			for (int k = 0; k < ActionSpace.HEADS; k++) {
 				target[j][ActionSpace.OFFSETS[k] + r.action[i][k]] = 1f;
@@ -347,7 +372,7 @@ public final class TeacherReplay {
 				if (w <= 0f) {
 					continue;
 				}
-				actor.forward(ws, peri[i], fovea[i], vec[i], mem[i], pred[i]);
+				actor.forwardKept(ws, peri[i], fovea[i], vec[i], mem[i], pred[i], win[i]);
 				actor.condition(ws, cond[i]);
 				java.util.Arrays.fill(ws.dLogits, 0f);
 				for (int h = 0; h < ActionSpace.HEADS; h++) {
