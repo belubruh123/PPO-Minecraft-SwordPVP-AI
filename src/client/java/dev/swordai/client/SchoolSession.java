@@ -1194,6 +1194,27 @@ public final class SchoolSession implements AgentSession {
 	 * taken, their runs of 2+ crits in a row (no hit of its own between) and the longest; the run open now.
 	 */
 	private boolean fightReplica;
+	/**
+	 * Run 103 (the user, 15 Nov: "search for PVP bot online that is design to train you PvP and use it to train this AI"): OUTSIDE_SHARE of the
+	 * full training fights, where the game runs on Carpet PvP (ArenaServer.hasBotCommand; see tools/carpet-pvp-switch.sh, run/carpet-pvp.on),
+	 * are against Carpet PvP's own sword bot, an opponent not written here, at "skilled" or "expert" (OUTSIDE_LEVELS, drawn), with this kit
+	 * and arena. Not in the paired checks (OUTSIDE_IN_CHECKS is not wired: checks stay comparable) nor in scenes or reviews; kept out of the
+	 * bots' tallies and the stages' progress, and its fights leave no scenes (Carpet PvP's bot cannot be replayed from a scene).
+	 */
+	static final float OUTSIDE_SHARE = 0.15f;
+	static final String[] OUTSIDE_LEVELS = {"skilled", "expert"};
+	static final boolean OUTSIDE_IN_CHECKS = false;
+	/** This fight is against the outside bot; and since the last update: fights, won, lost, damage dealt and taken. */
+	private boolean fightOutside;
+	private int obFights, obWon, obLost;
+	private float obDealt, obTaken;
+	/** Its hits taken on the ground, those that knocked it far (away speed >= OB_AWAY within OB_WINDOW ticks), their combos and its own of 3+. */
+	private int obHitsOnGround, obKnockedFar, obTheirCombos3, obOwnCombos3, obSinceHit = 1000, obTheirRow;
+	private double obAwayMost;
+	private boolean obHitCounted = true;
+	private int obLastTheirHit = -1000;
+	static final double OB_AWAY = 0.55;
+	static final int OB_WINDOW = 5;
 	private int rpFights, rpWon, rpLost, rpPunish, rpBack12, rpBack30, rpBackCrit30, rpCrits, rpRows2, rpRowMost, rpRow;
 	private float rpDealt, rpTaken;
 	private int rpSince = 1000;
@@ -1324,6 +1345,10 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | run 100, crit spammer replica (share %.2f): fights %d (won %d, lost %d), HP net a fight %+.1f (dealt %.1f, taken %.1f); after its %d punish crits there, hit back within 12 ticks %d, within 30 %d (crits %d; lost real rounds: 79%% within 12); their crits %d, runs of 2+ in a row %d, longest %d",
 						CRIT_SPAMMER_SHARE, rpFights, rpWon, rpLost, rpFights > 0 ? (rpDealt - rpTaken) / rpFights : 0.0, rpFights > 0 ? rpDealt / rpFights : 0.0,
 						rpFights > 0 ? rpTaken / rpFights : 0.0, rpPunish, rpBack12, rpBack30, rpBackCrit30, rpCrits, rpRows2, rpRowMost)
+				+ String.format(Locale.ROOT, " | outside bot (Carpet PvP, share %.2f%s): fights %d (won %d, lost %d), HP net a fight %+.1f (dealt %.1f, taken %.1f); its hits taken on the ground %d, of them it went away >= %.2f blocks/tick within %d ticks %d; their combos of 3+ %d, its own of 3+ %d",
+						OUTSIDE_SHARE, ArenaServer.hasBotCommand(mc.getSingleplayerServer()) ? "" : ", game has no /bot: none", obFights, obWon, obLost, obFights > 0 ? (obDealt - obTaken) / obFights : 0.0,
+						obFights > 0 ? obDealt / obFights : 0.0, obFights > 0 ? obTaken / obFights : 0.0, obHitsOnGround, OB_AWAY, OB_WINDOW, obKnockedFar,
+						obTheirCombos3, obOwnCombos3)
 				+ String.format(Locale.ROOT, " | run 102, late-jump guard (on %s): its own jumps taken away in the %d ticks after a ground hit %d, the rules' jump resets on the hit tick %d (A's rules, training and checks, since the restart)",
 						LATE_JUMP_GUARD, dev.swordai.core.rl.Fighter.LATE_JUMP_TICKS, installed != null ? installed.fighter.lateJumpStripped() : 0, installed != null ? installed.fighter.resetTakeOffs() : 0)
 				+ String.format(Locale.ROOT, " | run 101, crit-back read (on %s; 2+ crits back within %d ticks of its punish crits in the fight): fights it switched the rules' punish crit off in %d, windows %d, lift ticks %d, there the network swung %d times: sprint hits %d, crits %d, other hits %d; HP dealt %.1f, taken %.1f",
@@ -1378,6 +1403,8 @@ public final class SchoolSession implements AgentSession {
 		readDealt = readTaken = 0.0;
 		rpFights = rpWon = rpLost = rpPunish = rpBack12 = rpBack30 = rpBackCrit30 = rpCrits = rpRows2 = rpRowMost = 0;
 		rpDealt = rpTaken = 0f;
+		obFights = obWon = obLost = obHitsOnGround = obKnockedFar = obTheirCombos3 = obOwnCombos3 = 0;
+		obDealt = obTaken = 0f;
 		t6AfterTaught = t6AfterBack = 0;
 		t1cJumps = t1cHits = t1cSprintHits = 0;
 		java.util.Arrays.fill(t1cJumpByLanding, 0);
@@ -2594,7 +2621,7 @@ public final class SchoolSession implements AgentSession {
 	private void keepScene(int start, int kind) {
 		// A league fight's scene would be fought again against the installed model, a different opponent from its start on.
 		// Run 93: nor a comboable fight's (its scene would come back against the straight sprinter's style).
-		if (rivalNow > 0 || fightComboable || fightTicks - start >= histTick.length - 1 || countKind(kind) >= SCENES_ACTIVE) {
+		if (rivalNow > 0 || fightComboable || fightOutside || fightTicks - start >= histTick.length - 1 || countKind(kind) >= SCENES_ACTIVE) {
 			return;
 		}
 		float sum = 0f;
@@ -3566,6 +3593,7 @@ public final class SchoolSession implements AgentSession {
 		fightComboable = false;
 		fightBreaker = false;
 		fightReplica = false;
+		fightOutside = false;
 		rivalNow = 0;
 		if (review >= 0) {
 			// The old stage's own episode: its bot (standing, strafing, hopping out of view, fighting) at a skill drawn from
@@ -3677,7 +3705,22 @@ public final class SchoolSession implements AgentSession {
 			}
 			plan.rivalIndex = rivalNow;
 			boolean fullTrainFight = mode == Mode.TRAIN && benchNow < 0 && sceneNow == null && !drill && !sparFight && rivalNow == 0;
-			if (CRIT_SPAMMER_SHARE > 0f && fullTrainFight && rng.nextFloat() < CRIT_SPAMMER_SHARE) {
+			if (OUTSIDE_SHARE > 0f && fullTrainFight && ArenaServer.hasBotCommand(server) && rng.nextFloat() < OUTSIDE_SHARE) {
+				// Run 103: a full fight against Carpet PvP's sword bot (see OUTSIDE_SHARE); ArenaServer.setOutside hands it the arena's bot.
+				fightOutside = true;
+				fightBot = Specialists.STRAIGHT_SPRINTER;
+				fightVaried = false;
+				fightStyle = styleOf(fightBot, fightStyleSeed, false);
+				plan.style = null;
+				plan.bot.outside = OUTSIDE_LEVELS[rng.nextInt(OUTSIDE_LEVELS.length)];
+				plan.bot.movement = dev.swordai.core.curriculum.BotProfile.FIGHT;
+				plan.bot.fleeChance = 0f;
+				plan.bot.minDistance = 4f;
+				plan.bot.maxDistance = 9f;
+				plan.bot.maxBearingDeg = dev.swordai.core.curriculum.BotProfile.DRILL_BEARING_DEG;
+				plan.bot.minBearingDeg = 0f;
+				plan.bot.maxPillar = 0;
+			} else if (CRIT_SPAMMER_SHARE > 0f && fullTrainFight && rng.nextFloat() < CRIT_SPAMMER_SHARE) {
 				// Run 100: a full fight against the crit spammer replica (Specialists#critSpammer), see CRIT_SPAMMER_SHARE. It stands in the
 				// double critter's slot (its techniques are T1/T1a/T1c), kept out of that bot's tallies and the stages' progress (endFight).
 				fightReplica = true;
@@ -3812,6 +3855,10 @@ public final class SchoolSession implements AgentSession {
 		readWas = false;
 		readSwitchedThisFight = false;
 		rpRow = 0;
+		obSinceHit = 1000;
+		obHitCounted = true;
+		obTheirRow = 0;
+		obLastTheirHit = -1000;
 		// An own-combo scene starts the tick after its first hit: a hit within COMBO_GAP is that combo's follow-up (COMBO_HIT).
 		boolean ownScene = sceneNow != null && (sceneNow.kind == KIND_OWN || sceneNow.kind == KIND_OWN2);
 		lastOwnHitAt = ownScene ? -1 : -1000;
@@ -4279,7 +4326,7 @@ public final class SchoolSession implements AgentSession {
 		observer.fillObs(step.obs.base, mc, me, bot, truth, facts, hasLastAction ? lastAction : null,
 				review >= 0 ? basics[review].headMask : ActionSpace.ALL_HEADS, review >= 0 ? BASIC_OLD[review] : 9, clock, motor, idea);
 		System.arraycopy(reader.memory(), 0, step.obs.mem, 0, step.obs.mem.length);
-		step.obs.setOpponent(botTechnique, review >= 0 || sparFight ? null : fightStyle.p, review >= 0 || sparFight ? -1 : fightBot);
+		step.obs.setOpponent(botTechnique, review >= 0 || sparFight || fightOutside ? null : fightStyle.p, review >= 0 || sparFight || fightOutside ? -1 : fightBot);
 
 		lastTruthFalling = truth.botFalling();
 		if (hasLastAction) {
@@ -4368,6 +4415,37 @@ public final class SchoolSession implements AgentSession {
 					pcBack30++;
 					pcBack12 += pcAnySince <= 12 ? 1 : 0;
 					pcBackCrit30 += facts.critsTaken > 0 ? 1 : 0;
+				}
+				if (fightOutside && mode == Mode.TRAIN && sceneNow == null) {
+					// Run 103: against Carpet PvP's bot: its hits taken on the ground and how far they sent it, and their runs of 3+.
+					if (facts.hitsDealt > 0 && truth.botOnGround()) {
+						obHitsOnGround++;
+						obSinceHit = 0;
+						obHitCounted = false;
+						obAwayMost = 0.0;
+					} else if (obSinceHit < 1000) {
+						obSinceHit++;
+					}
+					if (!obHitCounted && obSinceHit <= OB_WINDOW) {
+						dev.swordai.core.pvp.Body them = reader.duel.them;
+						double dx = them.x - mc.player.getX(), dz = them.z - mc.player.getZ();
+						double len = Math.sqrt(dx * dx + dz * dz);
+						if (len > 1e-6) {
+							obAwayMost = Math.max(obAwayMost, (them.vx * dx + them.vz * dz) / len);
+						}
+						if (obAwayMost >= OB_AWAY) {
+							obHitCounted = true;
+							obKnockedFar++;
+						}
+					}
+					if (facts.hitsTaken > 0) {
+						obTheirRow = fightTicks - obLastTheirHit <= COMBO_GAP ? obTheirRow + 1 : 1;
+						obLastTheirHit = fightTicks;
+						obTheirCombos3 += obTheirRow == 3 ? 1 : 0;
+					}
+					if (facts.hitsDealt > 0 && facts.hitsTaken == 0) {
+						obTheirRow = 0;
+					}
 				}
 				if (fightReplica && mode == Mode.TRAIN && sceneNow == null) {
 					// Run 100: against the crit spammer replica, what came after its punish crits, and their crits in a row.
@@ -4530,6 +4608,7 @@ public final class SchoolSession implements AgentSession {
 						comboPay += COMBO_HIT + (rewardRow >= 3 ? COMBO_HIT3 : 0f);
 						comboHitsPaid++;
 						combo3Paid += rewardRow >= 3 ? 1 : 0;
+						obOwnCombos3 += fightOutside && mode == Mode.TRAIN && sceneNow == null && rewardRow == 3 ? 1 : 0;
 						if (fightComboable) {
 							// Run 93 (14 Nov ~02:00): a combo held against the comboable bot, the 4th hit on, pays LONG_COMBO more; its runs counted.
 							if (rewardRow >= LONG_COMBO_FROM) {
@@ -6074,6 +6153,13 @@ public final class SchoolSession implements AgentSession {
 			comboableFights++;
 			holdRuns[fightBreaker ? 1 : 0][0]++;
 		}
+		if (fightOutside && mode == Mode.TRAIN && sceneNow == null) {
+			obFights++;
+			obWon += won ? 1 : 0;
+			obLost += lost ? 1 : 0;
+			obDealt += fightDealt;
+			obTaken += fightTaken;
+		}
 		if (fightReplica && mode == Mode.TRAIN && sceneNow == null) {
 			// Run 100: the crit spammer replica's full fights (its scenes are not counted here).
 			rpFights++;
@@ -6108,7 +6194,7 @@ public final class SchoolSession implements AgentSession {
 		// Full fights only: a scene starts at a moment it was crit and so loses by design; with them in, the damage curve fell
 		// the moment the scenes came in (26 Oct 09:41) while the full fights had not got worse. The scenes have their own line.
 		// Run 93: not a comboable fight (it stands in the straight sprinter's slot and would make that bot look easy).
-		if (review < 0 && sceneNow == null && !fightComboable && !fightReplica && fightBot >= 0 && fightBot < Specialists.KINDS) {
+		if (review < 0 && sceneNow == null && !fightComboable && !fightReplica && !fightOutside && fightBot >= 0 && fightBot < Specialists.KINDS) {
 			botDealt[fightBot] += fightDealt;
 			botTaken[fightBot] += fightTaken;
 			botTicks[fightBot] += fightTicks;
@@ -6230,7 +6316,7 @@ public final class SchoolSession implements AgentSession {
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school fight %s: dealt %.1f, taken %.1f, ticks %d%s", sparName(), fightDealt,
 					fightTaken, fightTicks, result));
 		} else {
-			if (!fightComboable && !fightReplica) {
+			if (!fightComboable && !fightReplica && !fightOutside) {
 				stages.fight(fightBot, fightDealt, fightTaken, fightTicks);
 			}
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school fight %s: dealt %.1f, taken %.1f, ticks %d%s, teacher spoke on %d ticks; %s",
