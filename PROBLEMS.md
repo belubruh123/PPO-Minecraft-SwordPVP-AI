@@ -1470,3 +1470,15 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - The rounds' rule letters show those late jumps were the network's own ("c" is only the camera after a hit).
   - In the checks its own jumps after hits are rare (own 0-1 = 0), so the late jumps are a real-game behaviour.
   - Run 102 (the late-jump guard) is in EXPERIMENTS.md.
+
+## 15 Nov 13:09 check: the first with run 102 (the late-jump guard)
+
+- **ROUNDS WON: A 20/45, B 20/45, z 0.** Net A-B +3.7 HP a fight (se 5.2). Dealt/taken: A 385 / 410, B 366 / 412.
+- Their third hit: **A 44% (31 of 71), B 31% (25 of 80), worse.** It was 20% vs 31% at 10:49 and 39% vs 37% at 12:00. Outside their combo: A swung 55%, off 32%; B swung 56%, off 30%.
+- Take-offs: A rule 27, technique 4, own 0-1 0/0, own 2-12 1, own other 12; B rule 18.
+- The late-jump guard took away 351 of its own jumps since the counters reset.
+- **Watch:**
+  - In the real rounds its own late jumps were knocked far (stun-like), but the opponent's next hit within 15 ticks came only 7% (W) / 21% (S) of the time, against 33% with no jump. They were also a way out of the combo.
+  - Taking them away may leave it in their combo more. One check is noisy (z about 1.6 on the third hit); judge after the next check.
+  - If the third hit stays worse, the document's answer is C3 done right ("hold S right before you get stunned") and C4. A late jump is not the answer.
+- Punish crit chances critted 67% (above the 50-65% band).
