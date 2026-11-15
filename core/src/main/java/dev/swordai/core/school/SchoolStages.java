@@ -298,7 +298,7 @@ public final class SchoolStages {
 	 * Run 102 (the user, 15 Nov 12:00: no jump reset unless certain, above 95%): its own jump resets (T9a-c) are not taught; in real
 	 * rounds its own were 1-3 ticks late and knocked it far 44-88%, the rules' JumpReset on the hit tick 5%.
 	 */
-	public static final boolean JUMP_RESETS_TAUGHT = false;
+	public static final boolean JUMP_RESETS_TAUGHT = true; // run 104c (the user, 17:55, lists T9a-c; the late-jump guard stays)
 	/**
 	 * Run 89b (13 Nov 20:00): run 89's teacher shows T6 (make them miss) after its punish crit (Teacher.T6_AFTER_PUNISH), but T6 was
 	 * not in RUN_TAUGHT, so techPulls gave its moments a pull of 0 and the network was never pulled toward it (its own S on 58 of 737
@@ -345,10 +345,10 @@ public final class SchoolStages {
 	 * chances critted). The rules do not give way to any of them (RULES_YIELD stays off).
 	 */
 	public static final boolean ALL_TO_70 = true;
-	/** The user's least for every included technique (15 Nov 15:15): 70%. */
-	public static final float USER_LEAST = 0.7f;
-	/** Under this the priority grows much faster (the user: "Prioritize all the ones that are lower then 50%"). */
-	public static final float HALF = 0.5f;
+	/** Run 104c (the user, 17:55): the listed ones up to 90% ("unless the ones on list are all above 90"); was 70%. */
+	public static final float USER_LEAST = 0.9f;
+	/** Under this the priority grows much faster (run 104c, the user: "make all at least above 60%"; was 50%). */
+	public static final float HALF = 0.6f;
 	public static final float UNDER_HALF_WEIGHT = 4f;
 	/** The starters and the crits (the user: "Especially starting combo and crit"). */
 	public static final float FAVOURED_WEIGHT = 1.5f;
@@ -369,30 +369,47 @@ public final class SchoolStages {
 	public static boolean later(int t) {
 		return t >= 0 && t < Technique.COUNT && LATER[t];
 	}
+	/** Run 104c: the user's emphasis per technique (multiplies the priority; 1 = as FAVOURED or not). */
+	static final float[] WEIGHT = new float[Technique.COUNT];
+
+	static {
+		java.util.Arrays.fill(WEIGHT, 1f);
+	}
+
 	/** Run 104's newly taught techniques (pull 0 until now). */
 	static final boolean[] RUN104_TAUGHT = new boolean[Technique.COUNT];
 
 	static {
-		for (Technique t : new Technique[] {Technique.C2, Technique.C3, Technique.C4, Technique.T9, Technique.T9A, Technique.T9B, Technique.T9C}) {
-			EXCLUDED[t.ordinal()] = true; // C5 has no moment of its own (no Technique)
+		// Run 104c (the user, 15 Nov 17:55): "prioritize all skill now and make all at least above 60% ... These are ones to prioritize:
+		// T4, T5, T6, T6a, T7, T9 ("IMPORTANT AND ALWAYS DO IT CORRECT AND IF NO CONFIDENCE ON THAT ONE DONT DO IT"), T10, T11a, T11b, T2,
+		// B1, T1 ("USEFUL FOR CRITTING IMPORTANT"), T1a, T1c ("AS IMPORTANT AS T1"), C6 ("HEAVILY PRIORITIZE AS CRIT COMBER"), K2, K3, T9a,
+		// T9b ("only 2 percent so improve it"), T9c, C1, C2, C7 ... rest can no need to be learn unless the ones on list are all above 90".
+		// So every other technique (T1b, T8, T11c, C3, C4, ...) is EXCLUDED (priority 0, no lesson of run 104's) for now.
+		for (Technique t : Technique.ALL) {
+			EXCLUDED[t.ordinal()] = true;
 		}
-		for (Technique t : new Technique[] {Technique.B1, Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2, Technique.C1,
-				Technique.T4, Technique.T5, Technique.T6, Technique.T6A, Technique.T7, Technique.T8, Technique.C6, Technique.C7, Technique.K2,
-				Technique.K3}) {
+		for (Technique t : new Technique[] {Technique.T4, Technique.T5, Technique.T6, Technique.T6A, Technique.T7, Technique.T9, Technique.T10,
+				Technique.T11A, Technique.T11B, Technique.T2, Technique.B1, Technique.T1, Technique.T1A, Technique.T1C, Technique.C6, Technique.K2,
+				Technique.K3, Technique.T9A, Technique.T9B, Technique.T9C, Technique.C1, Technique.C2, Technique.C7}) {
 			INCLUDED[t.ordinal()] = true;
+			EXCLUDED[t.ordinal()] = false;
 		}
 		// Run 104b (the user, 15 Nov 16:00: "Counter jump in skill shoudl be learned later. Teach crit and combo starting as main
 		// first"): the crits (T1, T1a, T1b, T1c, T2, C6, B1) and the stun starters (T4, T5, T6, T6a, T7) are the main ones; T8 (hit the
 		// rising jumper) moves to LATER with K2 and K3, the jump-in counters; C1 and C7 are secondary.
 		for (Technique t : new Technique[] {Technique.T4, Technique.T5, Technique.T6, Technique.T6A, Technique.T7, Technique.T1,
-				Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2, Technique.C6, Technique.B1}) {
+				Technique.T1A, Technique.T1C, Technique.T2, Technique.C6, Technique.B1, Technique.T9, Technique.T9A, Technique.T9B, Technique.T9C,
+				Technique.T10, Technique.T11A, Technique.T11B}) {
 			FAVOURED[t.ordinal()] = true;
 		}
-		for (Technique t : new Technique[] {Technique.T8, Technique.K2, Technique.K3}) {
-			LATER[t.ordinal()] = true;
-		}
-		for (Technique t : new Technique[] {Technique.T1, Technique.T1A, Technique.T1B, Technique.T2, Technique.C6, Technique.C1, Technique.C7,
-				Technique.T6A, Technique.K2}) {
+		// Run 104c: the user's emphasis on top of FAVOURED: C6 heavily, T1 and T1c important, T9b up from 2%.
+		WEIGHT[Technique.C6.ordinal()] = 3f;
+		WEIGHT[Technique.T1.ordinal()] = 2f;
+		WEIGHT[Technique.T1C.ordinal()] = 2f;
+		WEIGHT[Technique.T9B.ordinal()] = 2f;
+		// T8 is not on the user's list (excluded); K2 and K3 are on it again (no longer LATER).
+		for (Technique t : new Technique[] {Technique.T1, Technique.T1A, Technique.T2, Technique.C6, Technique.C1, Technique.C7,
+				Technique.T6A, Technique.K2, Technique.T9A, Technique.T9C, Technique.C2}) {
 			RUN104_TAUGHT[t.ordinal()] = true;
 		}
 	}
@@ -431,6 +448,17 @@ public final class SchoolStages {
 		}
 		if (technique == Technique.K2.ordinal()) {
 			return K2_GATED_HEADS;
+		}
+		// Run 104c: T9a (jump as it lands, in their combo's rhythm): its jump keys; T9c (hit as they enter reach and jump with it): the
+		// crit keys; C2 (hold S when the double crit is sprint-hit): W/S alone.
+		if (technique == Technique.T9A.ordinal()) {
+			return T9A_GATED_HEADS;
+		}
+		if (technique == Technique.T9C.ordinal()) {
+			return CRIT_GATED_HEADS;
+		}
+		if (technique == Technique.C2.ordinal()) {
+			return dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.FORWARD);
 		}
 		return STARTER_GATED_HEADS; // C1, C7, T6a: sprint hits and the strafe, no jump
 	}
@@ -845,7 +873,7 @@ public final class SchoolStages {
 		}
 		float r = priorityRate(t);
 		float gap = Math.max(0f, USER_LEAST - r);
-		float w = gap * (1f + UNDER_HALF_WEIGHT * Math.max(0f, HALF - r)) * (favoured(t) ? FAVOURED_WEIGHT : SECONDARY_WEIGHT);
+		float w = gap * (1f + UNDER_HALF_WEIGHT * Math.max(0f, HALF - r)) * (favoured(t) ? FAVOURED_WEIGHT : 1f) * WEIGHT[t];
 		return Math.max(REVIEW_PRIORITY, w);
 	}
 

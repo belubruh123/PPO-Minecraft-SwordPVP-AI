@@ -48,7 +48,8 @@ public final class ComboHolder {
 	/** How often each hold is drawn for a follow-up (the lunge also comes whenever they back out, see {@link #awayNow}). */
 	// Run 97b (14 Nov ~21:55, the user: "I prefer uppercuts ... dont use hop when combo"): the hop share (0.16; 0 hits landed from hops in 262 updates)
 	// goes to the uppercut (82% of its uppercut holds were followed by its own next hit first).
-	public static final float[] WEIGHTS = {0.2f, 0.2f, 0.2f, 0f, 0.3f, 0.1f};
+	// Run 104c (the user, 15 Nov 17:55, lists T11b hops among the skills to learn): hops 0 -> 0.1 (W-tap, S-tap 0.2 -> 0.15).
+	public static final float[] WEIGHTS = {0.15f, 0.15f, 0.2f, 0.1f, 0.3f, 0.1f};
 	/** In its own combo while its last hit is at most this old (SchoolSession.COMBO_GAP). */
 	public static final int COMBO_GAP = 20;
 	/** The sword comes back about this much a tick (Body.SWORD_TICKS 12.5). */

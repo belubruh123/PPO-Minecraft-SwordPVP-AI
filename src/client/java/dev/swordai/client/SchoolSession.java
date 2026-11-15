@@ -236,7 +236,8 @@ public final class SchoolSession implements AgentSession {
 		// double crits and C6 are: when they hit back before its jump, reason 4 lapsed and its jump was charged and taught "no jump".
 		if (told == Technique.K3 || told == Technique.T1 || told == Technique.T1C || told == Technique.C6
 				|| SchoolStages.ALL_TO_70 && told == Technique.T2
-				|| !LATE_JUMP_GUARD && (told == Technique.T9A || told == Technique.T9B || told == Technique.T9C)) {
+				|| (!LATE_JUMP_GUARD || dev.swordai.core.school.SchoolStages.JUMP_RESETS_TAUGHT)
+						&& (told == Technique.T9A || told == Technique.T9B || told == Technique.T9C)) {
 			return 2;
 		}
 		// Run 102: its own jump reset is not needed (its own were 1-3 ticks late in real rounds and knocked it far 44-88%): the rules'
@@ -254,7 +255,10 @@ public final class SchoolSession implements AgentSession {
 			return true;
 		}
 		Technique t = learner.told();
-		return !LATE_JUMP_GUARD && (t == Technique.T9A || t == Technique.T9B || t == Technique.T9C) || t == Technique.T10 || t == Technique.T11A
+		// Run 104c: the told T9a-c (predicted jumps: on landing in their rhythm, after its own attack, with its own hit) are technique jumps
+		// again (the user lists them, 17:55); its own late reaction jump after a hit stays stripped (Fighter.lateJumpGuard).
+		return (!LATE_JUMP_GUARD || dev.swordai.core.school.SchoolStages.JUMP_RESETS_TAUGHT) && (t == Technique.T9A || t == Technique.T9B
+				|| t == Technique.T9C) || t == Technique.T10 || t == Technique.T11A
 				|| t == Technique.T11B || t == Technique.T11C || t == Technique.K3 || t == Technique.T1C || t == Technique.C6
 				|| SchoolStages.ALL_TO_70 && t == Technique.T2;
 	}

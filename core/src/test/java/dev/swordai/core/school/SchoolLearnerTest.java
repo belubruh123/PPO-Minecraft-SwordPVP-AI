@@ -296,7 +296,8 @@ class SchoolLearnerTest {
 	@Test
 	void aGatedLessonStaysWithItsTechnique() {
 		float[][] change = new float[2][];
-		Technique[] taught = {Technique.B1, Technique.C2};
+		// Run 104c: C2 has its own layer now (the user's list, 15 Nov 17:55); T6 is the technique with none (taught, not gated).
+		Technique[] taught = {Technique.B1, Technique.T6};
 		for (int g = 0; g < 2; g++) {
 			SchoolLearner l = new SchoolLearner(4L, 600, 0.99f, 0.95f, 2);
 			l.teacherForcing = 1f;

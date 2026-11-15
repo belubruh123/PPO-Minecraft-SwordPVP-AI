@@ -139,7 +139,9 @@ class JumpAlongTest {
 		float[] pulls = st.techPulls();
 		for (Technique t : Technique.ALL) {
 			int i = t.ordinal();
-			if (SchoolStages.included(i)) {
+			// Run 104c: T9 (the reaction jump reset on the hit tick) is the rules' JumpReset (95% right in real rounds); the network's own
+			// is a frame late, so it is measured and prioritised but not copied.
+			if (SchoolStages.included(i) && t != Technique.T9) {
 				assertTrue(pulls[i] > 0f, t + " is pulled");
 				if (t != Technique.B1 && t != Technique.T6) {
 					assertTrue(SchoolStages.gatedHeads(i) != 0, t + " has its own layer");

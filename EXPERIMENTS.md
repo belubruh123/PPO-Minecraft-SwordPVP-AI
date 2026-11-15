@@ -2006,3 +2006,19 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **Revert:** C1_BEFORE_B1 = 0 if B1's punish crit chances critted fall under 50%. T1B_SHARE = -1 if T1b's moments fall under 1 an update.
 - **Not fixed, a lead:** in the decider's fights (15% of full fights, half the scenes), a told starter (T4/T7) now drives its own strong layer (W, sprint, swing) at a teacher's T6/T1c/B1 moment. Before run 104 the starters had no layer.
 - **Checks (me):** compile-check OK on all 5 changed files (only the known class_6880 error). Core tests in the worktree: 61 found, 59 passed, 2 aborted, 0 failed. The 2 aborts are assumptions on checkpoint files that this worktree does not have (ChooserTest, SchoolNetTest).
+
+## Run 104c (15 Nov 18:05): the user's own skill list (17:55)
+
+- **The user's list, priority and lessons:** T4, T5, T6, T6a, T7, T9, T10, T11a, T11b, T2, B1, T1, T1a, T1c, C6, K2, K3, T9a, T9b, T9c, C1, C2, C7.
+  - Every other technique is excluded for now ("rest can no need to be learn unless the ones on list are all above 90"): T1b, T8, T11c, C3, C4 and the rest.
+  - The target is 90%, with the strong push under 60% ("make all at least above 60%").
+  - FAVOURED x1.5: the starters, the crits, the T9 family, T10, T11a and T11b.
+  - The user's emphasis on top of that: C6 x3 ("HEAVILY PRIORITIZE AS CRIT COMBER"), T1 x2 and T1c x2 ("IMPORTANT"), T9b x2 ("only 2 percent so improve it").
+  - K2 and K3 are back in (no longer LATER).
+- **The jump resets T9a/T9b/T9c are taught again** (JUMP_RESETS_TAUGHT): T9a through T9A_GATED_HEADS, T9c through CRIT_GATED_HEADS, T9b as before. These are predicted jumps (on landing in their rhythm, after its own attack, with its own hit), so the network can time them.
+  - T9, the reaction jump reset on the hit tick, stays the rules' JumpReset (95% right in real rounds). The late-jump guard (run 102) still strips its own reaction jumps 1-3 ticks after a ground hit.
+  - The told T9a-c count as needed near-fight jumps again.
+  - The user: "ALWAYS DO IT CORRECT AND IF NO CONFIDENCE ON THAT ONE DONT DO IT". Before any install, the real game needs a confidence gate on its own T9a-c (only where its measured success is 95%+).
+- **C2 (hold S when its double crit is sprint-hit)** is taught through its own W/S layer. ComboHolder hops 0 -> 0.1 (T11b is on the list).
+- **No data on the dashboard for T10/T11:** their moments (own-combo holds) are not counted in the stage's "done" moments, so the dashboard shows "-". To do: count them.
+- **Tests:** SchoolLearnerTest's ungated example is now T6 (C2 is gated). Core tests: 60 passed, 1 aborted, 0 failed.
