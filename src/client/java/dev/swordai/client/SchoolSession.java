@@ -232,7 +232,10 @@ public final class SchoolSession implements AgentSession {
 		if (!reader.duel.them.onGround && facts.reachDist <= CRIT_EXCHANGE_DIST && clock.ticksSinceHitDealt > CRIT_EXCHANGE_AFTER_HIT) {
 			return 1;
 		}
+		// Run 104: the told standing crit (T2, "as soon as the hit lands, jump straight up and crit them on your way down") too, as the
+		// double crits and C6 are: when they hit back before its jump, reason 4 lapsed and its jump was charged and taught "no jump".
 		if (told == Technique.K3 || told == Technique.T1 || told == Technique.T1C || told == Technique.C6
+				|| SchoolStages.ALL_TO_70 && told == Technique.T2
 				|| !LATE_JUMP_GUARD && (told == Technique.T9A || told == Technique.T9B || told == Technique.T9C)) {
 			return 2;
 		}
@@ -252,7 +255,8 @@ public final class SchoolSession implements AgentSession {
 		}
 		Technique t = learner.told();
 		return !LATE_JUMP_GUARD && (t == Technique.T9A || t == Technique.T9B || t == Technique.T9C) || t == Technique.T10 || t == Technique.T11A
-				|| t == Technique.T11B || t == Technique.T11C || t == Technique.K3 || t == Technique.T1C || t == Technique.C6;
+				|| t == Technique.T11B || t == Technique.T11C || t == Technique.K3 || t == Technique.T1C || t == Technique.C6
+				|| SchoolStages.ALL_TO_70 && t == Technique.T2;
 	}
 	/**
 	 * Run 68 (10 Nov, PROBLEMS.md 4, agent 6): the T1c window's credit. Their crit on its rising jump keeps the window open; no
@@ -1365,6 +1369,8 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | run 99, stun starts by told starter T4/T5/T6/T7/T8/other: %d/%d/%d/%d/%d/%d, sprinting at the first hit: %d/%d/%d/%d/%d/%d",
 						stunStart[0], stunStart[1], stunStart[2], stunStart[3], stunStart[4], stunStart[5],
 						stunStartSprint[0], stunStartSprint[1], stunStartSprint[2], stunStartSprint[3], stunStartSprint[4], stunStartSprint[5])
+				// Run 104: each included technique's rate, priority and pull, the weakest-technique fights and the scene kinds picked.
+				+ stages.run104Line() + (dev.swordai.core.school.SchoolStages.ALL_TO_70 ? ";" + priorityKindLine() : "")
 				+ String.format(Locale.ROOT, " | run 86, its own take-offs after their 2nd hit: their next hit within %d ticks anyway (charged) %d, out %d",
 						COMBO_TAKEOFF_WINDOW, comboTakeoffFail, comboTakeoffOut)
 				+ String.format(Locale.ROOT, " | run 84, their combo from their 2nd hit, W/S/sprint/jump the network's: %d ticks, S pressed %d; their 3rd hit after their 2nd: those fights %d/%d, other fights %d/%d",
@@ -1732,6 +1738,24 @@ public final class SchoolSession implements AgentSession {
 	static final int KINDS = 10;
 	static final String[] KIND_NAMES = {"crit", "jump-in", "combo", "punish", "own combo", "own combo 2", "crit short", "jump-in short",
 			"deflection", "punish short"};
+	/**
+	 * Run 104 (SchoolStages#ALL_TO_70): the techniques each scene kind practises, for the kind's pick by their priority: the crit scenes
+	 * the crit trade's answers (T1, T1a, T1c, T2, C1, K3), the jump-in scenes T8/K2/K3/B1, the combo-escape scenes nothing included
+	 * (the get-out part: C3, T9), the punish scenes B1 and T1c, the own-combo scenes its follow-ups (T2, C6, C7), the deflection T4/T5.
+	 */
+	static final Technique[][] KIND_TECHS = {
+			{Technique.T1, Technique.T1A, Technique.T1C, Technique.T2, Technique.C1, Technique.K3},
+			{Technique.T8, Technique.K2, Technique.K3, Technique.B1},
+			{},
+			{Technique.B1, Technique.T1C},
+			{Technique.T2, Technique.C6, Technique.C7},
+			{Technique.T2, Technique.C6, Technique.C7},
+			{Technique.T1, Technique.T1A, Technique.T1C, Technique.T2, Technique.C1, Technique.K3},
+			{Technique.T8, Technique.K2, Technique.K3, Technique.B1},
+			{Technique.T4, Technique.T5},
+			{Technique.B1, Technique.T1C}};
+	/** Run 104: the scene fights' kind picks by kind since the last update line. */
+	private final int[] priorityKindPicks = new int[KINDS];
 	static final int DEFLECT_WINDOW = 8;
 	static final int DEFLECT_SCENE_TICKS = 30;
 	static final float DEFLECT_REACH = 3.5f;
@@ -2463,6 +2487,53 @@ public final class SchoolSession implements AgentSession {
 			}
 		}
 		return repeatScene != null && rng.nextFloat() < REPEAT_SHARE;
+	}
+
+	/**
+	 * Run 104: a scene kind of {@code kinds} (repeats count twice, as before), each weighted 1 + SCENE_PRIORITY_WEIGHT x the highest
+	 * priority of its techniques (SchoolStages#priority, live from the measured rates): the kinds of the weakest included skills most.
+	 */
+	private int priorityKind(List<Integer> kinds) {
+		if (!dev.swordai.core.school.SchoolStages.ALL_TO_70) {
+			return kinds.get(rng.nextInt(kinds.size()));
+		}
+		float[] w = new float[kinds.size()];
+		float total = 0f;
+		for (int i = 0; i < w.length; i++) {
+			int k = kinds.get(i);
+			float p = 0f;
+			for (Technique t : k >= 0 && k < KIND_TECHS.length ? KIND_TECHS[k] : new Technique[0]) {
+				p = Math.max(p, stages.priority(t.ordinal()));
+			}
+			w[i] = 1f + dev.swordai.core.school.SchoolStages.SCENE_PRIORITY_WEIGHT * p;
+			total += w[i];
+		}
+		float u = rng.nextFloat() * total;
+		int pick = kinds.get(kinds.size() - 1);
+		for (int i = 0; i < w.length; i++) {
+			u -= w[i];
+			if (u <= 0f) {
+				pick = kinds.get(i);
+				break;
+			}
+		}
+		if (pick >= 0 && pick < KINDS) {
+			priorityKindPicks[pick]++;
+		}
+		return pick;
+	}
+
+	/** Run 104: " scenes by kind crit 3, deflection 5" since the last line. */
+	private String priorityKindLine() {
+		StringBuilder b = new StringBuilder(" scene picks by kind:");
+		int n = 0;
+		for (int k = 0; k < KINDS; k++) {
+			if (priorityKindPicks[k] > 0) {
+				b.append(n++ == 0 ? " " : ", ").append(KIND_NAMES[k]).append(' ').append(priorityKindPicks[k]);
+			}
+		}
+		java.util.Arrays.fill(priorityKindPicks, 0);
+		return n == 0 ? b.append(" none").toString() : b.toString();
 	}
 
 	/** Run 66: one of the combo scenes (their combo it did not get out of), COMBO_SCENE_SHARE of the time; null otherwise. */
@@ -3664,7 +3735,7 @@ public final class SchoolSession implements AgentSession {
 						if (focusNow && kinds.contains(KIND_DEFLECT) && kinds.size() > 1) {
 							kinds.add(KIND_DEFLECT);
 						}
-						kind = kinds.get(rng.nextInt(kinds.size()));
+						kind = priorityKind(kinds);
 					}
 					List<Scene> ofKind = new ArrayList<>();
 					List<Scene> ofSpar = new ArrayList<>();

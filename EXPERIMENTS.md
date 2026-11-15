@@ -1941,3 +1941,34 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **Counter ("outside bot (Carpet PvP ...)" in the update line):** fights, won, lost, HP net a fight, its hits taken on the ground, of them it went away >= 0.55 blocks/tick within 5 ticks, their combos of 3+, its own combos of 3+.
 - **Revert:** delete run/carpet-pvp.on and redeploy (or OUTSIDE_SHARE = 0).
 - **Run 103b (me, 13:45):** the "knocked far" counter now measures the AI's OWN hits taken on the ground and its own speed away from them. Agent 44's version counted the bot's hits taken from the AI. Switched on at 13:45 (run/carpet-pvp.on, empty = the default jar). Off: delete the file and redeploy.
+
+## Run 104 (15 Nov, agent 45): every included technique to 70%, the smallest rate first (the user's direction)
+
+- **The user, 15 Nov 15:15:** "Now I think it has the basics now started to let it learn all the skill I want all to be at least 70%. Beside get out part. Prioritize all the ones that are lower then 50% and train the ones starting from the smallest learned rate. Especially starting combo and crit".
+- **Rates before (tech-review 8, 15:06-15:14):** T6a 0% (0/4, A/D off 92%), T2 6% (W/S 54%, jump 31%), T5 12% (sprint 51%), C7 12% (swing 62%), C6 19%, T4 20% (sprint 62%), T1a 25% (1/4), T7 31%, K3 33% (2/6), K2 37% (swing 64%), T1c 58%, T6 83%, B1 86%.
+- **Why they were stuck (the code):** every one under 50% except K3 had a copy pull of 0, and a teacher with no pull yields its keys (SchoolSession NO_PULL_YIELDS: `yielded`, teacherHeads = 0), so nothing was taught at their moments.
+  - Run 99 set STARTERS_TAUGHT but never added T4/T5/T7/T8 to RUN_TAUGHT (SchoolStages' static block). techPulls gave them PULL_CAP 0, so no starter was ever taught. T4's sprint off went 54% (run 99's start) -> 62%, not down. Run 99 also left their keys pointed at the shared trunk (gatedHeads 0), not their own layers as its comment says (agent 42 saw this).
+  - T2, C6, C7, T1, T1a, T1b, C1, T6a and K2 were never in RUN_TAUGHT (K2_PULL 0 since 25 Oct). Their wrong keys (T2's jump and W/S, C7's and K2's swing, T6a's A/D) had no lesson at all.
+  - T2's jump: when they hit back before its jump, JUMP_ONCE's reason 4 (its own combo alive) lapsed. Its jump was then charged NEAR_JUMP_COST and flipped to "no jump" (NEAR_NO_JUMP_PULL). T1, T1c and C6 were already exempt as "told".
+  - K3 (taught, gated) and T6a/T1a are starved (4-6 moments in 10 minutes).
+- **Change (training only; checks, benchmarks and the real game unchanged; the rules never give way, RULES_YIELD stays off):** SchoolStages.ALL_TO_70.
+  - **Priority, live from the rates (SchoolStages.priority):** (0.70 - rate) x (1 + 4 x (0.50 - rate) under 50%) x 1.5 for the starters and crits (T4, T5, T6, T6a, T7, T8, T1, T1a, T1c, T2, C6, B1). A technique with under 5 moments counts as 0%. At or over 70% it keeps a review weight of 0.05. Excluded (the get-out part, and the user's "no jump reset unless certain, above 95%"): C2, C3, C4, T9, T9a-c get 0. The jumping family (T10/T11, skipped since run 95c) gets 0.05. Examples: 0% favoured 3.15, 12% 2.19, 31% 1.03, 58% 0.18.
+  - **Bot picks:** weakestBot (WEAKEST_SHARE 0.55 of the rest) draws techniques by that priority instead of the old target gap.
+  - **Scene picks:** a scene kind is weighted 1 + the highest priority of its techniques (SchoolSession.KIND_TECHS): crit -> T1/T1a/T1c/T2/C1/K3; jump-in -> T8/K2/K3/B1; punish -> B1/T1c; deflection -> T4/T5; combo escape -> none.
+  - **Pull:** the cap of a taught technique's pull grows under 50%, up to 1.5 at 0% (1.25 if not favoured). It stays 1 at 50% and over. B1's pull is exactly as before.
+  - **Taught now, each into its own option layer alone** (the decider picks WHEN, the layer learns HOW; nothing new reaches the shared trunk):
+    - T4, T5, T7, T8 (the starters, now really in RUN_TAUGHT and gated): W/S, strafe, sprint and swing. No jump, no S.
+    - C1, C7, T6a: the same keys.
+    - T1, T1a, T2, C6: jump, W/S, sprint and swing. T1b adds the strafe.
+    - K2: its swing alone, held at a faller. Taught into the trunk on 25 Oct it stopped every swing.
+    - Already taught as before: B1, K3, T1c, T6.
+  - **JUMP_ONCE:** the told T2 is a "needed" near-fight jump (reason 2) and a technique jump (OWN_JUMP_COST), as T1/T1c/C6 already were. The late-jump guard (run 102) still takes any own jump in the 3 ticks after a ground hit taken. K2's jump-in guard and B1's rules are untouched.
+- **Counter (update line):** "run 104, every included technique to 70%": per technique, smallest rate first, its rate (moments), priority, pull and weakest-technique fights since the last line; fights for included vs others; and "scene picks by kind". The take-offs-by-source and jump counters of runs 95/102 stay the jump guard.
+- **Learn-by (2 h):** T4/T5/T7 sprint off under 40%; T2, C6 and C7 rising off single digits; T6a/T1a/K3 with 20+ moments an update window. Each of the 13 at 50%+ within 4 h, then 70%.
+- **Revert (ALL_TO_70 = false) if any of:**
+  - jumps off the technique moments rise more than 30% over the last hour before the deploy (tech-review / run 95's near-fight take-offs charged);
+  - swings fall more than 10% (training swings a minute, or a check's A swings vs its last 3 checks);
+  - the punish crit leaves 50-65% of its chances critted;
+  - a check loses 2 in a row (z < 0 on rounds both times).
+  
+  Partial revert first if only one family misbehaves: drop the crits' jump from CRIT_GATED_HEADS (jump spread), or the starters back to pull 0 (swing/sprint trouble).
