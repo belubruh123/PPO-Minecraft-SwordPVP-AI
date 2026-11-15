@@ -1211,6 +1211,7 @@ public final class SchoolSession implements AgentSession {
 	/** Its hits taken on the ground, those that knocked it far (away speed >= OB_AWAY within OB_WINDOW ticks), their combos and its own of 3+. */
 	private int obHitsOnGround, obKnockedFar, obTheirCombos3, obOwnCombos3, obSinceHit = 1000, obTheirRow;
 	private double obAwayMost;
+	private boolean obWasOnGround = true;
 	private boolean obHitCounted = true;
 	private int obLastTheirHit = -1000;
 	static final double OB_AWAY = 0.55;
@@ -4418,7 +4419,8 @@ public final class SchoolSession implements AgentSession {
 				}
 				if (fightOutside && mode == Mode.TRAIN && sceneNow == null) {
 					// Run 103: against Carpet PvP's bot: its hits taken on the ground and how far they sent it, and their runs of 3+.
-					if (facts.hitsDealt > 0 && truth.botOnGround()) {
+					// Run 103b: its OWN hits taken on the ground (agent 44 counted the bot's, from its hits dealt).
+					if (facts.hitsTaken > 0 && obWasOnGround) {
 						obHitsOnGround++;
 						obSinceHit = 0;
 						obHitCounted = false;
@@ -4431,13 +4433,16 @@ public final class SchoolSession implements AgentSession {
 						double dx = them.x - mc.player.getX(), dz = them.z - mc.player.getZ();
 						double len = Math.sqrt(dx * dx + dz * dz);
 						if (len > 1e-6) {
-							obAwayMost = Math.max(obAwayMost, (them.vx * dx + them.vz * dz) / len);
+							// Its own speed away from them (blocks a tick).
+							net.minecraft.world.phys.Vec3 v = mc.player.getDeltaMovement();
+							obAwayMost = Math.max(obAwayMost, -(v.x * dx + v.z * dz) / len);
 						}
 						if (obAwayMost >= OB_AWAY) {
 							obHitCounted = true;
 							obKnockedFar++;
 						}
 					}
+					obWasOnGround = mc.player.onGround();
 					if (facts.hitsTaken > 0) {
 						obTheirRow = fightTicks - obLastTheirHit <= COMBO_GAP ? obTheirRow + 1 : 1;
 						obLastTheirHit = fightTicks;
