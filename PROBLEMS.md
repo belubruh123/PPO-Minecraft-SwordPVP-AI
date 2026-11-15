@@ -1526,3 +1526,11 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - Carpet PvP stays off. It cannot be loaded just for the outside fights, because it changes how every fake-player bot plays.
   - The 16:33 rollback was not needed, but it cost only about an hour of distorted training.
   - **Judge:** the next check, the first back on plain Carpet. Compare with 12:00 (A 21-11) and 13:09 (A 20-20). If A is clearly worse, roll back to checked-1115-1305.bin, the last network before Carpet PvP.
+
+## 15 Nov 17:25 check: run 104b on plain Carpet (15:16 network + about 50 min of run 104b; the game window was still large)
+
+- **ROUNDS WON: A 26/45 (58%), B 17/45 (38%), z about +1.9.** Net A-B +7.2 HP a fight (se 4.6). Dealt/taken: A 380 / 368, B 351 / 382. The best since 10:49 (23-14).
+- Their third hit: **A 19% (17 of 90), B 29% (27 of 92).** Outside their combo: A swung 52%, crosshair off 28%; B swung 51%, off 36%.
+- Late knock-away hits on jump-ins (rising): A 9, B 16. Swings: A 408 (97% on them), B 427 (87%).
+- Take-offs: A rule 11, technique 10, own 2-12 3, own other 16; B rule 10. Technique take-offs went up from 2-5 to 10, from run 104's crit layers; watch them.
+- Run 105 (window guard; the C1/T1 teacher fixes) was asked for at 17:25, right after the check.
