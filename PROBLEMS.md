@@ -1664,3 +1664,15 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - The ko lines (bots with the rules 13-1 in 14 fights) are too few to read.
 - Punish crit chances critted 59% of 300; told and landed 46%.
 - The first check on the human-like bots is about 02:17.
+
+## 16 Nov 02:13 review
+
+- Training runs (human-like bots since 01:32). The first check on them is about 02:17.
+- **Skill rates (last 40 moments):** K2 100, T9a 95, C1 93, C3 93, C4 90, T1a 88, T6a 85, T4 83, T5 83, C6 83, T7 80, T9b 80, K3 80, T9c 73, C7 73, B1 68.
+  - Under 60%: T6 55, T2 52, C2 52, T9 38 (the rules), T1c 33, T1 25.
+  - The combo escape is at its best: C3 93, C4 90, T9a 95, T6a 85.
+- **The crit family:**
+  - T1 got 1 moment in the last 12 updates. With the human-like bots, its chance (a punish crit try after its own crit) is rare again.
+  - T1c is STUCK at 26%, off on W/S 37% (not the jump). After its punish crit the teacher shows either T6 (S/strafe) or T1c (W + jump); the network mixes them.
+  - So the earlier lead (the late-jump guard stripping the second jump) is not the cause for T1c. The guard took 998 of its own jumps after ground hits since the restart, against 709 rules' jump resets.
+- Punish crit chances critted 59% of 300; told and landed 46%.
