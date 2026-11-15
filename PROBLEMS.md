@@ -1676,3 +1676,13 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - T1c is STUCK at 26%, off on W/S 37% (not the jump). After its punish crit the teacher shows either T6 (S/strafe) or T1c (W + jump); the network mixes them.
   - So the earlier lead (the late-jump guard stripping the second jump) is not the cause for T1c. The guard took 998 of its own jumps after ground hits since the restart, against 709 rules' jump resets.
 - Punish crit chances critted 59% of 300; told and landed 46%.
+
+## 16 Nov 02:22 check (human-like bots) and 02:43 review
+
+- **ROUNDS WON: A 30/44 (68%), B 35/44 (80%), z about -1.5.** Net A-B -5.2 HP a fight (se 3.3). Dealt/taken: A 401 / 326, B 442 / 331. Both win far more against the human-like bots.
+- Their third hit after their second: A 13% (8 of 63), B 19% (10 of 53).
+- **Outside their combo, ready and in reach: A swung 33%, B 57%.** Swings: A 422, B 468. Run 114 (READY_HOLD_COST x3) asked at 02:45.
+- Jumps a minute off/on its moments: A 40/67, B 29/29. Late knock-away hits on jump-ins (rising): A 12, B 15.
+- **Skill rates:** T7 100, K2 98, T1a 98, T9a 98, C1 90, C3 90, C4 90, T5 88, T4 85, C6 85, C7 85, T9b 83, B1 75, T6a 78, K3 78, T9c 63, T6 60.
+  - Under 60%: C2 52, T2 48, T1c 30, T1 23, T9 18 (the rules).
+- Punish crit chances critted 54% of 300. review.sh's "loops 2" is the cycle loop and its parent shell from the redeploy: one loop.

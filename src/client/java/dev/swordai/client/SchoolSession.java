@@ -163,7 +163,10 @@ public final class SchoolSession implements AgentSession {
 	 * reach (3.0) and on the ground (not jumping in, not falling), its crosshair on them, itself on the ground, no rule holding the swing:
 	 * each tick it does not swing costs this. The 13:35 check: outside their combo A held "otherwise" 39% of those ticks, B 24%.
 	 */
-	static final float READY_HOLD_COST = 0.01f;
+	// Run 114 (16 Nov 02:45): 0.01 -> 0.03. The user (15 Nov 22:05): "Not hitting when 2 blocks in distance". The 02:22 check (human-like
+	// bots): outside their combo, with the sword ready and them in reach, A swung 33% (held otherwise 37%), B 57% (held otherwise 23%);
+	// A won 30 rounds and B 35. At 0.01 it was charged about 4 ticks an update.
+	static final float READY_HOLD_COST = 0.03f;
 	private int readyHoldCharged;
 	/** Run 95: the one jump-in of this engagement is still open. */
 	private boolean jumpInOpen = true;

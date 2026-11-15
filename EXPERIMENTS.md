@@ -2117,3 +2117,12 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **Toy fight (teacher against 21 bots x 25 fights):** the teacher wins 50% -> 76%; real players lose to the AI about 76%.
 - **Risks:** bots weaker, so watch the training win rate (lower distSd if far above about 60%). Whiffs and the swing gap did not move.
 - **Tests:** school + pvp 79 passed, 4 aborted, 0 failed (TickMemoryTest now skips the identity for checkpoints saved after run 112 went live). Redeploy after the next check.
+
+## Run 114 (16 Nov 02:45): READY_HOLD_COST 0.01 -> 0.03
+
+- **Cause chain:**
+  - What fails: it does not swing when it could. The user: "Not hitting when 2 blocks in distance".
+  - Evidence (02:22 check, human-like bots): outside their combo, with the sword ready and them in reach, A swung 33% (held otherwise 37%, held with them falling 30%), B swung 57% (23%, 20%). A won 30 rounds, B 35.
+  - What teaches it: run 96's cost on a held ready sword was 0.01 a tick and charged about 4 ticks an update, too weak against the K2/jump-in holds it learned (K2 98%).
+- **Fix:** the cost is 0.03 a tick: sword ready, them in reach on the ground (not jumping in, not falling), crosshair on them, itself on the ground, no rule holding the swing. The user's 14 Nov rule: "it should only hold hit when other go for a jump in".
+- **Watch:** held-otherwise and swung outside their combo against B, K2 broken, and late jump-in hits.
