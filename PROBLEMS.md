@@ -1756,3 +1756,9 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 
 - Run 116 is live: redeploy 06:36-06:38, 0 test failures. In the first update, "run 116 its own combo charged 8" and "run 97 its own combo 0", as designed.
 - The first check with run 116 is about 07:23. Punish crit chances critted 55% of 300; told and landed 44%.
+
+## 16 Nov 07:12 review
+
+- Run 117 is live: redeploy 07:06-07:08, 0 test failures; training runs.
+- First update: ready with them in reach 128 ticks, swung 52 (41%); held otherwise only 3; held with them falling 14; swing not open 25. The swing taught 31 ticks; run 116 charged 7 own-combo take-offs.
+- The first check with runs 116 + 117 is about 07:53. Punish crit chances critted 51% of 300.
