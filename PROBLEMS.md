@@ -1623,3 +1623,12 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 ## 15 Nov 23:42 review (short: 5-hour window at 100%)
 
 - Run 112 (memory + deeper tower) is live. Redeploy 23:36-23:42, 0 test failures; training runs. The first paired check on run35 + memory is about 00:27.
+
+## 16 Nov 00:13 review
+
+- Training runs (run35 base + run 112 memory since 23:42). The first paired check on this base is about 00:27.
+- **Skill rates (last 40 moments):** K2 95, T7 95, C6 93, C7 93, T1a 90, T9a 90, C1 90, T6a 88, C3 85, T5 80, T9c 80, B1 78, T4 78, K3 78, T9b 63, C4 55, T2 50, T9 50 (the rules), T6 43, T1c 38, T1 35, C2 35.
+  - Run 107 works: T1, C1 and C2 now fill their 40-moment windows (T1 had 17-24 moments in total before). The run 107 line shows T1 starts 4 and the game's crits felt 32 in one update.
+- Punish crit chances critted 56% of 300; told and landed 40%.
+- In training, full fights against bots lose (13-20 with the rules), but run35 is the network that is "near perfect" on humans, so the bot result is no judge (the user, 22:50).
+- Next: human-like bots (agent 49, the next subagent slot after 00:31).
