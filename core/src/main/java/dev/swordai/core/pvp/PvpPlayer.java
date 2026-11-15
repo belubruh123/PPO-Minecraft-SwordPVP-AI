@@ -184,9 +184,115 @@ public final class PvpPlayer {
 	/** Run 97: their own take-off this recent, and still rising, is "rising into its reach" (T8). */
 	static final int BREAK_RISING_TICKS = 8;
 
+	// ---- agent 49: a person's limits (Style#human, Human) -------------------------------------------
+	/** Its own stream for the human draws, so that the player's own stream (and with Style#human off, everything) is as before. */
+	private final Random hrng = new Random();
+	/** This window's misjudged distance (added to what it sees), the charge its click comes at, and ticks it clicks late after that. */
+	private double hDist;
+	private float hCharge = 1f;
+	private int hLate;
+	/** Ticks its sword has been at hCharge or more since its last swing. */
+	private int hReadyTicks;
+	/** This approach's reaction before its first swing in reach, ticks. */
+	private int hReact = 1;
+	private double hLastReach = 99;
+	/** The failure memory, by Technique ordinal (Technique.BASE: its opening crit): recent tries and failures, faded per outcome. */
+	private final float[] hTries = new float[Technique.COUNT];
+	private final float[] hFails = new float[Technique.COUNT];
+	/** The plan whose outcome is watched (its label's ordinal, or -1), and the tick it began. */
+	private int hOpen = -1;
+	private int hOpenAt;
+	/** Counters for the tests and logs: windows drawn, early clicks, cut rolls. */
+	private int hCuts;
+
+	private boolean human() {
+		return style.human;
+	}
+
+	/** A new window (a swing made, a new approach): its distance misjudgement and its click drawn. */
+	private void drawWindow() {
+		hDist = Human.distError(style, hrng);
+		hCharge = Human.clickCharge(style, hrng);
+		hLate = Human.lateTicks(style, hCharge, hrng);
+		hReadyTicks = 0;
+	}
+
+	/** The distance as it judges it: as seen, plus this window's misjudgement for a person. */
+	private double judged(Duel d) {
+		return human() ? d.reach + hDist : d.reach;
+	}
+
+	/** Its sword back as it clicks: the style's swing charge, or for a person this window's click (early, or some ticks late). */
+	private boolean clickReady(Body me) {
+		return human() ? me.charge >= hCharge && hReadyTicks >= hLate : me.charge >= style.swingCharge;
+	}
+
+	/** A technique's chance cut for a person while it keeps failing (the failure memory); 1 otherwise. */
+	private float memoryScale(int t) {
+		if (!human() || !style.humanAdapts || hTries[t] < Human.MEMORY_LEAST) {
+			return 1f;
+		}
+		float fail = hFails[t] / hTries[t];
+		if (fail <= Human.FAIL_SHARE) {
+			return 1f;
+		}
+		return Math.max(Human.CUT_LEAST, 1f - (fail - Human.FAIL_SHARE) / (1f - Human.FAIL_SHARE));
+	}
+
+	/** The outcome of the watched plan: the first hit either way after it began (tie: a failure), within Human.OUTCOME_TICKS. */
+	private void watchOutcome(Events e) {
+		if (hOpen < 0) {
+			return;
+		}
+		boolean fail = e.theyHit != Events.NONE;
+		boolean won = e.iHit != Events.NONE && !fail;
+		if (fail || won) {
+			remember(hOpen, fail);
+			hOpen = -1;
+		} else if (tick - hOpenAt > Human.OUTCOME_TICKS) {
+			hOpen = -1;
+		}
+	}
+
+	/** One outcome of technique {@code t} (by ordinal) into the failure memory. */
+	void remember(int t, boolean fail) {
+		hTries[t] = hTries[t] * Human.MEMORY_FADE + 1f;
+		hFails[t] = hFails[t] * Human.MEMORY_FADE + (fail ? 1f : 0f);
+	}
+
+	/** A technique's chance now, as adapted (tests). */
+	float chanceNow(Technique t) {
+		return pNow[t.ordinal()];
+	}
+
+	/** The cuts made by the failure memory so far (tests). */
+	public int humanCuts() {
+		return hCuts;
+	}
+
+	/** The failure memory's scale of a technique now (tests). */
+	public float humanScale(Technique t) {
+		return memoryScale(t.ordinal());
+	}
+
 	public void start(Style s, long seed) {
 		style = s;
 		rng.setSeed(seed);
+		hrng.setSeed(seed ^ 0x48554D414E5FL);
+		hDist = 0;
+		hCharge = s.swingCharge;
+		hLate = 0;
+		hReadyTicks = 0;
+		hReact = Math.max(1, s.reaction / 2);
+		hLastReach = 99;
+		java.util.Arrays.fill(hTries, 0f);
+		java.util.Arrays.fill(hFails, 0f);
+		hOpen = -1;
+		hOpenAt = 0;
+		hCuts = 0;
+		if (s.human) {
+			drawWindow();
+		}
 		System.arraycopy(s.p, 0, pNow, 0, pNow.length);
 		habits.reset();
 		tick = 0;
@@ -454,7 +560,33 @@ public final class PvpPlayer {
 
 	private boolean roll(Technique t) {
 		float p = pNow[t.ordinal()];
-		return p > 0f && rng.nextFloat() < p;
+		if (p <= 0f) {
+			return false;
+		}
+		float u = rng.nextFloat();
+		if (u >= p) {
+			return false;
+		}
+		// Agent 49: a person stops trying what keeps failing (the failure memory), from its own stream (the player's stays as it was).
+		float scale = memoryScale(t.ordinal());
+		if (scale < 1f && hrng.nextFloat() >= scale) {
+			hCuts++;
+			return false;
+		}
+		return true;
+	}
+
+	/** Agent 49: the opening crit's roll (Style#critOpen), with the failure memory of a person (kept under Technique.BASE). */
+	private boolean rollOpen() {
+		if (!(rng.nextFloat() < style.critOpen)) {
+			return false;
+		}
+		float scale = memoryScale(Technique.BASE.ordinal());
+		if (scale < 1f && hrng.nextFloat() >= scale) {
+			hCuts++;
+			return false;
+		}
+		return true;
 	}
 
 	/**
@@ -467,7 +599,20 @@ public final class PvpPlayer {
 		Body me = d.me;
 		clocks(d, e);
 		habits.observe(d, e);
-		if (style.adapts && tick % 20 == 0) {
+		if (human()) {
+			// Agent 49: a new window after each swing of its own and on each new approach (its distance judged afresh, its click and its
+			// reaction drawn); the sword counted back from its click charge; the last plan's outcome for the failure memory.
+			boolean newApproach = d.reach > Duel.REACH + 1.5 && hLastReach <= Duel.REACH + 1.5;
+			if (e.iSwung || newApproach) {
+				drawWindow();
+				hReact = Math.max(1, Human.reaction(style.reaction, hrng) / 2);
+			}
+			hLastReach = d.reach;
+			hReadyTicks = me.charge >= hCharge ? hReadyTicks + 1 : 0;
+			watchOutcome(e);
+		}
+		if ((style.adapts || human() && style.humanAdapts) && tick % 20 == 0) {
+			// Agent 49: a person adapts whatever its game: the counters of what the other keeps doing (part 7, Habits).
 			adapt();
 		}
 		// What a hit calls for comes first, on the tick it is felt; a hit taken last, as it decides the next ticks.
@@ -619,7 +764,8 @@ public final class PvpPlayer {
 		tries(d, e);
 		// Going away from me: holding S, or flying out of a trade (with S held, they keep going once the knockback is spent).
 		backingTicks = d.theyClose < -0.12 ? backingTicks + 1 : 0;
-		inReachTicks = d.inReach() ? inReachTicks + 1 : 0;
+		// Agent 49: a person goes by the distance as it judges it (Style#human).
+		inReachTicks = (human() ? judged(d) <= Duel.REACH : d.inReach()) ? inReachTicks + 1 : 0;
 		if (d.reach <= Duel.REACH) {
 			outRolled = false;
 			jumpInRolled = false;
@@ -682,6 +828,11 @@ public final class PvpPlayer {
 		plan = p;
 		planT = 0;
 		phase = 0;
+		if (human()) {
+			// Agent 49: this plan's outcome is watched for the failure memory (the opening crit under Technique.BASE).
+			hOpen = p.label.ordinal();
+			hOpenAt = tick;
+		}
 		planDir = rng.nextBoolean() ? 1 : -1;
 		planAlt = false;
 		planAfterPunish = false;
@@ -756,7 +907,18 @@ public final class PvpPlayer {
 	private void later(Plan p) {
 		if (pending == Plan.NONE) {
 			pending = p;
-			pendingAt = tick + Math.max(0, style.reaction - 1 + rng.nextInt(2));
+			// Agent 49: a person's reaction is drawn per reaction (Human#reaction), from its own stream; the player's draw stays.
+			int jitter = rng.nextInt(2);
+			pendingAt = tick + (human() ? Math.max(0, Human.reaction(style.reaction, hrng) - 1) : Math.max(0, style.reaction - 1 + jitter));
+		}
+	}
+
+	/** Agent 49: a plan answering a hit, at once on the tick it is felt; for a person (Style#human) a reaction later. */
+	private void beginOrReact(Plan p) {
+		if (human()) {
+			later(p);
+		} else {
+			begin(p);
 		}
 	}
 
@@ -880,10 +1042,10 @@ public final class PvpPlayer {
 		// After every sprint hit, once those were read right, it backed out of a third of its trades and held S three times as
 		// much as the installed model, which traded on (24 Oct 17:44 check: 212 dealt a minute to its 314, taken alike).
 		if (e.theyHit == Events.SPRINT && (!style.onlyWhenItWorks || habits.theirCombo() >= 2) && roll(Technique.C3)) {
-			begin(Plan.C3);
+			beginOrReact(Plan.C3);
 		} else if (e.theyHit == Events.SPRINT && style.flyOut > 0f && rng.nextFloat() < style.flyOut) {
 			// Run 60: out of the trade as real players fly out (36% two blocks farther 8 ticks after its sprint hit; bots 8-12%).
-			begin(Plan.C3);
+			beginOrReact(Plan.C3);
 		}
 	}
 
@@ -1129,7 +1291,7 @@ public final class PvpPlayer {
 		float jumpIn = jumpInFrom(d);
 		if (style.jumpInLands && !jumpInRolled && me.onGround && me.swordReady() && d.reach >= jumpIn - 0.3 && d.reach < 8.5) {
 			jumpInRolled = true;
-			if (!style.noJumps && rng.nextFloat() < style.critOpen) {
+			if (!style.noJumps && rollOpen()) {
 				outRolled = true;
 				begin(Plan.OPEN_CRIT);
 				return;
@@ -1146,7 +1308,7 @@ public final class PvpPlayer {
 				begin(Plan.T7);
 				return;
 			}
-			if (!style.jumpInLands && !style.noJumps && style.critOpen > 0f && rng.nextFloat() < style.critOpen) {
+			if (!style.jumpInLands && !style.noJumps && style.critOpen > 0f && rollOpen()) {
 				begin(Plan.OPEN_CRIT);
 				if (style.critFromSpread > 0f) {
 					// Run 100: the crit spammer's take-offs spread as in the lost real rounds (median 3.5 blocks, p25 2.6, p75 4.7).
@@ -1187,7 +1349,8 @@ public final class PvpPlayer {
 
 	private boolean canSwing(Duel d) {
 		// Run 59b: the closer swing (run 60) only for a swing from the ground; in the air (crits, jump hits) as before.
-		return d.reach <= Duel.REACH - (d.me.onGround ? style.closeIn : 0f) && d.me.charge >= style.swingCharge;
+		// Agent 49: a person by the distance as it judges it and its click (Style#human).
+		return judged(d) <= Duel.REACH - (d.me.onGround ? style.closeIn : 0f) && clickReady(d.me);
 	}
 
 	private int step(Duel d, Keys k) {
@@ -1610,6 +1773,15 @@ public final class PvpPlayer {
 		k.technique = Technique.BASE;
 		// Run 93b: while stunned after a hit taken (Style#stunAfterHit) it fights as with its sword not back.
 		boolean ready = me.charge >= style.swingCharge && stunLeft == 0;
+		// Agent 49 (Style#human): a person spaces and swings by the distance as it judges it (this window's misjudgement), takes its
+		// sword for back at this window's click charge, and clicks when its click comes (early, or some ticks late).
+		boolean click = ready;
+		double r = d.reach;
+		if (human()) {
+			ready = me.charge >= Math.min(hCharge, style.swingCharge) && stunLeft == 0;
+			click = clickReady(me) && stunLeft == 0;
+			r = judged(d);
+		}
 		// Run 92: with the sword not back, Style#spaceAfterHit walks in only from beyond spacing + 0.2 (the gap at the edge of reach).
 		double inFrom = style.spaceAfterHit && !ready ? Math.max(Duel.REACH, style.spacing) + 0.2 : Duel.REACH + 0.2;
 		if (wtapLeft > 0) {
@@ -1619,14 +1791,14 @@ public final class PvpPlayer {
 		} else if (stapLeft > 0) {
 			stapLeft--;
 			k.forward = -1;
-		} else if (d.reach > inFrom) {
+		} else if (r > inFrom) {
 			k.forward = 1;
 			k.sprint = true;
-		} else if (!ready && d.reach < style.spacing - 0.3) {
+		} else if (!ready && r < style.spacing - 0.3) {
 			// S-tap: out of their reach again while the sword comes back.
 			k.forward = -1;
 		} else if (!ready) {
-			k.forward = d.reach > style.spacing + 0.2 ? 1 : 0;
+			k.forward = r > style.spacing + 0.2 ? 1 : 0;
 			k.sprint = k.forward > 0;
 		} else {
 			k.forward = 1;
@@ -1643,11 +1815,11 @@ public final class PvpPlayer {
 			}
 		}
 		boolean inCombo = sinceMyHit <= COMBO_TICKS;
-		boolean seenLongEnough = inCombo || inReachTicks >= Math.max(1, style.reaction / 2);
-		if (style.rhythm && inCombo && ready && d.reach <= Duel.REACH - style.closeIn) {
+		boolean seenLongEnough = inCombo || inReachTicks >= (human() ? hReact : Math.max(1, style.reaction / 2));
+		if (style.rhythm && inCombo && click && r <= Duel.REACH - style.closeIn) {
 			// A combo to a rhythm: the hit comes as they land.
 			k.attack = them.onGround && !theyWereOnGround || them.onGround && sinceMyHit > 14;
-		} else if (ready && seenLongEnough && d.reach <= Duel.REACH - style.closeIn + style.swingEarly) {
+		} else if (click && seenLongEnough && r <= Duel.REACH - style.closeIn + style.swingEarly) {
 			k.attack = true;
 		}
 		if (k.attack && style.backAfterHit > 0 && stapLeft > 0) {
