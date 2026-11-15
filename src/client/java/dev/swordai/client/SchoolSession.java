@@ -1250,6 +1250,14 @@ public final class SchoolSession implements AgentSession {
 	private boolean rpCounted = true;
 	private final dev.swordai.core.school.ComboHolder holder = new dev.swordai.core.school.ComboHolder();
 	private boolean holderOn;
+	/**
+	 * Run 106 (the user, 15 Nov 17:55: "why no data?" for T10 uppercut, T11a lunge, T11b hops): the combo-hold teacher's uppercut, lunge
+	 * and hop holds were judged as BASE (the step's label), so the three had no moments, no rate and no fights by their priority. On a tick
+	 * the hold teacher taught one of them, its label (ComboHolder.LABELS) is the technique judged (perf) instead; what the network is told
+	 * and taught is unchanged. -1 on every other tick.
+	 */
+	static final boolean HOLD_MOMENTS = true;
+	private int holdLabel = -1;
 	private final int[][] holdRuns = new int[2][4];
 	private final int[][] holdOut = new int[HOLD_KINDS.length][4];
 	private int holdAt = -1, holdKind;
@@ -5290,6 +5298,11 @@ public final class SchoolSession implements AgentSession {
 					step.teacherTechnique = base;
 				}
 				holdTaught[holder.method()]++;
+				int hm = holder.method();
+				if (HOLD_MOMENTS && (hm == dev.swordai.core.school.ComboHolder.UPPERCUT || hm == dev.swordai.core.school.ComboHolder.HOP
+						|| hm == dev.swordai.core.school.ComboHolder.LUNGE)) {
+					holdLabel = dev.swordai.core.school.ComboHolder.LABELS[hm].ordinal();
+				}
 			}
 		}
 		if (k2Hold) {
@@ -5681,9 +5694,12 @@ public final class SchoolSession implements AgentSession {
 			perf.tick(judgedTechnique, judgedHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH)), judgedTarget, action, keys,
 					facts.damageDealt, facts.damageTaken);
 		} else {
-			perf.tick(step.teacherTechnique, step.teacherHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH)), step.teacher, action, keys,
+			// Run 106: the hold teacher's uppercut/lunge/hop ticks are judged as their own technique.
+			int judged = holdLabel >= 0 && step.teacherTechnique == Technique.BASE.ordinal() ? holdLabel : step.teacherTechnique;
+			perf.tick(judged, step.teacherHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH)), step.teacher, action, keys,
 					facts.damageDealt, facts.damageTaken);
 		}
+		holdLabel = -1;
 		if (mode == Mode.TRAIN && !ruleOff) {
 			techniqueReward();
 		}

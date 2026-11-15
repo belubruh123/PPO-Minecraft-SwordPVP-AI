@@ -2022,3 +2022,12 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **C2 (hold S when its double crit is sprint-hit)** is taught through its own W/S layer. ComboHolder hops 0 -> 0.1 (T11b is on the list).
 - **No data on the dashboard for T10/T11:** their moments (own-combo holds) are not counted in the stage's "done" moments, so the dashboard shows "-". To do: count them.
 - **Tests:** SchoolLearnerTest's ungated example is now T6 (C2 is gated). Core tests: 60 passed, 1 aborted, 0 failed.
+
+## Run 106 (15 Nov 20:40): T10, T11a and T11b get moments (the user's "why no data?")
+
+- **Cause:** the combo-hold teacher (ComboHolder, run 97) labels its uppercut, lunge and hop holds T10, T11a and T11b, but SchoolSession judged those ticks under the step's label, BASE. So the three had no moments at all.
+  - Each counted as 0% with no moments, so its priority was 4.59, the highest of all. But no weakest-technique fight could go to it: botFor() needs moments to know which bots give it ("f0" in every run 104 line).
+- **Fix (HOLD_MOMENTS):** on a tick the hold teacher taught an uppercut, a lunge or a hop, Performance judges that technique instead of BASE. What the network is told and taught is unchanged.
+  - Done means the network pressed the hold teacher's W/S, A/D, sprint and jump on 70% of the ticks, and the take-off jump within a tick.
+  - The moments also feed the stages' rates, so T10/T11a/T11b get a real priority and botFor() learns which bots give them. The technique reward pays the imitation share at T10/T11's pull (1.0) on those ticks, instead of BASE's.
+- **Checks:** compile-check OK (only the known class_6880 error). The change is client-only; no core change.
