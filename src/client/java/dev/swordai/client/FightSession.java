@@ -88,6 +88,8 @@ final class FightSession implements AgentSession {
 	private final CritBackRead critBack = new CritBackRead();
 	/** Run 102: the late-jump guard in the real game, as in training (Fighter.lateJumpGuard); false = the old behaviour. */
 	static final boolean LATE_JUMP_GUARD = true;
+	/** Run 108 (SchoolFighter#ownJumpResetGate): the network's own T9a/T9b/T9c jumps are let go of in the user's duels. */
+	static final boolean OWN_JUMP_RESET_GATE = true;
 	/** Ticks since a hit taken on the ground lifted it, -1 when not lifted (the rules leave W to the network in its fall). */
 	private int liftedFor = -1;
 	private boolean groundBefore = true;
@@ -180,6 +182,8 @@ final class FightSession implements AgentSession {
 			// falling (run 88c, comboProvenOff below) and run 88's air yield only while SchoolSession.AIR_KEEP_YIELD is on (off since
 			// 12:25; the benchmark gates it the same way). Before, an airyield arm also turned run 88's yield on.
 			school.airKeepYield(arm != null && arm.airYield && SchoolSession.AIR_KEEP_YIELD);
+			// Run 108: no jump reset of the network's own in the user's duels (under the user's 95%); the rules' reactive one stays.
+			school.ownJumpResetGate(OWN_JUMP_RESET_GATE);
 			if (rulesOn) {
 				school.rulesFrom(fighter);
 				rulesBody.patchedUp = loaded.patchedUp;

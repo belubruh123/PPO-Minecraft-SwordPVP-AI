@@ -147,6 +147,24 @@ public final class SchoolFighter {
 	}
 
 	/**
+	 * Run 108 (the user, 15 Nov ~12:00: "dont jump reset unless you are certain and have a rate above of 95%"; 21:37: "install the current
+	 * best and let me test it"). Since run 104c the network learns its own jump resets T9a/T9b/T9c in training (83%, 63%, 68% done at
+	 * 21:19), under the user's 95%. In the user's duels, while the decider has chosen one of them: the rules do not give way (their
+	 * reactive jump reset, right in 95% of real rounds, and the late-jump guard stay), and a jump of the network's own is let go of.
+	 * FightSession only (the user's duels); off for the training bots.
+	 */
+	private boolean ownJumpResetGate;
+	public long ownJumpResetsStripped;
+
+	public void ownJumpResetGate(boolean on) {
+		ownJumpResetGate = on;
+	}
+
+	private static boolean jumpResetTold(dev.swordai.core.pvp.Technique t) {
+		return t == dev.swordai.core.pvp.Technique.T9A || t == dev.swordai.core.pvp.Technique.T9B || t == dev.swordai.core.pvp.Technique.T9C;
+	}
+
+	/**
 	 * One decision.
 	 *
 	 * @param mem the memory of this fight, as {@code Habits.write} writes it
@@ -184,8 +202,10 @@ public final class SchoolFighter {
 		if (SchoolStages.PUNISH_TOLD_YIELD && inLift && learner.told() == dev.swordai.core.pvp.Technique.B1) {
 			ruled &= ~SchoolStages.PUNISH_KEYS;
 		}
+		// Run 108: a jump reset of its own is not played in the user's duels (ownJumpResetGate): the rules keep their keys.
+		boolean jrGate = ownJumpResetGate && jumpResetTold(learner.told());
 		// The rules give way to a technique it learned while the decider has chosen it (SchoolStages#RULES_YIELD).
-		if (ruled != 0 && SchoolStages.RULES_YIELD && sinceHitTaken > SchoolStages.YIELD_AFTER_HIT
+		if (ruled != 0 && !jrGate && SchoolStages.RULES_YIELD && sinceHitTaken > SchoolStages.YIELD_AFTER_HIT
 				&& SchoolStages.runTaught(learner.told().ordinal()) && !(SchoolStages.STARTERS_TAUGHT && SchoolStages.starter(learner.told().ordinal()))) {
 			ruled &= ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
 		}
@@ -195,7 +215,7 @@ public final class SchoolFighter {
 			ruled &= ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
 		}
 		// Run 65: in their combo, while the decider has chosen the jump reset (T9a) or the hit before the S (C4).
-		if (ruled != 0 && SchoolStages.COMBO_ESCAPE_TAUGHT && SchoolStages.comboEscape(learner.told().ordinal())
+		if (ruled != 0 && !jrGate && SchoolStages.COMBO_ESCAPE_TAUGHT && SchoolStages.comboEscape(learner.told().ordinal())
 				&& sinceHitTaken <= OWN_COMBO_TICKS && sinceHitDealt > sinceHitTaken) {
 			ruled &= ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
 		}
@@ -214,6 +234,12 @@ public final class SchoolFighter {
 			}
 		}
 		learner.act(step, keys, ruled, false, temperature, action);
+		// The decider may choose anew in act(): the jump reset told before or after it.
+		if ((jrGate || ownJumpResetGate && jumpResetTold(learner.told())) && (ruled & ActionSpace.mask(ActionSpace.JUMP)) == 0
+				&& action[ActionSpace.JUMP] == 1) {
+			action[ActionSpace.JUMP] = 0;
+			ownJumpResetsStripped++;
+		}
 		fairJump.apply(action, body.onGround, sinceHitTaken, takenStreak.hits());
 		motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));
 		if (rules != null) {
