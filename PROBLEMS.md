@@ -1751,3 +1751,8 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 
 - **ROUNDS WON: A 33/44, B 30/44, z about +0.9.** Net +2.5 HP a fight. Their third hit: A 22%, B 17%. Swung (ready, in reach): A 43%, B 58%. Jumps a minute: A 43/55, B 29/31.
 - Run 116 (own-combo jumps charged and taught "no jump"; agent 51) asked 06:29. Details in EXPERIMENTS.md.
+
+## 16 Nov 06:42 review
+
+- Run 116 is live: redeploy 06:36-06:38, 0 test failures. In the first update, "run 116 its own combo charged 8" and "run 97 its own combo 0", as designed.
+- The first check with run 116 is about 07:23. Punish crit chances critted 55% of 300; told and landed 44%.
