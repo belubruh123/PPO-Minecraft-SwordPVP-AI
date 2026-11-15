@@ -1740,3 +1740,9 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Jumps a minute off/on its moments: A 53/78, B 27/25. **Next: its jumps** (about twice B's, every check).
 - Techniques in the check: B1 65%, T2 25%, T4 53%, T5 60%, T6 60%, T1 0/7.
 - Punish crit chances critted 55% of 300; told and landed 44%.
+
+## 16 Nov 06:13 review
+
+- Training runs (run 115). Last update: ready with them in reach 164 ticks, swung 56; the swing taught on 15 ticks.
+- Punish crit chances critted 56% of 300; told and landed 45%.
+- Agent 51 (06:14) does a structural diagnosis of the jumps: A jumps about twice as often as B in every check since 00:31 (05:31: 53/78 vs 27/25 a minute).
