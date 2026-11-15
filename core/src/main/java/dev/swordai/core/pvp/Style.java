@@ -223,6 +223,20 @@ public final class Style {
 	/** Kept out of training: a style only the tests fight against. */
 	public boolean heldOut = false;
 
+	/**
+	 * Agent 49 ({@link Human}): a person's limits on, drawn by {@link Human#humanize}: the distance misjudged per window (distBias +-
+	 * distSd blocks, plus = taken for farther), early clicks (this share of its windows, at a charge of 0.7-0.9) and late ones (ticks
+	 * after the sword is back, exponential with this mean), a reaction drawn per reaction, and with humanAdapts the adaptation (the
+	 * counters of what the other repeats, part 7; and less of its own technique that keeps failing). All off for every style but a
+	 * humanized bot's.
+	 */
+	public boolean human = false;
+	public float distBias = 0f;
+	public float distSd = 0f;
+	public float earlyClick = 0f;
+	public float lateClick = 0f;
+	public boolean humanAdapts = false;
+
 	public float p(Technique t) {
 		return p[t.ordinal()];
 	}
@@ -285,6 +299,12 @@ public final class Style {
 		s.answerByCrit = answerByCrit;
 		System.arraycopy(believe, 0, s.believe, 0, believe.length);
 		s.heldOut = heldOut;
+		s.human = human;
+		s.distBias = distBias;
+		s.distSd = distSd;
+		s.earlyClick = earlyClick;
+		s.lateClick = lateClick;
+		s.humanAdapts = humanAdapts;
 		return s;
 	}
 
@@ -339,6 +359,10 @@ public final class Style {
 			}
 		}
 		b.append(String.format(java.util.Locale.ROOT, "] react %d timing %.2f lag %d ping %d", reaction, timing, lag, ping));
+		if (human) {
+			b.append(String.format(java.util.Locale.ROOT, " human dist %+.2f+-%.2f early %.2f late %.1f%s", distBias, distSd, earlyClick, lateClick,
+					humanAdapts ? " adapts" : ""));
+		}
 		return b.toString();
 	}
 

@@ -6,6 +6,7 @@ import dev.swordai.core.env.Delay;
 import dev.swordai.core.pvp.Body;
 import dev.swordai.core.pvp.Duel;
 import dev.swordai.core.pvp.Events;
+import dev.swordai.core.pvp.Human;
 import dev.swordai.core.pvp.Keys;
 import dev.swordai.core.pvp.PvpPlayer;
 import dev.swordai.core.pvp.Style;
@@ -123,6 +124,10 @@ public final class TechniqueBot {
 
 	/** A new fight with this style; its chances drawn from {@code seed}. */
 	void start(Style s, long seed) {
+		// Agent 49 (Human#HUMAN_BOTS): a person's limits and adaptation on the bot's own copy of its style; its techniques as they were.
+		if (Human.applies(s)) {
+			s = Human.humanize(s, seed);
+		}
 		style = s;
 		rng.setSeed(seed ^ 0x7EC4L);
 		player.start(s, seed);
