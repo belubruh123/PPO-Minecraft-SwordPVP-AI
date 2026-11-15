@@ -90,6 +90,10 @@ final class FightSession implements AgentSession {
 	static final boolean LATE_JUMP_GUARD = true;
 	/** Run 108 (SchoolFighter#ownJumpResetGate): the network's own T9a/T9b/T9c jumps are let go of in the user's duels. */
 	static final boolean OWN_JUMP_RESET_GATE = true;
+	/** Run 109: the 23 Oct model (no school network playing) with the no-swing-at-a-faller guard (K2, jump-in from ground tick 2). */
+	static final boolean OLD_NET_FALLER_GUARD = true;
+	/** Run 109: swings the guard took back from the 23 Oct model. */
+	private long oldNetFallerHeld;
 	/** Ticks since a hit taken on the ground lifted it, -1 when not lifted (the rules leave W to the network in its fall). */
 	private int liftedFor = -1;
 	private boolean groundBefore = true;
@@ -500,7 +504,30 @@ final class FightSession implements AgentSession {
 			// What the crosshair is on, for the rule about answering a hit; see AnswerRule.
 			fighter.crosshairOnOpponent(onOpponent());
 			action = fighter.decide(observer.frame, body);
+			if (OLD_NET_FALLER_GUARD) {
+				// Run 109 (the user, 15 Nov 22:15, after the newest network lost every round to them: "why not just make it counter falling
+				// player no sprint hit and keep all the ability it has before"): the 23 Oct model as it was, but no knockback swing at one
+				// jumping in at it after their ground tick 1 (the user's 5 Nov rule) or falling by the time a sprint hit lands (K2), as the
+				// school's network has it above. Its own crit (falling, not sprinting) is let through. Everything else is the old network's.
+				reader.tick(me, opp, clicked, chargeAtClick, sprintAtClick, critAtClick);
+				dev.swordai.core.pvp.Body them = reader.duel.them;
+				if (them.onGround || !SchoolSession.JUMP_IN_HOLD_THROUGH_HIT && takenNow) {
+					jumpInAir = false;
+				} else if (SchoolSession.jumpInTookOff(them) && SchoolSession.jumpInWatched(reader.duel)) {
+					jumpInAir = true;
+				}
+				boolean crit = SchoolSession.critSwingNow(me);
+				boolean hold = SchoolSession.JUMP_IN_GUARD && jumpInAir && SchoolSession.jumpInTick(them) > SchoolSession.JUMP_IN_SWING_TICKS && !crit
+						|| SchoolSession.K2_GUARD && me.isSprinting() && dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, ownPingTicks() + SchoolSession.K2_MARGIN);
+				if (hold && action[ActionSpace.ATTACK] == 1) {
+					action[ActionSpace.ATTACK] = 0;
+					oldNetFallerHeld++;
+				}
+			}
 			AgentController.apply(mc, action, fighter.yawRate(), fighter.pitchRate());
+			chargeAtClick = me.getAttackStrengthScale(0f);
+			sprintAtClick = me.isSprinting();
+			critAtClick = !me.onGround() && me.getY() < me.yo && !sprintAtClick && chargeAtClick > 0.9f;
 		}
 		turnYawThisTick = me.getYRot() - yawBefore;
 		turnPitchThisTick = me.getXRot() - pitchBefore;

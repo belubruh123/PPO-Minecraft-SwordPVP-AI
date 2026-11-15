@@ -258,8 +258,8 @@ public final class SchoolSession implements AgentSession {
 		// Run 104c: the told T9a-c (predicted jumps: on landing in their rhythm, after its own attack, with its own hit) are technique jumps
 		// again (the user lists them, 17:55); its own late reaction jump after a hit stays stripped (Fighter.lateJumpGuard).
 		return (!LATE_JUMP_GUARD || dev.swordai.core.school.SchoolStages.JUMP_RESETS_TAUGHT) && (t == Technique.T9A || t == Technique.T9B
-				|| t == Technique.T9C) || t == Technique.T10 || t == Technique.T11A
-				|| t == Technique.T11B || t == Technique.T11C || t == Technique.K3 || t == Technique.T1C || t == Technique.C6
+				|| t == Technique.T9C) || dev.swordai.core.school.SchoolStages.COMBO_JUMPS_TAUGHT && (t == Technique.T10 || t == Technique.T11A
+				|| t == Technique.T11B || t == Technique.T11C) || t == Technique.K3 || t == Technique.T1C || t == Technique.C6
 				|| SchoolStages.ALL_TO_70 && t == Technique.T2;
 	}
 	/**

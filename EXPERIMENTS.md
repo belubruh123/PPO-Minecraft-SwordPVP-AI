@@ -2047,3 +2047,20 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **Risks:** B1 loses the moments C1 now takes after a double-critter's crit. A few more second jumps after its own crits, taught through the gated crit layers. T1b gets no moments.
 - **Checks:** CritReadsTest (5) is new. On main: the redeploy's 10 test classes, 57 passed, 3 aborted (TeacherDuelReport's known), 0 failed. Agent 47's full suite: 377 passed, 1 failed (RangeLessonTest 0.0202 vs 0.02, the same on unchanged HEAD). compile-check OK on all 5 files.
 - If any of the three stays under 10 moments an update after about 30 minutes, give a small share of full fights to the bots that the run 107 line and botMoments show giving them.
+
+## Runs 109-110 (15 Nov 22:15): the user's human test of the newest network
+
+- **The user's human test (21:55-22:05) of new2134** (the 21:34 network, runs 107/108 jar), their words: "fucking dumber".
+  - Not hitting at 2 blocks; "high sensitive aim for no reason when near"; lost all rounds (the wins were while they were AFK).
+  - It "jump[s] weirdly": its own combo broke because it just jumps and stops (the hops, lunges and uppercuts).
+  - It treats what looks like a combo as a combo and does not swing back.
+- **Restored at 22:09:** the pool's "installed" arm alone, which is ab/../checkpoint.bin = school/checkpoint.bin = **run35** (3 Nov; md5 the same as ab/run35.bin), with the 14 Nov 20:35 jar.
+  - I called it the 23 Oct model at first; it is not. The 23 Oct model is swordai/checkpoint.bin, the checks' B.
+  - The user tested run35 at once: "the current oct 23 model i test on human it is near perfect". It stays installed. new2134 is backed up in the profile's swordai/backup-new2134-20261115-2209.
+- **Run 109** (FightSession.OLD_NET_FALLER_GUARD; built, NOT installed): the 23 Oct model, when it plays with no school network, gets the no-swing-at-a-faller guard (jump-in from ground tick 2, K2). This is for the user's "make it counter falling player no sprint hit and keep all the ability it has before". Moot while run35 is installed.
+- **Run 110** (the user: "just dont teach hop lunge and uppercut"):
+  - SchoolStages.COMBO_JUMPS_TAUGHT = false, and T10/T11a/T11b are off the INCLUDED and FAVOURED lists.
+  - ComboHolder.NO_COMBO_JUMPS: only the ground holds (W-tap 0.3, S-tap 0.3, strafe 0.41), and no lunge when they back out.
+  - SchoolSession: told T10/T11 no longer count as needed near-fight jumps, so those jumps get the no-jump lesson.
+  - Tests: school + pvp packages 67 passed, 4 aborted (known), 0 failed. compile-check OK.
+- **Lesson (the user's test against the checks):** the 21:38 check said A 17-12 (+11.4 HP) against the 23 Oct model, but against a human it lost every round. The bots' checks did not predict the human result again (PROBLEMS.md 8).

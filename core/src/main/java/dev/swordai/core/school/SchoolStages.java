@@ -250,7 +250,9 @@ public final class SchoolStages {
 	 * take-over copying pulled the jump toward the 23 Oct model's keys, which never hop or lunge, and its rules (JumpIn's chase and
 	 * uppercut) took the keys in its combos. Its combo held by a lunge or hop: 2-12 an hour; T11c 0-2% of its moments.
 	 */
-	public static final boolean COMBO_JUMPS_TAUGHT = true;
+	// Run 110 (the user, 15 Nov 22:15, after the newest network jumped and broke its own combos in their real duels: "just dont teach hop
+	// lunge and uppercut"): off. Its own combo is held on the ground (W-tap, S-tap, A/D strafe taps) only.
+	public static final boolean COMBO_JUMPS_TAUGHT = false;
 	/**
 	 * Run 62b (10 Nov): the rules give way in its own combo only in training, not in a check or a real fight. Since run 62 the checks
 	 * were A behind B (z -1.4, +0.7, -1.5, then the 14:20 check); the same hand-over to an untrained option layer is what failed in run 65.
@@ -388,8 +390,8 @@ public final class SchoolStages {
 		for (Technique t : Technique.ALL) {
 			EXCLUDED[t.ordinal()] = true;
 		}
-		for (Technique t : new Technique[] {Technique.T4, Technique.T5, Technique.T6, Technique.T6A, Technique.T7, Technique.T9, Technique.T10,
-				Technique.T11A, Technique.T11B, Technique.T2, Technique.B1, Technique.T1, Technique.T1A, Technique.T1C, Technique.C6, Technique.K2,
+		// Run 110 (the user, 22:15: "just dont teach hop lunge and uppercut"): T10, T11a and T11b are off the list.
+		for (Technique t : new Technique[] {Technique.T4, Technique.T5, Technique.T6, Technique.T6A, Technique.T7, Technique.T9, Technique.T2, Technique.B1, Technique.T1, Technique.T1A, Technique.T1C, Technique.C6, Technique.K2,
 				Technique.K3, Technique.T9A, Technique.T9B, Technique.T9C, Technique.C1, Technique.C2, Technique.C7}) {
 			INCLUDED[t.ordinal()] = true;
 			EXCLUDED[t.ordinal()] = false;
@@ -398,8 +400,7 @@ public final class SchoolStages {
 		// first"): the crits (T1, T1a, T1b, T1c, T2, C6, B1) and the stun starters (T4, T5, T6, T6a, T7) are the main ones; T8 (hit the
 		// rising jumper) moves to LATER with K2 and K3, the jump-in counters; C1 and C7 are secondary.
 		for (Technique t : new Technique[] {Technique.T4, Technique.T5, Technique.T6, Technique.T6A, Technique.T7, Technique.T1,
-				Technique.T1A, Technique.T1C, Technique.T2, Technique.C6, Technique.B1, Technique.T9, Technique.T9A, Technique.T9B, Technique.T9C,
-				Technique.T10, Technique.T11A, Technique.T11B}) {
+				Technique.T1A, Technique.T1C, Technique.T2, Technique.C6, Technique.B1, Technique.T9, Technique.T9A, Technique.T9B, Technique.T9C}) {
 			FAVOURED[t.ordinal()] = true;
 		}
 		// Run 104c: the user's emphasis on top of FAVOURED: C6 heavily, T1 and T1c important, T9b up from 2%.

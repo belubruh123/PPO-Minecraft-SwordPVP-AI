@@ -1587,3 +1587,11 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - The run 107/108 redeploy (21:46-21:51) passed: 0 test failures, CritReadsTest 5/5. Training runs again from 21:51.
 - 21:49 review: punish crit chances critted 51% of 300; told the punish crit and landed it 38%.
 - In the user's duels, watch three things: real-round stuns and knocked-far hits (no own jump resets now), the jump count (A jumped twice as often as B in the 21:38 check), and crits taken after its punish crit.
+
+## 15 Nov 22:15: the user's human test
+
+- **new2134 (21:34 network) against a human: lost every round.**
+  - The user: not hitting at 2 blocks, jittery aim up close, random jumps, its own combo broken by hops, lunges and uppercuts, and it thinks a combo is on and does not swing back.
+  - The 21:38 bot check (A 17-12, +11.4 HP) did not predict this. Item 8 (the bots do not fight like real players) stands, worse.
+- **run35 + the 14 Nov jar** (the pool's "installed" arm, restored 22:09): the user, after testing it on a human, calls it "near perfect". It stays installed.
+- Run 110: hops, lunges and uppercuts are no longer taught (the user's word). Training stays paused until the user says.

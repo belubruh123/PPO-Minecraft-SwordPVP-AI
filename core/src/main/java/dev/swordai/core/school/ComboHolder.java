@@ -49,7 +49,10 @@ public final class ComboHolder {
 	// Run 97b (14 Nov ~21:55, the user: "I prefer uppercuts ... dont use hop when combo"): the hop share (0.16; 0 hits landed from hops in 262 updates)
 	// goes to the uppercut (82% of its uppercut holds were followed by its own next hit first).
 	// Run 104c (the user, 15 Nov 17:55, lists T11b hops among the skills to learn): hops 0 -> 0.1 (W-tap, S-tap 0.2 -> 0.15).
-	public static final float[] WEIGHTS = {0.15f, 0.15f, 0.2f, 0.1f, 0.3f, 0.1f};
+	// Run 110 (the user, 15 Nov 22:15, after its own jumps broke its combos in their real duels: "just dont teach hop lunge and uppercut"):
+	// the three jumping holds 0; the ground holds share their weight (W-tap 0.3, S-tap 0.3, strafe taps 0.4), and no lunge when they back out.
+	public static final boolean NO_COMBO_JUMPS = true;
+	public static final float[] WEIGHTS = NO_COMBO_JUMPS ? new float[] {0.3f, 0.3f, 0.41f, 0f, 0f, 0f} : new float[] {0.15f, 0.15f, 0.2f, 0.1f, 0.3f, 0.1f};
 	/** In its own combo while its last hit is at most this old (SchoolSession.COMBO_GAP). */
 	public static final int COMBO_GAP = 20;
 	/** The sword comes back about this much a tick (Body.SWORD_TICKS 12.5). */
@@ -178,7 +181,7 @@ public final class ComboHolder {
 		}
 		boolean on = active();
 		if (on) {
-			if (method != LUNGE && !tookOff && awayNow(d)) {
+			if (!NO_COMBO_JUMPS && method != LUNGE && !tookOff && awayNow(d)) {
 				// They back out (T11a "extra hits on players who hold S out of a trade"; T11c).
 				method = LUNGE;
 			}
