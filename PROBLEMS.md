@@ -1567,3 +1567,13 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - Punish-crit chances counted every lift, but only about 30% come down in reach, so no bot was ever read as a punisher and T1 never opened. C2 needs T1.
   - Run 107 fixes the reads, teacher only. Merged as 68f55e0; tests: 57 passed, 0 failed. Redeploy after the 21:34 check.
 - **T2 at 33% (STUCK):** off on the jump 45%; the network's own share is 21%. Next after run 107.
+
+## 15 Nov 21:38 check: the network of 21:34 (run 104c trained on, run 106); the user asks to test it
+
+- **ROUNDS WON: A 17/44 (39%), B 12/44 (27%), z about +1.4** (only A won 9, only B won 4). Net A-B +11.4 HP a fight (se 4.7, about +2.4 se). Dealt/taken: A 371 / 380, B 332 / 411.
+- **Their third hit: A 29% (25 of 86), B 41% (34 of 82).** Outside their combo: A swung 48%, crosshair off 29%; B swung 50%, off 32%.
+- Late knock-away hits on jump-ins (rising): **A 7, B 21.** Swings: A 377 (96% on them), B 379 (88%).
+- Techniques in the check, A against B: T4 71% vs 10%, T5 81% vs 14%, B1 70% vs 57%, T2 32% vs 2%. By the game, T9 jump resets: A 96%, B 100%.
+- **Watch:** A jumps about twice as often as B (91 a minute off its moments against 47; "jumps in" 45% vs 29% of approaches). The user's rule is "combo first, jump less".
+- Behind: fight-jumpin (-11.7), mixer (-15.2), attack-then-s (-5.5). Ahead: stun-escaper +51, jump-in-critter +40, deflector +39, mixer* +30, stunner +25, uppercutter +18.
+- **Run 108** (for the user's test, 21:42): in the user's duels the network's own T9a/T9b/T9c jumps are let go of (under the user's 95%). The rules' reactive jump reset and the late-jump guard stay. It is built with run 107's redeploy.
