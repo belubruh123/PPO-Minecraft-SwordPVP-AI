@@ -224,6 +224,8 @@ public final class PvpPlayer {
 		plan = Plan.NONE;
 		planT = 0;
 		phase = 0;
+		spamWait = 0;
+		openFrom = s.critFrom;
 		pending = Plan.NONE;
 		jumpAt = -1;
 		jumpFor = Technique.BASE;
@@ -608,7 +610,19 @@ public final class PvpPlayer {
 		planDir = rng.nextBoolean() ? 1 : -1;
 		planAlt = false;
 		planAfterPunish = false;
+		if (style.critSpam) {
+			// Run 100: only the crit spammer draws this (every other style's random stream stays as it was).
+			spamWait = rng.nextInt(SPAM_WAIT_MOST + 1);
+		}
 	}
+
+	/** Run 100 (Style#critSpam): ground ticks it waits after landing before its double crit's jump, drawn per plan (0..SPAM_WAIT_MOST). */
+	private int spamWait;
+	public static final int SPAM_WAIT_MOST = 2;
+	/** Run 100 (Style#critFromSpread): this opening crit's take-off distance, and its bounds. */
+	private float openFrom = 2.2f;
+	static final float OPEN_FROM_LEAST = 1.2f;
+	static final float OPEN_FROM_MOST = 6.5f;
 
 	/**
 	 * Run 49d (8 Nov 23:12): the user, 8 Nov 19:40: "even a rising jumper will land crit because of ping unless rising jumper
@@ -688,6 +702,13 @@ public final class PvpPlayer {
 		if (breaker() && breakOut(d, e)) {
 			return;
 		}
+		if (style.critSpam && e.theyHit == Events.CRIT && !wasOnGround && critJump(plan)) {
+			// Run 100, the crit spammer (Style#critSpam): their punish crit on its double crit jump does not stop it. A crit is little
+			// knockback and a hit in the air pushes it the way it already goes (K1), so it comes down on them critting: the document's
+			// T1, "a player who punish-crits you (B1) is falling onto you, and that leaves them open". Lost real rounds: after their
+			// jump again before its punish crit landed, their crit came within 12 ticks 15 times in 17.
+			return;
+		}
 		// Run 59: their crit (a punish crit) answered at once, as real players do: a swing back a reaction later if the sword is
 		// ready and they are in reach (see the end of tick; the golden rule K2 still holds a knockback hit on a faller).
 		if (e.theyHit == Events.CRIT && style.answerCrit > 0f && rng.nextFloat() < style.answerCrit) {
@@ -695,7 +716,7 @@ public final class PvpPlayer {
 			// falling from its crit, and the closer swing (run 60) the rest. Real answers come with them in the air (75%): lifted
 			// by its crit, they come down hitting, a punish crit back (B1). Standing or already in the air: a swing back, a
 			// reaction later (60%) or 5-12 ticks later (40%; real gaps p50 3, p75 8, p90 12).
-			if (wasOnGround && plan != Plan.B1 && rng.nextFloat() < ANSWER_BY_CRIT) {
+			if (wasOnGround && plan != Plan.B1 && rng.nextFloat() < (style.answerByCrit >= 0f ? style.answerByCrit : ANSWER_BY_CRIT)) {
 				thrownUpAt = tick;
 				pending = Plan.NONE;
 				end();
@@ -861,6 +882,13 @@ public final class PvpPlayer {
 			if (was == Plan.T1 || was == Plan.T1B || was == Plan.T1C) {
 				// The second crit landed: the double crit is done.
 				end();
+				if (style.critSpam && roll(Technique.T1C)) {
+					// Run 100, the crit spammer's crit combo: it jumps and crits again (T1c's "immediately jump and crit again"). Lost real
+					// rounds: after their crit back on its punish crit they took off again within 25 ticks 15 times in 26, median 6 ticks
+					// later, from 3.5 blocks (p25 2.9, p75 5.0).
+					begin(Plan.T1C);
+					return;
+				}
 				wtapLeft = style.wtap;
 				return;
 			}
@@ -1029,6 +1057,11 @@ public final class PvpPlayer {
 			}
 			if (!style.jumpInLands && !style.noJumps && style.critOpen > 0f && rng.nextFloat() < style.critOpen) {
 				begin(Plan.OPEN_CRIT);
+				if (style.critFromSpread > 0f) {
+					// Run 100: the crit spammer's take-offs spread as in the lost real rounds (median 3.5 blocks, p25 2.6, p75 4.7).
+					openFrom = (float) Math.max(OPEN_FROM_LEAST, Math.min(OPEN_FROM_MOST,
+							style.critFrom + style.critFromSpread * (2f * rng.nextFloat() - 1f)));
+				}
 				return;
 			}
 		}
@@ -1071,7 +1104,7 @@ public final class PvpPlayer {
 		Body them = d.them;
 		switch (plan) {
 			case OPEN_CRIT -> {
-				return jumpedCrit(d, k, style.jumpInLands ? jumpInFrom(d) : style.critFrom, false);
+				return jumpedCrit(d, k, style.jumpInLands ? jumpInFrom(d) : style.critFromSpread > 0f ? openFrom : style.critFrom, false);
 			}
 			case T1A -> {
 				return jumpedCrit(d, k, RUNNING_JUMP_FROM + 0.1f, false);
@@ -1392,13 +1425,20 @@ public final class PvpPlayer {
 				k.forward = d.reach > 1.2 ? 1 : 0;
 				return planT < 20 ? RUN : ABORT;
 			}
-			boolean atLanding = T1C_AT_LANDING && style.t1cAtLanding && plan == Plan.T1C;
+			boolean atLanding = T1C_AT_LANDING && (style.t1cAtLanding && plan == Plan.T1C
+					|| style.critSpam && (plan == Plan.T1 || plan == Plan.T1B || plan == Plan.T1C));
 			if (d.reach > (atLanding ? T1C_WALK_FROM : from) + 0.1) {
 				k.forward = 1;
 				k.sprint = running || d.reach > from + 1.0;
 				return planT < 40 ? RUN : ABORT;
 			}
 			if (!atLanding && waitsForTheSword(me)) {
+				k.forward = d.reach > 1.2 ? 1 : 0;
+				return planT < 40 ? RUN : ABORT;
+			}
+			if (atLanding && style.critSpam && sinceLanded < spamWait) {
+				// Run 100: a person's jump again comes a tick or two after the landing, not always on it (lost real rounds: their
+				// ground ticks between their crit and its punish crit landing, median 4).
 				k.forward = d.reach > 1.2 ? 1 : 0;
 				return planT < 40 ? RUN : ABORT;
 			}

@@ -219,6 +219,52 @@ public final class Specialists {
 		return s;
 	}
 
+	/**
+	 * Run 100 (agent 42; the user, 15 Nov 08:35, after the installed network run98-2210 beat most real players: "those rounds are
+	 * advance crit spammers. You thought landing a punish crit is enough? no. they jump and crit after your punish crit and then also
+	 * does crit combo ... make a replica version like that"): the crit spammer of the 7 rounds lost on 14 Nov evening (126 hits taken,
+	 * 106 dealt), drawn from what those rounds measured (tools/critspam.py):
+	 * <ul>
+	 * <li>it opens nearly every exchange with a jump-in crit (59 of their 126 hits): take-off 3.5 blocks (p25 2.6, p75 4.7, spread within
+	 * a round 0.6-7), the hit 9 ticks later (8-9) at 1.5 blocks (0.5-2.2), the AI on the ground with its sword ready;</li>
+	 * <li>the double crit (T1, bait T1a): after its crit it jumps again on landing, before the AI's punish crit lands (17 of 33 punish
+	 * crits), and keeps the jump through that punish crit (Style#critSpam), its second crit 5 ticks after the punish crit landed
+	 * (p25 4, p75 8), 13 ticks after its own last swing (12-14: the moment its sword is back);</li>
+	 * <li>lifted on the ground by the punish crit instead, it crits back on the way down (B1 back: answerCrit, answerByCrit): their hit
+	 * back within 12 ticks 26 of 33 in the lost rounds (79%; won rounds 53%);</li>
+	 * <li>the crit combo: after its crit back it jumps and crits again (T1c), took off again within 25 ticks 15 of 26, median 6 ticks.</li>
+	 * </ul>
+	 * Only a sprint hit stops its double crit early in the jump (the document's C1, "sprint-hit them, which knocks them away"; part 7:
+	 * "sprint hit beats the double crit"); its C2 (S when its double crit is sprint-hit) is drawn low so that C1 works as the file says.
+	 * The AI's answers are learned by the outcome, from the document only: C1, K3/jump along with their jump-in, T6 after its punish crit,
+	 * T1c, K2 and the guard as they are.
+	 */
+	public static Style critSpammer(Random rng) {
+		Style s = new Style().drawHuman(rng);
+		s.bot = DOUBLE_CRITTER;
+		s.name = "crit-spammer";
+		s.adapts = false;
+		s.humanTiming = true;
+		s.critSpam = true;
+		s.t1cAtLanding = true;
+		s.jumpInLands = false;
+		s.critOpen = 0.85f + 0.15f * rng.nextFloat();
+		s.critFrom = 3.1f + 0.8f * rng.nextFloat();
+		s.critFromSpread = CRIT_SPAM_FROM_SPREAD;
+		float p = 0.35f + 0.3f * rng.nextFloat();
+		s.set(Technique.T1, p).set(Technique.T1A, 0.15f + 0.15f * rng.nextFloat()).set(Technique.T1C, 0.45f + 0.3f * rng.nextFloat())
+				.set(Technique.B1, 0.6f).set(Technique.C2, 0.25f);
+		s.answerCrit = 0.85f + 0.1f * rng.nextFloat();
+		s.answerByCrit = CRIT_SPAM_ANSWER_BY_CRIT;
+		// Its hit back came 13 ticks (12-14) after its own swing: with the sword back, not short of it.
+		s.swingCharge = 0.95f + 0.05f * rng.nextFloat();
+		return s;
+	}
+
+	/** Run 100: the crit spammer's take-off spread (uniform, critFrom +- this) and its share of crit answers made as a crit back. */
+	public static final float CRIT_SPAM_FROM_SPREAD = 2.1f;
+	public static final float CRIT_SPAM_ANSWER_BY_CRIT = 0.9f;
+
 	/** Run 97: the least of each escape's chance drawn for a combo breaker (each drawn up from here), and of its short stun, ticks. */
 	public static final float BREAK_RISING_LEAST = 0.6f;
 	public static final float BREAK_RHYTHM_LEAST = 0.4f;

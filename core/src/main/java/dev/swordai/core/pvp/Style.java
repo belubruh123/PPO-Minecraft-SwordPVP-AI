@@ -178,6 +178,21 @@ public final class Style {
 	public float breakEmpty = 0f;
 	public int breakStun = 0;
 	/**
+	 * Run 100 (agent 42; the user, 15 Nov 08:35: "those rounds are advance crit spammers ... they jump and crit after your punish crit
+	 * and then also does crit combo ... make a replica version like that"): the crit spammer of the user's 7 lost real rounds
+	 * ({@link Specialists#critSpammer}). With it on: (1) a crit jump of its own (T1, T1a, T1c, the opening crit) goes on through a crit it
+	 * takes in the air and comes down critting (K1: an air hit is little knockback and pushes it the way it already goes), so a punish
+	 * crit into its double crit (T1) is answered by its second crit, as in 15 of the 17 lost-round punish crits made after their jump
+	 * again; (2) its double crit (T1, T1b) jumps on landing like T1c ({@link PvpPlayer#T1C_AT_LANDING}), a short human wait of 0 to
+	 * {@link PvpPlayer#SPAM_WAIT_MOST} ground ticks first; (3) after its second crit lands it may jump and crit again (T1c's chance): the
+	 * crit combo. false for every other bot and the teacher.
+	 */
+	public boolean critSpam = false;
+	/** Run 100: each opening crit's take-off distance drawn uniform within critFrom +- this (0: always critFrom). */
+	public float critFromSpread = 0f;
+	/** Run 100: of its answers to a crit that lifted it, the share made as a punish crit back (below 0: PvpPlayer's ANSWER_BY_CRIT). */
+	public float answerByCrit = -1f;
+	/**
 	 * What it takes the other to do before it has seen anything, by {@link Habits} index; below zero for
 	 * no belief. A counter specialist expects the thing it counters (the crit-breaker expects double crits).
 	 */
@@ -244,6 +259,9 @@ public final class Style {
 		s.breakBackOut = breakBackOut;
 		s.breakEmpty = breakEmpty;
 		s.breakStun = breakStun;
+		s.critSpam = critSpam;
+		s.critFromSpread = critFromSpread;
+		s.answerByCrit = answerByCrit;
 		System.arraycopy(believe, 0, s.believe, 0, believe.length);
 		s.heldOut = heldOut;
 		return s;
