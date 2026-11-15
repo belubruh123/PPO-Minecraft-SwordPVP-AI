@@ -1502,3 +1502,15 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Copied crit spammer: 51 fights, all won. Hit back within 12 ticks 3 of 14 (21%), still soft.
 - Punish crit chances critted 66% (just above 65%).
 - Agent 45 (run 104: every technique to 70%+, weakest first, starters and crits favoured) is working.
+
+## 15 Nov 15:51-16:33: broken training (Carpet PvP at average), rollback
+
+- **What happened:**
+  - After the 15:51 restart (run 104, Carpet PvP average/skilled), only 39 fights finished in 30 minutes. After the 16:21 restart (run 104b), 14 of 15 fights were knockouts within 60 ticks with 50+ taken: 3 full hits in about 28 ticks.
+  - From 13:41 to 15:50, at skilled/expert, there were 0 such knockouts in 648 fights.
+- **Carpet PvP off (16:26):** the fast knockouts stopped (0 of 16). But the AI won only 3 of 17 training fights, against 581 of 648 (90%) before 15:50, so the network itself had gone bad.
+- **Why the network, not run 104's code:** run 104's option layers add to the logits and start at zero, so turning them on cannot change play at once. The likely cause is about 35 minutes of PPO on the broken fights.
+- **Rollback (16:33):** checkpoint.bin was restored from checked-1115-1516.bin (the 15:20 check's network). The bad ones are kept as run/swordai/school/checkpoint-broken-1115-1633.bin and -1636.bin.
+  - Runs 104/104b stay on and Carpet PvP stays off (run/carpet-pvp.off).
+  - training-stop.sh's redeploy guard refused again after a finished redeploy, so I stopped by hand.
+- **To do before Carpet PvP comes back:** find why "average" (or something at 15:51) made the arena's fights end in about 1.5 s, and run it at skilled/expert only, which worked for 2 hours.
