@@ -1709,3 +1709,10 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 
 - Training runs (run 114). Run 115 (the swing taught) is merged and waits for the check of about 04:26; it is redeployed right after.
 - Punish crit chances critted 50% of 300 (the bottom of the target); told and landed 44%.
+
+## 16 Nov 04:27 check (run 114; the last before run 115, asked 04:29)
+
+- **ROUNDS WON: A 29/44 (66%), B 27/44 (61%), z about +0.6.** Net A-B -3.0 HP a fight (se 4.2). Dealt/taken: A 396 / 339, B 404 / 327.
+- Their third hit after their second: A 25% (18 of 71), B 20% (13 of 66).
+- **Outside their combo, ready and in reach: A swung 36% (held otherwise 41%), B 58% (27%).** Run 114 did not close it, so run 115 (the swing taught) is the test.
+- Jumps a minute off/on its moments: A 61/86, B 39/36. A jumps more again; the jumps are the next item after the swing.
