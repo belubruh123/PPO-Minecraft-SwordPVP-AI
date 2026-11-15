@@ -1632,3 +1632,12 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Punish crit chances critted 56% of 300; told and landed 40%.
 - In training, full fights against bots lose (13-20 with the rules), but run35 is the network that is "near perfect" on humans, so the bot result is no judge (the user, 22:50).
 - Next: human-like bots (agent 49, the next subagent slot after 00:31).
+
+## 16 Nov 00:31 check: run35 base + run 111 + run 112 memory (about 2 h of training)
+
+- **ROUNDS WON: A 13/45 (29%), B 17/45 (38%), z about -1.0.** Net A-B -3.1 HP a fight (se 3.6). Dealt/taken: A 357 / 408, B 355 / 387. A bot check, so it is no judge of real play (the user, 22:50).
+- **Their third hit after their second: A 9% (9 of 103), B 20% (18 of 91).** The best combo escape in any check; the user's goal is no combos on it.
+- **Outside their combo: A swung only 31% (held with them falling 28%, held otherwise 41%), B 54%.** Swings: A 375, B 431. This matches the user's "not hitting when 2 blocks in distance". Watch it; it may be run35's own way or the run 111 lessons.
+- Jumps a minute off/on its moments: A 48/71, B 35/40 (the 21:38 network was 91/101). Late knock-away hits on jump-ins (rising): A 9, B 19.
+- Punish crit chances critted 59% of 300; told and landed 43%.
+- Agent 49 (human-like bots) started 00:43.
