@@ -1542,3 +1542,14 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Late knock-away hits on jump-ins (rising): A 4, B 10. Take-offs: A rule 16, technique 7, own 0-1 after their first hit 1, own 2-12 1, own other 16; B rule 13.
 - **Skill rates at the stop (last 40 moments):** T9a 100, T7 98, K2 95, T1a 90, K3 85, T9c 80, C7 78, T4 78, C6 75, B1 73, T5 73, T6 73, T6a 73, T9 50, T1c 40, T2 40, T9b 28, C1 20, T1 18 (17 moments), C2 3. T10/T11a/T11b: no moments counted.
 - Training stopped with training-stop.sh at 19:18 (network saved 19:17); the review cron is paused until the user says go.
+
+## 15 Nov 20:49 review: training resumed 20:22 (the user: "keep training now"); run 106 live 20:48
+
+- Training runs (1 loop, 1 client; the user's Minecraft closed). Run 106 redeployed 20:46-20:48: the hold teacher's uppercut/lunge/hop ticks are now judged as T10/T11a/T11b. Tests: 0 failed (ChooserTest 1 and TeacherDuelReport 3 skipped, the known checkpoint-file assumptions).
+- First T10/T11 moments within minutes: T10 4/8, T11a 0/6 (off on W/S 43%, sprint 20%). Too few to judge yet.
+- **Skill rates (stage window, last 40 moments):** T7 98, T9a 95, C6 93, T4 90, T5 85, T1a 83, C7 83, K3 83, T6a 78, B1 75, T6 75, T9c 73, T2 52, T9b 52, T1c 50, T9 40, C1 25, T1 17 (18 moments), C2 10. The stage window says K2 52%, but tech-review over 12 updates says 94%, so I'm watching it.
+- **C6 87% over 12 updates, but its own share is 29%** (11 of 38 moments where the network had the jump). On 193 moments a rule held the jump, and those count as done.
+- **T9 43%, own share 17%:** by design. The rules' JumpReset makes the reaction jump reset, which was right 95% of the time in real rounds. The late-jump guard strips the network's own late jumps.
+- **Punish crit chances critted: 48% of the last 300** (target 50-65%). Aim on them 64-92%.
+- **Cause chain for the lowest skills:** T1, C1 and C2 are starved, not stuck. T1 got 2 moments in 30 updates, C2 got 2, C1 none. Their situations need the network's own crit to be punish-critted (T1), a double crit coming (C1), or its double crit sprint-hit (C2), and those rarely happen. botFor() needs past moments to find their bots, so the priority (T1 p6.01) brings only 3 fights an update. Agent 47 (worktree) is finding the exact cause and building their setups (run 107).
+- No paired check since 19:10; the hourly loop started 20:22.
