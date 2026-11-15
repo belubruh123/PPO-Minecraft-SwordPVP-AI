@@ -1577,3 +1577,13 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **Watch:** A jumps about twice as often as B (91 a minute off its moments against 47; "jumps in" 45% vs 29% of approaches). The user's rule is "combo first, jump less".
 - Behind: fight-jumpin (-11.7), mixer (-15.2), attack-then-s (-5.5). Ahead: stun-escaper +51, jump-in-critter +40, deflector +39, mixer* +30, stunner +25, uppercutter +18.
 - **Run 108** (for the user's test, 21:42): in the user's duels the network's own T9a/T9b/T9c jumps are let go of (under the user's 95%). The rules' reactive jump reset and the late-jump guard stay. It is built with run 107's redeploy.
+
+## 15 Nov 21:52: installed for the user's test; 21:49 review
+
+- **Installed (the user asked at 21:37: "install the current best and let me test it"):**
+  - The network: checked-1115-2134.bin, the one in the 21:38 check. It is the A/B pool's only arm "new2134" and also school/checkpoint.bin.
+  - The jar: 0.16.0 of 21:50, with runs 107 and 108 (no own T9a-c jump in the user's duels).
+  - Backup: profile swordai/backup-before-school-20261115-215220. The run98 pool is in ab/pool-run98-20261115-2152.txt.
+- The run 107/108 redeploy (21:46-21:51) passed: 0 test failures, CritReadsTest 5/5. Training runs again from 21:51.
+- 21:49 review: punish crit chances critted 51% of 300; told the punish crit and landed it 38%.
+- In the user's duels, watch three things: real-round stuns and knocked-far hits (no own jump resets now), the jump count (A jumped twice as often as B in the 21:38 check), and crits taken after its punish crit.
