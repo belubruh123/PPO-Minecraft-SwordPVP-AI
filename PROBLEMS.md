@@ -1704,3 +1704,8 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - Under 60%: T1c 55, T6 52, T9 50 (the rules), T1 30.
 - Punish crit chances critted 52% of 300; told and landed 47%.
 - **The swing hold has been flat for 3+ hours (31-40% vs B 54-57% since 00:31).** By the 3-hour rule, agent 50 (03:45) does a structural diagnosis: who holds the key, one bottleneck with a test that could disprove it, and run35 itself or the training since.
+
+## 16 Nov 04:12 review
+
+- Training runs (run 114). Run 115 (the swing taught) is merged and waits for the check of about 04:26; it is redeployed right after.
+- Punish crit chances critted 50% of 300 (the bottom of the target); told and landed 44%.
