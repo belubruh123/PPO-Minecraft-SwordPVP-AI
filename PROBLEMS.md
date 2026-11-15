@@ -1619,3 +1619,7 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 
 - Training runs; reloaded 22:56-23:02 with anchor.bin = run35 ("copying targets from the frozen best fighter anchor.bin" at 23:02:31). review.sh saw java 2 (want 1), probably left from the redeploy; check at the next review.
 - Punish crit chances critted 53% of 300; damage a minute 367 dealt / 284 taken. No paired check on the run35 base yet: the cycle restarted 23:02, so the first check is about 23:47.
+
+## 15 Nov 23:42 review (short: 5-hour window at 100%)
+
+- Run 112 (memory + deeper tower) is live. Redeploy 23:36-23:42, 0 test failures; training runs. The first paired check on run35 + memory is about 00:27.
