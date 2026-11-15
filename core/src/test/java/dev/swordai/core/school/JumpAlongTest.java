@@ -110,14 +110,72 @@ class JumpAlongTest {
 		assertEquals(dev.swordai.core.rl.ActionSpace.ALL_HEADS, SchoolStages.taughtHeads(Technique.T6.ordinal()));
 	}
 
-	/** Run 99: a stun starter (T4, T5, T7, T8) is taught only the W/S, strafe, sprint and swing keys (no jump), in the shared trunk. */
+	/**
+	 * Run 99: a stun starter (T4, T5, T7, T8) is taught only the W/S, strafe, sprint and swing keys (no jump). Agent 45 (run 104, 15 Nov):
+	 * this expected gatedHeads 0 (the shared trunk), which is what run 99's code did, not what its comment meant ("into their own option
+	 * layers alone"); run 104 gates them (a sprint taught in the trunk spreads into the lift, where the punish crit lets it go) and puts them
+	 * in RUN_TAUGHT, which run 99 never did (pull 0: nothing was taught at their moments).
+	 */
 	@Test
 	void theStunStartersAreTaughtTheirSprintHitKeysOnly() {
 		org.junit.jupiter.api.Assumptions.assumeTrue(SchoolStages.STARTERS_TAUGHT && SchoolStages.GATED, "the starters are not taught");
 		for (Technique t : new Technique[] {Technique.T4, Technique.T5, Technique.T7, Technique.T8}) {
 			assertEquals(SchoolStages.STARTER_GATED_HEADS, SchoolStages.taughtHeads(t.ordinal()), t + "'s taught keys");
-			assertEquals(0, SchoolStages.gatedHeads(t.ordinal()), t + " has no option layer of its own");
+			assertEquals(SchoolStages.ALL_TO_70 ? SchoolStages.STARTER_GATED_HEADS : 0, SchoolStages.gatedHeads(t.ordinal()), t + "'s option layer");
+			assertEquals(SchoolStages.ALL_TO_70, SchoolStages.runTaught(t.ordinal()), t + " in RUN_TAUGHT");
 		}
 		assertEquals(0, SchoolStages.STARTER_GATED_HEADS & (1 << dev.swordai.core.rl.ActionSpace.JUMP), "no jump in a starter's lesson");
+	}
+
+	/**
+	 * Run 104: every included technique is taught with a pull above 0, all but B1 and T6 through their own layers only (nothing new reaches
+	 * the trunk), the excluded ones (the get-out part, the jump resets) get no priority, and the priority falls as the rate rises: the
+	 * smallest rate is trained most, and much more under 50%.
+	 */
+	@Test
+	void everyIncludedTechniqueIsTaughtByItsPriority() {
+		org.junit.jupiter.api.Assumptions.assumeTrue(SchoolStages.ALL_TO_70 && SchoolStages.GATED, "run 104 is off");
+		SchoolStages st = new SchoolStages();
+		float[] pulls = st.techPulls();
+		for (Technique t : Technique.ALL) {
+			int i = t.ordinal();
+			if (SchoolStages.included(i)) {
+				assertTrue(pulls[i] > 0f, t + " is pulled");
+				if (t != Technique.B1 && t != Technique.T6) {
+					assertTrue(SchoolStages.gatedHeads(i) != 0, t + " has its own layer");
+					assertEquals(SchoolStages.gatedHeads(i), SchoolStages.taughtHeads(i), t + "'s keys go into its layer alone");
+				}
+			}
+			if (SchoolStages.excluded(i)) {
+				assertEquals(0f, st.priority(i), 0f, t + " is excluded");
+			}
+		}
+		for (Technique t : new Technique[] {Technique.C1, Technique.C7, Technique.T6A, Technique.K2}) {
+			assertEquals(0, SchoolStages.gatedHeads(t.ordinal()) & (1 << dev.swordai.core.rl.ActionSpace.JUMP), t + " has no jump in its lesson");
+		}
+		// T4 done on 1 in 10 of its moments, T7 on 4 in 10, T6 on 9 in 10, C7 (not favoured) on 1 in 10.
+		for (int k = 0; k < 20; k++) {
+			st.moment(Technique.T4.ordinal(), k % 10 == 0, false);
+			st.moment(Technique.T7.ordinal(), k % 10 < 4, false);
+			st.moment(Technique.T6.ordinal(), k % 10 < 9, false);
+			st.moment(Technique.C7.ordinal(), k % 10 == 0, false);
+		}
+		float t4 = st.priority(Technique.T4.ordinal());
+		float t7 = st.priority(Technique.T7.ordinal());
+		float t6 = st.priority(Technique.T6.ordinal());
+		assertTrue(t4 > 2f * t7, "under 50% the smallest rate weighs much more: " + t4 + " vs " + t7);
+		assertTrue(t7 > t6, "T7 under 70% before T6 over it");
+		assertEquals(SchoolStages.REVIEW_PRIORITY, t6, 1e-6f, "over 70%: reviewed only");
+		assertTrue(t4 > st.priority(Technique.C7.ordinal()), "the starters favoured");
+		assertTrue(st.pullBoost(Technique.T4.ordinal()) > st.pullBoost(Technique.T7.ordinal()), "the smaller rate pulls more");
+		assertEquals(1f, st.pullBoost(Technique.B1.ordinal()), 0f, "the punish crit's pull as it was");
+		java.util.Random rng = new java.util.Random(5);
+		st.reached = SchoolStages.FAMILIES - 1;
+		for (int k = 0; k < 50; k++) {
+			int b = st.weakestBot(rng);
+			assertTrue(b >= 0 && b < dev.swordai.core.pvp.Specialists.KINDS);
+		}
+		String line = st.run104Line();
+		assertTrue(line.contains("T4 10% (20)"), line);
 	}
 }

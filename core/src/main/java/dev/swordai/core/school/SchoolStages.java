@@ -325,6 +325,102 @@ public final class SchoolStages {
 				|| technique == Technique.T8.ordinal();
 	}
 
+	/**
+	 * Run 104 (agent 45; the user, 15 Nov 15:15): "Now I think it has the basics now started to let it learn all the skill I want all to
+	 * be at least 70%. Beside get out part. Prioritize all the ones that are lower then 50% and train the ones starting from the smallest
+	 * learned rate. Especially starting combo and crit".
+	 *
+	 * <p>The find: every technique under 50% except K3 had a copy pull of 0. Run 99 set STARTERS_TAUGHT but never put T4/T5/T7/T8 into
+	 * RUN_TAUGHT, so techPulls gave them PULL_CAP 0 and SchoolSession (NO_PULL_YIELDS) yielded their keys: nothing was taught at their
+	 * moments for 17 hours (tech-review 15 Nov: T4 sprint off 62%, worse than run 99's 54%). T2, C6, C7, T1, T1a, T1b, C1, T6a and K2 were
+	 * never in RUN_TAUGHT either (pull 0, yielded). K3 is taught but starved (6 moments).
+	 *
+	 * <p>The change: every included technique taught, each through its own option layer (the decider picks WHEN, the layer learns HOW;
+	 * nothing reaches the shared trunk, so no jump, S, sprint or held swing can spread: runs 25/65 and 28-29 Oct): the jump crits (T1,
+	 * T1a, T1b, T2, C6) their jump, W/S, sprint and swing (T1b its strafe too); the sprint hits (T4, T5, T7, T8 as run 99 meant, C1, C7,
+	 * T6a) W/S, strafe, sprint and swing, no jump; K2 its swing alone (held at a faller; taught into the trunk on 25 Oct it stopped every
+	 * swing). The bot picks, the scene picks and the pull follow {@link #priority}: live from the measured rates, the smallest the most,
+	 * strongly more under 50%, the starters and crits favoured. Excluded (the get-out part, and the user's 15 Nov 12:00 rule "dont jump
+	 * reset unless you are certain and have a rate above of 95%"): C2, C3, C4, C5, T9, T9a-c. B1 keeps its pull exactly (50-65% of its
+	 * chances critted). The rules do not give way to any of them (RULES_YIELD stays off).
+	 */
+	public static final boolean ALL_TO_70 = true;
+	/** The user's least for every included technique (15 Nov 15:15): 70%. */
+	public static final float USER_LEAST = 0.7f;
+	/** Under this the priority grows much faster (the user: "Prioritize all the ones that are lower then 50%"). */
+	public static final float HALF = 0.5f;
+	public static final float UNDER_HALF_WEIGHT = 4f;
+	/** The starters and the crits (the user: "Especially starting combo and crit"). */
+	public static final float FAVOURED_WEIGHT = 1.5f;
+	/** An included technique at or over 70% keeps this much priority: reviewed, not dropped. */
+	public static final float REVIEW_PRIORITY = 0.05f;
+	/** The pull's cap grows by up to this share for a technique at 0% (half for the ones not favoured); 1 at 50% and over. */
+	public static final float PULL_BOOST = 0.5f;
+	/** Of the scene fights' kind picks, the extra weight per unit of the kind's techniques' priority. */
+	public static final float SCENE_PRIORITY_WEIGHT = 1f;
+	static final boolean[] EXCLUDED = new boolean[Technique.COUNT];
+	static final boolean[] INCLUDED = new boolean[Technique.COUNT];
+	static final boolean[] FAVOURED = new boolean[Technique.COUNT];
+	/** Run 104's newly taught techniques (pull 0 until now). */
+	static final boolean[] RUN104_TAUGHT = new boolean[Technique.COUNT];
+
+	static {
+		for (Technique t : new Technique[] {Technique.C2, Technique.C3, Technique.C4, Technique.T9, Technique.T9A, Technique.T9B, Technique.T9C}) {
+			EXCLUDED[t.ordinal()] = true; // C5 has no moment of its own (no Technique)
+		}
+		for (Technique t : new Technique[] {Technique.B1, Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2, Technique.C1,
+				Technique.T4, Technique.T5, Technique.T6, Technique.T6A, Technique.T7, Technique.T8, Technique.C6, Technique.C7, Technique.K2,
+				Technique.K3}) {
+			INCLUDED[t.ordinal()] = true;
+		}
+		for (Technique t : new Technique[] {Technique.T4, Technique.T5, Technique.T6, Technique.T6A, Technique.T7, Technique.T8, Technique.T1,
+				Technique.T1A, Technique.T1C, Technique.T2, Technique.C6, Technique.B1}) {
+			FAVOURED[t.ordinal()] = true;
+		}
+		for (Technique t : new Technique[] {Technique.T1, Technique.T1A, Technique.T1B, Technique.T2, Technique.C6, Technique.C1, Technique.C7,
+				Technique.T6A, Technique.K2}) {
+			RUN104_TAUGHT[t.ordinal()] = true;
+		}
+	}
+
+	/** Run 104: whether technique {@code t} is one of the user's included skills (15 Nov 15:15). */
+	public static boolean included(int t) {
+		return t >= 0 && t < Technique.COUNT && INCLUDED[t];
+	}
+
+	public static boolean excluded(int t) {
+		return t >= 0 && t < Technique.COUNT && EXCLUDED[t];
+	}
+
+	public static boolean favoured(int t) {
+		return t >= 0 && t < Technique.COUNT && FAVOURED[t];
+	}
+
+	/** Run 104: the jump crits taught into their own layers (jump, W/S, sprint, swing; T1b its strafe too). */
+	public static final int CRIT_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP,
+			dev.swordai.core.rl.ActionSpace.FORWARD, dev.swordai.core.rl.ActionSpace.SPRINT, dev.swordai.core.rl.ActionSpace.ATTACK);
+	public static final int T1B_GATED_HEADS = CRIT_GATED_HEADS | dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.STRAFE);
+	/** Run 104: K2's lesson is the swing held at a faller, in its own layer alone. */
+	public static final int K2_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.ATTACK);
+
+	/** Run 104: the keys of a newly taught technique's own option layer (0: not one). */
+	static int run104Heads(int technique) {
+		if (!ALL_TO_70 || technique < 0 || technique >= Technique.COUNT || !RUN104_TAUGHT[technique]) {
+			return 0;
+		}
+		if (technique == Technique.T1B.ordinal()) {
+			return T1B_GATED_HEADS;
+		}
+		if (technique == Technique.T1.ordinal() || technique == Technique.T1A.ordinal() || technique == Technique.T2.ordinal()
+				|| technique == Technique.C6.ordinal()) {
+			return CRIT_GATED_HEADS;
+		}
+		if (technique == Technique.K2.ordinal()) {
+			return K2_GATED_HEADS;
+		}
+		return STARTER_GATED_HEADS; // C1, C7, T6a: sprint hits and the strafe, no jump
+	}
+
 	public static final int T1C_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP,
 			dev.swordai.core.rl.ActionSpace.FORWARD, dev.swordai.core.rl.ActionSpace.SPRINT, dev.swordai.core.rl.ActionSpace.ATTACK);
 	public static final int T9B_GATED_HEADS = dev.swordai.core.rl.ActionSpace.mask(dev.swordai.core.rl.ActionSpace.JUMP,
@@ -363,6 +459,15 @@ public final class SchoolStages {
 		if (COUNTER_JUMPS_TAUGHT && counterJump(technique)) {
 			return technique == Technique.T1C.ordinal() ? T1C_GATED_HEADS : T9B_GATED_HEADS;
 		}
+		// Run 104: the starters into their own layers, as run 99's comment meant (its code taught them into the shared trunk, and with
+		// pull 0 not at all): a sprint taught in the trunk spreads into the lift, where the punish crit needs it let go (28 Oct).
+		if (ALL_TO_70 && STARTERS_TAUGHT && starter(technique)) {
+			return STARTER_GATED_HEADS;
+		}
+		int heads = run104Heads(technique);
+		if (heads != 0) {
+			return heads;
+		}
 		return technique == Technique.B1.ordinal() ? B1_GATED_HEADS : 0;
 	}
 
@@ -385,6 +490,10 @@ public final class SchoolStages {
 		}
 		if (STARTERS_TAUGHT && GATED && starter(technique)) {
 			return STARTER_GATED_HEADS;
+		}
+		// Run 104: the newly taught techniques' keys into their own layers alone.
+		if (GATED && run104Heads(technique) != 0) {
+			return run104Heads(technique);
 		}
 		int whole = technique == Technique.B1.ordinal() ? B1_TAUGHT_HEADS : technique == Technique.T9.ordinal() ? T9_TAUGHT_HEADS
 				: technique == Technique.C3.ordinal() ? C3_TAUGHT_HEADS : dev.swordai.core.rl.ActionSpace.ALL_HEADS;
@@ -451,6 +560,17 @@ public final class SchoolStages {
 		}
 		if (T6_TAUGHT) {
 			RUN_TAUGHT[Technique.T6.ordinal()] = true;
+		}
+		// Run 104: run 99's starters were never added here (pull 0, yielded); and the techniques the user wants at 70% that had no pull.
+		if (ALL_TO_70) {
+			if (STARTERS_TAUGHT) {
+				for (Technique t : new Technique[] {Technique.T4, Technique.T5, Technique.T7, Technique.T8}) {
+					RUN_TAUGHT[t.ordinal()] = true;
+				}
+			}
+			for (int t = 0; t < Technique.COUNT; t++) {
+				RUN_TAUGHT[t] |= RUN104_TAUGHT[t];
+			}
 		}
 	}
 
@@ -686,10 +806,76 @@ public final class SchoolStages {
 				p[t] = Math.max(p[t], BASE_PULL_LEAST);
 			}
 			if (RUN_PULL_CAP > 0f && RUN_TAUGHT[t]) {
-				p[t] = TECH_PULL * Math.min(RUN_PULL_CAP, pullShare[t]);
+				p[t] = TECH_PULL * Math.min(RUN_PULL_CAP * pullBoost(t), pullShare[t]);
 			}
 		}
 		return p;
+	}
+
+	/** Run 104: a technique's rate as the priority reads it: under 5 moments it counts as 0 (starved: its moments only come if sought). */
+	public float priorityRate(int t) {
+		return momentCount[t] < 5 ? 0f : doneRate(t);
+	}
+
+	/**
+	 * Run 104: how much training technique {@code t} gets now, live from its measured rate: (70% - rate), times 1 + 4 x (50% - rate) under
+	 * 50%, times 1.5 for the starters and crits; an included one at or over 70% keeps REVIEW_PRIORITY; excluded and others 0. At 0% a
+	 * favoured one has 3.15, at 12% 2.19, at 31% 1.03, at 58% 0.18. Monotone: the smallest rate has the most.
+	 */
+	public float priority(int t) {
+		if (!ALL_TO_70 || !included(t)) {
+			return 0f;
+		}
+		float r = priorityRate(t);
+		float gap = Math.max(0f, USER_LEAST - r);
+		float w = gap * (1f + UNDER_HALF_WEIGHT * Math.max(0f, HALF - r)) * (favoured(t) ? FAVOURED_WEIGHT : 1f);
+		return Math.max(REVIEW_PRIORITY, w);
+	}
+
+	/** Run 104: the cap on a taught technique's pull grows under 50%, up to 1 + PULL_BOOST at 0% (half that if not favoured); B1 as before. */
+	public float pullBoost(int t) {
+		if (!ALL_TO_70 || !included(t) || t == Technique.B1.ordinal()) {
+			return 1f;
+		}
+		float under = Math.max(0f, HALF - priorityRate(t)) / HALF;
+		return 1f + PULL_BOOST * under * (favoured(t) ? 1f : 0.5f);
+	}
+
+	/** Run 104: the weakest-technique fights drawn per technique since the last {@link #run104Line}. */
+	private final int[] priorityPicks = new int[Technique.COUNT];
+
+	/**
+	 * Run 104's counter line, per update: each included technique by its rate, smallest first: rate (moments), priority, pull, its
+	 * weakest-technique fights since the last line. " | run 104 ...: T6a 0% (4) p3.15 pull 1.50 f12, ...".
+	 */
+	public String run104Line() {
+		if (!ALL_TO_70) {
+			return "";
+		}
+		float[] pulls = techPulls();
+		java.util.List<Integer> ts = new java.util.ArrayList<>();
+		for (int t = 0; t < Technique.COUNT; t++) {
+			if (included(t)) {
+				ts.add(t);
+			}
+		}
+		ts.sort((a, c) -> Float.compare(priorityRate(a), priorityRate(c)));
+		StringBuilder b = new StringBuilder(" | run 104, every included technique to 70% (rate (moments) priority pull, weakest-technique fights):");
+		int picks = 0;
+		for (int t : ts) {
+			b.append(String.format(Locale.ROOT, " %s %.0f%% (%d) p%.2f pull %.2f f%d;", Technique.ALL[t].id, 100f * priorityRate(t), momentCount[t],
+					priority(t), pulls[t], priorityPicks[t]));
+			picks += priorityPicks[t];
+		}
+		int other = 0;
+		for (int t = 0; t < Technique.COUNT; t++) {
+			if (!included(t)) {
+				other += priorityPicks[t];
+			}
+		}
+		b.append(String.format(Locale.ROOT, " fights for included %d, others %d", picks, other));
+		java.util.Arrays.fill(priorityPicks, 0);
+		return b.toString();
 	}
 
 	/** Whether this stage's techniques are mastered: each that has had its moments on {@link #FLOOR}, all of them on {@link #MASTERED}. */
@@ -845,6 +1031,11 @@ public final class SchoolStages {
 				boolean starved = momentCount[t] < ENOUGH / 2;
 				float r = starved ? 0f : doneRate(t);
 				w[f][i] = Math.max(0f, target(t) - r) * (starved ? 2f : 1f) * (r < UNDER ? UNDER_WEIGHT : 1f);
+				if (ALL_TO_70) {
+					// Run 104: the user's included skills by their priority (smallest rate most); the excluded and the jumping family
+					// (skipped while "jump once then combo" holds, run 95c) only as a review.
+					w[f][i] = included(t) ? priority(t) : excluded(t) ? 0f : REVIEW_PRIORITY;
+				}
 				total += w[f][i];
 			}
 		}
@@ -855,7 +1046,8 @@ public final class SchoolStages {
 		for (int f = 0; f <= last; f++) {
 			for (int i = 0; i < w[f].length; i++) {
 				u -= w[f][i];
-				if (u <= 0f) {
+				if (u <= 0f && w[f][i] > 0f) {
+					priorityPicks[STAGES[f].techniques[i].ordinal()]++;
 					int b = botFor(STAGES[f].techniques[i].ordinal(), rng);
 					if (b >= 0) {
 						return b;
