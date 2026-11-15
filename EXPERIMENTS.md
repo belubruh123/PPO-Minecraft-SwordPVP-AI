@@ -2005,3 +2005,4 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
   - B1 keeps 50-65% of its punish crit chances critted.
 - **Revert:** C1_BEFORE_B1 = 0 if B1's punish crit chances critted fall under 50%. T1B_SHARE = -1 if T1b's moments fall under 1 an update.
 - **Not fixed, a lead:** in the decider's fights (15% of full fights, half the scenes), a told starter (T4/T7) now drives its own strong layer (W, sprint, swing) at a teacher's T6/T1c/B1 moment. Before run 104 the starters had no layer.
+- **Checks (me):** compile-check OK on all 5 changed files (only the known class_6880 error). Core tests in the worktree: 61 found, 59 passed, 2 aborted, 0 failed. The 2 aborts are assumptions on checkpoint files that this worktree does not have (ChooserTest, SchoolNetTest).
