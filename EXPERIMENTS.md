@@ -2031,3 +2031,19 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
   - Done means the network pressed the hold teacher's W/S, A/D, sprint and jump on 70% of the ticks, and the take-off jump within a tick.
   - The moments also feed the stages' rates, so T10/T11a/T11b get a real priority and botFor() learns which bots give them. The technique reward pays the imitation share at T10/T11's pull (1.0) on those ticks, instead of BASE's.
 - **Checks:** compile-check OK (only the known class_6880 error). The change is client-only; no core change.
+
+## Run 107 (agent 47, merged 15 Nov 21:30): the teacher's crit reads open T1, C1 and C2 (Teacher.CRIT_READS)
+
+- **Cause (agent 47):** T1, C1 and C2 were starved (30 updates: 2, 0, 2 moments) by the teacher's read of the opponent, not by the bots or the priority.
+  - C1 opens on their crit against one expected to double crit. The teacher read their crits off the client's view of their fall, which caught 117 of the bots' 609 game crits (19%). So a double crit was almost never seen.
+  - T1 opens after its own crit against one "that tries to punish-crit you". Every lift of its hits counted as a chance, but only about 30% of lifts come down in reach (508 of 1699 after sprint hits). So even a bot that punish-crits whenever it can read as about 30%, under the 0.3 bar, and nobody was ever taken for a punisher.
+  - C2 follows T1, so it starved too.
+- **Fix (teacher only; no bot, share, guard or rule change):**
+  - Their crit by the game (the server's crit, felt within 3 ticks) counts for C1 and the double-crit read. The network's own inputs are unchanged.
+  - For T1 after its own crit, a punish-crit chance counts only where they come down in reach or try (Style.punishChanceInReach, PvpPlayer.punishesForDouble). T1a keeps the old read.
+  - T1b is excluded from the user's list, so all double crits go to T1.
+  - A " | run 107, the teacher's crit reads" log segment.
+- **Expected moments per update:** C1 about 4-8, T1 about 4-7, C2 about 2-4. In the toy (per 4000 ticks): T1 vs double-critter 3.6 -> 17, C2 4 -> 17, C1 vs crit spammer 5.8 -> 49.6, T1a unchanged.
+- **Risks:** B1 loses the moments C1 now takes after a double-critter's crit. A few more second jumps after its own crits, taught through the gated crit layers. T1b gets no moments.
+- **Checks:** CritReadsTest (5) is new. On main: the redeploy's 10 test classes, 57 passed, 3 aborted (TeacherDuelReport's known), 0 failed. Agent 47's full suite: 377 passed, 1 failed (RangeLessonTest 0.0202 vs 0.02, the same on unchanged HEAD). compile-check OK on all 5 files.
+- If any of the three stays under 10 moments an update after about 30 minutes, give a small share of full fights to the bots that the run 107 line and botMoments show giving them.
