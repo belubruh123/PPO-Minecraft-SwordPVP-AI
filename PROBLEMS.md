@@ -1514,3 +1514,15 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - Runs 104/104b stay on and Carpet PvP stays off (run/carpet-pvp.off).
   - training-stop.sh's redeploy guard refused again after a finished redeploy, so I stopped by hand.
 - **To do before Carpet PvP comes back:** find why "average" (or something at 15:51) made the arena's fights end in about 1.5 s, and run it at skilled/expert only, which worked for 2 hours.
+- **Correction (16:45): there was no collapse. The "90% won" was an artifact of Carpet PvP.**
+
+  | Period | Training fights won | run35 | run85 | installed model |
+  |---|---|---|---|---|
+  | 11:11-13:36, plain Carpet | 35-39% | 23-57 | 41-47 | 11-22 |
+  | 13:41-15:50, Carpet PvP loaded | 90% | 107-1 | 97-2 | 51-0 |
+  | 16:35 onward, plain Carpet again | 35% | — | — | — |
+
+  - Loading Carpet PvP, which replaces Carpet for the whole game, made every opponent driven on the fake player much weaker. From 13:41 to 15:50 the school trained against crippled bots. The checks then ran on the same weakened arena for both A and B.
+  - Carpet PvP stays off. It cannot be loaded just for the outside fights, because it changes how every fake-player bot plays.
+  - The 16:33 rollback was not needed, but it cost only about an hour of distorted training.
+  - **Judge:** the next check, the first back on plain Carpet. Compare with 12:00 (A 21-11) and 13:09 (A 20-20). If A is clearly worse, roll back to checked-1115-1305.bin, the last network before Carpet PvP.
