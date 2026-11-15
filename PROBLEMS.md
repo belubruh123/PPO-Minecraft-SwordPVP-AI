@@ -1491,3 +1491,14 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **Carpet PvP sword bot (skilled/expert), training since 13:41:** 31 fights, all lost. HP a fight dealt 38, taken 75. Of its 218 hits taken on the ground, 111 knocked it far (51%). Their combos of 3+: 38; its own: 1. No sign of learning yet in 31 fights.
 - Copied crit spammer: 40 fights, all won. Hit back within 12 ticks after its punish crits 3 of 12 (25%), still soft.
 - Punish crit chances critted 64%.
+
+## 15 Nov 15:20 check
+
+- **ROUNDS WON: A 18/45, B 18/45, z 0.** Net A-B 0.0 HP a fight (se 5.5). Dealt/taken: A 367 / 397, B 360 / 391.
+- Their third hit: A 39% (32 of 82), B 35% (28 of 79). Outside their combo: A swung 50%, off 33%; B swung 53%, off 35%. Late knock-away hits on jump-ins (rising): A 31, B 38.
+- Take-offs: A rule 11, technique 5, own 2-12 1, own other 14; B rule 18.
+- **Carpet PvP sword bot (skilled/expert), since 13:41:** 50 fights, all lost. HP a fight dealt 35, taken 76; over the last 19 fights dealt 31, taken 76, so no learning shows. Knocked far after 194 of 349 ground hits (56%). Their 3+ combos 67, its own 1.
+  - The bot is too strong to learn from now. Lower it to average/skilled after run 104 is merged.
+- Copied crit spammer: 51 fights, all won. Hit back within 12 ticks 3 of 14 (21%), still soft.
+- Punish crit chances critted 66% (just above 65%).
+- Agent 45 (run 104: every technique to 70%+, weakest first, starters and crits favoured) is working.
