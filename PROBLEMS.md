@@ -1716,3 +1716,8 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Their third hit after their second: A 25% (18 of 71), B 20% (13 of 66).
 - **Outside their combo, ready and in reach: A swung 36% (held otherwise 41%), B 58% (27%).** Run 114 did not close it, so run 115 (the swing taught) is the test.
 - Jumps a minute off/on its moments: A 61/86, B 39/36. A jumps more again; the jumps are the next item after the swing.
+
+## 16 Nov 04:42 review
+
+- Run 115 (the swing taught) is live: redeploy 04:36-04:42, 0 test failures; training runs.
+- The first check with run 115 is about 05:27. Its new counter splits A's held ready swings by holder; the disproof test is in EXPERIMENTS.md.
