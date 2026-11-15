@@ -1741,17 +1741,17 @@ public final class SchoolSession implements AgentSession {
 			"deflection", "punish short"};
 	/**
 	 * Run 104 (SchoolStages#ALL_TO_70): the techniques each scene kind practises, for the kind's pick by their priority: the crit scenes
-	 * the crit trade's answers (T1, T1a, T1c, T2, C1, K3), the jump-in scenes T8/K2/K3/B1, the combo-escape scenes nothing included
+	 * the crit trade's answers (T1, T1a, T1b since run 105, T1c, T2, C1, K3), the jump-in scenes T8/K2/K3/B1, the combo-escape scenes nothing included
 	 * (the get-out part: C3, T9), the punish scenes B1 and T1c, the own-combo scenes its follow-ups (T2, C6, C7), the deflection T4/T5.
 	 */
 	static final Technique[][] KIND_TECHS = {
-			{Technique.T1, Technique.T1A, Technique.T1C, Technique.T2, Technique.C1, Technique.K3},
+			{Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2, Technique.C1, Technique.K3},
 			{Technique.T8, Technique.K2, Technique.K3, Technique.B1},
 			{},
 			{Technique.B1, Technique.T1C},
 			{Technique.T2, Technique.C6, Technique.C7},
 			{Technique.T2, Technique.C6, Technique.C7},
-			{Technique.T1, Technique.T1A, Technique.T1C, Technique.T2, Technique.C1, Technique.K3},
+			{Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2, Technique.C1, Technique.K3},
 			{Technique.T8, Technique.K2, Technique.K3, Technique.B1},
 			{Technique.T4, Technique.T5},
 			{Technique.B1, Technique.T1C}};
@@ -4234,6 +4234,7 @@ public final class SchoolSession implements AgentSession {
 		}
 		missingBotTicks = 0;
 		currentBot = bot;
+		WindowGuard.keepSmall(mc); // run 105: a display change had grown the training window back (16:40:56)
 		if (!observer.capture(grabber)) {
 			AgentController.release(mc);
 			return;
@@ -5125,7 +5126,9 @@ public final class SchoolSession implements AgentSession {
 		// after their sprint hits, 263 were still sprinting (W let go on most of them, a tick late).
 		if (mode == Mode.TRAIN && OVERLAY && liftedFor >= 0 && !me.onGround() && me.isSprinting() && facts.reachDist <= LET_GO_REACH
 				&& (LET_GO_PULL > 0f || pulled(pulls, Technique.B1.ordinal()))
-				&& charge > LET_GO_CHARGE && step.teacherTechnique != Technique.K2.ordinal()) {
+				&& charge > LET_GO_CHARGE && step.teacherTechnique != Technique.K2.ordinal()
+				// Run 105: nor on a C1 moment, whose lesson is the sprint hit instead of the punish crit (its W and sprint kept).
+				&& step.teacherTechnique != Technique.C1.ordinal()) {
 			int f = ActionSpace.OFFSETS[ActionSpace.FORWARD];
 			boolean back = (step.teacherHeads & (1 << ActionSpace.FORWARD)) != 0 && step.teacher[f + 2] > Math.max(step.teacher[f], step.teacher[f + 1]);
 			if (!back) {

@@ -62,6 +62,18 @@ public final class Style {
 	 * of the jump and crit again (T1c). 0 for every bot (their behaviour and the benchmark stay as they were); the school's teacher.
 	 */
 	public float t6AfterPunish = 0f;
+	/**
+	 * Run 105 (agent 46): after their crit, against one expected to double crit, the share of times C1 ("when you expect a double crit,
+	 * don't go for the punish crit. Sprint-hit them") goes before the punish crit (B1). Before, B1 went first whenever the crit could
+	 * be punished, so C1 came only when it could not (8 moments all morning, 0 since). 0 for every bot; the school's teacher.
+	 */
+	public float c1BeforeB1 = 0f;
+	/**
+	 * Run 105 (agent 46): of its double crits (T1), the share thrown around them (T1b); below 0 by its own chance of T1b. The teacher
+	 * has every technique at 1, so with T1b in its family every double crit was a T1b and plain T1 came only after a bait (T1a): 7
+	 * moments in a 40-moment window.
+	 */
+	public float t1bShare = -1f;
 	/** From how far it jumps in for such a crit: eye to hitbox at take-off. */
 	public float critFrom = 2.2f;
 	/**
@@ -236,6 +248,8 @@ public final class Style {
 		s.critOpen = critOpen;
 		s.critFrom = critFrom;
 		s.jumpInLands = jumpInLands;
+		s.c1BeforeB1 = c1BeforeB1;
+		s.t1bShare = t1bShare;
 		s.swingEarly = swingEarly;
 		s.rhythm = rhythm;
 		s.noJumps = noJumps;

@@ -55,8 +55,64 @@ final class WindowGuard {
 			}
 			window.setWindowed(width, height);
 			shrunk = true;
+			smallWidth = width;
+			smallHeight = height;
 		} catch (RuntimeException e) {
 			SwordAi.LOGGER.warn("could not make the game window small; training goes on at its present size", e);
+		}
+	}
+
+	/** The size {@link #shrink} set, in screen units. */
+	private static int smallWidth;
+	private static int smallHeight;
+	private static long lastLookNanos;
+	/** Times the window was found grown back (maximized, full screen or over 1.5x the size set) and made small again. */
+	private static int reshrinks;
+
+	static int reshrinks() {
+		return reshrinks;
+	}
+
+	/**
+	 * Run 105 (agent 46): keeps the window small while training. At 16:40:56 on 15 Nov the display was reconnected (the sound
+	 * device switched to the TV) and Windows maximized the shrunk window: 1280x649 screen units at 300% scaling, a frame about
+	 * 3840x1950 instead of about 960x540, drawn and read back every frame on the shared graphics chip. From the next update on the
+	 * network's camera disagreed with the installed model's far more (installed ce 0.45-0.49 -> 0.57-0.74), "turned to find them"
+	 * rose 300-430 -> 680-1170 an update and the off-body camera in their combo 6 of 41 -> 46 of 99, with no code change. Looked at
+	 * every 5 seconds; nothing is done while the window stays as set.
+	 */
+	static void keepSmall(Minecraft mc) {
+		if (!shrunk || smallHeight <= 0) {
+			return;
+		}
+		long now = System.nanoTime();
+		if (now - lastLookNanos < 5_000_000_000L) {
+			return;
+		}
+		lastLookNanos = now;
+		try {
+			Window window = mc.getWindow();
+			long handle = window.handle();
+			boolean maximized = handle != 0L
+					&& org.lwjgl.glfw.GLFW.glfwGetWindowAttrib(handle, org.lwjgl.glfw.GLFW.GLFW_MAXIMIZED) == org.lwjgl.glfw.GLFW.GLFW_TRUE;
+			boolean grown = window.getScreenHeight() > smallHeight * 3 / 2 || window.getScreenWidth() > smallWidth * 3 / 2;
+			if (!maximized && !grown && !window.isFullscreen()) {
+				return;
+			}
+			int fromW = window.getScreenWidth();
+			int fromH = window.getScreenHeight();
+			if (window.isFullscreen()) {
+				mc.options.fullscreen().set(false);
+			}
+			if (maximized) {
+				org.lwjgl.glfw.GLFW.glfwRestoreWindow(handle);
+			}
+			window.setWindowed(smallWidth, smallHeight);
+			reshrinks++;
+			SwordAi.LOGGER.warn("run 105: the game window had grown back to {}x{} (maximized {}); made small again at {}x{} ({} times)",
+					fromW, fromH, maximized, smallWidth, smallHeight, reshrinks);
+		} catch (RuntimeException e) {
+			SwordAi.LOGGER.warn("could not make the game window small again", e);
 		}
 	}
 

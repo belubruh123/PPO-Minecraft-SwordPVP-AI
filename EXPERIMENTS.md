@@ -1979,3 +1979,29 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
   - LATER, review priority only with no pull boost for now: the jump-in counters T8, K2, K3. T8 had been at the top, p3.15, only for having no moments.
   - Secondary (x0.5): C1, C7.
   - Core tests: 60 passed, 1 aborted, 0 failed.
+
+## Run 105 (15 Nov, agent 46): the training window grew back at 16:41 (all skills and aim); C1 and T1 had no teacher moments at all
+
+- **Aim, the cause (not run 104):** at 16:40:56 the display was reconnected (latest.log: "System default audio device has changed", then the TV). Windows maximized the game window that WindowGuard had made small at 16:34. Now it is 1280x649 screen units at 300% scaling, a frame of about 3840x1950 instead of about 960x540, drawn and read back every frame on the shared graphics chip. WindowGuard shrinks once and never looked again.
+  - From the next update (11019, 16:41:47) everything the network predicts got worse at once, with no code change: technique ce 0.47 -> 1.13 (0.67-1.42 since), installed (camera) ce 0.45-0.49 -> 0.57-0.74, decider loss 0.17-0.24 -> 0.25-0.67.
+  - "Turned to find them" went from 300-430 an update (morning and 16:34-16:40 under run 104) to 680-1170. The network's camera in their combo was off body on 46 of 99 ticks, against 6 of 41 before.
+  - Run 104's strafe layers are cleared: 16:34-16:40 ran run 104 with them and aim was at the morning level (find 294-411, off the screen 15-34). The high counts at 15:37-16:33 were the Carpet PvP period.
+- **T1c, T6 and B1, the same cause:** their 40-moment rates held under run 104 until 16:41 (T1c 58-60%, T6 70-78%) and fell only afterwards (T1c 45%, T6 63% at 17:11). B1 swings 58-93% (93% at 17:11). Moments done since the last update, small window vs big window: T1c 2/2 vs 10/28, T6 3/3 vs 12/23. The tech-review 16:49-16:59 was taken entirely with the big window.
+- **C1 and T1, the teacher:** their rate windows have not moved for hours (C1 18% of 40, T1 29% of 7): no new moments at all.
+  - C1: PvpPlayer's B1 branch ("punishFirst && lifted && punishable") came before the C1 branch. Every punishable crit of theirs became a punish crit, so C1 came only when it could not be punished. The document's C1 is "when you expect a double crit, don't go for the punish crit. Sprint-hit them".
+  - T1: the teacher has every technique at 1. With T1b in its family, `begin(roll(T1B) ? T1B : T1)` made every double crit a T1b, so plain T1 came only after a bait (T1a).
+- **T1b:** it has moments (40 in its window, 1-3 an update: they need its own crit to land on one who punishes). Its lesson (around them, W on the way up, sprint let go falling) matches the document. It was missing from the crit scene kinds' techniques (KIND_TECHS), which run 104's scene pick weighs by priority.
+- **Change:**
+  - WindowGuard.keepSmall, from SchoolSession.runTick, every 5 s: if the window is maximized, full screen or over 1.5x the size set, it is restored and set small again, with a log line "run 105: the game window had grown back".
+  - Style.c1BeforeB1 (teacher 0.5, bots 0): after their crit, against one expected to double crit, C1 goes before B1 half the times.
+  - Style.t1bShare (teacher 0.5, bots -1, by their own chance): plain T1 on half of the double crits.
+  - T1b added to the crit scene kinds.
+  - The lift's sprint let-go teacher (B1's) leaves a C1 moment alone, as it does K2: C1's lesson keeps W and the sprint.
+  - Nothing else changed: no layer, pull or priority, and no rule. Checks, benchmarks and the real game are as before.
+- **Watch by 20:00:**
+  - The log line fires once, then the find counts return to 300-430 an update and installed ce to about 0.45.
+  - T1c and T6 back to 58%+ and 70%+.
+  - C1 and T1 moments rising (their windows start moving).
+  - B1 keeps 50-65% of its punish crit chances critted.
+- **Revert:** C1_BEFORE_B1 = 0 if B1's punish crit chances critted fall under 50%. T1B_SHARE = -1 if T1b's moments fall under 1 an update.
+- **Not fixed, a lead:** in the decider's fights (15% of full fights, half the scenes), a told starter (T4/T7) now drives its own strong layer (W, sprint, swing) at a teacher's T6/T1c/B1 moment. Before run 104 the starters had no layer.

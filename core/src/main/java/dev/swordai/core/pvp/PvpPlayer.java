@@ -748,6 +748,12 @@ public final class PvpPlayer {
 			return;
 		}
 		end();
+		if (style.c1BeforeB1 > 0f && e.theyHit == Events.CRIT && doubleCrits() && roll(Technique.C1) && rng.nextFloat() < style.c1BeforeB1) {
+			// Run 105 (Style#c1BeforeB1): C1, "when you expect a double crit, don't go for the punish crit. Sprint-hit them, which
+			// knocks them away". B1 below went first whenever their crit could be punished, so C1 had about no moments.
+			begin(Plan.C1);
+			return;
+		}
 		if (style.punishFirst && lifted && punishable(d, e)) {
 			// A sprint hit is jump-reset as it lands, so that it comes down in reach: the jump reset "gets crits", "a free crit
 			// as you fall" (the file, part 3 and T9c). Without it nearly every sprint hit's lift came down out of reach in the
@@ -913,7 +919,10 @@ public final class PvpPlayer {
 			} else if (punishes() && roll(Technique.T1)) {
 				// Any crit of mine against one that tries to punish-crit: "after your first crit, immediately jump and crit
 				// the other player again" (only from these plans before, so it hardly ever came).
-				begin(roll(Technique.T1B) ? Plan.T1B : Plan.T1);
+				// Run 105 (Style#t1bShare): the teacher's T1b at a share, so that plain T1 has moments of its own.
+				boolean aroundThem = style.t1bShare >= 0f ? pNow[Technique.T1B.ordinal()] > 0f && rng.nextFloat() < style.t1bShare
+						: roll(Technique.T1B);
+				begin(aroundThem ? Plan.T1B : Plan.T1);
 			}
 			return;
 		}

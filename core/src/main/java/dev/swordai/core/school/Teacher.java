@@ -24,7 +24,11 @@ public final class Teacher {
 	 * (make them miss their answer: a short S as they swing, then the sprint hit) instead of T1c. The keys go where T6's always go
 	 * (no new option layer: T6's own moments, a benchmark strength, stay as they are). 0 = off.
 	 */
-	public static final float T6_AFTER_PUNISH = 0.3f; // run 89 on, 13 Nov after run 88c benchmarked BETTER (+3.70)
+	public static final float T6_AFTER_PUNISH = 0.3f;
+	/** Run 105 (Style#c1BeforeB1): 0 = as before (B1 always first when punishable). */
+	public static final float C1_BEFORE_B1 = 0.5f;
+	/** Run 105 (Style#t1bShare): below 0 = as before (T1b on every double crit while it is in the family). */
+	public static final float T1B_SHARE = 0.5f; // run 89 on, 13 Nov after run 88c benchmarked BETTER (+3.70)
 	/** Of a target, the share on the teacher's key; the rest is spread over the other keys of the head. */
 	static final float SURE = 0.99f;
 	/** A key the target holds at least this much of is one the teacher asks for (alone, or with others alike). */
@@ -189,6 +193,10 @@ public final class Teacher {
 		// in as the other player as well"). In the 23:59 check A's jump-ins from 4-5 blocks were hit rising in 32%.
 		s.critOpen = 0f; // run 91 (13 Nov 23:00, the user: combo first, not a crit spammer unless needed): was 1 (the user, 2 Nov)
 		s.t6AfterPunish = T6_AFTER_PUNISH;
+		// Run 105 (agent 46): C1 before the punish crit against one expected to double crit, half the times (B1 keeps the other half
+		// and every other punishable hit); plain T1 half of its double crits, T1b the other half.
+		s.c1BeforeB1 = C1_BEFORE_B1;
+		s.t1bShare = T1B_SHARE;
 		s.jumpInLands = true;
 		return s;
 	}
