@@ -1195,6 +1195,19 @@ public final class SchoolSession implements AgentSession {
 	private int rpFights, rpWon, rpLost, rpPunish, rpBack12, rpBack30, rpBackCrit30, rpCrits, rpRows2, rpRowMost, rpRow;
 	private float rpDealt, rpTaken;
 	private int rpSince = 1000;
+	/**
+	 * Run 101 (agent 43): CRIT_BACK_READ, the opponent read: against one that crit back (a crit within CritBackRead.WITHIN ticks) after its
+	 * punish crits twice or more in the fight, A's rules do not force the punish crit in the lift; the network's own keys decide
+	 * (C1 a sprint hit, T2 standing crit, T1c). Training and checks; B (installed) has none. The user's real game: CritBackRead.REAL_GAME.
+	 */
+	static final boolean CRIT_BACK_READ = true;
+	private final dev.swordai.core.rl.CritBackRead critBackRead = new dev.swordai.core.rl.CritBackRead();
+	/** Run 101 counters (training): ticks the read had the lift, fights it switched on, its windows, what the network did there, HP. */
+	private final int[] readTicks = new int[1];
+	private int readOnFights, readWindows, readSwings, readSprintHits, readCritHits, readOtherHits;
+	private double readDealt, readTaken;
+	private boolean readWas, readSwitchedThisFight;
+
 	private boolean rpCounted = true;
 	private final dev.swordai.core.school.ComboHolder holder = new dev.swordai.core.school.ComboHolder();
 	private boolean holderOn;
@@ -1303,6 +1316,8 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, " | run 100, crit spammer replica (share %.2f): fights %d (won %d, lost %d), HP net a fight %+.1f (dealt %.1f, taken %.1f); after its %d punish crits there, hit back within 12 ticks %d, within 30 %d (crits %d; lost real rounds: 79%% within 12); their crits %d, runs of 2+ in a row %d, longest %d",
 						CRIT_SPAMMER_SHARE, rpFights, rpWon, rpLost, rpFights > 0 ? (rpDealt - rpTaken) / rpFights : 0.0, rpFights > 0 ? rpDealt / rpFights : 0.0,
 						rpFights > 0 ? rpTaken / rpFights : 0.0, rpPunish, rpBack12, rpBack30, rpBackCrit30, rpCrits, rpRows2, rpRowMost)
+				+ String.format(Locale.ROOT, " | run 101, crit-back read (on %s; 2+ crits back within %d ticks of its punish crits in the fight): fights it switched the rules' punish crit off in %d, windows %d, lift ticks %d, there the network swung %d times: sprint hits %d, crits %d, other hits %d; HP dealt %.1f, taken %.1f",
+						CRIT_BACK_READ, dev.swordai.core.rl.CritBackRead.WITHIN, readOnFights, readWindows, readTicks[0], readSwings, readSprintHits, readCritHits, readOtherHits, readDealt, readTaken)
 				+ String.format(Locale.ROOT, " | run 89, after its punish crit the teacher showed T6 on %d ticks, S its own on %d", t6AfterTaught, t6AfterBack)
 				+ String.format(Locale.ROOT, " | run 88, the keep in the air from their 2nd hit given back: training %d (swung %d), checks %d (swung %d)",
 						airKeepYield[0], airKeepYieldSwung[0], airKeepYield[1], airKeepYieldSwung[1])
@@ -1348,6 +1363,9 @@ public final class SchoolSession implements AgentSession {
 		comboScenePicks = 0;
 		punishCritsForT1c = t1cCrits = critBacks = 0;
 		pcAnyCrits = pcBack12 = pcBack30 = pcBackCrit30 = 0;
+		readOnFights = readWindows = readSwings = readSprintHits = readCritHits = readOtherHits = 0;
+		readTicks[0] = 0;
+		readDealt = readTaken = 0.0;
 		rpFights = rpWon = rpLost = rpPunish = rpBack12 = rpBack30 = rpBackCrit30 = rpCrits = rpRows2 = rpRowMost = 0;
 		rpDealt = rpTaken = 0f;
 		t6AfterTaught = t6AfterBack = 0;
@@ -3780,6 +3798,9 @@ public final class SchoolSession implements AgentSession {
 		pcAnyCounted = true;
 		rpSince = 1000;
 		rpCounted = true;
+		critBackRead.reset();
+		readWas = false;
+		readSwitchedThisFight = false;
 		rpRow = 0;
 		// An own-combo scene starts the tick after its first hit: a hit within COMBO_GAP is that combo's follow-up (COMBO_HIT).
 		boolean ownScene = sceneNow != null && (sceneNow.kind == KIND_OWN || sceneNow.kind == KIND_OWN2);
@@ -4314,6 +4335,24 @@ public final class SchoolSession implements AgentSession {
 				if (pcAnySince < 1000) {
 					pcAnySince++;
 				}
+				critBackRead.tick(false, facts.critsTaken > 0);
+				if (readWas && mode == Mode.TRAIN) {
+					// Run 101: what came in the ticks the read had the lift (the decision of the tick before).
+					readDealt += facts.damageDealt;
+					readTaken += facts.damageTaken;
+					if (clicked) {
+						readSwings++;
+					}
+					if (facts.hitsDealt > 0) {
+						if (facts.sprintHit) {
+							readSprintHits++;
+						} else if (facts.critDealt) {
+							readCritHits++;
+						} else {
+							readOtherHits++;
+						}
+					}
+				}
 				if (!pcAnyCounted && pcAnySince <= 30 && facts.hitsTaken > 0) {
 					pcAnyCounted = true;
 					pcBack30++;
@@ -4373,6 +4412,7 @@ public final class SchoolSession implements AgentSession {
 						sincePunishCrit = 0;
 						punishCritsForT1c++;
 						pcAnySince = 0;
+						critBackRead.punish();
 						pcAnyCounted = false;
 						pcAnyCrits++;
 						if (fightReplica && mode == Mode.TRAIN && sceneNow == null) {
@@ -4692,6 +4732,20 @@ public final class SchoolSession implements AgentSession {
 		if (installed != null) {
 			// Run 74: the reach aim for A's rules only; B keeps the 23 Oct aim.
 			installed.fighter.reachAim(REACH_AIM && !installedPlays && !teacherPlaysA);
+			// Run 101: against one that crit back after its punish crits (CritBackRead), A's rules leave the punish crit to the network.
+			boolean readOn = CRIT_BACK_READ && !installedPlays && !teacherPlaysA && critBackRead.on() && liftedFor >= 0 && !me.onGround();
+			installed.fighter.critBackRead(readOn);
+			if (readOn && !readWas && mode == Mode.TRAIN) {
+				readWindows++;
+				if (!readSwitchedThisFight) {
+					readSwitchedThisFight = true;
+					readOnFights++;
+				}
+			}
+			readWas = readOn;
+			if (readOn && mode == Mode.TRAIN && !(ruleOff && mode == Mode.CHECK)) {
+				readTicks[0]++;
+			}
 			installed.fighter.comboProvenOff(comboProvenOffNow(reader.duel.them) && !installedPlays && !teacherPlaysA && (benchTag == null || benchAirYield));
 			// Run 92: A's rule m not into a jump-in crit coming nor a ready sword (MEET_NOT_INCOMING); B keeps its own.
 			installed.fighter.meetNotIncoming(MEET_NOT_INCOMING && !installedPlays && !teacherPlaysA && (benchTag == null || benchMeetNotIncoming));

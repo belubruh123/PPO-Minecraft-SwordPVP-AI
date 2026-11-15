@@ -263,7 +263,7 @@ public final class Specialists {
 
 	/** Run 100: the crit spammer's take-off spread (uniform, critFrom +- this) and its share of crit answers made as a crit back. */
 	public static final float CRIT_SPAM_FROM_SPREAD = 2.1f;
-	public static final float CRIT_SPAM_ANSWER_BY_CRIT = 0.9f;
+	public static final float CRIT_SPAM_ANSWER_BY_CRIT = 0.35f;
 
 	/** Run 97: the least of each escape's chance drawn for a combo breaker (each drawn up from here), and of its short stun, ticks. */
 	public static final float BREAK_RISING_LEAST = 0.6f;

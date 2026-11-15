@@ -453,6 +453,16 @@ public final class Fighter {
 			keep = owes && !answer;
 			letGo = false;
 		}
+		if (critBackRead && owes) {
+			// Run 101: against one that has double-critted back after its punish crits, the punish crit is not the rules' (the
+			// document's C1, "don't go for the punish crit, sprint-hit them"): the keys of these moments are the network's.
+			owes = false;
+			answer = false;
+			keep = false;
+			letGo = false;
+			punish = CritTrade.NONE;
+			critBackReadSwitched++;
+		}
 		if (holdCrit && punish == CritTrade.NONE) {
 			answer = false;
 			keep = owes;
@@ -693,6 +703,22 @@ public final class Fighter {
 	 * Hit and out on or off for this fighter, whatever the config says ({@code Config.hitAndOutRule}): the school switches it for the
 	 * side it plays for, and a fighter that plays against it (the installed model in a check) keeps it off.
 	 */
+	/** Run 101: the opponent read says it crits back after punish crits; see {@link CritBackRead}. Set per tick by the session: the read is on and it is in the air from their hit (the lift). */
+	private boolean critBackRead;
+	/** Ticks the read took the punish crit away from the rules (counter). */
+	private int critBackReadSwitched;
+
+	public void critBackRead(boolean on) {
+		critBackRead = on;
+	}
+
+	/** Decisions the read switched the punish crit off since the last call (reset on read). */
+	public int takeCritBackReadSwitched() {
+		int n = critBackReadSwitched;
+		critBackReadSwitched = 0;
+		return n;
+	}
+
 	/**
 	 * Run 88b (13 Nov): in their combo (AnswerRule.when's "second hit or not" once a punish crit was made on this opponent) the
 	 * swing is made now, as against an opponent not yet punish-critted: "no combo goes by without a swing back" (AnswerRule).

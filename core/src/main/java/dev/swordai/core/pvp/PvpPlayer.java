@@ -462,15 +462,19 @@ public final class PvpPlayer {
 			k.technique = brk == 1 ? Technique.T8 : Technique.BASE;
 		}
 		// Run 59: the answer to their crit (hitTaken).
+		boolean answered = false;
 		if (answerUntil >= tick && tick >= answerFrom && d.reach <= Duel.REACH && me.charge >= ANSWER_CHARGE && stunLeft == 0) {
 			k.attack = true;
+			answered = true;
 			answerUntil = -1;
 		} else if (answerUntil >= 0 && tick > answerUntil) {
 			answerUntil = -1;
 		}
 		// The golden rule (K2) for every knockback hit, a technique's too: "don't knockback-hit someone who is falling,
 		// whether during a combo or while they are critting you." A falling one sticks to the floor (K1) and crits back.
-		if (k.attack && k2 && fallingByTheHit(d.them) && (me.sprinting || k.sprint) && k.technique != Technique.K2) {
+		if (k.attack && k2 && fallingByTheHit(d.them) && (me.sprinting || k.sprint) && k.technique != Technique.K2
+				&& !(answered && style.critSpam)) {
+			// Run 101: the crit spammer's answer to a crit is not held by K2 (real players hit back at once, median 5 ticks, on the faller too).
 			k.attack = false;
 			k.technique = Technique.K2;
 			k.taught = Keys.KEY_ATTACK;
@@ -723,8 +727,8 @@ public final class PvpPlayer {
 				begin(Plan.B1);
 				return;
 			}
-			answerFrom = tick + (rng.nextFloat() < 0.6f ? 1 + rng.nextInt(3) : 5 + rng.nextInt(8));
-			answerUntil = answerFrom + ANSWER_CRIT_TICKS;
+			answerFrom = tick + (style.critSpam ? 1 + rng.nextInt(8) : rng.nextFloat() < 0.6f ? 1 + rng.nextInt(3) : 5 + rng.nextInt(8));
+			answerUntil = answerFrom + (style.critSpam ? ANSWER_CRIT_TICKS + 4 : ANSWER_CRIT_TICKS);
 		}
 		boolean lifted = wasOnGround;
 		if (lifted) {
@@ -1140,7 +1144,7 @@ public final class PvpPlayer {
 				// Sent out of reach (a stun): there is nothing to punish; the ordinary fight takes over. For one that goes by the
 				// file, as soon as it comes down out of reach: the crit "on the way down" is not there.
 				// On the way up a sprint hit's lift goes farther out than a plain one's, and they come after it.
-				double out = style.onlyWhenItWorks && me.falling() ? Duel.REACH + 0.3 : Duel.REACH + 2.5;
+				double out = style.onlyWhenItWorks && me.falling() && !style.critSpam ? Duel.REACH + 0.3 : Duel.REACH + 2.5;
 				return me.onGround && planT > 2 || d.reach > out ? ABORT : RUN;
 			}
 			case T1, T1B, T1C -> {
@@ -1452,7 +1456,10 @@ public final class PvpPlayer {
 		// sprinting (part 8), and the swing waits for that.
 		// W on the way up, let go on the way down and not pressed again (as B1: off while still sprinting and on again once
 		// not, it flipped within a tick or two; T1 65%, T1b 16% at 20:50).
-		k.forward = d.reach > 1.0 && me.rising() ? 1 : 0;
+		// Run 101: the crit spammer keeps W (not the sprint) down on the way down too: their punish crit knocks it out of reach
+		// (the toy and the arena: it came down at 3.3-3.8 blocks and the crit was lost; hit backs 37% within 12 ticks against 79%
+		// real, the real ones at 1.6 blocks), and W in the air walks it back in; sprint stays off so that the crit is a crit.
+		k.forward = d.reach > 1.0 && (me.rising() || style.critSpam) ? 1 : 0;
 		k.sprint = running && me.rising();
 		if (around) {
 			k.strafe = planDir;

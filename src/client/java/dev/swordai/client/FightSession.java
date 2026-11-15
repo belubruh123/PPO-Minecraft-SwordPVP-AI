@@ -6,6 +6,7 @@ import dev.swordai.core.env.BodyState;
 import dev.swordai.core.env.StepFacts;
 import dev.swordai.core.report.ReportWriter;
 import dev.swordai.core.rl.ActionSpace;
+import dev.swordai.core.rl.CritBackRead;
 import dev.swordai.core.rl.Fighter;
 import dev.swordai.core.school.AbPool;
 import dev.swordai.core.school.SchoolFighter;
@@ -83,6 +84,8 @@ final class FightSession implements AgentSession {
 	private String opponentName = "?";
 	private double groundY;
 	private int lastOwnHurt;
+	/** Run 101: the opponent read for crit spammers (CritBackRead); in the real game it is on as in training (CritBackRead.REAL_GAME). */
+	private final CritBackRead critBack = new CritBackRead();
 	/** Ticks since a hit taken on the ground lifted it, -1 when not lifted (the rules leave W to the network in its fall). */
 	private int liftedFor = -1;
 	private boolean groundBefore = true;
@@ -453,6 +456,8 @@ final class FightSession implements AgentSession {
 				observer.fillBody(rulesBody, me, opp, groundY);
 				fighter.crosshairOnOpponent(onOpponent());
 				// Runs 88b/88c: an "airyield" arm's rules swing in their combo (not at a falling opponent with 88c).
+				critBack.tick(reader.events.iHit == dev.swordai.core.pvp.Events.CRIT && liftedFor >= 0, reader.events.theyHit == dev.swordai.core.pvp.Events.CRIT);
+				fighter.critBackRead(CritBackRead.REAL_GAME && critBack.on() && liftedFor >= 0 && !me.onGround());
 				fighter.comboProvenOff(arm != null && arm.airYield && SchoolSession.comboProvenOffNow(reader.duel.them));
 				// Run 92: the rules' run at a rising jumper (m) not into a jump-in crit coming nor a ready sword (real rounds: hit first 10%).
 				fighter.meetNotIncoming(SchoolSession.MEET_NOT_INCOMING);
@@ -663,6 +668,7 @@ final class FightSession implements AgentSession {
 	/** A new opponent ({@code forget}: its memory goes too), or taking over again after a pause. */
 	private void resetBrain(boolean forget) {
 		fighter.reset();
+		critBack.reset();
 		if (school != null) {
 			school.reset();
 			if (forget) {

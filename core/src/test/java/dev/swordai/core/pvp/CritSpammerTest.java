@@ -97,6 +97,8 @@ class CritSpammerTest {
 		assertTrue(spam.punishOnItsJump >= 0.4 * spam.punish, "punish crits that met its double crit jump (real 17 of 33): " + spam);
 		assertTrue(spam.back30 >= 0.75 * spam.punish, "hit back within 30 ticks of the punish crit (real 32 of 33): " + spam);
 		assertTrue(spam.back12Share() >= dbl.back12Share(), "hit back within 12 at least the double critter's: " + spam + " / " + dbl);
+		// Run 101: W held in the second jump's fall and the answer swing free of K2: 37% -> 56% within 12 (real 79%).
+		assertTrue(spam.back12Share() >= 0.5, "hit back within 12 (toy 56%, real 79%): " + spam);
 		assertTrue(spam.crits >= 1.5 * dbl.crits, "its crits, against the double critter's: " + spam + " / " + dbl);
 		assertTrue(spam.medianTakeOff() >= 2.4 && spam.medianTakeOff() <= 4.8, "take-off distance (real median 3.5): " + spam);
 	}
