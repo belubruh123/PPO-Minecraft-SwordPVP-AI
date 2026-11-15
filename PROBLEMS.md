@@ -1721,3 +1721,10 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 
 - Run 115 (the swing taught) is live: redeploy 04:36-04:42, 0 test failures; training runs.
 - The first check with run 115 is about 05:27. Its new counter splits A's held ready swings by holder; the disproof test is in EXPERIMENTS.md.
+
+## 16 Nov 05:13 review (run 115, about 30 min in)
+
+- Training runs. The training swung share in the last update was 72% (39 of 39+15), against 51-64% before run 115. The swing was taught on 11 ticks; the agent's test wants 20+ an update over about 20 updates. The first check with run 115 is about 05:27.
+- **Skill rates (last 40 moments):** T7 100, C6 100, T4 93, K2 93, T6a 90, T5 88, C3 88, T9a 80, T1a 78, K3 78, T9b 75, C1 75, C2 75, C4 73, C7 70, B1 68, T9c 65, T6 63.
+  - Under 60%: T1 43, T1c 40, T2 33, T9 28 (the rules).
+- Punish crit chances critted 56% of 300; told and landed 43%.
