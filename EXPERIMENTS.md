@@ -2142,3 +2142,23 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **New counters:** training "run 115: the ordinary swing taught N ticks". In checks, A's held-with-crosshair-on ticks are split by holder: a rule or gate, network sure (under 10%), 10-50%, 50%+.
 - **Disproof test:** holds mostly "rule or gate" or mostly 50%+; or the training swung share at 60% or less after about 20 updates with 20+ taught ticks each. If it works, close holds (under 2.6 blocks) in checks fall from about 95 toward B's 10.
 - **Tests:** school + pvp 78 passed, 5 aborted (known), 0 failed; compile-check OK. Redeploy right after the next check.
+
+## Run 116 (agent 51, merged 16 Nov 06:29): its own combo's jumps charged and taught "no jump" (OWN_COMBO_JUMP_COST)
+
+- **Where the extra jumps are** (jumps.csv + hits.csv, 6 checks 00:31-05:31): A 1114 take-offs, B 196.
+  - Its own combo (4-15 ticks after its hit): A 548, B 84. Of A's 548: nothing either way 227 (41%), hit in the air 195, its own hit 84, its own crit 42. That is the user's "jump and stop and breaks its own combo".
+  - Re-engaging (jump-ins): A 376, B 73. Neutral: A 112, B 21. Their combo: A 78, B 18.
+  - Own-combo take-offs a fight rose 1.3 -> 2.9 over the night (B 0.2-0.4); the others stayed flat.
+- **Who and why:** the network's own jumps. nearJumpReason's reason 4 (run 97, any take-off in its own combo counts as "needed", for the hops, lunges and uppercuts) outlived run 110, so those jumps were never charged or taught against.
+  - run35 at step 0 (3 Nov) already did about 3x B in its own combo; the night's training made it 5-9x.
+- **Fix:** while COMBO_JUMPS_TAUGHT is false, reason 4 is off. Its own take-off in its own combo costs NEAR_JUMP_COST, and the ground there is taught "no jump" (NEAR_NO_JUMP_PULL 0.5).
+  - The told T2/T9a/T9b/T9c/T1/T1c/K3/C6 jumps, the crit exchange and the one jump-in stay free. Checks and the user's game are unchanged.
+- **Disproof test:** the new check line "run 116 | take-offs in its own combo (rule | technique | own)". If own-combo take-offs a fight stay at 2.5 or more after 2-3 checks while "run 116 its own combo charged" is above 0, the diagnosis is wrong.
+- **Next, if the jumping stays high:** the re-engaging jump-ins (376 vs 73).
+- **Tests:** school + pvp 78 passed, 5 aborted (known), 0 failed; compile-check OK. Redeploy asked 06:29.
+
+## 16 Nov 06:21 check (run 115)
+
+- **ROUNDS WON: A 33/44 (75%), B 30/44 (68%), z about +0.9.** Net A-B +2.5 HP a fight (se 3.9). Dealt/taken: A 444 / 333, B 410 / 325.
+- Their third hit after their second: A 22% (12 of 54), B 17% (11 of 64). Outside their combo, ready and in reach: A swung 43%, B 58%.
+- Jumps a minute off/on its moments: A 43/55, B 29/31.
