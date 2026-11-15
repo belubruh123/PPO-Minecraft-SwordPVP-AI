@@ -1601,3 +1601,16 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Training runs from run35 since 22:33 (1 loop, 1 client). No paired check yet on the run35 base; the first is due about 23:18.
 - Punish crit chances critted 53% of 300; told the punish crit and landed it 38%. Damage a minute 324 dealt / 480 taken (the first minutes on the new base).
 - Agent 48 (bigger network with memory) is still working.
+
+## 15 Nov 22:50: the user on the bots ("anti human")
+
+- **The user:** the AI "loses against your bot yet wins against some players", and the models that beat the bots lose to players. The bots are too perfect, so it learns "obscure" ways to beat them, which do not work on adaptable players. Those players counter it with methods it never learned.
+- **The evidence agrees:**
+  - run35 loses most bot fights (training won 35-39%), but it is "near perfect" on humans.
+  - new2134 beat the 23 Oct model in the 21:38 bot check (+11.4 HP), but lost every human round.
+- This is item 8, now the main problem: the bot win rate and the bot checks are not a judge of real play.
+- **Done now:** the training anchor (learning without forgetting; OLD_PULL 0.5, no fade) was checked-1025-1347 (run 6, picked by bot checks on 25 Oct). It is now run35, the network proven on humans, so the training stays near run35's way of playing. Reload asked at 22:50. Install only by human tests (unchanged).
+- **Next (when the 5-hour window allows, and the next subagent slot after 00:30):**
+  1. Make the bots human-like where they are superhuman: reaction times, perfect timing and reads, perfect knowledge of the AI's position.
+  2. Use the user's real rounds as the training scenes and teacher (item 8 + "learn from opponents' winning moves").
+  3. Bring in a human-rounds check: the user's A/B pool duels decide; the bot checks only flag breakage.
