@@ -1656,3 +1656,11 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **Their third hit after their second: A 19% (13 of 69), B 24% (16 of 66).** It was 9% vs 20% at 00:31; the numbers are small.
 - Outside their combo: A swung 40% (00:31: 31%), B 55%. Jumps a minute off/on its moments: A 48/59, B 30/33.
 - The next checks are on the human-like bots, so they are not comparable to the checks before run 113.
+
+## 16 Nov 01:43 review: run 113 (human-like bots) live since 01:32
+
+- Redeploy 01:26-01:32, 0 test failures; training runs.
+- **Training fights with more dealt than taken:** 51% of 45 since 01:32, against 34% of 227 from 00:30 to 01:25. So the bots are weaker, as agent 49 predicted (about 60%), and nowhere near the Carpet PvP collapse (90%). Keep distSd as is and watch.
+  - The ko lines (bots with the rules 13-1 in 14 fights) are too few to read.
+- Punish crit chances critted 59% of 300; told and landed 46%.
+- The first check on the human-like bots is about 02:17.
