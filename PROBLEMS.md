@@ -1686,3 +1686,10 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **Skill rates:** T7 100, K2 98, T1a 98, T9a 98, C1 90, C3 90, C4 90, T5 88, T4 85, C6 85, C7 85, T9b 83, B1 75, T6a 78, K3 78, T9c 63, T6 60.
   - Under 60%: C2 52, T2 48, T1c 30, T1 23, T9 18 (the rules).
 - Punish crit chances critted 54% of 300. review.sh's "loops 2" is the cycle loop and its parent shell from the redeploy: one loop.
+
+## 16 Nov 03:13 review
+
+- Run 114 has been live since 02:48 (0 test failures). The held ready sword is now charged on 28 ticks an update (4 before).
+- In the last training update, ready with them in reach: 145 ticks, swung 57 (39%), held otherwise 33, held with them falling 8, swing not open 47.
+- The first check with run 114 is about 03:33.
+- Punish crit chances critted 52% of 300; told and landed 44%.
