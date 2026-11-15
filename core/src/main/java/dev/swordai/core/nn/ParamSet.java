@@ -116,8 +116,11 @@ public final class ParamSet {
 		int index = 0;
 		for (Param p : params) {
 			if (index++ >= n) {
-				break;
+				// A part added since: its Adam moments start now (Param#bornAt).
+				p.bornAt = steps;
+				continue;
 			}
+			p.bornAt = 0;
 			String name = in.readUTF();
 			int len = in.readInt();
 			if (!name.equals(p.name)) {

@@ -22,6 +22,8 @@ public final class SchoolRollout {
 	public final float[][] oppTruth;
 	/** The side input the action was chosen with ({@link SchoolNet#SIDE}): the predictor's guess and the technique being done. */
 	public final float[][] pred;
+	/** Run 109: the memory's window of the side input, as bytes (SchoolNet#keepWindow); pred holds the rest (SchoolNet#SIDE_KEPT). */
+	public final byte[][] win;
 	/** The technique being done the tick before (the {@link Chooser}'s input), and the teacher's technique now (its label; -1 for none). */
 	public final float[][] prevIntent;
 	public final int[] intentLabel;
@@ -90,7 +92,8 @@ public final class SchoolRollout {
 		priv = new float[capacity][ObsSpec.PRIV];
 		mem = new float[capacity][SchoolObs.MEM];
 		oppTruth = new float[capacity][SchoolObs.OPP_TRUTH];
-		pred = new float[capacity][SchoolNet.SIDE];
+		pred = new float[capacity][SchoolNet.SIDE_KEPT];
+		win = new byte[capacity][SchoolNet.MEMORY ? SchoolNet.WIN : 0];
 		prevIntent = new float[capacity][SchoolNet.INTENT];
 		intentLabel = new int[capacity];
 		choice = new int[capacity];
@@ -135,7 +138,8 @@ public final class SchoolRollout {
 		System.arraycopy(s.obs.base.priv, 0, priv[i], 0, ObsSpec.PRIV);
 		System.arraycopy(s.obs.mem, 0, mem[i], 0, SchoolObs.MEM);
 		System.arraycopy(s.obs.oppTruth, 0, oppTruth[i], 0, SchoolObs.OPP_TRUTH);
-		System.arraycopy(s.pred, 0, pred[i], 0, SchoolNet.SIDE);
+		System.arraycopy(s.pred, 0, pred[i], 0, SchoolNet.SIDE_KEPT);
+		SchoolNet.keepWindow(s.pred, win[i]);
 		System.arraycopy(s.prevIntent, 0, prevIntent[i], 0, SchoolNet.INTENT);
 		intentLabel[i] = s.intentLabel;
 		choice[i] = s.choice;

@@ -355,6 +355,55 @@ public final class SchoolLearner implements AutoCloseable {
 		final float[] hist = new float[SchoolNet.HIST];
 		/** Run 69a: what it has seen of the opponent, the last SchoolNet#SEEN_FRAMES ticks, newest first (SchoolNet#SEEN). */
 		final float[] seen = new float[SchoolNet.SEEN];
+		/** Run 109: the last SchoolNet#WIN_TICKS ticks of this fight, newest first (SchoolNet#WIN, the memory's window). */
+		final float[] win = new float[SchoolNet.WIN];
+		/** What the tick before showed, waiting for its keys (known on this tick, from the observation's last action). */
+		final float[] tickBefore = new float[SchoolNet.WIN_PER];
+		boolean hasTickBefore;
+
+		/**
+		 * Run 109: closes the tick before (what it showed, and the keys really pressed on it, read from this observation's last
+		 * action) and puts it in front of the window; then keeps what this tick shows for the next. The layout: SchoolNet#MEMORY.
+		 */
+		void pushTick(float[] vec) {
+			if (hasTickBefore) {
+				int la = ObsSpec.VEC_LAST_ACTION;
+				int fw = la + ActionSpace.OFFSETS[ActionSpace.FORWARD];
+				int st = la + ActionSpace.OFFSETS[ActionSpace.STRAFE];
+				for (int k = 0; k < 3; k++) {
+					tickBefore[1 + k] = vec[fw + k];
+					tickBefore[4 + k] = vec[st + k];
+				}
+				tickBefore[7] = vec[la + ActionSpace.OFFSETS[ActionSpace.SPRINT] + 1];
+				tickBefore[8] = vec[la + ActionSpace.OFFSETS[ActionSpace.JUMP] + 1];
+				tickBefore[9] = vec[la + ActionSpace.OFFSETS[ActionSpace.ATTACK] + 1];
+				int per = SchoolNet.WIN_PER;
+				System.arraycopy(win, 0, win, per, SchoolNet.WIN - per);
+				System.arraycopy(tickBefore, 0, win, 0, per);
+			}
+			int s = ObsSpec.VEC_STATS;
+			int c = ObsSpec.VEC_SCALARS;
+			float justNow = 1f - 0.5f / dev.swordai.core.env.BodyState.EVENT_FADE_TICKS;
+			java.util.Arrays.fill(tickBefore, 0f);
+			tickBefore[0] = 1f;
+			tickBefore[10] = SchoolNet.winValue(vec[c + ObsSpec.SC_ON_GROUND]);
+			tickBefore[11] = SchoolNet.winValue(vec[c + ObsSpec.SC_VEL_UP]);
+			tickBefore[12] = SchoolNet.winValue(vec[c + ObsSpec.SC_VEL_FORWARD]);
+			tickBefore[13] = SchoolNet.winValue(vec[c + ObsSpec.SC_VEL_RIGHT]);
+			tickBefore[14] = SchoolNet.winValue(vec[c + ObsSpec.SC_ATTACK_CHARGE]);
+			tickBefore[15] = SchoolNet.winValue(vec[c + ObsSpec.SC_HEALTH]);
+			tickBefore[16] = vec[c + ObsSpec.SC_SINCE_HIT_DEALT] >= justNow ? 1f : 0f;
+			tickBefore[17] = vec[c + ObsSpec.SC_SINCE_HIT_TAKEN] >= justNow ? 1f : 0f;
+			tickBefore[18] = SchoolNet.winValue(Math.min(8f, vec[c + ObsSpec.SC_HITS_TAKEN_ROW]) / 4f);
+			tickBefore[19] = SchoolNet.winValue(vec[s + ObsSpec.ST_HEAD_VISIBLE]);
+			tickBefore[20] = SchoolNet.winValue(vec[s + ObsSpec.ST_HEAD_X]);
+			tickBefore[21] = SchoolNet.winValue(vec[s + ObsSpec.ST_HEAD_Y]);
+			tickBefore[22] = SchoolNet.winValue(vec[s + ObsSpec.ST_ANY_AREA]);
+			tickBefore[23] = SchoolNet.winValue(vec[c + ObsSpec.SC_REL_VEL_FORWARD]);
+			tickBefore[24] = SchoolNet.winValue(vec[c + ObsSpec.SC_REL_VEL_UP]);
+			tickBefore[25] = SchoolNet.winValue(vec[c + ObsSpec.SC_OPP_CHARGE]);
+			hasTickBefore = true;
+		}
 
 		/** Puts the keys of this tick in front of the history. */
 		void push(int[] action) {
@@ -395,6 +444,9 @@ public final class SchoolLearner implements AutoCloseable {
 			java.util.Arrays.fill(before, 0f);
 			java.util.Arrays.fill(hist, 0f);
 			java.util.Arrays.fill(seen, 0f);
+			java.util.Arrays.fill(win, 0f);
+			java.util.Arrays.fill(tickBefore, 0f);
+			hasTickBefore = false;
 			before[last] = 1f;
 		}
 	}
@@ -431,6 +483,10 @@ public final class SchoolLearner implements AutoCloseable {
 		if (SchoolNet.SEEN_HISTORY) {
 			st.pushSeen(step.obs.base.vec);
 		}
+		// Run 109: the tick before (with the keys really pressed on it) goes in front of the memory's window.
+		if (SchoolNet.MEMORY) {
+			st.pushTick(step.obs.base.vec);
+		}
 		System.arraycopy(st.before, 0, step.prevIntent, 0, SchoolNet.INTENT);
 		st.chosen = ch.forward(cw, step.obs.base.vec, step.obs.mem, step.pred, st.before);
 		int label = step.teacherTechnique >= 0 ? step.teacherTechnique : Technique.BASE.ordinal();
@@ -449,6 +505,9 @@ public final class SchoolLearner implements AutoCloseable {
 		step.pred[off + SchoolNet.INTENT_TICKS] = Math.min(1f, st.ticks / SchoolNet.INTENT_LONG);
 		System.arraycopy(st.hist, 0, step.pred, SchoolNet.HIST_AT, SchoolNet.HIST);
 		System.arraycopy(st.seen, 0, step.pred, SchoolNet.SEEN_AT, SchoolNet.SEEN);
+		if (SchoolNet.MEMORY) {
+			System.arraycopy(st.win, 0, step.pred, SchoolNet.WIN_AT, SchoolNet.WIN);
+		}
 		System.arraycopy(step.pred, off, st.before, 0, SchoolNet.INTENT);
 	}
 

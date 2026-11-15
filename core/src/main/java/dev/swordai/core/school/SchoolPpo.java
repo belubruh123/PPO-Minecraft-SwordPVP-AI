@@ -315,7 +315,7 @@ public final class SchoolPpo implements AutoCloseable {
 			for (int n = from; n < to; n++) {
 				int i = order[n];
 				if (!set.criticOnly) {
-					actor.forward(aw, r.peri[i], r.fovea[i], r.vec[i], r.mem[i], r.pred[i]);
+					actor.forwardKept(aw, r.peri[i], r.fovea[i], r.vec[i], r.mem[i], r.pred[i], r.win[i]);
 					actor.condition(aw, r.action[i]);
 					int mask = r.headMask[i];
 					float logp = Policy.evaluate(aw.logits, mask, r.action[i], probs, ent);
