@@ -2079,3 +2079,15 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **Memory and a bigger network:** agent 48 (worktree), behaviour-preserving (new parts start at zero, so run35 plays the same at step 0).
 - **Measure:** their third hit after their second (checks), real-round combos taken, crits taken after its punish crit.
 - **Checks:** school tests 35 passed, 4 aborted (known), 0 failed; compile-check OK; run35 test-loaded into the current SchoolLearner.
+
+## Run 112 (agent 48, merged 15 Nov 23:31): learned short-term memory and a deeper tower
+
+- **The user (22:30):** "make the network bigger and have memory".
+- **Memory:** TickMemory, a one-layer causal micro transformer (3 heads, width 24) over the last 24 ticks (1.2 s).
+  - Each tick it records 26 numbers: the keys really pressed, its own ground state, speed, sword and health, hits dealt and taken, their hits in a row, and where they are on screen, their size, speed and sword.
+  - A 64-number summary enters the new tower and the heads through layers that start at zero.
+  - The window is part of the stored observation, so PPO stays feed-forward. It is reset at every fight start, in training and in the user's duels.
+- **Deeper:** one more residual block in the new tower (new.block2, starts as the identity). Actor weights go from 808,642 to 902,240.
+- **The same play at load:** run35, checkpoint.bin and run98-2210 all load with max logit difference 0.0.
+- **Cost:** act + update +28%; replay memory +30 MB; TeacherReplay now allocates as it fills (it held about 330 MB from the start).
+- **Checks:** school + nn tests 55 passed, 0 failed, 5 aborted (known); compile-check OK. Redeploy asked 23:31; its tests gate the restart.
