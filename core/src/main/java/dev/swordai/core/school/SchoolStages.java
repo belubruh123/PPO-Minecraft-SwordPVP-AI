@@ -361,6 +361,14 @@ public final class SchoolStages {
 	static final boolean[] EXCLUDED = new boolean[Technique.COUNT];
 	static final boolean[] INCLUDED = new boolean[Technique.COUNT];
 	static final boolean[] FAVOURED = new boolean[Technique.COUNT];
+	/** Run 104b: the jump-in counters, learned later (the user, 15 Nov 16:00): review priority only, no pull boost, for now. */
+	static final boolean[] LATER = new boolean[Technique.COUNT];
+	/** Run 104b: an included technique neither main (FAVOURED) nor LATER (C1, C7) weighs this much of its priority. */
+	public static final float SECONDARY_WEIGHT = 0.5f;
+
+	public static boolean later(int t) {
+		return t >= 0 && t < Technique.COUNT && LATER[t];
+	}
 	/** Run 104's newly taught techniques (pull 0 until now). */
 	static final boolean[] RUN104_TAUGHT = new boolean[Technique.COUNT];
 
@@ -373,9 +381,15 @@ public final class SchoolStages {
 				Technique.K3}) {
 			INCLUDED[t.ordinal()] = true;
 		}
-		for (Technique t : new Technique[] {Technique.T4, Technique.T5, Technique.T6, Technique.T6A, Technique.T7, Technique.T8, Technique.T1,
-				Technique.T1A, Technique.T1C, Technique.T2, Technique.C6, Technique.B1}) {
+		// Run 104b (the user, 15 Nov 16:00: "Counter jump in skill shoudl be learned later. Teach crit and combo starting as main
+		// first"): the crits (T1, T1a, T1b, T1c, T2, C6, B1) and the stun starters (T4, T5, T6, T6a, T7) are the main ones; T8 (hit the
+		// rising jumper) moves to LATER with K2 and K3, the jump-in counters; C1 and C7 are secondary.
+		for (Technique t : new Technique[] {Technique.T4, Technique.T5, Technique.T6, Technique.T6A, Technique.T7, Technique.T1,
+				Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2, Technique.C6, Technique.B1}) {
 			FAVOURED[t.ordinal()] = true;
+		}
+		for (Technique t : new Technique[] {Technique.T8, Technique.K2, Technique.K3}) {
+			LATER[t.ordinal()] = true;
 		}
 		for (Technique t : new Technique[] {Technique.T1, Technique.T1A, Technique.T1B, Technique.T2, Technique.C6, Technique.C1, Technique.C7,
 				Technique.T6A, Technique.K2}) {
@@ -826,15 +840,18 @@ public final class SchoolStages {
 		if (!ALL_TO_70 || !included(t)) {
 			return 0f;
 		}
+		if (later(t)) {
+			return REVIEW_PRIORITY;
+		}
 		float r = priorityRate(t);
 		float gap = Math.max(0f, USER_LEAST - r);
-		float w = gap * (1f + UNDER_HALF_WEIGHT * Math.max(0f, HALF - r)) * (favoured(t) ? FAVOURED_WEIGHT : 1f);
+		float w = gap * (1f + UNDER_HALF_WEIGHT * Math.max(0f, HALF - r)) * (favoured(t) ? FAVOURED_WEIGHT : SECONDARY_WEIGHT);
 		return Math.max(REVIEW_PRIORITY, w);
 	}
 
 	/** Run 104: the cap on a taught technique's pull grows under 50%, up to 1 + PULL_BOOST at 0% (half that if not favoured); B1 as before. */
 	public float pullBoost(int t) {
-		if (!ALL_TO_70 || !included(t) || t == Technique.B1.ordinal()) {
+		if (!ALL_TO_70 || !included(t) || t == Technique.B1.ordinal() || later(t)) {
 			return 1f;
 		}
 		float under = Math.max(0f, HALF - priorityRate(t)) / HALF;

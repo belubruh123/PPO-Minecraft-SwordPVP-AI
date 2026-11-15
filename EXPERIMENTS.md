@@ -1974,3 +1974,8 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
   Partial revert first if only one family misbehaves: drop the crits' jump from CRIT_GATED_HEADS (jump spread), or the starters back to pull 0 (swing/sprint trouble).
 - **Run 103c (me, 15:37):** Carpet PvP levels went from skilled/expert to average/skilled. Skilled/expert won all 50 fights (dealt 35, taken 76 a fight, flat), too strong to learn from yet.
 - **Run 104 merged (me, 15:37):** core tests on main (with the checkpoints) 60 passed, 1 aborted (an assumption), 0 failed. Redeployed after the 15:20 check.
+- **Run 104b (me, 16:05; the user, 16:00: "Counter jump in skill shoudl be learned later. Teach crit and combo starting as main first"):**
+  - Main (FAVOURED x1.5): the crits T1, T1a, T1b, T1c, T2, C6, B1 and the stun starters T4, T5, T6, T6a, T7.
+  - LATER, review priority only with no pull boost for now: the jump-in counters T8, K2, K3. T8 had been at the top, p3.15, only for having no moments.
+  - Secondary (x0.5): C1, C7.
+  - Core tests: 60 passed, 1 aborted, 0 failed.

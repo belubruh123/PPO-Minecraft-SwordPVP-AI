@@ -149,6 +149,11 @@ class JumpAlongTest {
 			if (SchoolStages.excluded(i)) {
 				assertEquals(0f, st.priority(i), 0f, t + " is excluded");
 			}
+			// Run 104b (the user, 15 Nov 16:00): the jump-in counters are learned later: review priority only, no pull boost.
+			if (SchoolStages.later(i)) {
+				assertEquals(SchoolStages.REVIEW_PRIORITY, st.priority(i), 1e-6f, t + " is for later");
+				assertEquals(1f, st.pullBoost(i), 0f, t + " has no pull boost");
+			}
 		}
 		for (Technique t : new Technique[] {Technique.C1, Technique.C7, Technique.T6A, Technique.K2}) {
 			assertEquals(0, SchoolStages.gatedHeads(t.ordinal()) & (1 << dev.swordai.core.rl.ActionSpace.JUMP), t + " has no jump in its lesson");
