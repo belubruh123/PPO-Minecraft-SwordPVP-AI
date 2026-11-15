@@ -1649,3 +1649,10 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - Under 60%: T6 52, T2 48, C2 45, T9 38 (the rules), T1c 35, T1 30.
 - Punish crit chances critted 58% of 300; told and landed 44%.
 - **Lead for the crit family (T1, T1c, T2 under 50%):** their deciding key is the second jump right after its own hit. In a trade (hit taken on the same tick), the late-jump guard strips that jump. Count it: the guard's strips with a technique told.
+
+## 16 Nov 01:20 check: run35 base + memory (about 2.8 h); run 113 (human-like bots) asked right after (01:22)
+
+- **ROUNDS WON: A 24/44 (55%), B 22/44 (50%), z about +0.5.** Net A-B +4.5 HP a fight (se 4.6). Dealt/taken: A 410 / 384, B 389 / 392. The old bots, so no judge of real play.
+- **Their third hit after their second: A 19% (13 of 69), B 24% (16 of 66).** It was 9% vs 20% at 00:31; the numbers are small.
+- Outside their combo: A swung 40% (00:31: 31%), B 55%. Jumps a minute off/on its moments: A 48/59, B 30/33.
+- The next checks are on the human-like bots, so they are not comparable to the checks before run 113.
