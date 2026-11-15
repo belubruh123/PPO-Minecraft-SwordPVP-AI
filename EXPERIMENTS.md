@@ -1972,3 +1972,5 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
   - a check loses 2 in a row (z < 0 on rounds both times).
   
   Partial revert first if only one family misbehaves: drop the crits' jump from CRIT_GATED_HEADS (jump spread), or the starters back to pull 0 (swing/sprint trouble).
+- **Run 103c (me, 15:37):** Carpet PvP levels went from skilled/expert to average/skilled. Skilled/expert won all 50 fights (dealt 35, taken 76 a fight, flat), too strong to learn from yet.
+- **Run 104 merged (me, 15:37):** core tests on main (with the checkpoints) 60 passed, 1 aborted (an assumption), 0 failed. Redeployed after the 15:20 check.

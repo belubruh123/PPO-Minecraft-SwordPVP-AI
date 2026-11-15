@@ -1206,7 +1206,8 @@ public final class SchoolSession implements AgentSession {
 	 * bots' tallies and the stages' progress, and its fights leave no scenes (Carpet PvP's bot cannot be replayed from a scene).
 	 */
 	static final float OUTSIDE_SHARE = 0.15f;
-	static final String[] OUTSIDE_LEVELS = {"skilled", "expert"};
+	// Run 103c (15 Nov 15:30): skilled/expert won all 50 fights (dealt 35, taken 76 a fight, no learning): average/skilled.
+	static final String[] OUTSIDE_LEVELS = {"average", "skilled"};
 	static final boolean OUTSIDE_IN_CHECKS = false;
 	/** This fight is against the outside bot; and since the last update: fights, won, lost, damage dealt and taken. */
 	private boolean fightOutside;
