@@ -1614,3 +1614,8 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   1. Make the bots human-like where they are superhuman: reaction times, perfect timing and reads, perfect knowledge of the AI's position.
   2. Use the user's real rounds as the training scenes and teacher (item 8 + "learn from opponents' winning moves").
   3. Bring in a human-rounds check: the user's A/B pool duels decide; the bot checks only flag breakage.
+
+## 15 Nov 23:13 review (short: 5-hour window at 95%)
+
+- Training runs; reloaded 22:56-23:02 with anchor.bin = run35 ("copying targets from the frozen best fighter anchor.bin" at 23:02:31). review.sh saw java 2 (want 1), probably left from the redeploy; check at the next review.
+- Punish crit chances critted 53% of 300; damage a minute 367 dealt / 284 taken. No paired check on the run35 base yet: the cycle restarted 23:02, so the first check is about 23:47.
