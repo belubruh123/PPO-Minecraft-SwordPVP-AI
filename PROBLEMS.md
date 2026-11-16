@@ -1980,3 +1980,7 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Their third hit after their second: A 11% (7), B 6% (3); both small.
 - **K2 broken: A 56, B 57.** Level with B now (15:57: 57 vs 44); the training K2 rate is back to 100%.
 - Punish crit chances critted 51% of 300.
+
+## 16 Nov 17:43 review
+
+- Training runs (run 121); see the review.sh lines in the report. The next check is about 17:37-17:40.
