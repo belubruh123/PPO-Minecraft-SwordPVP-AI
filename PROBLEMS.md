@@ -1943,3 +1943,12 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Run 121 is live: redeploy 15:06-15:08, 0 test failures; training runs.
 - First update: "reopen held shut 26, take-offs the old reopen let off now charged 1". The reopenings are held, as designed.
 - Punish crit chances critted 52% of 300. The first check with run 121 is about 15:53.
+
+## 16 Nov 15:43 review
+
+- Training runs (run 121). Punish crit chances critted 49% of 300.
+- **Skill rates:** C3 90, T5 90, T6a 90, T7 88, T9a 88, C1 88, C7 85, T4 83, C4 83, C2 80, T1a 78, T9c 75, B1 70, **K2 70**, K3 70, T6 68, T9b 65.
+  - Under 60%: T1c 58, T2 52, **C6 48**, T9 40 (the rules), T1 35.
+- **Watch:** K2 fell from 93-100% (earlier today) to 70%, and C6 from 85-100% to 48%, since runs 119-121.
+  - K2 is the user's "no sprint hit on a late rising and falling player". The swing lessons (115-119) exclude a falling player, but check "K2 broken" and late jump-in hits in the 15:53 check.
+  - If K2 broken rises, gate run 119's turned holds and the swing lesson on their falling-by-the-hit prediction (fallingByTheHit), not only them.falling().
