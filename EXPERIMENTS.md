@@ -2235,3 +2235,35 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **Expect:** training on-body-no-pick 15% -> about 5% of ready ticks, so swung of ready +5-8 points (the swing is open there and runs 115/119 teach it); then the checks' A "on its body but no pick" under B's 17-21%, and A swung up toward and past B.
 - **Risks:** the near point is at the box's edge, so a sidestep can take the crosshair off their body (watch "off its body" not up more than 2 points); punish crit chances critted (ground only, so B1 should not move; compare within the stage); whiffs (the guard is strict, so none added); K2 broken and late jump-in hits (the lesson is off with them in the air).
 - **Tests:** school + pvp 78 passed, 5 aborted (known), 0 failed; compile-check OK (the known class_6880 line).
+
+## Run 121 (agent 55, 16 Nov ~15:10): the one jump-in reopens only after the knockback has settled (REOPEN_SETTLED)
+
+- **The checks' "jump X/Y a minute" is not take-offs.** Performance.keysLine counts every tick with the jump key down, in the air too, where it does nothing.
+  - Take-offs did not rise. Ground jump ticks ("take-offs by source", A summed over each check): 194, 207, 184, 223, 191, 200, 191 (07:57-14:08); B 78-103. jumps.csv take-offs (not within 3 ticks of a hit taken): A 133, 143, 131, 158, 114, 131, 127; B 29-40.
+  - So the high checks (11:27, 13:06, 14:08: jump 60/91, 62/80, 74/71) had about +16 take-offs over the low ones (10:17, 12:17), and 14:08 had fewer than 09:28 at the same stage (127 vs 143). The rest of the rise is the key held in the air: about 150 such ticks a check at 10:17, about 350 at 14:08 (rough: about 9000 ticks a check).
+  - That head is untaught in the air (every "no jump" lesson and cost is on the ground). The rise follows the training, not the stage. Harmless in the game, but it misleads the monitor. New check line (below) splits it.
+- **The real excess is flat at about 4x B since 07:57.** jumps.csv, 7 checks, A / B. Own combo 1-3 ticks after its hit: 68 / 5. Own combo 4-15: 347 / 109. Re-engaging (16-40 ticks after the last hit either way): 260 / 71. The fight's first take-off: 115 / 29. A trade within 15: 76 / 11. Their combo: 71 / 17.
+  - High vs low checks (a check's mean): re-engaging 43 vs 30, their combo 13 vs 6, own combo 4-15 48 vs 52.
+  - Same stage: T-B 12:17 -> 13:06 re-engaging 20 -> 39; T-D 10:17 -> 11:27 39 -> 53; T-C 09:28 -> 14:08 42 -> 36.
+- **Re-engaging, by detail:** 214 of A's 260 take off 16-19 ticks after the last hit (the knockback just over, the swords ready again; B 62 of 71). 171 come after their hit or a trade. Distance at take-off: under 5 blocks 170, 5+ 90. Hit in the air 162 (62%; B 54%). Its own hit first 63 (24%).
+- **Source (the take-offs line, A summed):**
+  - Rule 70-86 a check; B 77-103. Nearly all are rule r's jump reset on the hit tick, which jumps.csv leaves out.
+  - Technique 38-91. Its own 42-66; B 0 and 0.
+  - In its own combo (run 116 line): technique 25-55 a check, by the told T2/C6/T9b/T9c/K3/T1c jumps, which are kept.
+  - Technique take-offs outside its own combo go with the re-engaging count (11/33/13/48/8/26/27 against 31/42/39/53/20/39/36). The checks do not log which technique; the new line does.
+- **Training, who frees them:** the run 95 line, 07:00-14:40 per update: 25-45 reopenings against 10-19 jump-ins taken; near take-offs charged 8-14; needed 8-15 (told 3-9, crit exchange 3-6).
+  - Their combo's take-offs 13-20 ticks after their hit: 5-6 an update, told K3 on about 5 (two-thirds at 3.5-4.5 blocks). K3 is kept.
+  - The reopen test was "5+ blocks on any tick". A sprint hit's knockback (theirs or its own) passes 5 blocks for a tick, so the jump-in reopened after nearly every exchange. A take-off then is the free jump-in: no NEAR_JUMP_COST, no "no jump" lesson.
+- **Bottleneck:** JUMP_IN_REOPEN's any-tick test turns "one jump-in per engagement" into one per knockback. The user (14 Nov 09:30): "until opponent run away or back out ... 5-6 block".
+- **Fix (REOPEN_SETTLED, TRAIN only):** the jump-in reopens only once the last hit (either way) is REOPEN_QUIET 20 ticks old (COMBO_GAP) and they are 5+ blocks away.
+  - Unchanged: the fight's first jump-in, the crit exchange, the told T1/T1c/T2/C6/K3/T9a-c (free as before), K2 and the jump-in guard, the late-jump guard, runs 115-120. Checks and the user's game are unchanged.
+  - T1a is not a reason-2 technique: a told T1a under 20 ticks after a hit is now charged like any near-fight jump. It stays free as the fight's first jump-in or after a real back-out.
+- **New counters:**
+  - Training (run 95 line): "run 121 (on): reopen held shut (5+ blocks under 20 ticks after a hit) N, take-offs the old reopen let off now charged N, needed N".
+  - Checks: "school check run 121 | re-engaging take-offs (16-40 ticks after the last hit) (rule | technique | own) ... | A's technique take-offs by the told technique: in its own combo ...; re-engaging ...; other ... | jump key a minute: on the ground (take-offs) A B, in the air A B".
+- **Disproof test:**
+  - Wrong if "reopen held shut" is under a third of the old reopen count (25-45 an update) in the first ~5 updates. Then the reopenings were real back-outs, not knockbacks.
+  - Also wrong if after 3 checks A's re-engaging take-offs (the new line's sum, or jumps.csv 16-40 ticks) are still 35+ a check while "now charged" is 5+ an update. Then the jumps do not come from the free reopen. Next: the told technique on them (the new line), K3 first.
+- **Expect:** training jump-ins 15 -> about 8 an update, near-fight charged up at first and then down. Checks: re-engaging A 37 -> 25 or fewer a check (B 10), hit in the air down with them; the keys line unchanged (it is air ticks).
+- **Risks:** fewer jump-ins also means fewer T1a baits and jump-in crits after a knockback; watch T1a done, punish crit chances critted, rounds won. Their combo and K3 are untouched. Engagements that end at 5+ blocks wait up to 20 ticks for a free jump-in, so watch that it re-engages on foot (T7 straight in, sprint hits) rather than standing off.
+- **Tests:** school + pvp 78 passed, 5 aborted (known), 0 failed; compile-check OK (the known class_6880 line).

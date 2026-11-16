@@ -148,6 +148,22 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final boolean JUMP_ONCE = true;
 	static final float JUMP_IN_REOPEN = 5f;
+	/**
+	 * Run 121 (16 Nov, agent 55; the user, 14 Nov 09:30: "after once jump in you should start doing some combo until opponent run away or
+	 * back out I think 5-6 block before going to jump in"; 15 Nov: "it just do a jump and stop and breaks its own combo"). The one jump-in
+	 * reopened at JUMP_IN_REOPEN blocks on any tick, so the knockback of a sprint hit (theirs or its own) that sent one of them past 5
+	 * blocks for a tick reopened it: training 25-45 reopenings an update against 10-19 jump-ins taken (the run 95 line, 07:00-14:40).
+	 * The checks' jumps.csv (07:57-14:08, 7 checks, 315 fights a side, take-offs not within 3 ticks of a hit taken): jump-ins (the
+	 * fight's first take-off plus re-engaging ones) 1.19 a fight, B 0.32; re-engaging take-offs (16-40 ticks after the last hit either
+	 * way) A 260, B 71; 214 of A's at 16-19 ticks
+	 * after that hit (the knockback just over, the swords ready again), 171 after their hit or a trade; 162 hit in the air (62%; B 54%),
+	 * own hit first 63. With the jump-in open those took off free: no NEAR_JUMP_COST, no "no jump" lesson. On: it reopens only once the
+	 * last hit (either way) is REOPEN_QUIET ticks old and they are still JUMP_IN_REOPEN blocks away: they ran away or backed out, as the
+	 * user says, not a knockback in flight. The fight's first jump-in, the crit exchange (them in the air within CRIT_EXCHANGE_DIST), the
+	 * told T1/T1c/T2/C6/K3/T9a-c and the guards are unchanged. Training only; checks and the user's game unchanged.
+	 */
+	static final boolean REOPEN_SETTLED = true;
+	static final int REOPEN_QUIET = 20;
 	static final float CRIT_EXCHANGE_DIST = 4.5f;
 	/** Run 95b: ticks after its own hit in which their being in the air is its knockback's lift, not a crit of theirs coming. */
 	static final int CRIT_EXCHANGE_AFTER_HIT = 12;
@@ -347,6 +363,14 @@ public final class SchoolSession implements AgentSession {
 	private boolean jumpInOpen = true;
 	private int dropAt = -1;
 	private int jumpInsTaken, jumpInReopened, nearJumpCharged, nearJumpNeededTakeoffs, nearNoJumpTaught, teacherJumpFlipped, comboDropped;
+	/**
+	 * Run 121 (REOPEN_SETTLED): the old rule's jump-in (reopened at JUMP_IN_REOPEN on any tick), followed alongside; stretches where
+	 * the old rule would have reopened but the last hit was under REOPEN_QUIET ticks old (held shut); its take-offs the old rule would
+	 * have let off free, now charged or needed; and jump-ins taken that the old rule also had open.
+	 */
+	private boolean oldJumpInOpen = true;
+	private boolean reopenHeldNoted;
+	private int reopenHeld, reopenOldFreeCharged, reopenOldFreeNeeded;
 	/** Run 95b: the needed near-fight take-offs by reason (crit exchange, told, the jump reset in their combo). */
 	private final int[] nearJumpNeededBy = new int[4];
 	/**
@@ -392,6 +416,25 @@ public final class SchoolSession implements AgentSession {
 			// Run 116: those in its own combo, by source (a rule's, a technique's, its own).
 			comboTakeoffSrc[side][Math.min(src, 2)]++;
 		}
+		// Run 121: re-engaging (16-40 ticks after the last hit either way) by source, and A's technique take-offs by the technique told.
+		int sinceHit = Math.min(clock.ticksSinceHitDealt, clock.ticksSinceHitTaken);
+		int situation = ownComboAlive() ? 0 : sinceHit > 15 && sinceHit <= 40 ? 1 : 2;
+		if (situation == 1) {
+			reengTakeoffSrc[side][Math.min(src, 2)]++;
+		}
+		Technique told = side == 0 ? learner.told() : null;
+		if (src == 1 && told != null) {
+			takeoffToldBy[situation][told.ordinal()]++;
+		}
+	}
+
+	/** Run 121 (checks): ticks, and ticks with the jump key down in the air (no take-off possible), per side. */
+	private void countJumpKeyAir(int side, boolean onGround) {
+		if (mode != Mode.CHECK) {
+			return;
+		}
+		checkKeyTicks[side]++;
+		airJumpKeyTicks[side] += !onGround && action[ActionSpace.JUMP] == 1 ? 1 : 0;
 	}
 
 	/**
@@ -601,6 +644,15 @@ public final class SchoolSession implements AgentSession {
 	private final int[][] takeoffSrc = new int[2][6];
 	/** Run 116: the checks' take-offs in its own combo (ownComboAlive) by source: a rule's, a technique's, its own; A then B. */
 	private final int[][] comboTakeoffSrc = new int[2][3];
+	/**
+	 * Run 121 (checks): take-offs re-engaging (16-40 ticks after the last hit, not in its own combo) by source, A then B; A's technique
+	 * take-offs by the technique told (in its own combo, re-engaging, other); ticks and air ticks with the jump key down, A then B (the
+	 * keys line's "jump" counts every tick with the key down, in the air too, where it does nothing).
+	 */
+	private final int[][] reengTakeoffSrc = new int[2][3];
+	private final int[][] takeoffToldBy = new int[3][Technique.COUNT];
+	private final int[] checkKeyTicks = new int[2];
+	private final int[] airJumpKeyTicks = new int[2];
 	/** Run 116: its own take-offs in its own combo charged NEAR_JUMP_COST in training (OWN_COMBO_JUMP_COST). */
 	private int ownComboJumpsCharged;
 	private int firstHitResetTicks;
@@ -1545,6 +1597,8 @@ public final class SchoolSession implements AgentSession {
 						JUMP_ONCE ? "on" : "off", jumpInsTaken, JUMP_IN_REOPEN, jumpInReopened, nearJumpCharged, nearJumpNeededTakeoffs, nearJumpNeededBy[0],
 						nearJumpNeededBy[1], nearJumpNeededBy[2], nearJumpNeededBy[3], nearNoJumpTaught, teacherJumpFlipped, comboDropped)
 				+ String.format(Locale.ROOT, ", run 116 (%s) its own combo charged %d", ownComboJumpCharged() ? "on" : "off", ownComboJumpsCharged)
+				+ String.format(Locale.ROOT, ", run 121 (%s): reopen held shut (5+ blocks under %d ticks after a hit) %d, take-offs the old reopen let off now charged %d, needed %d",
+						REOPEN_SETTLED ? "on" : "off", REOPEN_QUIET, reopenHeld, reopenOldFreeCharged, reopenOldFreeNeeded)
 				+ String.format(Locale.ROOT, " | run 96: ready sword held at them on the ground charged %d ticks", readyHoldCharged)
 				+ String.format(Locale.ROOT, " | run 115 (%s): the ordinary swing taught %d ticks", SWING_TAUGHT ? "on" : "off", swingTaught)
 				+ String.format(Locale.ROOT, "; run 118 (%s, pick only): held otherwise with the pick on them on the ground, by the lesson: on %d, a teacher's hold %d,"
@@ -1662,6 +1716,7 @@ public final class SchoolSession implements AgentSession {
 		reflexFirstCharged = 0;
 		jumpInsTaken = jumpInReopened = nearJumpCharged = nearJumpNeededTakeoffs = nearNoJumpTaught = teacherJumpFlipped = comboDropped = 0;
 		ownComboJumpsCharged = 0;
+		reopenHeld = reopenOldFreeCharged = reopenOldFreeNeeded = 0;
 		readyHoldCharged = 0;
 		swingTaught = 0;
 		java.util.Arrays.fill(readyHeldWhy, 0);
@@ -4250,6 +4305,8 @@ public final class SchoolSession implements AgentSession {
 		cbFollowAt = -1;
 		dropAt = -1;
 		jumpInOpen = true;
+		oldJumpInOpen = true;
+		reopenHeldNoted = false;
 		awayTicks = 0;
 		heldPending = 0f;
 		ownGroundHitAt = -1;
@@ -5256,6 +5313,7 @@ public final class SchoolSession implements AgentSession {
 				// Run 94b: B's take-offs by source too (B's step returns below, before A's count).
 				countTakeoff(1, ruledNow, step);
 			}
+			countJumpKeyAir(1, me.onGround());
 			traceCrit(1, action[ActionSpace.ATTACK] == 1);
 			traceJumpIn(1);
 			logHits(1, action[ActionSpace.ATTACK] == 1, truth.botFalling());
@@ -5596,12 +5654,24 @@ public final class SchoolSession implements AgentSession {
 		// Run 95 (JUMP_ONCE): the one jump-in of an engagement, and "no jump" taught in the near fight where no jump is needed.
 		boolean jumpNotNeeded = false;
 		if (JUMP_ONCE && mode == Mode.TRAIN && review < 0) {
+			// Run 121 (REOPEN_SETTLED): not while a hit's knockback is still in flight (the last hit under REOPEN_QUIET ticks old).
+			boolean settled = !REOPEN_SETTLED || Math.min(clock.ticksSinceHitDealt, clock.ticksSinceHitTaken) >= REOPEN_QUIET;
 			if (!jumpInOpen && facts.reachDist >= JUMP_IN_REOPEN) {
-				jumpInOpen = true;
-				jumpInReopened++;
+				if (settled) {
+					jumpInOpen = true;
+					jumpInReopened++;
+				} else if (!reopenHeldNoted) {
+					reopenHeldNoted = true;
+					reopenHeld++;
+				}
+			}
+			if (!oldJumpInOpen && facts.reachDist >= JUMP_IN_REOPEN) {
+				oldJumpInOpen = true;
 			}
 			if (facts.hitsDealt > 0 || facts.hitsTaken > 0) {
 				jumpInOpen = false;
+				oldJumpInOpen = false;
+				reopenHeldNoted = false;
 			}
 			jumpNotNeeded = !jumpInOpen && !nearJumpNeeded(learner.told());
 			if (jumpNotNeeded && me.onGround()) {
@@ -5895,6 +5965,7 @@ public final class SchoolSession implements AgentSession {
 			comboTakeoffOut++;
 			comboTakeoffAt = -1;
 		}
+		countJumpKeyAir(0, me.onGround());
 		// Run 43: a take-off on the ground by the network (not a rule's jump) marks the air until it stands again.
 		if (me.onGround()) {
 			ownJumpAir = action[ActionSpace.JUMP] == 1 && (ruled & (1 << ActionSpace.JUMP)) == 0;
@@ -5907,6 +5978,9 @@ public final class SchoolSession implements AgentSession {
 			}
 			if (JUMP_ONCE && ownJumpAir && mode == Mode.TRAIN && review < 0) {
 				// Run 95: its one jump-in spends the engagement's; in the near fight a jump not needed costs NEAR_JUMP_COST.
+				// Run 121: a take-off the old reopen (any tick at 5+ blocks) would have let off as the jump-in, counted by what it is now.
+				boolean oldFree = oldJumpInOpen && !jumpInOpen;
+				oldJumpInOpen = false;
 				if (jumpInOpen) {
 					jumpInOpen = false;
 					jumpInsTaken++;
@@ -5914,9 +5988,11 @@ public final class SchoolSession implements AgentSession {
 					enterReward -= NEAR_JUMP_COST;
 					nearJumpCharged++;
 					ownComboJumpsCharged += ownComboAlive() ? 1 : 0;
+					reopenOldFreeCharged += oldFree ? 1 : 0;
 				} else {
 					nearJumpNeededTakeoffs++;
 					nearJumpNeededBy[Math.max(0, nearJumpReason(learner.told()) - 1)]++;
+					reopenOldFreeNeeded += oldFree ? 1 : 0;
 				}
 			} else if (ownJumpAir && mode == Mode.TRAIN && review < 0 && OWN_JUMP_COST > 0f && !jumpTechniqueNow(step)) {
 				// Run 91b: its own take-off that no technique asked for costs OWN_JUMP_COST. Run 92: the jump on the tick of a hit taken
@@ -6855,6 +6931,8 @@ public final class SchoolSession implements AgentSession {
 		SwordAi.LOGGER.info("school check take-offs by source (rule | technique | own 0-1 ticks after their first hit | own 0-1 in their combo | own 2-12 | own other) "
 				+ "A {} {} {} {} {} {} | B {} {} {} {} {} {}", takeoffSrc[0][0], takeoffSrc[0][1], takeoffSrc[0][2], takeoffSrc[0][3], takeoffSrc[0][4],
 				takeoffSrc[0][5], takeoffSrc[1][0], takeoffSrc[1][1], takeoffSrc[1][2], takeoffSrc[1][3], takeoffSrc[1][4], takeoffSrc[1][5]);
+		// Run 121: the ground jump ticks (take-offs, any source), read before the counts are cleared.
+		int groundA = sum(takeoffSrc[0]), groundB = sum(takeoffSrc[1]);
 		java.util.Arrays.fill(takeoffSrc[0], 0);
 		java.util.Arrays.fill(takeoffSrc[1], 0);
 		// Run 116: the take-offs in its own combo (its last hit within COMBO_GAP, none taken since) by source.
@@ -6862,6 +6940,23 @@ public final class SchoolSession implements AgentSession {
 				comboTakeoffSrc[0][1], comboTakeoffSrc[0][2], comboTakeoffSrc[1][0], comboTakeoffSrc[1][1], comboTakeoffSrc[1][2]);
 		java.util.Arrays.fill(comboTakeoffSrc[0], 0);
 		java.util.Arrays.fill(comboTakeoffSrc[1], 0);
+		// Run 121: re-engaging take-offs by source; A's technique take-offs by the technique told; the jump key a minute on the ground
+		// (take-offs, any source) and in the air (does nothing), so the keys line's "jump" can be read.
+		SwordAi.LOGGER.info("school check run 121 | re-engaging take-offs (16-40 ticks after the last hit) (rule | technique | own) A {} {} {} | B {} {} {}"
+				+ " | A's technique take-offs by the told technique: in its own combo {}; re-engaging {}; other {}"
+				+ " | jump key a minute: on the ground (take-offs) A {} B {}, in the air A {} B {}", reengTakeoffSrc[0][0], reengTakeoffSrc[0][1],
+				reengTakeoffSrc[0][2], reengTakeoffSrc[1][0], reengTakeoffSrc[1][1], reengTakeoffSrc[1][2], byTechnique(takeoffToldBy[0]),
+				byTechnique(takeoffToldBy[1]), byTechnique(takeoffToldBy[2]), Math.round(groundA * 1200.0 / Math.max(1, checkKeyTicks[0])),
+				Math.round(groundB * 1200.0 / Math.max(1, checkKeyTicks[1])), Math.round(airJumpKeyTicks[0] * 1200.0 / Math.max(1, checkKeyTicks[0])),
+				Math.round(airJumpKeyTicks[1] * 1200.0 / Math.max(1, checkKeyTicks[1])));
+		for (int[] row : reengTakeoffSrc) {
+			java.util.Arrays.fill(row, 0);
+		}
+		for (int[] row : takeoffToldBy) {
+			java.util.Arrays.fill(row, 0);
+		}
+		java.util.Arrays.fill(checkKeyTicks, 0);
+		java.util.Arrays.fill(airJumpKeyTicks, 0);
 		SwordAi.LOGGER.info("school check rules | A: the golden rule (K2) held the swing on {} ticks, the installed model's rules set keys on {} ticks; "
 				+ "sprint hits outside its combos on one falling: on the server {}, as seen {} | lost view: A {} of {} ticks off the screen ({} times), "
 				+ "B {} of {} ticks ({} times)", k2Held, ruleTicks, k2Truth, k2Seen, lostTicks[0], viewTicks[0], lostTimes[0], lostTicks[1], viewTicks[1],
