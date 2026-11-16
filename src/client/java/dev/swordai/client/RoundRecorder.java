@@ -102,6 +102,8 @@ final class RoundRecorder {
 	private boolean oppWasGround = true;
 	private double distSum;
 	private long distTicks;
+	/** Run 124: their runs, what came after their hits by distance, ready-sword entries, the long S in their combo (CounterSpacing.Tally). */
+	private final dev.swordai.core.school.CounterSpacing.Tally spacing = new dev.swordai.core.school.CounterSpacing.Tally();
 
 	boolean open() {
 		return open;
@@ -136,6 +138,8 @@ final class RoundRecorder {
 		oppWasGround = true;
 		distSum = 0;
 		distTicks = 0;
+		spacing.endFight();
+		spacing.clear();
 	}
 
 	/** One tick of the fight, after the decision. {@code rules} is {@link Fighter#rules()}. */
@@ -203,6 +207,7 @@ final class RoundRecorder {
 			}
 		}
 		lastDist = dist;
+		spacing.tick(dealtNow, takenNow, dist, myCharge, dev.swordai.core.pvp.Body.CHARGED, action[ActionSpace.FORWARD] == 2);
 
 		StringBuilder ev = new StringBuilder();
 		if (dealtNow || takenNow) {
@@ -382,6 +387,8 @@ final class RoundRecorder {
 		if (takenRow >= 3) {
 			combosTaken++;
 		}
+		// Run 124: an open run of theirs and their-combo window counted too.
+		spacing.endFight();
 		// 13 Nov 23:00 (the user: "dealt and taken are wrong, it won but has lower dealt"): a server that hides the other player's
 		// health leaves damage dealt at 0, and a hit count weighs a crit (1.5x damage) as a plain hit. So the crits are shown with the
 		// hits, a crit-weighted count (a crit as 1.5 hits) is given, and an unreadable damage dealt says so instead of 0.
@@ -432,7 +439,9 @@ final class RoundRecorder {
 				""", dealt, ownCrits, ownSprintHits, swings, whiffs, taken, takenCrit, takenJumpIn, takenStanding, takenInCooldown, takenReady,
 				answered, combosTaken, longestCombo, firstWon, firstLost, entersOnReady, entersOnCooling,
 				100.0 * oppApproach / moving, 100.0 * oppBack / moving, 100.0 * oppStrafe / moving, 100.0 * oppStill / moving, oppJumps,
-				oppBackedAfterHit, distTicks == 0 ? 0.0 : distSum / distTicks, oppPingMillis);
+				oppBackedAfterHit, distTicks == 0 ? 0.0 : distSum / distTicks, oppPingMillis)
+				// Run 124 (CounterSpacing.Tally; its sword ready from 0.9 here, as "beaten to the hit" above).
+				+ "Run 124 spacing: " + spacing.line() + ".\n";
 	}
 
 	/** The likely reasons, biggest first; a line each. */
@@ -468,7 +477,8 @@ final class RoundRecorder {
 	}
 
 	static final String RULE_NAMES = "a = answer swing, k = swing kept for the way down, m = run at a jumper, r = jump reset, b = backed out, "
-			+ "t = step back, J = jump made for it, c = camera after a hit, l = looking for a lost opponent, s = straight in";
+			+ "t = step back, J = jump made for it, c = camera after a hit, l = looking for a lost opponent, s = straight in, "
+			+ "C = counter spacing in their combo or as they close in (run 124)";
 	private static final char[] RULE_CHARS = {'a', 'k', 'm', 'r', 'b', 't', 'J', 'c', 'l', 's'};
 
 	private static String rulesText(int rules) {
@@ -477,6 +487,10 @@ final class RoundRecorder {
 			if ((rules & (1 << i)) != 0) {
 				s.append(RULE_CHARS[i]);
 			}
+		}
+		if ((rules & dev.swordai.core.school.CounterSpacing.RULE_BIT) != 0) {
+			// Run 124: CounterSpacing's keys (FightSession).
+			s.append('C');
 		}
 		return s.toString();
 	}

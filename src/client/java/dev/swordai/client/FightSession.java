@@ -105,6 +105,22 @@ final class FightSession implements AgentSession {
 	private long oldNetOwnHitStripped, oldNetOwnHitTried;
 	/** Run 122: ticks since its own hit (told when the swing is made, as the networks are) and since a hit taken, for the old model's guard. */
 	private int sinceOwnHit = 1000, sinceTakenHit = 1000;
+	/**
+	 * Run 124 (dev.swordai.core.school.CounterSpacing): in their combo and as they close in, with the rules on over the school's network, a
+	 * rule of its own ('C' in the round files): its sword ready, the sprint in and the hit at the edge as they enter reach; not ready, S taps
+	 * just outside their reach and a strafe; no long S, no jump; it stands aside for the jump reset, the punish crit, K2 and jump-ins.
+	 * false = as before.
+	 */
+	static final boolean COUNTER_SPACING = true;
+	private final dev.swordai.core.school.CounterSpacing counter = new dev.swordai.core.school.CounterSpacing();
+	private final dev.swordai.core.school.CounterSpacing.Input counterIn = new dev.swordai.core.school.CounterSpacing.Input();
+	private final int[] counterKeys = new int[ActionSpace.HEADS];
+	/** Run 124: the least charge for its swing here (the rules' swing charge on this server or world). */
+	private final float counterReady;
+	/** Run 124: its ticks pressed, by decision (CounterSpacing.WHY_NAMES). */
+	private final long[] counterBy = new long[dev.swordai.core.school.CounterSpacing.WHY_NAMES.length];
+	/** Run 124: its keys were pressed on this tick (the round file's 'C'). */
+	private boolean counterRule;
 	/** Ticks since a hit taken on the ground lifted it, -1 when not lifted (the rules leave W to the network in its fall). */
 	private int liftedFor = -1;
 	private boolean groundBefore = true;
@@ -173,6 +189,9 @@ final class FightSession implements AgentSession {
 			fighter.swingNoEarlierThan(loaded.cfg.swingMinChargeOnline, loaded.cfg.swingExtraTicksOnline);
 			fighter.rulesNoEarlierThan(loaded.cfg.ruleSwingChargeOnline);
 		}
+		// Run 124: CounterSpacing swings no earlier than a rule's swing (Fighter's ruleMinCharge): 1.0 on a server.
+		this.counterReady = mc.hasSingleplayerServer() ? Math.max(loaded.cfg.swingMinCharge, loaded.cfg.ruleSwingCharge)
+				: Math.max(loaded.cfg.swingMinChargeOnline, loaded.cfg.ruleSwingChargeOnline);
 		Path network = arm != null ? arm.network : SwordFiles.schoolCheckpoint();
 		if (Files.exists(network)) {
 			SchoolLearner l = new SchoolLearner(System.nanoTime(), 1, 0.99f, 0.95f, 1);
@@ -513,7 +532,28 @@ final class FightSession implements AgentSession {
 			school.inLift(liftedFor >= 0 && !me.onGround());
 			// Run 122: eye to their hitbox, for the own-hit jump guard (SchoolFighter#ownHitJumpGuard).
 			school.reachNow(reachNow);
+			// Run 124: CounterSpacing's keys as a rule over the network (with the rules on), standing aside where they come first.
+			dev.swordai.core.school.CounterSpacing.Plan counterPlan = null;
+			if (COUNTER_SPACING && rulesOn && dev.swordai.core.school.CounterSpacing.ON) {
+				boolean k2Now = SchoolSession.K2_GUARD && dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, ownPingTicks() + SchoolSession.K2_MARGIN);
+				counterIn.duel = reader.duel;
+				counterIn.charge = me.getAttackStrengthScale(0f);
+				counterIn.readyCharge = counterReady;
+				counterIn.pick = onOpponent();
+				counterIn.sinceTaken = sinceTakenHit;
+				counterIn.sinceDealt = sinceOwnHit;
+				counterIn.jumpIn = jumpInAir;
+				counterIn.themFalling = k2Now;
+				counterIn.swingHeld = jumpInAir || k2Now;
+				counterIn.yield = (fighter.rules() & dev.swordai.core.school.CounterSpacing.RULES_FIRST) != 0
+						|| dev.swordai.core.school.CounterSpacing.keeps(schoolLearner.told());
+				counterPlan = counter.plan(counterIn);
+				school.outsideRule(counterPlan.heads, counterPlan.keys(counterKeys));
+				counterBy[counterPlan.why] += counterPlan.active() ? 1 : 0;
+			}
 			action = school.decide(observer.frame, body, reader.memory());
+			counter.pressed(action[ActionSpace.FORWARD], action[ActionSpace.STRAFE]);
+			counterRule = counterPlan != null && counterPlan.active();
 			AgentController.apply(mc, action, school.yawRate(), school.pitchRate());
 			chargeAtClick = me.getAttackStrengthScale(0f);
 			sprintAtClick = me.isSprinting();
@@ -565,7 +605,8 @@ final class FightSession implements AgentSession {
 				rounds.start(opponentName, arm != null ? arm.tag : null);
 			}
 			// With the school's network under the installed model's rules, the rules that pressed keys are recorded too (1 Nov: the timelines could not tell them from the network).
-			rounds.tick(me, opp, body, action, school != null && !rulesOn ? 0 : fighter.rules(), dealtNow, takenNow);
+			rounds.tick(me, opp, body, action, (school != null && !rulesOn ? 0 : fighter.rules())
+					| (school != null && counterRule ? dev.swordai.core.school.CounterSpacing.RULE_BIT : 0), dealtNow, takenNow);
 		}
 		clicked = action[ActionSpace.ATTACK] == 1;
 		clickResolved = false;
@@ -735,6 +776,7 @@ final class FightSession implements AgentSession {
 		critBack.reset();
 		sinceOwnHit = 1000;
 		sinceTakenHit = 1000;
+		counter.reset();
 		if (school != null) {
 			school.reset();
 			if (forget) {
@@ -811,7 +853,18 @@ final class FightSession implements AgentSession {
 				+ String.format(Locale.ROOT, "; run 122 (%s): its own take-offs right after its own hit (no hit taken since, %d ticks) %d, let go of"
 						+ " (within %.1f, sword under %.1f) %d", OWN_HIT_JUMP_GUARD ? "on" : "off", SchoolFighter.OWN_HIT_WINDOW,
 						school != null ? school.ownHitJumpsTried : oldNetOwnHitTried, SchoolFighter.OWN_HIT_GUARD_REACH,
-						SchoolFighter.OWN_HIT_GUARD_CHARGE, school != null ? school.ownHitJumpsStripped : oldNetOwnHitStripped);
+						SchoolFighter.OWN_HIT_GUARD_CHARGE, school != null ? school.ownHitJumpsStripped : oldNetOwnHitStripped)
+				+ counterLine();
+	}
+
+	/** Run 124: CounterSpacing's ticks pressed as a rule, by decision. */
+	private String counterLine() {
+		StringBuilder b = new StringBuilder(String.format(Locale.ROOT, "; run 124 counter spacing (%s): ticks pressed %d",
+				COUNTER_SPACING && rulesOn ? "on" : "off", school != null ? school.outsideTicks : 0L));
+		for (int w = dev.swordai.core.school.CounterSpacing.RUN_IN; w < counterBy.length; w++) {
+			b.append(String.format(Locale.ROOT, ", %s %d", dev.swordai.core.school.CounterSpacing.WHY_NAMES[w], counterBy[w]));
+		}
+		return b.toString();
 	}
 
 	private static float percent(long part, long whole) {
