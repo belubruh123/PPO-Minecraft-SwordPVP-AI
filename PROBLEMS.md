@@ -1925,3 +1925,15 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 
 - Training runs (run 120). Punish crit chances critted 54% of 300.
 - Agent 55 (14:44) on the rising jumps: split by situation and source per check, who teaches them, one bottleneck, and run 121.
+
+## 16 Nov 14:58 check (run 120) and run 121 asked (15:06)
+
+- **ROUNDS WON: A 31/45 (69%), B 33/45 (73%), z about -0.6.** Net A-B -2.9 HP a fight (se 4.1). Their third hit: A 16% (11), B 11% (7). Swung (ready, in reach): A 46%, B 58%.
+- **Agent 55: the checks' "jump X/Y" counts the jump key held, in the air too.**
+  - Real take-offs stayed flat (jumps.csv, A 114-158 a check, B 29-40); the rise was the key held in the air, which does nothing.
+  - From now on, judge jumps by take-offs (the new "school check run 121" line), not the keys line.
+  - The real excess is about 4x B, flat. By situation: own combo 4-15 ticks 347 vs 109; re-engaging 260 vs 71; first take-off 115 vs 29; trade 76 vs 11; their combo 71 vs 17.
+- **Bottleneck:** the one jump-in reopens whenever they are 5+ blocks apart, so every sprint hit's knockback reopens it, and the take-off then is free (25-45 reopenings an update).
+- **Run 121 (REOPEN_SETTLED, REOPEN_QUIET 20; training only):** the jump-in reopens only once the last hit is 20 ticks old and they are still 5+ blocks away. The user: "until opponent run away or back out ... 5-6 block".
+- **Disproof test:** "reopen held shut" under a third of the old reopens in about 5 updates; or re-engaging take-offs still 35+ a check after 3 checks while "now charged" is 5+ an update.
+- Tests: 78 passed, 5 aborted, 0 failed; compile-check OK. Redeploy asked 15:06.
