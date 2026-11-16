@@ -1999,3 +1999,10 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 ## 16 Nov 19:13 review
 
 - Training runs (run 121). The last check, 18:25, was A 34-28 (z +1.7), swung 60% vs 53%. The next check is about 19:15.
+
+## 16 Nov 19:14 check (run 121, about 4 h) and 19:43 review
+
+- **ROUNDS WON: A 32/44 (73%), B 33/44 (75%), z about -0.3.** Net A-B +4.1 HP a fight (se 4.2). Dealt/taken: A 431 / 316, B 429 / 342.
+- Their third hit after their second: A 13% (8), B 15% (8). Swung (ready, in reach): A 52%, B 57%.
+- Punish crit chances critted 53% of 300.
+- **The last 4 checks:** 16:47 33-33, 17:36 35-30, 18:25 34-28, 19:14 32-33. A is level with or ahead of B, and gets comboed less or the same.
