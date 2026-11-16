@@ -2391,3 +2391,11 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
   - their third hit A 14% vs B 23%.
 - Run 122: 0 own take-offs after its own hit (B 3). Jump-ins outside the window A 9 vs B 4, crits dealt A 6 vs B 7: no fear yet.
 - Revert: SWING_ANY_IN_REACH = false.
+
+## Run 123c (17 Nov 04:15): run 123 OFF (ComboSpacing.ON = false)
+
+- The 03:51 check (run 123b): ROUNDS WON A 23/44 vs B 33/44 (z -2.7), -17.2 HP a fight (se 3.8). Damage a minute A 372/364, B 437/321.
+- Swung when ready in reach outside their combo: A 29% vs B 59%. Of 114 held ticks with the crosshair on them, 104 were held by a rule or gate, 81 at 2.6+, 76 not sprinting: run 123's run-up.
+- Its combos in the checks: mean 2.3-2.5 vs B 3.4.
+- Their third hit A 6% vs B 15%. Run 124: their 3+ runs on it 0.
+- Runs 122 and 124 stay. The next check shows whether the swing and damage come back without run 123; if not, run 124 is next.

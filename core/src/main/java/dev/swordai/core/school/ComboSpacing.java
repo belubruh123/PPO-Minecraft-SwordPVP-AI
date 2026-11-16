@@ -46,7 +46,7 @@ import dev.swordai.core.rl.ActionSpace;
  */
 public final class ComboSpacing {
 	/** Run 123's switch for the sessions (FightSession, SchoolSession): false = no controller, no target, as before. */
-	public static final boolean ON = true;
+	public static final boolean ON = false; // 17 Nov 04:15: OFF. Checks 02:41 (z -1.7, -14.3 HP) and 03:51 (z -2.7, -17.2 HP, run 123b): A swung 27-29% of ready-in-reach ticks vs B 52-59%, 104 of 114 held ticks with the crosshair on them held by a rule at 2.6+ not sprinting; its combos mean 2.3-2.5 vs B 3.4.
 
 	/** What it did on a tick (counters, the logs): not holding, the W-tap, S, standing, in at a sprint, the run-up, the swing, held (K2 or a guard). */
 	public static final int OFF = 0;
