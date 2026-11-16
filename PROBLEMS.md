@@ -2111,3 +2111,5 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Punish crit chances critted 48% of 300 (still mostly from before run 122).
 - No check since 00:35; the 01:45 redeploy (runs 123 + 124) restarts the check timer. No new real rounds.
 - Weekly usage 75%: no more agents tonight unless something breaks.
+
+- 01:51 runs 123 + 124 redeployed (cycle restarted 01:51). First check with runs 122-124 about 02:35: watch "school check run 122/123/124".
