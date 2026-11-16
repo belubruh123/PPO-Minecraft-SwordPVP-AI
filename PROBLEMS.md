@@ -2165,3 +2165,4 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Punish crit chances critted 63%; told and landed 61% (34% at 02:13).
 - Cause: run 123's run-up holds ready swings at the edge, and its combos are shorter than B's. Fix: run 123c, ComboSpacing OFF; redeploy requested 04:18.
 - Next check about 05:05 decides whether run 124 stays.
+- Run 123c redeployed (see above); next check about 45 min after the restart.
