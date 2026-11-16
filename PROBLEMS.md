@@ -2006,3 +2006,7 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Their third hit after their second: A 13% (8), B 15% (8). Swung (ready, in reach): A 52%, B 57%.
 - Punish crit chances critted 53% of 300.
 - **The last 4 checks:** 16:47 33-33, 17:36 35-30, 18:25 34-28, 19:14 32-33. A is level with or ahead of B, and gets comboed less or the same.
+
+## 16 Nov 20:13 review
+
+- Training runs (run 121). The next check is about 20:04-20:08; see the next review.
