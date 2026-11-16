@@ -2187,3 +2187,12 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - No new real rounds.
 - Weekly usage 76%: keep the rest for the 21:10 install and the user's test. No agents.
 - Run 123's idea (hit from the edge) needs a version that never holds a ready swing. That is for after the test.
+
+## 17 Nov 06:13 review + the 06:10 check (runs 122 + 124)
+
+- ROUNDS WON A 36/45 vs B 31/45 (z +2.2): only A won 5 pairs, only B 0. Net +5.1 HP a fight (se 3.4). Damage a minute A 456/291, B 435/309.
+- B1 punish crit in the check: A 89/116 (77%) vs B 35/122 (29%).
+- Swung when ready in reach: outside their combo A 56% vs B 56%; in their combo A 44% vs B 43%.
+- Their third hit A 9/44 (20%) vs B 3/49 (6%): worse, a small count. Watch it.
+- Live punish crit chances critted 55%; told and landed 28% (noisy).
+- The first candidate for the 21:10 test: the network of this check. No new real rounds.
