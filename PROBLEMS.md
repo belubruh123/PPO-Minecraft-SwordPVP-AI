@@ -1828,3 +1828,16 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - Under 60%: T1c 55, T1 45, T2 43, T9 15 (the rules).
 - Punish crit chances critted 54% of 300; told and landed 36%.
 - Agent 53 (10:14): which technique teachers hold the swing on ready-in-reach ticks, and letting the swing win where it lands (the user's 90%), keeping K2/jump-in and the crit's wait in the air.
+
+## 16 Nov 10:17 check (run 118) and run 119 asked (10:30)
+
+- **ROUNDS WON: A 32/44 (73%), B 26/44 (59%), z about +1.9** (only A won 8, only B won 2). Net A-B **+9.5 HP** a fight (se 4.1). Dealt/taken: A 424 / 315, B 395 / 346. The best check since training went to run35.
+- Their third hit after their second: **A 14% (9), B 19% (11).**
+- Outside their combo, ready and in reach: A swung 45%, B 57%. Network-sure holds 40 (09:28: 58; 07:57: 120).
+- **Jumps a minute off/on its moments: A 35/59, B 37/26.** Off-moment jumps are below B now.
+- **Run 119 (agent 53, TEACHER_HOLD_SWING):** in training, a technique teacher's hold on the swing becomes the swing where it lands now (charged, pick on them, them on the ground and not falling, no jump-in, no guard/K2).
+  - Turned: T4, T6/T6a, T7, C1, C3/C4, the hold teacher.
+  - Kept: K2, B1, the crit family, K3, and C7 (RUN119_KEEP_C7).
+  - 66 updates measured: a teacher's hold 963 vs the lesson 104.
+  - Expected training swung share about 38% -> 50%. Disproof: after about 15 updates, "held anyway" 10+ an update or the swung share under 45%.
+  - Tests: 78 passed, 5 aborted, 0 failed. Redeploy asked 10:30.
