@@ -1872,3 +1872,12 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 
 - Training runs (run 119). Punish crit chances critted 55% of 300. Training update: run 116 charged 2 own-combo take-offs; run 119 turned 1 teacher hold.
 - The next check is about 12:17. If A's jumps stay about 2x B (11:27: 60 vs 30), agent 54 takes the jumps (the re-engaging jump-ins). Otherwise agent 54 takes the swing that is not open (crosshair on its body, no pick).
+
+## 16 Nov 12:17 check (run 119) and 12:43 review
+
+- **ROUNDS WON: A 34/45 (76%), B 31/45 (69%), z about +0.8.** Net A-B -1.4 HP a fight (se 3.9). Dealt/taken: A 430 / 330, B 427 / 319.
+- Their third hit after their second: **A 16% (11), B 20% (10).**
+- Outside their combo, ready and in reach: A swung 42%, B 55% (T-B crit bots).
+- **Jumps a minute off/on its moments: A 37/54, B 31/33.** The 11:27 rise (60) was not repeated.
+- Punish crit chances critted 56% of 300.
+- Agent 54 (12:44): the swing that is not open with the crosshair on its body (the ray past 3.0 though the nearest point is inside). The real game's whiff guard stays strict.
