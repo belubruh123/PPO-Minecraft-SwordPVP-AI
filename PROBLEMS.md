@@ -2078,3 +2078,5 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - run 122 (agent 56): no jump after its own hit; crit chains not taught; B1 every chance; jump in its own combo the largest penalty.
   - run 123 (agent 57): COMBO_SPACING, its own combo hits from the edge of reach (2.6-3.0) with S-tap back, W-tap and chase.
   - run 124 (agent 58): COUNTER_SPACING, in their combo no long S escape; with a ready sword it hits first as they enter reach; otherwise S-tap and strafe until ready.
+
+- 22:50 the user: "I will test the final best model tommorrow 21:10". Install the best candidate before 17 Nov 21:10 (one-shot reminder at 20:23), with a backup, while their Minecraft is closed; pause training for the test.
