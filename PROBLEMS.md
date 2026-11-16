@@ -2034,3 +2034,19 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Real rounds 15 Nov (rounds.csv, by time): new2134 26 rounds, hits 355/338, 44 swings a minute, taken on jump-ins 18 a minute; run35 17 rounds, hits 259/215, 53 swings a minute, taken on jump-ins 14 a minute.
 - 21:47 the user: "get the better one let me test it". Installed checked-1116-2048 (the 20:52 check, A 39-37, +3.2 HP, third hit 4% vs 12%) with the 16 Nov 15:07 jar (run 121 code, TickMemory). run35 + the 14 Nov jar are in the profile's swordai/backup-before-school-20261116-214729 (checkpoint = anchor.bin, verified). Same mode as run35: the rules on, no temperatures, no no-rules file. The real game's whiff guard unchanged.
 - 21:48 training paused (training-stop.sh) so the user's game runs smoothly. Resume when the user's Minecraft is closed after their test.
+
+## 16 Nov 22:05 the user tested checked-1116-2048 on humans: WORSE
+
+- The user: "The bot always get a sprint hit stun and then jump for no reason ... every time it is close to opponent it finally get a stun and then jump and make other combo them. it is performing worse and worse". Unfinished rounds count as lost.
+- 22:01 restored run35 + the 14 Nov jar in the profile (verified against anchor.bin); the 2048 install is saved in the profile's swordai/backup-2048-20261116-2201.
+- Every tick of the 17 new rounds (7 lost incl. 3 unfinished, 10 won) against 16 run35 rounds (13-15 Nov, installed arm):
+  - Take-offs in its own combo (after its own hit, before a hit taken): NEW lost 9.5 a minute, 55% hit in that jump; RUN35 lost 4.7 a minute, 36% hit.
+  - NEW lost: 12 of 20 came 0-3 ticks after its hit, 14 of 20 with its sword under 0.9, 10 of 20 under 2 blocks, 14 of 20 by the network alone. RUN35 lost: 0, 4, 0 and 2 of 14.
+  - NEW won: 41 of 65 by the network, 35 within 0-3 ticks; RUN35 won: 6 of 32 and 7.
+  - Frames: it crits from the air, lands at 1.4-1.9 blocks, jumps 1-3 ticks later with its sword at 0.32 while their sword reads 0.80; they sprint-hit it in the air (C1) and it flies 5-8 blocks.
+  - This is T1/T1c double crit and T2/C6 standing crit against players who do not punish-crit. The doc: T1 "only works if the opponent tries to punish-crit you"; C6 "Only works if your sprint hit stuns them".
+  - Hits taken a minute: NEW lost 44 vs RUN35 lost 38. 3+ chains a minute: NEW lost 1.43 vs 1.35; NEW won 0.69 vs RUN35 won 0.
+  - Other jumps: NEW takes off at 6+ blocks on the approach 21 a minute (RUN35 3.7), but only 2% are hit; jump reset (rule r, same tick) is about the same.
+- Cause: the run 104c priority list (the user's 15 Nov list: T1, T1c, T2, C6 "heavily") teaches these crit chains, and run 116's own-combo jump cost exempts technique-told jumps. C6 went from 19% to 72% live.
+- Fix in progress: run 122 (agent 56): stop teaching T1/T1c/T2/C6; OWN_HIT_JUMP_GUARD (no network take-off after its own hit while close and its sword is under 0.9, real game + checks + training); teach "no jump" there.
+- 22:20 training restarted (the user's game closed).
