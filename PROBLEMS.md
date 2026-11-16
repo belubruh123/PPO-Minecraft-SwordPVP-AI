@@ -2050,3 +2050,13 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Cause: the run 104c priority list (the user's 15 Nov list: T1, T1c, T2, C6 "heavily") teaches these crit chains, and run 116's own-combo jump cost exempts technique-told jumps. C6 went from 19% to 72% live.
 - Fix in progress: run 122 (agent 56): stop teaching T1/T1c/T2/C6; OWN_HIT_JUMP_GUARD (no network take-off after its own hit while close and its sword is under 0.9, real game + checks + training); teach "no jump" there.
 - 22:20 training restarted (the user's game closed).
+
+## 16 Nov 22:12 review
+
+- Training runs since the 22:08 restart (31.49M steps). There is no check since 21:41; the next is about 22:50.
+- Punish crit chances critted, live: 58% of 300. Told and landed: 42%. The user's new target is every chance, about 90%.
+- Live rates:
+  - Few chances: C4 0%, T1 0%, T1c 0%.
+  - Under 70%: T9 43%, T5 58% (stuck, was 94%), T1a 60%.
+  - 70% and up: T4 70%, T6a 70%, T9b 70%, T9c 71%, B1 72%, T9a 73%, T2 75%, C6 76%, C7 77%, K3 79%, C3 87%, C1 88%, T6 90%, T7 91%, K2 99%.
+- No new real rounds since the 21:47-21:59 test, which was read tick by tick at 22:05. Run 122 (agent 56) is still building.
