@@ -1937,3 +1937,9 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **Run 121 (REOPEN_SETTLED, REOPEN_QUIET 20; training only):** the jump-in reopens only once the last hit is 20 ticks old and they are still 5+ blocks away. The user: "until opponent run away or back out ... 5-6 block".
 - **Disproof test:** "reopen held shut" under a third of the old reopens in about 5 updates; or re-engaging take-offs still 35+ a check after 3 checks while "now charged" is 5+ an update.
 - Tests: 78 passed, 5 aborted, 0 failed; compile-check OK. Redeploy asked 15:06.
+
+## 16 Nov 15:12 review
+
+- Run 121 is live: redeploy 15:06-15:08, 0 test failures; training runs.
+- First update: "reopen held shut 26, take-offs the old reopen let off now charged 1". The reopenings are held, as designed.
+- Punish crit chances critted 52% of 300. The first check with run 121 is about 15:53.
