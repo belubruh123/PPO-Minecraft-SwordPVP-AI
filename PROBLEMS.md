@@ -2080,3 +2080,7 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - run 124 (agent 58): COUNTER_SPACING, in their combo no long S escape; with a ready sword it hits first as they enter reach; otherwise S-tap and strafe until ready.
 
 - 22:50 the user: "I will test the final best model tommorrow 21:10". Install the best candidate before 17 Nov 21:10 (one-shot reminder at 20:23), with a backup, while their Minecraft is closed; pause training for the test.
+
+## 16 Nov 22:42 short review (5-hour window 93%)
+
+- Training runs; no new check since 21:41. Agents 56-58 are building runs 122-124.
