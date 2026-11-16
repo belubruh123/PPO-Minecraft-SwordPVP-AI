@@ -206,6 +206,24 @@ public final class SchoolFighter {
 		reachNow = reach;
 	}
 
+	/** Run 124: an outside rule's heads and keys for the next {@link #decide} only (FightSession's CounterSpacing); see {@link #outsideRule}. */
+	private int outsideHeads;
+	private final int[] outsideKeys = new int[ActionSpace.HEADS];
+	/** Run 124: decisions where an outside rule pressed keys (counter). */
+	public long outsideTicks;
+
+	/**
+	 * Run 124 (CounterSpacing in the user's duels): for the next decision only, these heads ({@link ActionSpace} bits; never the jump or
+	 * the camera) are pressed as {@code keys} has them, over the installed model's rules and the network. The swing is pressed only where it
+	 * was open (the sword gate, the whiff guard, K2 and the jump-in hold). 0 heads: nothing.
+	 */
+	public void outsideRule(int heads, int[] keys) {
+		outsideHeads = heads;
+		if (heads != 0) {
+			System.arraycopy(keys, 0, outsideKeys, 0, ActionSpace.HEADS);
+		}
+	}
+
 	private static boolean jumpResetTold(dev.swordai.core.pvp.Technique t) {
 		return t == dev.swordai.core.pvp.Technique.T9A || t == dev.swordai.core.pvp.Technique.T9B || t == dev.swordai.core.pvp.Technique.T9C;
 	}
@@ -278,6 +296,19 @@ public final class SchoolFighter {
 					action[h] = rule[h];
 				}
 			}
+		}
+		// Run 124 (CounterSpacing): an outside rule's keys for this tick, over the rules' and the network's; the swing only where it was open.
+		int outside = outsideHeads & (keys | ruled) & ~ActionSpace.mask(ActionSpace.JUMP, ActionSpace.YAW, ActionSpace.PITCH);
+		outsideHeads = 0;
+		if (outside != 0) {
+			ruled |= outside;
+			keys &= ~outside;
+			for (int h = 0; h < ActionSpace.HEADS; h++) {
+				if ((outside & (1 << h)) != 0) {
+					action[h] = outsideKeys[h];
+				}
+			}
+			outsideTicks++;
 		}
 		learner.act(step, keys, ruled, false, temperature, action);
 		// The decider may choose anew in act(): the jump reset told before or after it.
