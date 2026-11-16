@@ -1965,3 +1965,10 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - The real game keeps the K2 guard (no sprint hit on one falling by the hit), so the user's duels stay protected; the checks switch the guard off (GUARD_LEARNED).
   - K2 at 70% raises its run 104 priority (more K2 practice). If K2 broken stays above B in 2 checks, raise K2's pull or add a "no swing" target on falling-in-reach ticks.
 - Punish crit chances critted 51% of 300.
+
+## 16 Nov 16:43 review
+
+- Training runs (run 121). Punish crit chances critted 51% of 300.
+- **Skill rates:** K2 100 (back from 70), T5 95, C1 95, T9a 93, C3 93, C6 88 (back from 48), T6a 85, T7 85, C4 85, T1a 83, T4 83, T9b 73, C2 73, K3 73, T6 70, B1 68, C7 65.
+  - Under 60%: T1c 55, T9c 52, T9 38 (the rules), T1 35, T2 35.
+- The next check is about 16:47.
