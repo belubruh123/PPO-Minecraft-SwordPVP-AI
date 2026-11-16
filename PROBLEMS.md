@@ -1920,3 +1920,8 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - **On its body without the pick: A 10%, B 18%** (11:27-13:06: A 14-18%). Run 120 works on its target.
 - **Jumps a minute off/on its moments: A 74/71, B 40/32.** Rising again: 35, 60, 37, 62, 74. **Agent 55 at 14:44 on the jumps** (the re-engaging jump-ins, and whatever else the run 116 check counter and jumps.csv show).
 - Punish crit chances critted 55% of 300.
+
+## 16 Nov 14:43 review
+
+- Training runs (run 120). Punish crit chances critted 54% of 300.
+- Agent 55 (14:44) on the rising jumps: split by situation and source per check, who teaches them, one bottleneck, and run 121.
