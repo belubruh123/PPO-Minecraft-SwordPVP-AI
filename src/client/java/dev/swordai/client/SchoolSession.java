@@ -309,6 +309,40 @@ public final class SchoolSession implements AgentSession {
 	private int holdTurnedTheirCombo;
 	/** Run 119: this tick's teacher hold was turned to the swing (the moment is judged without the swing head). */
 	private boolean holdTurnedNow;
+	/**
+	 * Run 120 (agent 54, 16 Nov ~13:00; the user, 06:45: "swung when ready in reach 90% ... Tho still only swing when charged"): on the
+	 * ground with them on the ground, not falling and within 3.0 (the nearest point of their box), the camera lesson aims at the near
+	 * part of their box, where the game's pick lands: horizontally their box's nearest point kept NEAR_AIM_MARGIN inside its edges, in
+	 * height level with its own eye kept within their box. It is taught also with the crosshair on their body but no pick (before, the
+	 * lesson stood aside whenever the crosshair was anywhere on their body, and aimed at their middle otherwise).
+	 *
+	 * <p>Why: "swing not open" was 2542 of 9556 ready ticks in reach outside their combo on the ground (27%, 84 training updates to 12:45),
+	 * the crosshair on its body but no pick 1469 of them (15% of ready ticks), off its body 1073 (11%). The checks agree (A on its body
+	 * without a pick 14-18%, off 9-13%; B 17-21%, 9-13%), so no swing policy can pass about 73% of the ready ticks: the user's 90% needs
+	 * the pick. "In reach" is the nearest point (Sightline), the pick is the crosshair ray within 3.0: in a geometric check (eye 1.62, a
+	 * 0.6 x 1.8 box) a crosshair anywhere on their body meets the box beyond 3.0 on 16% / 30% / 45% / 66% / 87% of on-body ticks at
+	 * 2.5-2.6 / 2.6-2.7 / 2.7-2.8 / 2.8-2.9 / 2.9-3.0 blocks (their middle, the old lesson's target: 0% to 2.8, 16%, 94%); the near point
+	 * with the margin: 0% to 2.9, 17% at 2.9-3.0. The fights are mostly at the edge of reach (B's held ticks 2.6+ 43 of 54).
+	 *
+	 * <p>Not on: itself in the air (the punish crit B1 and the crits keep their aim; run 73b's camera lesson was switched off at 08:25 11
+	 * Nov over a punish crit slide later found to be the practice stage), them in the air or falling (K2, the jump-in guard: a pick on a
+	 * jumper is not made easier). Labels only (the camera heads at CAM_PULL); no key is pressed; the swing, its whiff guard (strict in
+	 * training, checks and the user's game), K2, the jump-in guard, the crit waits, C7 and runs 115-119 are unchanged.
+	 * Counter: "run 120 ... swing not open by cause" (see readyNoPickBy) and the lesson's ticks.
+	 */
+	static final boolean NEAR_AIM = true;
+	static final float NEAR_AIM_REACH = 3.0f;
+	static final double NEAR_AIM_MARGIN = 0.1;
+	/**
+	 * Run 120 (counter only): the ready ticks in reach outside their combo on the ground whose swing was not open, by cause: 0 the pick
+	 * on them all the same (a rule's key or K2 closed it); the crosshair on their body without the pick, by where the view ray as it is
+	 * now meets their box: 1 within 3.0 (the pick a tick behind), 2 3.0-3.15, 3 3.15-3.3, 4 beyond 3.3; off their body by the angle
+	 * off: 5 under 2 degrees, 6 2-6, 7 6+. Of 2-4 (on the body past reach): where the ray meets their box above their feet, 8 under
+	 * 0.6, 9 0.6-1.3, 10 1.3+; 11 the camera the aim rule's.
+	 */
+	private final int[] readyNoPickBy = new int[12];
+	/** Run 120: the near-point camera lesson's ticks, with the crosshair on their body (no pick) and off it. */
+	private int nearAimOnBody, nearAimOffBody;
 	/** Run 95: the one jump-in of this engagement is still open. */
 	private boolean jumpInOpen = true;
 	private int dropAt = -1;
@@ -1519,6 +1553,12 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, "; run 119 (%s, C7 %s): teachers' holds turned to the swing %d ticks (%s; in their combo %d), held anyway %d;"
 						+ " the teachers' holds left by technique: %s", TEACHER_HOLD_SWING ? "on" : "off", RUN119_KEEP_C7 ? "kept" : "turned",
 						sum(holdTurnedBy), byTechnique(holdTurnedBy), holdTurnedTheirCombo, readyHeldWhy[6], byTechnique(heldHoldBy))
+				+ String.format(Locale.ROOT, "; run 120 (%s): swing not open by cause: the pick on them (a rule or K2) %d; on its body without the pick, the ray"
+						+ " now meeting their box within 3.0 (the pick a tick behind) %d, 3.0-3.15 %d, 3.15-3.3 %d, beyond 3.3 %d (meeting it under 0.6 above their"
+						+ " feet %d, 0.6-1.3 %d, 1.3+ %d; the aim rule's camera %d); off its body under 2 degrees %d, 2-6 %d, 6+ %d; near-point camera taught on its body"
+						+ " %d, off it %d", NEAR_AIM ? "on" : "off", readyNoPickBy[0], readyNoPickBy[1], readyNoPickBy[2], readyNoPickBy[3], readyNoPickBy[4],
+						readyNoPickBy[8], readyNoPickBy[9], readyNoPickBy[10], readyNoPickBy[11], readyNoPickBy[5], readyNoPickBy[6], readyNoPickBy[7],
+						nearAimOnBody, nearAimOffBody)
 				+ String.format(Locale.ROOT, " | run 92, too close (under %.1f, its sword empty, theirs ready) ticks charged %d; edge sprint hits (%.1f-%.1f) paid %d; its hits' mean distance %.2f (%d hits); rule m runs started by A's rules %d, into a ready sword or a jump-in crit %d (%s)",
 						TOO_CLOSE_WITHIN, tooCloseCharged, EDGE_HIT_FROM, EDGE_HIT_TO, edgeHitsPaid, ownHitsMeasured > 0 ? ownHitDistSum / ownHitsMeasured : 0.0,
 						ownHitsMeasured, meetStarts[0], meetStartsIntoReady[0], MEET_NOT_INCOMING ? "stopped" : "run")
@@ -1625,6 +1665,8 @@ public final class SchoolSession implements AgentSession {
 		readyHoldCharged = 0;
 		swingTaught = 0;
 		java.util.Arrays.fill(readyHeldWhy, 0);
+		java.util.Arrays.fill(readyNoPickBy, 0);
+		nearAimOnBody = nearAimOffBody = 0;
 		java.util.Arrays.fill(holdTurnedBy, 0);
 		java.util.Arrays.fill(heldHoldBy, 0);
 		holdTurnedTheirCombo = 0;
@@ -3753,6 +3795,31 @@ public final class SchoolSession implements AgentSession {
 		return mc.hitResult instanceof EntityHitResult hit && hit.getEntity() == currentBot;
 	}
 
+	/** Run 120 (counter only): why the swing was not open on a ready tick in reach (see readyNoPickBy). */
+	private void countNoPick(LocalPlayer me, Player bot, boolean ruleCamera) {
+		if (pickNow) {
+			readyNoPickBy[0]++;
+			return;
+		}
+		if (!facts.onBody) {
+			readyNoPickBy[facts.missDeg < 2f ? 5 : facts.missDeg < 6f ? 6 : 7]++;
+			return;
+		}
+		net.minecraft.world.phys.Vec3 eye = me.getEyePosition(1f);
+		net.minecraft.world.phys.AABB box = bot.getBoundingBox().inflate(bot.getPickRadius());
+		net.minecraft.world.phys.Vec3 at = box.contains(eye) ? eye
+				: box.clip(eye, eye.add(me.getViewVector(1f).scale(8.0))).orElse(null);
+		double ray = at == null ? 0.0 : eye.distanceTo(at);
+		double reach = me.entityInteractionRange();
+		int k = ray <= reach ? 1 : ray <= reach + 0.15 ? 2 : ray <= reach + 0.3 ? 3 : 4;
+		readyNoPickBy[k]++;
+		if (k >= 2) {
+			double up = at.y - box.minY;
+			readyNoPickBy[up < 0.6 ? 8 : up < 1.3 ? 9 : 10]++;
+			readyNoPickBy[11] += ruleCamera ? 1 : 0;
+		}
+	}
+
 	/**
 	 * Run 73: whether the game's pick of this tick (made right after this step, before the attack) will be the opponent: the ray from
 	 * the eyes along the view, as GameRenderer.pick(1.0) casts it, meets the opponent's box within the entity reach and before the
@@ -5317,6 +5384,9 @@ public final class SchoolSession implements AgentSession {
 				seenSide = facts.yawErrDeg > 0f ? 1 : -1;
 			}
 		}
+		// Run 120: on the ground, them on the ground and not falling, within 3.0: the camera lesson aims at the near part of their box.
+		boolean nearAim = NEAR_AIM && mode == Mode.TRAIN && review < 0 && me.onGround() && facts.enemyVisible
+				&& facts.reachDist <= NEAR_AIM_REACH && reader.duel.them.onGround && !(reader.duel.them.falling() || truth.botFalling());
 		if (mode == Mode.TRAIN && OVERLAY && !(REACH_TARGET ? pickNow : onOpponent()) && (CAM_PULL > 0f || pulled(pulls, step.teacherTechnique >= 0 ? step.teacherTechnique : base))) {
 			double dx = bot.getX() - me.getX();
 			double dz = bot.getZ() - me.getZ();
@@ -5326,6 +5396,19 @@ public final class SchoolSession implements AgentSession {
 				double lo = bot.getY() + REACH_TARGET_MARGIN * bot.getBbHeight();
 				double hi = bot.getY() + (1f - REACH_TARGET_MARGIN) * bot.getBbHeight();
 				dy = Math.max(lo, Math.min(hi, me.getEyeY())) - me.getEyeY();
+			}
+			if (nearAim) {
+				// Run 120: the near point of their box (NEAR_AIM_MARGIN inside its edges), level with its eye kept within their box.
+				net.minecraft.world.phys.AABB box = bot.getBoundingBox();
+				double px = Math.max(box.minX + NEAR_AIM_MARGIN, Math.min(box.maxX - NEAR_AIM_MARGIN, me.getX()));
+				double pz = Math.max(box.minZ + NEAR_AIM_MARGIN, Math.min(box.maxZ - NEAR_AIM_MARGIN, me.getZ()));
+				double h = box.maxY - box.minY;
+				double py = Math.max(box.minY + REACH_TARGET_MARGIN * h, Math.min(box.maxY - REACH_TARGET_MARGIN * h, me.getEyeY()));
+				if ((px - me.getX()) * (px - me.getX()) + (pz - me.getZ()) * (pz - me.getZ()) >= 0.09) {
+					dx = px - me.getX();
+					dz = pz - me.getZ();
+				}
+				dy = py - me.getEyeY();
 			}
 			float wantYaw = (float) Math.toDegrees(Math.atan2(dz, dx)) - 90f;
 			float wantPitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
@@ -5339,9 +5422,16 @@ public final class SchoolSession implements AgentSession {
 			// crosshair was off their body on 37% of the ticks (off them 43%, on its body without a pick 6%), B's on 16% (32%, 16%).
 			boolean theirComboNow = clock.ticksSinceHitTaken <= 20 && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken;
 			boolean trackInCombo = COMBO_TRACK && (theirComboNow || TRACK_EVERYWHERE)
-					&& facts.enemyVisible && (!facts.onBody || REACH_TARGET && facts.reachDist <= 3.0f) && facts.reachDist <= COMBO_TRACK_REACH;
+					&& facts.enemyVisible && (!facts.onBody || REACH_TARGET && facts.reachDist <= 3.0f || nearAim) && facts.reachDist <= COMBO_TRACK_REACH;
 			if (trackInCombo && Math.abs(yawOff) <= 25f) {
 				comboTrackTaught++;
+			}
+			if (nearAim && trackInCombo && Math.abs(yawOff) <= 25f) {
+				if (facts.onBody) {
+					nearAimOnBody++;
+				} else {
+					nearAimOffBody++;
+				}
 			}
 			if (!facts.enemyVisible || Math.abs(yawOff) > 25f || trackInCombo) {
 				if (!facts.enemyVisible) {
@@ -5354,7 +5444,7 @@ public final class SchoolSession implements AgentSession {
 				} else {
 					float yawWant = yawOff;
 					float pitchWant = wantPitch - me.getXRot();
-					if (REACH_TARGET && trackInCombo) {
+					if ((REACH_TARGET || nearAim) && trackInCombo) {
 						// Run 73b: the hand closes cfg.aimResponse of the gap between its speed and the one chosen a tick, so the speed
 						// that turns the whole error this tick is speed + error / response.
 						float r = Math.max(0.05f, cfg.aimResponse);
@@ -5937,6 +6027,7 @@ public final class SchoolSession implements AgentSession {
 				} else if (!ActionSpace.unlocked(keys, ActionSpace.ATTACK)) {
 					readyLocked++;
 					readyLockedOnBody += facts.onBody ? 1 : 0;
+					countNoPick(me, bot, (ruled & ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH)) != 0);
 				} else if (reader.duel.them.falling() || truth.botFalling()) {
 					readyHeldFalling++;
 				} else {
