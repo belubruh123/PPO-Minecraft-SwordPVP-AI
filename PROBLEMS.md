@@ -1802,3 +1802,11 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **The run 118 counter, held otherwise with the pick on them, on the ground:** the lesson on 1, **a teacher's hold 23**, a teacher's swing 4, a technique with no swing target 0, the guard/K2 0.
   - If it stays so over more updates, the next bottleneck is the technique teachers' holds (T4/T6 waits, crit holds) on ticks where a swing would land.
 - Punish crit chances critted 48% of 300 (under 50%); told and landed 42%. The next check is about 09:24.
+
+## 16 Nov 09:13 review (run 118, about 35 min in)
+
+- **Training swung share of ready ticks is back to about 45%** (the last 6 updates: 46, 39, 33, 47, 46, 50%), as agent 52 predicted for run 118.
+- **Held otherwise with the pick on them (run 118 counter, 6 updates):** a teacher's hold 50, the lesson on 7, a teacher's swing 4.
+  - So the next bottleneck is the technique teachers' holds on ticks where a swing would land.
+  - Next: name which techniques hold there (T6 "make them miss", T4/T5 waits, crit holds), and let the swing through where the user's 90% asks. Agent 53 after 10:15, or me after the 09:24 check.
+- Punish crit chances critted 48% of 300; told and landed 39%.
