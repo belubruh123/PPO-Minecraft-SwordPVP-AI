@@ -94,6 +94,17 @@ final class FightSession implements AgentSession {
 	static final boolean OLD_NET_FALLER_GUARD = true;
 	/** Run 109: swings the guard took back from the 23 Oct model. */
 	private long oldNetFallerHeld;
+	/**
+	 * Run 122 (SchoolFighter#OWN_HIT_WINDOW; the user, 16 Nov 22:05: "always get a sprint hit stun and then jump for no reason"): after its
+	 * own hit, no hit taken since, up to 20 ticks, on the ground, within 3.5 blocks and its sword under 0.9, no take-off of the network's
+	 * own; a jump a rule pressed (the jump reset r on their hit, J) stays. The school's network (SchoolFighter) and the 23 Oct model's
+	 * network when no school network is installed (the else branch, its rules' jump kept the same way). false = as before.
+	 */
+	static final boolean OWN_HIT_JUMP_GUARD = true;
+	/** Run 122: the 23 Oct model's own-hit jumps let go of and tried (the school's are counted in SchoolFighter). */
+	private long oldNetOwnHitStripped, oldNetOwnHitTried;
+	/** Run 122: ticks since its own hit (told when the swing is made, as the networks are) and since a hit taken, for the old model's guard. */
+	private int sinceOwnHit = 1000, sinceTakenHit = 1000;
 	/** Ticks since a hit taken on the ground lifted it, -1 when not lifted (the rules leave W to the network in its fall). */
 	private int liftedFor = -1;
 	private boolean groundBefore = true;
@@ -188,6 +199,8 @@ final class FightSession implements AgentSession {
 			school.airKeepYield(arm != null && arm.airYield && SchoolSession.AIR_KEEP_YIELD);
 			// Run 108: no jump reset of the network's own in the user's duels (under the user's 95%); the rules' reactive one stays.
 			school.ownJumpResetGate(OWN_JUMP_RESET_GATE);
+			// Run 122: no take-off of the network's own right after its own hit while close with its sword not back.
+			school.ownHitJumpGuard(OWN_HIT_JUMP_GUARD);
 			if (rulesOn) {
 				school.rulesFrom(fighter);
 				rulesBody.patchedUp = loaded.patchedUp;
@@ -411,6 +424,9 @@ final class FightSession implements AgentSession {
 			liftedFor = -1;
 		}
 		groundBefore = me.onGround();
+		// Run 122: the old model's guard clocks (SchoolFighter keeps its own for the school's network).
+		sinceOwnHit = Math.min(sinceOwnHit + 1, 1000);
+		sinceTakenHit = takenNow ? 0 : Math.min(sinceTakenHit + 1, 1000);
 		if (takenNow) {
 			if (school != null) {
 				school.hitTaken();
@@ -495,6 +511,8 @@ final class FightSession implements AgentSession {
 					|| SchoolSession.RULES_LET_GO_AT_CRIT && liftedFor >= 0 && !me.onGround() && me.getY() < me.yo
 					&& reachNow <= SchoolSession.LET_GO_AT_CRIT_REACH && me.getAttackStrengthScale(0f) >= SchoolSession.LET_GO_AT_CRIT_CHARGE);
 			school.inLift(liftedFor >= 0 && !me.onGround());
+			// Run 122: eye to their hitbox, for the own-hit jump guard (SchoolFighter#ownHitJumpGuard).
+			school.reachNow(reachNow);
 			action = school.decide(observer.frame, body, reader.memory());
 			AgentController.apply(mc, action, school.yawRate(), school.pitchRate());
 			chargeAtClick = me.getAttackStrengthScale(0f);
@@ -522,6 +540,16 @@ final class FightSession implements AgentSession {
 				if (hold && action[ActionSpace.ATTACK] == 1) {
 					action[ActionSpace.ATTACK] = 0;
 					oldNetFallerHeld++;
+				}
+			}
+			if (OWN_HIT_JUMP_GUARD && action[ActionSpace.JUMP] == 1 && (fighter.ruledHeads() & ActionSpace.mask(ActionSpace.JUMP)) == 0
+					&& me.onGround() && SchoolFighter.ownHitWindow(sinceOwnHit, sinceTakenHit)) {
+				// Run 122: the old model's own take-off right after its own hit, close with its sword not back (its rules' jump stays).
+				oldNetOwnHitTried++;
+				double reach = Math.sqrt(opp.getBoundingBox().distanceToSqr(me.getEyePosition()));
+				if (SchoolFighter.ownHitJumpGuard(sinceOwnHit, sinceTakenHit, true, reach, me.getAttackStrengthScale(0f))) {
+					action[ActionSpace.JUMP] = 0;
+					oldNetOwnHitStripped++;
 				}
 			}
 			AgentController.apply(mc, action, fighter.yawRate(), fighter.pitchRate());
@@ -585,6 +613,7 @@ final class FightSession implements AgentSession {
 				school.hitDealt();
 			}
 			fighter.hitDealt();
+			sinceOwnHit = 0;
 		}
 	}
 
@@ -704,6 +733,8 @@ final class FightSession implements AgentSession {
 	private void resetBrain(boolean forget) {
 		fighter.reset();
 		critBack.reset();
+		sinceOwnHit = 1000;
+		sinceTakenHit = 1000;
 		if (school != null) {
 			school.reset();
 			if (forget) {
@@ -775,7 +806,12 @@ final class FightSession implements AgentSession {
 				opponentName, ReportWriter.duration(ticks / 20), ReportWriter.duration(seconds), hitsDealt, hitsTaken, kills, deaths,
 				clicks, percent(clicksOnTarget, clicks), percent(onTargetTicks, ticks), percent(visibleTicks, ticks),
 				offSideways / Math.max(1, visibleTicks), offUpDown / Math.max(1, visibleTicks),
-				connection, ownEarly, ownCrit, ownSprint, ownSweep, ownPlain, loaded.skillLine());
+				connection, ownEarly, ownCrit, ownSprint, ownSweep, ownPlain, loaded.skillLine())
+				// Run 122: the network's own take-offs in the window after its own hit, and those the guard let go of.
+				+ String.format(Locale.ROOT, "; run 122 (%s): its own take-offs right after its own hit (no hit taken since, %d ticks) %d, let go of"
+						+ " (within %.1f, sword under %.1f) %d", OWN_HIT_JUMP_GUARD ? "on" : "off", SchoolFighter.OWN_HIT_WINDOW,
+						school != null ? school.ownHitJumpsTried : oldNetOwnHitTried, SchoolFighter.OWN_HIT_GUARD_REACH,
+						SchoolFighter.OWN_HIT_GUARD_CHARGE, school != null ? school.ownHitJumpsStripped : oldNetOwnHitStripped);
 	}
 
 	private static float percent(long part, long whole) {

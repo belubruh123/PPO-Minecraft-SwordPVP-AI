@@ -377,7 +377,15 @@ public final class PvpPlayer {
 	public static final int READ_T1 = 8;
 	public static final int READ_DOUBLE_SPRINT_HIT = 9;
 	public static final int READ_C2 = 10;
-	public static final int READS = 11;
+	/**
+	 * Run 122 (Style#punishAlways, counted for a style with it): hits of theirs that threw it up, of those with a punish crit possible,
+	 * the punish crits (B1) started on them, and of those after the timed jump (T9a, T9b or T9).
+	 */
+	public static final int READ_LIFTS = 11;
+	public static final int READ_LIFTS_PUNISHABLE = 12;
+	public static final int READ_B1_ALWAYS = 13;
+	public static final int READ_B1_AFTER_JUMP = 14;
+	public static final int READS = 15;
 
 	/** Run 107: {@link #reads} added into {@code into}; then zeroed. */
 	public void drainReads(long[] into) {
@@ -438,6 +446,17 @@ public final class PvpPlayer {
 	}
 
 	/**
+	 * Run 122 (Style#punishAlways): a lift with a punish crit possible, as the school counts its chances (SchoolSession: coming down
+	 * within 3.0 with the sword back): the sword half back as their hit lands (back by the way down, PUNISH_CHARGE) and them within
+	 * PUNISH_ALWAYS_REACH, the game's reach, where punishable's 2.6 left out the hits at the edge of reach that still come down in reach.
+	 */
+	static boolean punishableAlways(Duel d) {
+		return d.me.charge >= PUNISH_CHARGE && d.reach <= PUNISH_ALWAYS_REACH;
+	}
+
+	public static final double PUNISH_ALWAYS_REACH = Duel.REACH;
+
+	/**
 	 * A jump for a crit waits until the sword is a third back, for one that goes by the file: the sword takes about as long to
 	 * come back after a hit as a jump takes to come down, so a jump the very tick after the hit comes down before it (24 Oct,
 	 * in the game: of the teacher's in-reach falls in the crit family, 16% had the sword back, and no weak swings are made).
@@ -456,7 +475,7 @@ public final class PvpPlayer {
 	 * The sword half back when thrown up is back by the way down (a fall is about six ticks, the sword about 0.08 a tick).
 	 * At 0.8 a punish crit came about once in four minutes of fighting, too seldom to be learned (24 Oct).
 	 */
-	static final float PUNISH_CHARGE = 0.5f;
+	public static final float PUNISH_CHARGE = 0.5f;
 	/**
 	 * The punish crit drill holds the swing for their hit (B1_HOLD) from this near, for at most this long. Off since 28 Oct
 	 * 02:25: in its hour (01:27-02:20) the drill's sword was back on 27 of 65 falls in reach and it critted 3, while the
@@ -800,6 +819,12 @@ public final class PvpPlayer {
 		boost(Habits.BACK_OUT, Technique.T11A, Technique.T11C);
 		boost(Habits.MISS, Technique.T6);
 		boost(Habits.HOP, Technique.C3);
+		if (style.noCritChains) {
+			// Run 122 (Style#noCritChains): a boost never brings a crit chain back (it raises a technique at 0 to 0.1 x its factor).
+			for (Technique t : new Technique[] {Technique.T1, Technique.T1B, Technique.T1C, Technique.T2, Technique.C6}) {
+				pNow[t.ordinal()] = 0f;
+			}
+		}
 		if (pNow[Technique.K2.ordinal()] > style.p(Technique.K2) && !k2) {
 			k2 = rng.nextFloat() < pNow[Technique.K2.ordinal()];
 		}
@@ -984,6 +1009,30 @@ public final class PvpPlayer {
 			return;
 		}
 		end();
+		if (style.punishAlways && lifted) {
+			reads[READ_LIFTS]++;
+			if (punishableAlways(d) && pNow[Technique.B1.ordinal()] > 0f) {
+				// Run 122 (Style#punishAlways): the punish crit on every lift that can be punished, after the jump the hit would have had.
+				reads[READ_LIFTS_PUNISHABLE]++;
+				if (roll(Technique.B1)) {
+					reads[READ_B1_ALWAYS]++;
+					if (e.theyHit != Events.CRIT && habits.theirCombo() >= 2 && sinceLanded <= 1 && roll(Technique.T9A)) {
+						timedJump(Technique.T9A);
+						reads[READ_B1_AFTER_JUMP]++;
+					} else if (!style.resetsInCombosOnly && e.theyHit == Events.SPRINT && sinceMySwing <= 3
+							&& expect(Habits.DEFLECT, tellDeflect) > 0.3f && roll(Technique.T9B)) {
+						timedJump(Technique.T9B);
+						reads[READ_B1_AFTER_JUMP]++;
+					} else if (e.theyHit != Events.CRIT && (!style.onlyWhenItWorks || e.theyHit == Events.SPRINT)
+							&& (!style.resetsInCombosOnly || habits.theirCombo() >= 2) && roll(Technique.T9)) {
+						timedJump(Technique.T9);
+						reads[READ_B1_AFTER_JUMP]++;
+					}
+					begin(Plan.B1);
+					return;
+				}
+			}
+		}
 		if (style.c1BeforeB1 > 0f && theyCrit(e) && doubleCrits() && roll(Technique.C1) && rng.nextFloat() < style.c1BeforeB1) {
 			// Run 105 (Style#c1BeforeB1): C1, "when you expect a double crit, don't go for the punish crit. Sprint-hit them, which
 			// knocks them away". B1 below went first whenever their crit could be punished, so C1 had about no moments.
@@ -1146,7 +1195,8 @@ public final class PvpPlayer {
 				reads[READ_OWN_CRIT]++;
 				reads[READ_OWN_CRIT_PUNISHES] += punishesForDouble() ? 1 : 0;
 			}
-			if (was == Plan.T1A) {
+			if (was == Plan.T1A && !style.noCritChains) {
+				// Run 122 (Style#noCritChains): the bait's crit is not followed by the double crit.
 				begin(Plan.T1);
 			} else if (punishCrit && style.t6AfterPunish > 0f && rng.nextFloat() < style.t6AfterPunish) {
 				// Run 89: make them miss their answer to its punish crit (T6, "when the opponent goes to attack you, stop moving or hold

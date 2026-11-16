@@ -229,6 +229,7 @@ public final class SchoolLearner implements AutoCloseable {
 		to.holdPull = from.holdPull;
 		to.camPull = from.camPull;
 		to.swingPull = from.swingPull;
+		to.noJumpPull = from.noJumpPull;
 		to.teacherTechnique = from.teacherTechnique;
 		to.policyWeight = from.policyWeight;
 		to.botTechnique = from.botTechnique;

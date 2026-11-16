@@ -143,6 +143,22 @@ public final class Style {
 	 * jump reset still comes first and the decision model learns when to punish instead.
 	 */
 	public boolean punishFirst = false;
+	/**
+	 * Run 122 (agent 56; the user, 16 Nov 22:25: "all the time it pcrit the opponent instead double crit or sprint hit back ... you need
+	 * massive consistency"; the document's B1: "Their hit knocks you up; you crit them on the way down"): every hit of theirs that throws
+	 * it up with a punish crit possible (its sword PvpPlayer#PUNISH_CHARGE back, them within PvpPlayer#PUNISH_ALWAYS_REACH) is answered
+	 * by the punish crit (B1), after the timed jump the hit would have had (T9a in their rhythm, T9b against a deflector, T9 on a sprint
+	 * hit) and before C1, T5, the plain jump reset and C3. Before, on a sprint hit's lift the jump reset (T9) took the moment with no
+	 * punish crit after it, T5 and C1 (half the times, run 105) went first where they applied, so the decider learned B1 only after
+	 * plain hits and crits. Not punishable: as before. false for every bot (their behaviour and the benchmark stay as they were); the
+	 * school's teacher (Teacher#PUNISH_ALWAYS).
+	 */
+	public boolean punishAlways = false;
+	/**
+	 * Run 122: no crit chain right after its own hit (T1, T1b, T1c, T2, C6; SchoolStages#CRIT_CHAINS_TAUGHT): their chances stay 0 when it
+	 * adapts, and the bait (T1a) is not followed by the double crit. false for every bot; the school's teacher.
+	 */
+	public boolean noCritChains = false;
 	/** Run 59: the chance it swings back at once (a trade) when their crit lands on it, sword ready and them in reach. */
 	public float answerCrit = 0f;
 	/**
@@ -283,6 +299,8 @@ public final class Style {
 		s.hopsAfterStun = hopsAfterStun;
 		s.spaceAfterHit = spaceAfterHit;
 		s.punishFirst = punishFirst;
+		s.punishAlways = punishAlways;
+		s.noCritChains = noCritChains;
 		s.answerCrit = answerCrit;
 		s.closeIn = closeIn;
 		s.flyOut = flyOut;

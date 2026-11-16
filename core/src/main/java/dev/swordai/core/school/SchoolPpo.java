@@ -361,11 +361,26 @@ public final class SchoolPpo implements AutoCloseable {
 			// The keys the rules press (locked in the step, or open in a fight played without them): the rule's key is the target,
 			// unless a technique teacher speaks on the head.
 			int ruledBits = set.ruledPull > 0f ? r.ruledHeads[i] & ~tech : 0;
+			// Run 122: the own-hit "no jump" lesson, on the attempt alone (its own jump pressed in the window after its own hit), at its own
+			// pull, whatever technique was told and however the moment went; the jump head is then taught by it alone on this step.
+			boolean ownHitNoJump = ownHitNoJumpApplies(r.noJumpPull[i], r.action[i][ActionSpace.JUMP], mask);
+			if (ownHitNoJump) {
+				int off = ActionSpace.OFFSETS[ActionSpace.JUMP];
+				// Into the told technique's option layer where it gates the jump (T9a-c, K3, T1a), else into the trunk (SchoolStages#GATED).
+				boolean gatedHere = aw.option >= 0 && (SchoolStages.gatedHeads(aw.option) & (1 << ActionSpace.JUMP)) != 0;
+				float[] into = gatedHere ? aw.dOption : aw.dLogits;
+				float pull = r.noJumpPull[i];
+				into[off] += pull * (probs[off] - 1f);
+				into[off + 1] += pull * probs[off + 1];
+			}
 			if (tech == 0 && !old && ruledBits == 0) {
 				return;
 			}
 			int shadow = r.shadowHeads[i];
 			for (int h = 0; h < ActionSpace.HEADS; h++) {
+				if (ownHitNoJump && h == ActionSpace.JUMP) {
+					continue;
+				}
 				// A head a rule pressed is taught only where the teacher's lesson goes on under the rule (SchoolStages#PUNISH_SHADOW).
 				boolean shadowed = (shadow & (1 << h)) != 0;
 				boolean ruledHere = (ruledBits & (1 << h)) != 0;
@@ -414,7 +429,9 @@ public final class SchoolPpo implements AutoCloseable {
 					pull = Math.max(pull, r.swingPull[i]);
 				}
 				// Learned from the fight (SchoolStages#FROM_THE_FIGHT): a technique's keys only where the moment went better than expected.
-				boolean b1Swing = SchoolStages.B1_SWING_ALWAYS && h == ActionSpace.ATTACK && which == dev.swordai.core.pvp.Technique.B1.ordinal();
+				// Run 122 (SchoolStages#B1_KEYS_ALWAYS): B1's gated W/S and sprint on every told tick too.
+				boolean b1Swing = which == dev.swordai.core.pvp.Technique.B1.ordinal() && (SchoolStages.B1_SWING_ALWAYS && h == ActionSpace.ATTACK
+						|| SchoolStages.B1_KEYS_ALWAYS && (SchoolStages.B1_GATED_HEADS & (1 << h)) != 0);
 				if (SchoolStages.FROM_THE_FIGHT && byTech && !camera && adv <= 0f && !b1Swing && !everyJump
 						&& (which != dev.swordai.core.pvp.Technique.BASE.ordinal() || r.letGoPull[i] > 0f)) {
 					pull = 0f;
@@ -512,6 +529,15 @@ public final class SchoolPpo implements AutoCloseable {
 	}
 
 	private static final float[] ZERO = new float[ActionSpace.HEADS];
+
+	/**
+	 * Run 122: whether a step gets the own-hit "no jump" lesson (SchoolRollout#noJumpPull): the step carries its pull (set by the school on
+	 * the ground ticks of the window after its own hit), its own jump key was pressed (the attempt) and the jump head was its own (not
+	 * locked by a rule's key). Nowhere else: a tick where it did not try to jump is not taught "no jump" by it.
+	 */
+	public static boolean ownHitNoJumpApplies(float noJumpPull, int jumpAction, int headMask) {
+		return noJumpPull > 0f && jumpAction == 1 && ActionSpace.unlocked(headMask, ActionSpace.JUMP);
+	}
 
 	/**
 	 * Run 69b: the entropy coefficients for a step: the adapted ones ({@link #entCoef}), or the setting's on a step told the punish

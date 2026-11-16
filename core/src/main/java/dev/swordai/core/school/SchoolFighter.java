@@ -160,6 +160,52 @@ public final class SchoolFighter {
 		ownJumpResetGate = on;
 	}
 
+	/**
+	 * Run 122 (agent 56; the user, 16 Nov 22:05, after a real test against human players: "The bot always get a sprint hit stun and then jump
+	 * for no reason ... every time it is close to opponent it finally get a stun and then jump and make other combo them"; 22:25: "punish
+	 * like 100000 if it jump while doing stun that makes absolute zero sense at all"). OWN_HIT_JUMP_GUARD: after its own hit, with no hit
+	 * taken since, for up to OWN_HIT_WINDOW ticks, on the ground, within OWN_HIT_GUARD_REACH blocks and with its own sword under
+	 * OWN_HIT_GUARD_CHARGE, the NETWORK's jump key is let go of (no take-off). A jump a rule pressed (the jump reset on their hit, rule r,
+	 * comes after a hit taken, outside the window; J and the others) is never touched, nor the swing, the K2 and jump-in guards or the
+	 * punish crit (B1 follows their hit: outside the window too).
+	 *
+	 * <p>The real rounds, every tick (profile fights; checked-1116-2048 against run35, the user's "near perfect"): take-offs in its own combo
+	 * in lost rounds 9.5 vs 4.7 a minute, hit in that jump 55% vs 36%; of the new network's 20: 12 came 0-3 ticks after its hit, 14 with
+	 * its sword under 0.9, 10 under 2 blocks, 14 pressed by the network alone (run35: 0, 4, 0, 2 of 14). Typical frame: a crit from the air
+	 * lands, it lands 1.4-1.9 blocks from them, and 1-3 ticks later the network jumps with its sword at 0.32 while theirs reads 0.80; their
+	 * sprint hit (C1) catches it in the air and it flies 5-8 blocks. The user's game (FightSession), the paired checks' side A and training
+	 * alike (SchoolSession); the 23 Oct reference (B of the checks) untouched.
+	 */
+	public static final int OWN_HIT_WINDOW = 20;
+	public static final float OWN_HIT_GUARD_REACH = 3.5f;
+	public static final float OWN_HIT_GUARD_CHARGE = 0.9f;
+
+	/** Run 122: in the window after its own hit: that hit at most OWN_HIT_WINDOW ticks old and no hit taken since (as SchoolSession's own combo). */
+	public static boolean ownHitWindow(int sinceHitDealt, int sinceHitTaken) {
+		return sinceHitDealt <= OWN_HIT_WINDOW && sinceHitTaken > sinceHitDealt;
+	}
+
+	/** Run 122: whether the guard lets go of a jump of the network's own now (see OWN_HIT_WINDOW). */
+	public static boolean ownHitJumpGuard(int sinceHitDealt, int sinceHitTaken, boolean onGround, double reach, float charge) {
+		return ownHitWindow(sinceHitDealt, sinceHitTaken) && onGround && reach <= OWN_HIT_GUARD_REACH && charge < OWN_HIT_GUARD_CHARGE;
+	}
+
+	private boolean ownHitJumpGuard;
+	private double reachNow = Double.MAX_VALUE;
+	/** Run 122: the network's jumps the guard let go of, and its jumps tried in the window at all (stripped or not). */
+	public long ownHitJumpsStripped;
+	public long ownHitJumpsTried;
+
+	/** Run 122: the own-hit jump guard on or off (FightSession.OWN_HIT_JUMP_GUARD in the user's game). */
+	public void ownHitJumpGuard(boolean on) {
+		ownHitJumpGuard = on;
+	}
+
+	/** Run 122: eye to their hitbox this tick, for the guard (unknown: Double.MAX_VALUE, and the guard holds nothing). */
+	public void reachNow(double reach) {
+		reachNow = reach;
+	}
+
 	private static boolean jumpResetTold(dev.swordai.core.pvp.Technique t) {
 		return t == dev.swordai.core.pvp.Technique.T9A || t == dev.swordai.core.pvp.Technique.T9B || t == dev.swordai.core.pvp.Technique.T9C;
 	}
@@ -239,6 +285,15 @@ public final class SchoolFighter {
 				&& action[ActionSpace.JUMP] == 1) {
 			action[ActionSpace.JUMP] = 0;
 			ownJumpResetsStripped++;
+		}
+		// Run 122: no take-off of the network's own right after its own hit while close with its sword not back (OWN_HIT_WINDOW).
+		if (ownHitJumpGuard && (ruled & ActionSpace.mask(ActionSpace.JUMP)) == 0 && action[ActionSpace.JUMP] == 1 && body.onGround
+				&& ownHitWindow(sinceHitDealt, sinceHitTaken)) {
+			ownHitJumpsTried++;
+			if (ownHitJumpGuard(sinceHitDealt, sinceHitTaken, body.onGround, reachNow, body.charge)) {
+				action[ActionSpace.JUMP] = 0;
+				ownHitJumpsStripped++;
+			}
 		}
 		fairJump.apply(action, body.onGround, sinceHitTaken, takenStreak.hits());
 		motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));
