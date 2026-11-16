@@ -2172,3 +2172,8 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Training runs (32.52M steps; runs 122 + 124 only since 04:31).
 - Punish crit chances critted 64%; told and landed 62%.
 - No new check since 03:51 (next about 05:15). No new real rounds.
+
+## 17 Nov 05:13 review
+
+- Training runs (32.61M steps). Punish crit chances critted 64%; told and landed 50%.
+- The check without run 123 is still to come (about 05:20). No new real rounds.
