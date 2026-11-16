@@ -241,8 +241,74 @@ public final class SchoolSession implements AgentSession {
 	 * on the ground and not falling, why the swing lesson did not make it swing: the lesson was on (the network held anyway), a
 	 * teacher's "hold" on the swing, a teacher's "swing", a technique moment with no swing target, the jump-in guard or K2, other.
 	 */
-	private final int[] readyHeldWhy = new int[6];
+	private final int[] readyHeldWhy = new int[7];
 	private int swingGateNow;
+	/**
+	 * Run 119 (agent 53, 16 Nov ~10:30): a technique teacher's "hold" on the swing becomes "swing" where the swing lands now; the user,
+	 * 16 Nov 06:45: "I would rather have it swung when ready in reach 90% ... Tho still only swing when charged", and 14 Nov: "it should
+	 * only hold hit when other go for a jump in".
+	 *
+	 * <p>Why: run 118's counter (66 training updates 08:40-10:22, held ticks with the pick on them on the ground, outside their combo,
+	 * them on the ground and not falling, the swing open): a teacher's hold 963 (14.6 an update), the lesson on 104, a teacher's swing
+	 * 88, a technique with no swing target 22, the guard or K2 0, other 0. So on these ticks there is nearly always a technique teacher,
+	 * and the run 115 lesson stands aside for it. Of all 8922 ready ticks in reach outside their combo on the ground: swung 3433 (38%),
+	 * swing not open 2261, them falling 1245, held otherwise 1983. In the code the holds there come from (PvpPlayer#step):
+	 * <ul>
+	 * <li>T4/T5: S under spacing - 0.8 (2.3) and no swing until sprinting again.</li>
+	 * <li>T6/T6a phase 0: stop or S while they come in, no swing until their swing (up to 14 ticks, 20 after its punish crit); phase 1
+	 * no swing under 2.2 or not sprinting.</li>
+	 * <li>T7 and C1: no swing while not sprinting.</li>
+	 * <li>C3: S and the jump, no swing.</li>
+	 * <li>The combo-hold teacher's S-taps (BASE label).</li>
+	 * <li>C7: by its start every tick is in reach, sword ready, them on the ground: up to 6 ticks held for their jump.</li>
+	 * <li>K3: its take-off tick.</li>
+	 * </ul>
+	 * Where the swing lands now (TRAIN only: on the ground, charge 0.95+, the game's pick on them within 3.0, them on the ground and not
+	 * falling, no jump-in in the air, no guard or K2 tick, the swing open) the teacher's target on the swing is turned to "swing"; its
+	 * other keys (S, the sprint, the jump) and its label stay. The document's words for the ones turned:
+	 * <ul>
+	 * <li>T4: "sprint-hit the opponent immediately after they attack you" (the hold is the wait to back off or sprint, which makes it
+	 * later: "Too late ... and there is no stun").</li>
+	 * <li>T6: "stop moving or hold S, so their swing misses" (it asks for the stop or S, not for no swing; the stop and S stay taught).</li>
+	 * <li>T7: "sprint-hit the opponent before they are close enough to hit you back" (once in reach they can hit back; the sprint's wait
+	 * is not the technique).</li>
+	 * <li>C1: "Don't punish-crit a double critter; sprint-hit them" (on the ground, them on the ground: no punish crit there).</li>
+	 * <li>C3/C4: C4's fix "attack them right before you hold S".</li>
+	 * </ul>
+	 * Kept, as their definition is not swinging at that moment (RUN119_KEEPS):
+	 * <ul>
+	 * <li>K2: "Don't knockback-hit someone who is falling"; and the jump-in guard (the user's rule).</li>
+	 * <li>B1 (and its wait against a jump-in): "Their hit knocks you up; you crit them on the way down".</li>
+	 * <li>The crit family T1, T1a, T1b, T1c, T2, C6 (on the ground already untaught, CRIT_HOLD_UNTAUGHT).</li>
+	 * <li>K3: "Space yourself so that when you jump, the opponent is forced to hit you as you are falling ... Use it to crit".</li>
+	 * <li>C7 (RUN119_KEEP_C7): "When they try to jump-reset, delay your sprint hit. They jump before you hit them".</li>
+	 * </ul>
+	 * The moment is judged without the swing on the turned ticks (Performance: its other keys only), so the techniques' rates stay the
+	 * document's; the swing there is counted by "swung of the ready ticks". Checks, benchmarks and the user's game unchanged.
+	 * Counter: "run 119 ... teachers' holds turned to the swing N (by technique), held anyway N; holds kept by technique".
+	 */
+	static final boolean TEACHER_HOLD_SWING = true;
+	/**
+	 * Run 119: C7's hold kept (its whole lesson is the delayed hit). The user's 14 Nov rule ("only hold hit when other go for a jump in")
+	 * speaks against it; flip to false if the counter shows C7 the main kept hold and C7 stays 70%+ without its wait.
+	 */
+	static final boolean RUN119_KEEP_C7 = true;
+	private static final boolean[] RUN119_KEEPS = new boolean[Technique.COUNT];
+
+	static {
+		for (Technique t : new Technique[] {Technique.K2, Technique.B1, Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C,
+				Technique.T2, Technique.C6, Technique.K3}) {
+			RUN119_KEEPS[t.ordinal()] = true;
+		}
+		RUN119_KEEPS[Technique.C7.ordinal()] = RUN119_KEEP_C7;
+	}
+
+	/** Run 119 (counters): ticks a technique's hold was turned to the swing, by technique; and (run 118's held ticks) the holds left. */
+	private final int[] holdTurnedBy = new int[Technique.COUNT];
+	private final int[] heldHoldBy = new int[Technique.COUNT];
+	private int holdTurnedTheirCombo;
+	/** Run 119: this tick's teacher hold was turned to the swing (the moment is judged without the swing head). */
+	private boolean holdTurnedNow;
 	/** Run 95: the one jump-in of this engagement is still open. */
 	private boolean jumpInOpen = true;
 	private int dropAt = -1;
@@ -1450,6 +1516,9 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, "; run 118 (%s, pick only): held otherwise with the pick on them on the ground, by the lesson: on %d, a teacher's hold %d,"
 						+ " a teacher's swing %d, a technique with no swing target %d, the jump-in guard or K2 %d, other %d", SWING_IN_REACH ? "on" : "off",
 						readyHeldWhy[0], readyHeldWhy[1], readyHeldWhy[2], readyHeldWhy[3], readyHeldWhy[4], readyHeldWhy[5])
+				+ String.format(Locale.ROOT, "; run 119 (%s, C7 %s): teachers' holds turned to the swing %d ticks (%s; in their combo %d), held anyway %d;"
+						+ " the teachers' holds left by technique: %s", TEACHER_HOLD_SWING ? "on" : "off", RUN119_KEEP_C7 ? "kept" : "turned",
+						sum(holdTurnedBy), byTechnique(holdTurnedBy), holdTurnedTheirCombo, readyHeldWhy[6], byTechnique(heldHoldBy))
 				+ String.format(Locale.ROOT, " | run 92, too close (under %.1f, its sword empty, theirs ready) ticks charged %d; edge sprint hits (%.1f-%.1f) paid %d; its hits' mean distance %.2f (%d hits); rule m runs started by A's rules %d, into a ready sword or a jump-in crit %d (%s)",
 						TOO_CLOSE_WITHIN, tooCloseCharged, EDGE_HIT_FROM, EDGE_HIT_TO, edgeHitsPaid, ownHitsMeasured > 0 ? ownHitDistSum / ownHitsMeasured : 0.0,
 						ownHitsMeasured, meetStarts[0], meetStartsIntoReady[0], MEET_NOT_INCOMING ? "stopped" : "run")
@@ -1556,6 +1625,9 @@ public final class SchoolSession implements AgentSession {
 		readyHoldCharged = 0;
 		swingTaught = 0;
 		java.util.Arrays.fill(readyHeldWhy, 0);
+		java.util.Arrays.fill(holdTurnedBy, 0);
+		java.util.Arrays.fill(heldHoldBy, 0);
+		holdTurnedTheirCombo = 0;
 		java.util.Arrays.fill(nearJumpNeededBy, 0);
 		tooCloseCharged = edgeHitsPaid = ownHitsMeasured = 0;
 		comboableFights = comboableLongest = comboableRuns3 = comboableRuns5 = comboableRuns10 = longComboPaid = 0;
@@ -3025,6 +3097,26 @@ public final class SchoolSession implements AgentSession {
 			}
 		}
 		return b.length() == 0 ? " none" : b.toString();
+	}
+
+	/** Run 119 (log): the sum of a per-technique count. */
+	private static int sum(int[] byTechnique) {
+		int n = 0;
+		for (int v : byTechnique) {
+			n += v;
+		}
+		return n;
+	}
+
+	/** Run 119 (log): "T4 3 T6 5" for the techniques with a count, "none" without; BASE (the combo-hold teacher) as "-". */
+	private static String byTechnique(int[] counts) {
+		StringBuilder b = new StringBuilder();
+		for (int t = 0; t < counts.length && t < Technique.COUNT; t++) {
+			if (counts[t] > 0) {
+				b.append(b.length() > 0 ? " " : "").append(Technique.ALL[t].id).append(' ').append(counts[t]);
+			}
+		}
+		return b.length() > 0 ? b.toString() : "none";
 	}
 
 	private static boolean pulled(float[] pulls, int technique) {
@@ -5614,10 +5706,24 @@ public final class SchoolSession implements AgentSession {
 		boolean swingReach = SWING_LOOSE && !SWING_IN_REACH ? pickNow || facts.onBody && facts.reachDist <= SWING_LOOSE_REACH
 				: facts.reachDist <= 3.0f && pickNow;
 		// Run 118 (counter only): why the lesson is not on this tick (see readyHeldWhy): 0 on, 1 a teacher's "hold" on the swing, 2 a
-		// teacher's "swing", 3 a technique moment with no swing target, 4 the jump-in guard or K2, 5 other.
+		// teacher's "swing", 3 a technique moment with no swing target, 4 the jump-in guard or K2, 5 other, 6 run 119 turned the hold.
 		int ao3 = ActionSpace.OFFSETS[ActionSpace.ATTACK];
-		swingGateNow = (step.teacherHeads & (1 << ActionSpace.ATTACK)) != 0 ? (step.teacher[ao3 + 1] > step.teacher[ao3] ? 2 : 1)
+		holdTurnedNow = false;
+		if (TEACHER_HOLD_SWING && mode == Mode.TRAIN && review < 0 && me.onGround() && charge >= 0.95f && facts.reachDist <= 3.0f && pickNow
+				&& them.onGround && !truth.botFalling() && !them.falling() && !jumpInAir && !guardWould && !k2Hold
+				&& ActionSpace.unlocked(keys, ActionSpace.ATTACK) && (step.teacherHeads & (1 << ActionSpace.ATTACK)) != 0
+				&& step.teacher[ao3] >= step.teacher[ao3 + 1] && step.teacherTechnique >= 0 && !RUN119_KEEPS[step.teacherTechnique]) {
+			// Run 119: the technique teacher's hold turned to the swing (see TEACHER_HOLD_SWING); its other keys and label stay.
+			float hold = step.teacher[ao3];
+			step.teacher[ao3] = step.teacher[ao3 + 1];
+			step.teacher[ao3 + 1] = hold;
+			holdTurnedNow = true;
+			holdTurnedBy[step.teacherTechnique]++;
+			holdTurnedTheirCombo += theirComboNow ? 1 : 0;
+		}
+		swingGateNow = holdTurnedNow ? 6 : (step.teacherHeads & (1 << ActionSpace.ATTACK)) != 0 ? (step.teacher[ao3 + 1] > step.teacher[ao3] ? 2 : 1)
 				: step.teacherTechnique >= 0 && step.teacherTechnique != base ? 3 : jumpInAir || guardWould || k2Hold ? 4 : 5;
+		int gateTechnique = step.teacherTechnique;
 		if (SWING_TAUGHT && mode == Mode.TRAIN && review < 0 && (SWING_LOOSE || me.onGround()) && charge >= 0.95f && swingReach
 				&& them.onGround && !truth.botFalling() && !them.falling() && !jumpInAir && !guardWould && !k2Hold && (SWING_LOOSE || !theirComboNow)
 				&& ActionSpace.unlocked(keys, ActionSpace.ATTACK) && (step.teacherHeads & (1 << ActionSpace.ATTACK)) == 0
@@ -5838,6 +5944,10 @@ public final class SchoolSession implements AgentSession {
 					if (pickNow && reader.duel.them.onGround) {
 						// Run 118 (counter only): why the swing lesson did not make it swing here (see readyHeldWhy).
 						readyHeldWhy[swingGateNow]++;
+						if (swingGateNow == 1 && gateTechnique >= 0) {
+							// Run 119 (counter): the holds left (kept, or with run 119 off), by technique.
+							heldHoldBy[gateTechnique]++;
+						}
 					}
 				}
 			}
@@ -5878,8 +5988,9 @@ public final class SchoolSession implements AgentSession {
 		} else {
 			// Run 106: the hold teacher's uppercut/lunge/hop ticks are judged as their own technique.
 			int judged = holdLabel >= 0 && step.teacherTechnique == Technique.BASE.ordinal() ? holdLabel : step.teacherTechnique;
-			perf.tick(judged, step.teacherHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH)), step.teacher, action, keys,
-					facts.damageDealt, facts.damageTaken);
+			// Run 119: a hold turned to the swing is not judged on the swing (the technique's own keys only; see TEACHER_HOLD_SWING).
+			int judgedNow = step.teacherHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH) | (holdTurnedNow ? 1 << ActionSpace.ATTACK : 0));
+			perf.tick(judged, judgedNow, step.teacher, action, keys, facts.damageDealt, facts.damageTaken);
 		}
 		holdLabel = -1;
 		if (mode == Mode.TRAIN && !ruleOff) {
