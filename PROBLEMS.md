@@ -2138,3 +2138,5 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Run 122: own take-offs after its own hit A 0, B 3. Jump-ins outside A 9 vs B 4; crits dealt A 6 vs B 7.
 - Punish crit chances critted 59%; told and landed 41%.
 - Cause: run 123's swing gate (2.6-3.0 and sprinting only) held ready swings in reach. Fix: run 123b (6ce703f), SWING_ANY_IN_REACH; redeploy requested 02:51.
+
+- Run 123b redeployed (see the redeploy log above; next check about 45 min after the restart).
