@@ -2153,3 +2153,15 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Training runs (32.37M steps). The first check with run 123b is still to come (about 03:45-03:50).
 - Punish crit chances critted 63%; told and landed 53% (rising: 34% at 02:13, 41% at 02:43, 47% at 03:13).
 - No new real rounds.
+
+## 17 Nov 04:13 review + the 03:51 check (run 123b)
+
+- ROUNDS WON A 23/44 vs B 33/44 (z -2.7). Net -17.2 HP a fight (se 3.8). Damage a minute A 372/364, B 437/321.
+- Their third hit A 5/81 (6%) vs B 8/53 (15%).
+- Swung when ready in reach: outside their combo A 29% vs B 59%; in their combo A 36% vs B 41%.
+- Held with them falling (K2) A 36%. Of 114 held ticks with the crosshair on them, 104 were held by a rule or gate, 81 at 2.6+, 76 not sprinting.
+- Run 123: combos 2+ 6, 3+ 2, mean 2.3.
+- Run 124: their 3+ runs on it 0; they came into its reach with its sword ready 8 times, its hit first 4, theirs 2, both 2.
+- Punish crit chances critted 63%; told and landed 61% (34% at 02:13).
+- Cause: run 123's run-up holds ready swings at the edge, and its combos are shorter than B's. Fix: run 123c, ComboSpacing OFF; redeploy requested 04:18.
+- Next check about 05:05 decides whether run 124 stays.
