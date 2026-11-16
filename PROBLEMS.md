@@ -1972,3 +1972,11 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **Skill rates:** K2 100 (back from 70), T5 95, C1 95, T9a 93, C3 93, C6 88 (back from 48), T6a 85, T7 85, C4 85, T1a 83, T4 83, T9b 73, C2 73, K3 73, T6 70, B1 68, C7 65.
   - Under 60%: T1c 55, T9c 52, T9 38 (the rules), T1 35, T2 35.
 - The next check is about 16:47.
+
+## 16 Nov 16:47 check: run 121 (about 1.6 h)
+
+- **ROUNDS WON: A 33/45, B 33/45, z 0.0.** Net A-B -1.0 HP a fight (se 3.8). Dealt/taken: A 437 / 300, B 436 / 294.
+- Outside their combo, ready and in reach: A swung 53%, B 59%.
+- Their third hit after their second: A 11% (7), B 6% (3); both small.
+- **K2 broken: A 56, B 57.** Level with B now (15:57: 57 vs 44); the training K2 rate is back to 100%.
+- Punish crit chances critted 51% of 300.
