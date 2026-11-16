@@ -1820,3 +1820,11 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Jumps a minute off/on its moments: A 40/70, B 34/32.
 - **Next (agent 53 after 10:15):** the technique teachers' holds on ticks where a swing lands. In training they are 50 of the 61 held-with-pick ticks.
 - Punish crit chances critted 49% of 300; told and landed 38%.
+
+## 16 Nov 10:13 review
+
+- Training runs (run 118).
+- **Skill rates (last 40 moments):** C1 98, K2 98, T7 95, C4 93, C7 93, T1a 90, T5 90, C2 90, C3 90, T4 88, C6 85, T6a 83, T9a 83, K3 80, B1 78, T6 70, T9c 68, T9b 63.
+  - Under 60%: T1c 55, T1 45, T2 43, T9 15 (the rules).
+- Punish crit chances critted 54% of 300; told and landed 36%.
+- Agent 53 (10:14): which technique teachers hold the swing on ready-in-reach ticks, and letting the swing win where it lands (the user's 90%), keeping K2/jump-in and the crit's wait in the air.
