@@ -2099,3 +2099,5 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - 01:23 run 122 redeployed (tests passed; cycle restarted 01:23). Watch the "run 122" counters and the "school check run 122" line at the next check.
 
 - 01:25 run 124 (agent 58, COUNTER_SPACING) merged (b579c01): in their combo and while closing in, with a ready sword it runs in and swings on the pick; otherwise S taps, strafe or stand at the edge; no long S escape; rule C in round files. Redeploy queued for 01:45 (20 min after run 122), only when no check is playing. Agent 57 (run 123) is still building.
+
+- 01:4x run 123 (agent 57, COMBO_SPACING) merged: from its own hit, W-tap, S while nearer than 2.7, reach 2.85 as the sword comes back, re-sprint, swing at 2.6-3.0 on the pick; never jumps; rule H in round files. The combo simulator does not favour it (its bots let close follow-ups through), so judge it on real rounds: share of its sprint hits from 2.6+ (run35: 26 of 239) and its combos 3+/5+/10+. Goes in with run 124 at the 01:45 redeploy.
