@@ -2166,3 +2166,9 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Cause: run 123's run-up holds ready swings at the edge, and its combos are shorter than B's. Fix: run 123c, ComboSpacing OFF; redeploy requested 04:18.
 - Next check about 05:05 decides whether run 124 stays.
 - Run 123c redeployed (see above); next check about 45 min after the restart.
+
+## 17 Nov 04:43 review
+
+- Training runs (32.52M steps; runs 122 + 124 only since 04:31).
+- Punish crit chances critted 64%; told and landed 62%.
+- No new check since 03:51 (next about 05:15). No new real rounds.
