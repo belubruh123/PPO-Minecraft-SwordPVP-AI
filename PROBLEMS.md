@@ -2177,3 +2177,13 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 
 - Training runs (32.61M steps). Punish crit chances critted 64%; told and landed 50%.
 - The check without run 123 is still to come (about 05:20). No new real rounds.
+
+## 17 Nov 05:43 review + the 05:21 check (runs 122 + 124, run 123 off)
+
+- ROUNDS WON A 32/45 vs B 34/45 (z -0.6). Net +0.4 HP a fight (se 4.5). Damage a minute A 441/319, B 440/323. Level again (02:41 -14.3, 03:51 -17.2 with run 123).
+- Swung when ready in reach: outside their combo A 53% vs B 59%; in their combo A 43% vs B 41%. Held by a rule or gate 2 (104 at 03:51): run 123 was the swing holder.
+- Their third hit A 5/52 (10%) vs B 3/56 (5%).
+- Punish crit chances critted 58%; told and landed 37% (it swings between 37% and 62% across updates).
+- No new real rounds.
+- Weekly usage 76%: keep the rest for the 21:10 install and the user's test. No agents.
+- Run 123's idea (hit from the edge) needs a version that never holds a ready swing. That is for after the test.
