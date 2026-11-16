@@ -1851,3 +1851,11 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - The user's 90% swing and C7 conflict against jump-resetters.
 - Training swung share of ready ticks: 39, 34, 41%. The next lead is "swing not open" (2261 of 8922 ready ticks, agent 53): the crosshair or the sword's lock.
 - Punish crit chances critted 57% of 300; told and landed 36%.
+
+## 16 Nov 11:13 review
+
+- Training runs (run 119). Punish crit chances critted 58% of 300; told and landed 38%. The next check is about 11:23.
+- **"Swing not open"** in the last 4 updates: 28, 7, 15, 43 of the ready ticks in reach, mostly "crosshair on its body" (18, 6, 15, 19).
+  - The crosshair is on their hitbox but the game's pick says no: the ray to where it aims is longer than the nearest point of their box (the counter's "in reach" is the nearest point, 3.0).
+  - So these swings would whiff in the real game's strict guard. To make them land, aim at the near part of their box, or step in a little.
+  - Next lead for the 90% swing; agent 54 after 12:15.
