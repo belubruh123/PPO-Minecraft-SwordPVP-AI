@@ -2173,3 +2173,24 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **Kept:** charged only (0.95 for the lesson, and the swing gate). Never at one falling at it or jumping in (K2, the jump-in guard). Never over a technique teacher's swing or hold.
 - The real game's whiff guard is unchanged (the installed jar is run35's); loosen it at the next install only with the user's word.
 - **Watch:** "ready, them in reach: swung" in training and checks (target about 90%), whiffs, their third hit, K2 broken, and late jump-in hits.
+
+## Run 118 (agent 52, 16 Nov ~08:40): the swing taught only where it can land (SWING_IN_REACH)
+
+- **No training-vs-check gap exists.** The "86% free choice" of 07:43 was a misread: update 6928 (07:42) says "held otherwise 43", not 4, so the free share was 25 / (25 + 43) = 37%.
+  - Swung of the ready ticks in reach (the same measure on both sides) agrees within about 4 points in every period. Pre-115: training 35%, checks 31-36%. Runs 115/116: 41-50% vs 43-45%. Run 117: 37-38% vs 29%.
+  - The action is the network's own draw at temperature 1. No play-temperature file. The lesson writes only the label, never the key.
+- **Run 117 lowered the swing in training.** Same stage (T-B), swung of ready: run 116 alone (06:40-07:06) 46-47%; run 117 at once 38%, 37%, 37%; from 08:00 24% (a hopper-heavy mix, them falling 28% of ready ticks).
+  - Swings with the crosshair on them in training: 96-97% before, then 61% / 75% / 81% / 78% by 20 minutes. That is about 2 whiffs an update before and about 20 after.
+- **The cause (bottleneck): SWING_LOOSE's on-body opening.** It taught swings at 3.0-3.3 blocks without the game's pick and let them through the training whiff guard.
+  - Each one whiffs: it costs AIR_SWING 0.15 and empties the sword before they step into reach.
+  - The actor has no reach input (PV_REACH_DIST is the critic's only), so on look-alike ticks the label said "swing" and the outcome said "hold".
+  - The 07:57 check: A held with the crosshair on them 190 ticks, 120 of them the network sure (06:21: 52 and 23).
+  - Those swings could never be made in a check or the user's game anyway: their whiff guard is strict.
+- **Confound:** the check's bots follow the stage. At T-B they include the crit bots (double-, punish-, standing-critter, crit-breaker). On T-B bots A swung 33% at 02:22 (before run 115) and 29% at 07:57. Run 115's 43-45% was measured only on T-D bots.
+- **Fix:** with SWING_IN_REACH on, the lesson fires only where the pick is on them (3.0) and the training whiff guard is strict again.
+  - Kept: pull 1.0, and the swing in their combo and in the air (SWING_LOOSE's other parts). Also kept: K2 and the jump-in guard (the lesson never fires there), the technique teachers' swing targets and holds, the crit holds, and the punish crit.
+  - Checks and the user's game are unchanged.
+- **New training counter** ("run 118 ... held otherwise with the pick on them on the ground, by the lesson") splits why the lesson did not make it swing: lesson on, a teacher's hold, a teacher's swing, a technique moment with no swing target, the guard or K2, other.
+  - Under runs 115/116 the lesson fired on only about 11 of about 65 open, not-falling ready ticks an update (17%). This counter says which gate keeps it off the rest. It is the next bottleneck if run 118 restores the swing.
+- **Disproof test:** within about 5 updates, the training crosshair-on share should be back to 95% or more. If within about 20 updates at T-B the training swung of ready ticks is not back to 45% or more, the diagnosis is wrong. The same holds if the next T-B check still has 100 or more network-sure holds with the crosshair on.
+- **Tests:** school + pvp unit tests (see the commit); compile-check OK (the known class_6880 line).

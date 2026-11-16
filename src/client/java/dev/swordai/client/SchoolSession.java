@@ -216,7 +216,33 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final boolean SWING_LOOSE = true;
 	static final float SWING_LOOSE_REACH = 3.3f;
+	/**
+	 * Run 118 (agent 52, 16 Nov ~08:40): the ordinary swing taught only where the game's pick is on them (3.0), and the training whiff
+	 * guard as strict as in the checks and the user's game. SWING_LOOSE keeps its swing in their combo and in the air.
+	 *
+	 * <p>Why: the loose part (on their body up to 3.3 without the pick, the whiff guard opened in training) taught swings the game cannot
+	 * land. Each costs AIR_SWING and empties the sword before they step into reach, so on ticks the actor cannot tell from in-reach
+	 * ones (its reach is a critic-only input, PV_REACH_DIST) the label said "swing" and the outcome said "hold".
+	 * <ul>
+	 * <li>Swings with the crosshair on them in training: 96-97% before 07:08, then 61% / 75% / 81% / 78% by 20 minutes. That is about
+	 * 2 whiffs an update before and about 20 after.</li>
+	 * <li>Swung of the ready ticks in reach, same stage T-B: run 116 alone (06:40-07:06) 46-47%, run 117 at once 38%, 37%, 37%, then
+	 * 24% from 08:00 (a hopper-heavy bot mix: them falling 28%).</li>
+	 * <li>The 07:57 check: A held with the crosshair on them 190 ticks, 120 of them the network sure (06:21: 52 and 23).</li>
+	 * </ul>
+	 * The "86% free choice" of 07:43 was a misread. Update 6928 says held otherwise 43, not 4, so the free share was 37%. Training and
+	 * checks agree within about 4 points on swung of ready ticks in every period (pre-115 35% vs 31-36%; 115/116 41-50% vs 43-45%;
+	 * 117 37-38% vs 29%). Those swings could never be made in a check or the user's game anyway: their whiff guard is strict.
+	 */
+	static final boolean SWING_IN_REACH = true;
 	private int swingTaught;
+	/**
+	 * Run 118 (counter only): of the ready ticks outside their combo held with the swing open, the crosshair's pick on them and them
+	 * on the ground and not falling, why the swing lesson did not make it swing: the lesson was on (the network held anyway), a
+	 * teacher's "hold" on the swing, a teacher's "swing", a technique moment with no swing target, the jump-in guard or K2, other.
+	 */
+	private final int[] readyHeldWhy = new int[6];
+	private int swingGateNow;
 	/** Run 95: the one jump-in of this engagement is still open. */
 	private boolean jumpInOpen = true;
 	private int dropAt = -1;
@@ -1421,6 +1447,9 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, ", run 116 (%s) its own combo charged %d", ownComboJumpCharged() ? "on" : "off", ownComboJumpsCharged)
 				+ String.format(Locale.ROOT, " | run 96: ready sword held at them on the ground charged %d ticks", readyHoldCharged)
 				+ String.format(Locale.ROOT, " | run 115 (%s): the ordinary swing taught %d ticks", SWING_TAUGHT ? "on" : "off", swingTaught)
+				+ String.format(Locale.ROOT, "; run 118 (%s, pick only): held otherwise with the pick on them on the ground, by the lesson: on %d, a teacher's hold %d,"
+						+ " a teacher's swing %d, a technique with no swing target %d, the jump-in guard or K2 %d, other %d", SWING_IN_REACH ? "on" : "off",
+						readyHeldWhy[0], readyHeldWhy[1], readyHeldWhy[2], readyHeldWhy[3], readyHeldWhy[4], readyHeldWhy[5])
 				+ String.format(Locale.ROOT, " | run 92, too close (under %.1f, its sword empty, theirs ready) ticks charged %d; edge sprint hits (%.1f-%.1f) paid %d; its hits' mean distance %.2f (%d hits); rule m runs started by A's rules %d, into a ready sword or a jump-in crit %d (%s)",
 						TOO_CLOSE_WITHIN, tooCloseCharged, EDGE_HIT_FROM, EDGE_HIT_TO, edgeHitsPaid, ownHitsMeasured > 0 ? ownHitDistSum / ownHitsMeasured : 0.0,
 						ownHitsMeasured, meetStarts[0], meetStartsIntoReady[0], MEET_NOT_INCOMING ? "stopped" : "run")
@@ -1526,6 +1555,7 @@ public final class SchoolSession implements AgentSession {
 		ownComboJumpsCharged = 0;
 		readyHoldCharged = 0;
 		swingTaught = 0;
+		java.util.Arrays.fill(readyHeldWhy, 0);
 		java.util.Arrays.fill(nearJumpNeededBy, 0);
 		tooCloseCharged = edgeHitsPaid = ownHitsMeasured = 0;
 		comboableFights = comboableLongest = comboableRuns3 = comboableRuns5 = comboableRuns10 = longComboPaid = 0;
@@ -4982,7 +5012,7 @@ public final class SchoolSession implements AgentSession {
 			freshFreed += pickNow && !stale ? 1 : 0;
 			freshClosed += !pickNow && stale ? 1 : 0;
 		}
-		if (cfg.whiffGuard && !pickNow && !(SWING_LOOSE && mode == Mode.TRAIN && facts.onBody && facts.reachDist <= SWING_LOOSE_REACH)) {
+		if (cfg.whiffGuard && !pickNow && !(SWING_LOOSE && !SWING_IN_REACH && mode == Mode.TRAIN && facts.onBody && facts.reachDist <= SWING_LOOSE_REACH)) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 		}
 		if (review >= 0) {
@@ -5580,11 +5610,19 @@ public final class SchoolSession implements AgentSession {
 			}
 		}
 		boolean theirComboNow = clock.ticksSinceHitTaken <= 20 && clock.ticksSinceHitDealt > clock.ticksSinceHitTaken;
-		boolean swingReach = SWING_LOOSE ? pickNow || facts.onBody && facts.reachDist <= SWING_LOOSE_REACH : facts.reachDist <= 3.0f && pickNow;
+		// Run 118 (SWING_IN_REACH): only where the game's pick is on them, as the strict whiff guard opens the swing.
+		boolean swingReach = SWING_LOOSE && !SWING_IN_REACH ? pickNow || facts.onBody && facts.reachDist <= SWING_LOOSE_REACH
+				: facts.reachDist <= 3.0f && pickNow;
+		// Run 118 (counter only): why the lesson is not on this tick (see readyHeldWhy): 0 on, 1 a teacher's "hold" on the swing, 2 a
+		// teacher's "swing", 3 a technique moment with no swing target, 4 the jump-in guard or K2, 5 other.
+		int ao3 = ActionSpace.OFFSETS[ActionSpace.ATTACK];
+		swingGateNow = (step.teacherHeads & (1 << ActionSpace.ATTACK)) != 0 ? (step.teacher[ao3 + 1] > step.teacher[ao3] ? 2 : 1)
+				: step.teacherTechnique >= 0 && step.teacherTechnique != base ? 3 : jumpInAir || guardWould || k2Hold ? 4 : 5;
 		if (SWING_TAUGHT && mode == Mode.TRAIN && review < 0 && (SWING_LOOSE || me.onGround()) && charge >= 0.95f && swingReach
 				&& them.onGround && !truth.botFalling() && !them.falling() && !jumpInAir && !guardWould && !k2Hold && (SWING_LOOSE || !theirComboNow)
 				&& ActionSpace.unlocked(keys, ActionSpace.ATTACK) && (step.teacherHeads & (1 << ActionSpace.ATTACK)) == 0
 				&& (step.teacherTechnique < 0 || step.teacherTechnique == base)) {
+			swingGateNow = 0;
 			// Run 115: the ordinary fight's swing, at its own pull (see SWING_TAUGHT).
 			int off = ActionSpace.OFFSETS[ActionSpace.ATTACK];
 			step.teacher[off] = 0f;
@@ -5797,6 +5835,10 @@ public final class SchoolSession implements AgentSession {
 					readyHeldFalling++;
 				} else {
 					readyHeldOther++;
+					if (pickNow && reader.duel.them.onGround) {
+						// Run 118 (counter only): why the swing lesson did not make it swing here (see readyHeldWhy).
+						readyHeldWhy[swingGateNow]++;
+					}
 				}
 			}
 			if (sincePunishCrit == 0) {
