@@ -1841,3 +1841,13 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - 66 updates measured: a teacher's hold 963 vs the lesson 104.
   - Expected training swung share about 38% -> 50%. Disproof: after about 15 updates, "held anyway" 10+ an update or the swung share under 45%.
   - Tests: 78 passed, 5 aborted, 0 failed. Redeploy asked 10:30.
+
+## 16 Nov 10:43 review (run 119 live since 10:38)
+
+- Redeploy 10:36-10:38, 0 test failures; training runs.
+- **The run 119 counter, 3 updates:** teachers' holds turned to the swing 0-2 ticks; the teachers' holds left by technique: **C7 19, 14, 9**.
+  - So the teacher hold that agent 53 could not name from the logs is almost only C7, the delayed sprint hit, kept by RUN119_KEEP_C7.
+  - The teacher starts C7 only against one read as jump-resetting (PvpPlayer: expect(JUMP_RESET) > 0.25). The user lists C7 ("to make jumpreset success"), so it stays; turning it would end C7 (93%).
+  - The user's 90% swing and C7 conflict against jump-resetters.
+- Training swung share of ready ticks: 39, 34, 41%. The next lead is "swing not open" (2261 of 8922 ready ticks, agent 53): the crosshair or the sword's lock.
+- Punish crit chances critted 57% of 300; told and landed 36%.
