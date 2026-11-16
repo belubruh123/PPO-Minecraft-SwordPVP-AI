@@ -1900,3 +1900,7 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Outside their combo, ready and in reach: A swung 36%, B 57%.
 - **Jumps a minute off/on its moments: A 62/80, B 29/28.** Up again: 35 (10:17), 60 (11:27), 37 (12:17), 62 (13:06).
   - So the jumps are not solved. Run 116 took the own-combo take-offs; the next excess is the re-engaging jump-ins (agent 51: 376 vs 73). That is agent 55's task after 14:44, with the run 116 check counter (own-combo take-offs by source).
+
+## 16 Nov 13:12 review
+
+- Training runs (run 119). The run 120 redeploy was asked at 13:08 and not yet taken; the watchdog takes it on its next pass. Punish crit chances critted 55% of 300.
