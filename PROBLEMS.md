@@ -1881,3 +1881,14 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **Jumps a minute off/on its moments: A 37/54, B 31/33.** The 11:27 rise (60) was not repeated.
 - Punish crit chances critted 56% of 300.
 - Agent 54 (12:44): the swing that is not open with the crosshair on its body (the ray past 3.0 though the nearest point is inside). The real game's whiff guard stays strict.
+
+## 16 Nov 13:00: run 120 merged (agent 54), redeploy after the next check
+
+- **About 27% of ready in-reach ticks can never be swung under the strict whiff guard, for A or B:** on its body with no pick 15%, off its body 11%.
+  - "In reach" is the eye to the nearest point of their box; the game's pick is the crosshair ray to 3.0.
+  - Aiming at their middle puts the ray past 3.0 from about 2.8 blocks. Aiming at the near point (0.1 inside the box) keeps it inside up to 2.9.
+  - Nothing taught the camera there: the camera lesson stood aside while the crosshair was on their body.
+- **Run 120 (NEAR_AIM, training labels only):** on the ground, them on the ground and not falling, in sight within 3.0, no pick. The camera lesson aims at the nearest point of their box (level with its eye, 0.1 inside), also while on their body.
+  - The whiff guard stays strict everywhere. Runs 115-119, K2, the jump-in guard, the crit waits, C7 and the punish crit are untouched.
+- **Disproof test** (the new counter "run 120: swing not open by cause"): "within 3.0" plus "pick on" are half or more of the on-body ticks in about 5 updates, or on-body-no-pick is not down from 15% to 10% or less after about 20 updates.
+- Tests: 78 passed, 5 aborted (known), 0 failed; compile-check OK.
