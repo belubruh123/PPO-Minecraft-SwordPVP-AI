@@ -1859,3 +1859,11 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - The crosshair is on their hitbox but the game's pick says no: the ray to where it aims is longer than the nearest point of their box (the counter's "in reach" is the nearest point, 3.0).
   - So these swings would whiff in the real game's strict guard. To make them land, aim at the near part of their box, or step in a little.
   - Next lead for the 90% swing; agent 54 after 12:15.
+
+## 16 Nov 11:27 check: run 119 (about 50 min in)
+
+- **ROUNDS WON: A 29/45 (64%), B 30/45 (67%), z about -0.4.** Net A-B -2.1 HP a fight (se 3.5). Dealt/taken: A 396 / 313, B 424 / 324.
+- **Outside their combo, ready and in reach: A swung 51%, B 54%.** The gap is nearly closed (07:57: 29% vs 59%). Network-sure holds 44.
+- Their third hit after their second: A 21% (15), B 16% (10). Worse than 10:17 (14% vs 19%).
+- **Jumps a minute off/on its moments: A 60/91, B 30/29**, back up from 35/59 at 10:17. If it holds in the next check, look at the run 116 counter (own-combo take-offs) and the re-engaging jump-ins (agent 51's second excess).
+- Punish crit chances critted 59% of 300.
