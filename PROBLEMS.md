@@ -2010,3 +2010,4 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 ## 16 Nov 20:13 review
 
 - Training runs (run 121). The next check is about 20:04-20:08; see the next review.
+- **20:03 check: ROUNDS WON A 34/44 (77%), B 31/44 (70%), z about +1.3** (only A won 4, only B won 1).
