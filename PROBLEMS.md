@@ -1911,3 +1911,12 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **Run 120 counter, last update:** on its body without the pick, the ray meets their box within 3.0 (pick a tick behind) 3, at 3.0-3.15 18, at 3.15-3.3 1, beyond 0.
   - So mostly just past reach, not pick lag. Agent 54's diagnosis stands (its first disproof test passes).
 - Punish crit chances critted 54% of 300. The first check with run 120 is about 14:04.
+
+## 16 Nov 14:08 check: run 120 (about 50 min in)
+
+- **ROUNDS WON: A 28/44 (64%), B 32/44 (73%), z about -1.1.** Net A-B -1.3 HP a fight (se 4.8). Dealt/taken: A 397 / 335, B 399 / 331.
+- Their third hit after their second: A 22% (15), B 20% (13).
+- Outside their combo, ready and in reach: A swung 42%, B 54%.
+  - **On its body without the pick: A 10%, B 18%** (11:27-13:06: A 14-18%). Run 120 works on its target.
+- **Jumps a minute off/on its moments: A 74/71, B 40/32.** Rising again: 35, 60, 37, 62, 74. **Agent 55 at 14:44 on the jumps** (the re-engaging jump-ins, and whatever else the run 116 check counter and jumps.csv show).
+- Punish crit chances critted 55% of 300.
