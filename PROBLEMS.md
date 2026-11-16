@@ -1769,3 +1769,15 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **Skill rates:** K2 100, C6 98, T9a 95, C1 95, T5 93, C7 90, T4 88, T6a 88, K3 88, T1a 85, C3 85, B1 83, C2 83, C4 83, T7 78, T9c 60.
   - Under 60%: T1c 55, T6 52, T2 45, T9b 45, T9 40 (the rules), T1 20.
 - Punish crit chances critted 50% of 300 (the bottom of the target). The first check with runs 116 + 117 is about 07:53.
+
+## 16 Nov 07:57 check: runs 116 + 117 (about 50 min in)
+
+- **ROUNDS WON: A 31/44 (70%), B 34/44 (77%), z about -0.8.** Net A-B -8.4 HP a fight (se 3.9). Dealt/taken: A 430 / 341, B 447 / 307.
+- Their third hit after their second: A 13% (8), B 11% (5).
+- **Jumps a minute off/on its moments: A 39/63, B 38/29.** Run 116 worked: off-moment jumps are level with B (05:31: 53 vs 27).
+- **The swing got worse in the check:** outside their combo, ready and in reach, A swung 29%, B 59%.
+  - A: held otherwise 46%; held otherwise with the crosshair on them 190 ticks (under 2.6 blocks 129); the run 115 split: a rule or gate 12, network sure 120, 10-50% 47, 50%+ 11.
+  - In their combo: A swung 38%, B 45%.
+  - But training shows a free-choice swing of about 86% (07:43: held otherwise 4 of 95 ready ticks).
+- **Agent 52 (08:15):** why it swings in training but holds in checks. The candidates are the forced or taught path in training, the check conditions (guard off, strict whiff guard), SWING_LOOSE edge whiffs being punished, and run 116/K2 lessons spreading into holds.
+- Punish crit chances critted 47% of 300 (under 50%), told and landed 42%.
