@@ -527,6 +527,47 @@ public class ComboSim {
 		};
 	}
 
+	/**
+	 * Run 123 (agent 57): the combo spacing controller (ComboSpacing) in its own combo, from its swing at them in reach (the click, as
+	 * FightSession tells it) until their hit is felt; outside it the chaser. Its swing waits for READY (the rules' line, SwingGate.MIN_CHARGE).
+	 */
+	static float SPACING_READY = 0.95f;
+
+	static Policy spacing() {
+		dev.swordai.core.school.ComboSpacing c = new dev.swordai.core.school.ComboSpacing();
+		return new Policy() {
+			int lag;
+
+			public void start(long seed, int lag) {
+				this.lag = lag;
+				c.reset();
+			}
+
+			public void tick(Duel d, Events e, Keys k) {
+				if (e.theyHit != Events.NONE) {
+					c.hitTaken();
+				}
+				k.clear();
+				k.forward = 1;
+				k.sprint = true;
+				k.attack = d.me.charge >= GATE && d.reach <= Duel.REACH;
+				boolean pick = d.reach <= Duel.REACH;
+				if (c.tick(d, SPACING_READY, pick, false, lag + 2, lag)) {
+					k.forward = c.forward();
+					k.sprint = c.sprint();
+					k.attack = c.attack();
+					k.jump = false;
+					holdNow = 0;
+				} else {
+					holdNow = -1;
+				}
+				if (k.attack && pick) {
+					c.hitDealt();
+				}
+			}
+		};
+	}
+
 	/** The holder's hold this tick (-1 outside its combo), read by the sim at its hits. */
 	static int holdNow = -1;
 
@@ -817,14 +858,14 @@ public class ComboSim {
 		teacherNoSpacing.p[Technique.T11C.ordinal()] = 0f;
 		String[] names = {"chaser (W+sprint, swing at 1.0)", "lunger (T11a at a backer)", "teacher (run 92/93)", "teacher, pre-run-92 (hops)",
 				"teacher, no space, no hops/T10", "noisy (half-trained)", "holder (run 97 mix)", "holder, ground only", "holder, jumps only",
-				"naive jumper (rises into reach)"};
+				"naive jumper (rises into reach)", "spacing (run 123)"};
 		float[] mix = dev.swordai.core.school.ComboHolder.WEIGHTS.clone();
 		float[] groundOnly = {0.34f, 0.33f, 0.33f, 0f, 0f, 0f};
 		float[] jumpsOnly = {0f, 0f, 0f, 0.4f, 0.35f, 0.25f};
 		@SuppressWarnings("unchecked")
 		java.util.function.Supplier<Policy>[] pols = new java.util.function.Supplier[] {ComboSim::chaser, () -> lunger(0.45f, 3.0, 5.5),
 				() -> player(teacher, true), () -> player(teacherOld, true), () -> player(teacherNoSpacing, true), ComboSim::noisy,
-				() -> holder(teacher, mix), () -> holder(teacher, groundOnly), () -> holder(teacher, jumpsOnly), ComboSim::naiveJumper};
+				() -> holder(teacher, mix), () -> holder(teacher, groundOnly), () -> holder(teacher, jumpsOnly), ComboSim::naiveJumper, ComboSim::spacing};
 		for (int i = 0; i < pols.length; i++) {
 			if (only != null && !names[i].startsWith(only)) {
 				continue;

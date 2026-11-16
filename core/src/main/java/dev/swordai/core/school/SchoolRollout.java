@@ -78,6 +78,11 @@ public final class SchoolRollout {
 	 * (an attempt in the window after its own hit), whatever technique was told and not by the outcome; 0: none. See SchoolPpo#teach.
 	 */
 	public final float[] noJumpPull;
+	/**
+	 * Run 123: the combo spacing controller's own pull on its heads of the step (ComboSpacing#HEADS: W/S, the sprint, the jump, the swing;
+	 * SchoolSession#SPACING_PULL; 0: none), whatever the outcome or the label; see SchoolPpo#teach.
+	 */
+	public final float[] spacingPull;
 	/** The technique teacher that spoke (a {@link Technique} ordinal), or -1: for the logs. */
 	public final int[] teacherTechnique;
 	/** 1 when the step's policy loss counts, 0 when the step was one where nothing could be decided. */
@@ -125,6 +130,7 @@ public final class SchoolRollout {
 		camPull = new float[capacity];
 		swingPull = new float[capacity];
 		noJumpPull = new float[capacity];
+		spacingPull = new float[capacity];
 		teacherTechnique = new int[capacity];
 		policyWeight = new float[capacity];
 		botTechnique = new int[capacity];
@@ -173,6 +179,7 @@ public final class SchoolRollout {
 		camPull[i] = s.camPull;
 		swingPull[i] = s.swingPull;
 		noJumpPull[i] = s.noJumpPull;
+		spacingPull[i] = s.spacingPull;
 		teacherTechnique[i] = s.teacherTechnique;
 		policyWeight[i] = s.policyWeight;
 		botTechnique[i] = s.botTechnique;
@@ -204,6 +211,8 @@ public final class SchoolRollout {
 		public float swingPull;
 		/** Run 122: see SchoolRollout#noJumpPull. */
 		public float noJumpPull;
+		/** Run 123: see SchoolRollout#spacingPull. */
+		public float spacingPull;
 		public int teacherTechnique = -1;
 		public float policyWeight = 1f;
 		public int botTechnique = -1;

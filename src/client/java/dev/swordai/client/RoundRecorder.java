@@ -2,8 +2,11 @@ package dev.swordai.client;
 
 import dev.swordai.SwordAi;
 import dev.swordai.core.env.BodyState;
+import dev.swordai.core.pvp.Events;
 import dev.swordai.core.rl.ActionSpace;
 import dev.swordai.core.rl.Fighter;
+import dev.swordai.core.school.ComboSpacing;
+import dev.swordai.core.school.ComboTally;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
@@ -102,6 +105,8 @@ final class RoundRecorder {
 	private boolean oppWasGround = true;
 	private double distSum;
 	private long distTicks;
+	/** Run 123: its combos (hits in a row, none taken between) and its hits by distance band, for the round's summary. */
+	private final ComboTally tally = new ComboTally();
 
 	boolean open() {
 		return open;
@@ -136,6 +141,8 @@ final class RoundRecorder {
 		oppWasGround = true;
 		distSum = 0;
 		distTicks = 0;
+		tally.endFight();
+		tally.clear();
 	}
 
 	/** One tick of the fight, after the decision. {@code rules} is {@link Fighter#rules()}. */
@@ -204,6 +211,11 @@ final class RoundRecorder {
 		}
 		lastDist = dist;
 
+		// Run 123: a tick for the combo counts, and their hit (its own comes with the swing, see #swing).
+		tally.tick();
+		if (takenNow) {
+			tally.theirHit();
+		}
 		StringBuilder ev = new StringBuilder();
 		if (dealtNow || takenNow) {
 			if (sinceAnyHit >= EXCHANGE_GAP) {
@@ -308,6 +320,10 @@ final class RoundRecorder {
 			ownSprintHits++;
 		}
 		Tick t = timeline.remove(timeline.size() - 1);
+		if (!"miss".equals(kind)) {
+			// Run 123: its hit, by kind and the distance of the tick the swing was made.
+			tally.ownHit("crit".equals(kind) ? Events.CRIT : "sprint".equals(kind) ? Events.SPRINT : Events.PLAIN, t.dist());
+		}
 		String ev = (t.event().isEmpty() ? "" : t.event() + " ") + "swing:" + kind;
 		timeline.add(new Tick(t.dist(), t.myCharge(), t.oppSword(), t.myHp(), t.oppHp(), t.myGround(), t.oppGround(), t.oppSprint(),
 				t.oppUp(), t.oppToward(), t.oppSide(), t.myToward(), t.keys(), t.rules(), t.oppSideSigned(), t.oppFacing(), t.oppPitch(),
@@ -323,6 +339,7 @@ final class RoundRecorder {
 			return null;
 		}
 		open = false;
+		tally.endFight();
 		if (timeline.size() < MIN_TICKS && dealt + taken == 0) {
 			return null;
 		}
@@ -362,6 +379,7 @@ final class RoundRecorder {
 			return null;
 		}
 		open = false;
+		tally.endFight();
 		String line = closeLine(result, 0);
 		List<String> why = reasons();
 		Path file = dir.resolve(fileName);
@@ -429,10 +447,11 @@ final class RoundRecorder {
 				Came into reach with the opponent's sword ready %d times, with it on its way back %d times.
 				The opponent: came at it %.0f%% of the time, went back %.0f%%, sideways %.0f%%, still %.0f%%; jumps %d; backed straight out after its hit %d times;
 				  distance kept (within 8 blocks) %.2f on average; ping %d ms.
+				Its own combos (run 123: its hits in a row, none taken between; distance at the swing): %s.
 				""", dealt, ownCrits, ownSprintHits, swings, whiffs, taken, takenCrit, takenJumpIn, takenStanding, takenInCooldown, takenReady,
 				answered, combosTaken, longestCombo, firstWon, firstLost, entersOnReady, entersOnCooling,
 				100.0 * oppApproach / moving, 100.0 * oppBack / moving, 100.0 * oppStrafe / moving, 100.0 * oppStill / moving, oppJumps,
-				oppBackedAfterHit, distTicks == 0 ? 0.0 : distSum / distTicks, oppPingMillis);
+				oppBackedAfterHit, distTicks == 0 ? 0.0 : distSum / distTicks, oppPingMillis, tally.line());
 	}
 
 	/** The likely reasons, biggest first; a line each. */
@@ -468,7 +487,8 @@ final class RoundRecorder {
 	}
 
 	static final String RULE_NAMES = "a = answer swing, k = swing kept for the way down, m = run at a jumper, r = jump reset, b = backed out, "
-			+ "t = step back, J = jump made for it, c = camera after a hit, l = looking for a lost opponent, s = straight in";
+			+ "t = step back, J = jump made for it, c = camera after a hit, l = looking for a lost opponent, s = straight in, "
+			+ "H = its own combo held by spacing (run 123)";
 	private static final char[] RULE_CHARS = {'a', 'k', 'm', 'r', 'b', 't', 'J', 'c', 'l', 's'};
 
 	private static String rulesText(int rules) {
@@ -477,6 +497,9 @@ final class RoundRecorder {
 			if ((rules & (1 << i)) != 0) {
 				s.append(RULE_CHARS[i]);
 			}
+		}
+		if ((rules & ComboSpacing.RULE_BIT) != 0) {
+			s.append('H');
 		}
 		return s.toString();
 	}

@@ -436,6 +436,10 @@ public final class SchoolPpo implements AutoCloseable {
 						&& (which != dev.swordai.core.pvp.Technique.BASE.ordinal() || r.letGoPull[i] > 0f)) {
 					pull = 0f;
 				}
+				// Run 123: the combo spacing controller's keys in its own combo (ComboSpacing), at its own pull whatever the outcome or label.
+				if (byTech && r.spacingPull[i] > 0f && (ComboSpacing.HEADS & (1 << h)) != 0) {
+					pull = Math.max(pull, r.spacingPull[i]);
+				}
 				if (ruledHere) {
 					// Not weighed by presses (Teacher.pressWeight) as a technique teacher's keys are: the first updates of run 30b brought the
 					// body keys' ce down fast (jump 0.57 to 0.26 in 6 updates), and a heavier positive would spread the jump (runs 22, 24).

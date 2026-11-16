@@ -1565,6 +1565,59 @@ public final class SchoolSession implements AgentSession {
 
 	private boolean rpCounted = true;
 	private final dev.swordai.core.school.ComboHolder holder = new dev.swordai.core.school.ComboHolder();
+	// ---- Run 123 (agent 57, 16 Nov ~22:45): its own combo held by spacing (COMBO_SPACING) ----------------------------------------------------
+	/**
+	 * Run 123 (the user, 16 Nov 22:40: "ultimate consistency to hold combo over 10 hits easily ... use max method"): in its own combo (from
+	 * its hit as shown until their hit, see dev.swordai.core.school.ComboSpacing) the spacing controller's W/S, sprint, jump (never) and
+	 * swing: side A's rule where A's rules play (training fights with the rules, A of the checks; FightSession does the same in the user's
+	 * game), and in training the target on those heads at SPACING_PULL on every such tick whatever the outcome (the network learns it for
+	 * the fights without the rules), labelled the ordinary fight (BASE). B (the 23 Oct reference) untouched. The heads it presses are not
+	 * judged as a technique's (Performance), and READY_HOLD_COST is not charged on its ticks (its S-tap holds a ready swing on purpose).
+	 * Counters: "run 123" on the training update line, "school check run 123" per check (A and B). false = as before.
+	 */
+	static final boolean COMBO_SPACING = dev.swordai.core.school.ComboSpacing.ON;
+	static final float SPACING_PULL = 1.0f;
+	private final dev.swordai.core.school.ComboSpacing spacing = new dev.swordai.core.school.ComboSpacing();
+	/** Run 123: the controller held A's combo this tick; and the heads its rule pressed (0 in a fight without the rules, and for B). */
+	private boolean spacingNow;
+	private int spacingPressedNow;
+	/** Run 123 counters: [0] training, [1] checks: ticks it held A's combo, ticks its rule pressed the keys; training ticks taught. */
+	private final int[] spacingTicks = new int[2], spacingPressTicks = new int[2];
+	private int spacingTaught;
+	/** Run 123: its combos and its hits by distance band: training (side A), and each side of a check (A, B). */
+	private final dev.swordai.core.school.ComboTally trainTally = new dev.swordai.core.school.ComboTally();
+	private final dev.swordai.core.school.ComboTally[] checkTally = {new dev.swordai.core.school.ComboTally(), new dev.swordai.core.school.ComboTally()};
+
+	/** Run 123: the tally this fight feeds (null for the old stages' reviews). */
+	private dev.swordai.core.school.ComboTally run123Tally() {
+		return mode == Mode.CHECK ? checkTally[installedPlays ? 1 : 0] : review < 0 ? trainTally : null;
+	}
+
+	/** Run 123: the spacing rule's swing line, as A's rules' own (Fighter: Config.swingMinCharge and ruleSwingCharge). */
+	private float spacingReady() {
+		return Math.max(cfg.swingMinCharge, cfg.ruleSwingCharge);
+	}
+
+	/** Run 123: the training update line's segment; the counts start again. */
+	private String run123Line() {
+		String s = String.format(Locale.ROOT, " | run 123 combo spacing (%s, pull %.1f): its own combo ticks held %d (its rule pressed %d, taught %d), %s;"
+				+ " A in training: %s", COMBO_SPACING ? "on" : "off", SPACING_PULL, spacingTicks[0], spacingPressTicks[0], spacingTaught,
+				spacing.takeCounts(), trainTally.line());
+		spacingTicks[0] = spacingPressTicks[0] = spacingTaught = 0;
+		trainTally.clear();
+		return s;
+	}
+
+	/** Run 123: the check's line, A and B; the counts start again. */
+	private String run123CheckLine() {
+		String s = String.format(Locale.ROOT, "A (spacing %s; held %d ticks, its rule pressed %d): %s | B: %s", COMBO_SPACING ? "on" : "off",
+				spacingTicks[1], spacingPressTicks[1], checkTally[0].line(), checkTally[1].line());
+		spacingTicks[1] = spacingPressTicks[1] = 0;
+		checkTally[0].clear();
+		checkTally[1].clear();
+		return s;
+	}
+	// ---- end of run 123's fields ------------------------------------------------------------------------------------------------------------
 	private boolean holderOn;
 	/**
 	 * Run 106 (the user, 15 Nov 17:55: "why no data?" for T10 uppercut, T11a lunge, T11b hops): the combo-hold teacher's uppercut, lunge
@@ -1723,6 +1776,7 @@ public final class SchoolSession implements AgentSession {
 				// Run 104: each included technique's rate, priority and pull, the weakest-technique fights and the scene kinds picked.
 				+ stages.run104Line() + (dev.swordai.core.school.SchoolStages.ALL_TO_70 ? ";" + priorityKindLine() : "")
 				+ run107Line()
+				+ run123Line()
 				+ String.format(Locale.ROOT, " | run 86, its own take-offs after their 2nd hit: their next hit within %d ticks anyway (charged) %d, out %d",
 						COMBO_TAKEOFF_WINDOW, comboTakeoffFail, comboTakeoffOut)
 				+ String.format(Locale.ROOT, " | run 84, their combo from their 2nd hit, W/S/sprint/jump the network's: %d ticks, S pressed %d; their 3rd hit after their 2nd: those fights %d/%d, other fights %d/%d",
@@ -4322,6 +4376,10 @@ public final class SchoolSession implements AgentSession {
 		holder.start(seed ^ 0x40D97L);
 		holder.seenLag(agentLag);
 		holderOn = false;
+		// Run 123: a new fight, nothing held.
+		spacing.reset();
+		spacingNow = false;
+		spacingPressedNow = 0;
 		holdAt = -1;
 		holdJumpAir = false;
 		fightLag = agentLag;
@@ -4729,6 +4787,25 @@ public final class SchoolSession implements AgentSession {
 		CombatLog.drain(facts);
 		boolean shownDealt = hasLastAction && clicked && clickOnTarget;
 		if (hasLastAction) {
+			// Run 123: its combos and its hits by distance band (the distance when the swing was made), this fight's side.
+			dev.swordai.core.school.ComboTally tally123 = run123Tally();
+			if (tally123 != null) {
+				tally123.tick();
+				if (facts.hitsDealt > 0) {
+					tally123.ownHit(facts.critDealt ? dev.swordai.core.pvp.Events.CRIT : facts.sprintHit ? dev.swordai.core.pvp.Events.SPRINT
+							: dev.swordai.core.pvp.Events.PLAIN, clicked ? reachAtClick : facts.reachDist);
+				}
+				if (facts.hitsTaken > 0) {
+					tally123.theirHit();
+				}
+			}
+			// Run 123: the spacing controller's combo (its hit as shown, as the clocks; their hit ends it).
+			if (shownDealt) {
+				spacing.hitDealt();
+			}
+			if (facts.hitsTaken > 0) {
+				spacing.hitTaken();
+			}
 			long[] sc = ruleOff && mode == Mode.TRAIN ? ruleOffSwings : swingCount[installedPlays ? 1 : 0];
 			sc[0] += clicked ? 1 : 0;
 			sc[1] += clicked && clickOnTarget ? 1 : 0;
@@ -5441,6 +5518,7 @@ public final class SchoolSession implements AgentSession {
 		step.camPull = 0f;
 		step.swingPull = 0f;
 		step.noJumpPull = 0f;
+		step.spacingPull = 0f;
 		// A teacher with no pull leaves its keys to the installed model (NO_PULL_YIELDS): its target would replace the installed
 		// model's on those keys and teach nothing. The technique's moment is still judged on its own keys (perf, below).
 		float[] pulls = stages.techPulls();
@@ -5985,6 +6063,24 @@ public final class SchoolSession implements AgentSession {
 			step.swingPull = SWING_PULL;
 			swingTaught++;
 		}
+		// Run 123 (COMBO_SPACING): in its own combo the spacing controller (side A; B returned above). Its keys are the target on its heads
+		// in training (over any other lesson there, labelled the ordinary fight), and A's rule where the rules play (pressed below, after the
+		// installed rules' keys are put in).
+		spacingNow = COMBO_SPACING && review < 0 && spacing.tick(reader.duel, spacingReady(), pickNow, k2Hold, fightLag + K2_MARGIN, fightLag);
+		spacingPressedNow = spacingNow && RULE_OVERLAY && installed != null && !ruleOff ? dev.swordai.core.school.ComboSpacing.HEADS : 0;
+		if (spacingNow) {
+			int sm = mode == Mode.CHECK ? 1 : 0;
+			spacingTicks[sm]++;
+			spacingPressTicks[sm] += spacingPressedNow != 0 ? 1 : 0;
+			if (mode == Mode.TRAIN) {
+				step.teacherHeads |= spacing.target(step.teacher);
+				step.teacherTechnique = base;
+				step.spacingPull = SPACING_PULL;
+				spacingTaught++;
+			}
+			// The installed rules' keys are not put on its heads (the loop below); its own are, after it.
+			ruled &= ~spacingPressedNow;
+		}
 		// The body's keys only (run 30b): the camera is a fine choice among 15 and 11 bins (the aim rule picks one from the camera's
 		// push), and in the first updates of run 30b it was 53% of the rules' head-ticks at cross-entropy 3.4 to 5.1 and 20%
 		// agreement, while the network without the rules already lands 97% of its swings to the installed model's 89%.
@@ -6022,11 +6118,21 @@ public final class SchoolSession implements AgentSession {
 			}
 			ruleTicks++;
 		}
+		if (spacingPressedNow != 0) {
+			// Run 123: the spacing rule's keys, preset like a rule's (the network's other heads are chosen knowing them).
+			spacing.press(action);
+			ruled |= spacingPressedNow;
+			keys &= ~spacingPressedNow;
+		}
 		// Told the punish crit in a lift, its teacher's swing is taught though a rule presses it (SchoolStages#PUNISH_SHADOW).
 		step.shadowHeads = dev.swordai.core.school.SchoolStages.PUNISH_SHADOW && mode == Mode.TRAIN && liftedFor >= 0 && !me.onGround()
 				&& learner.told() == Technique.B1 && step.teacherTechnique == Technique.B1.ordinal()
 				&& (step.teacherHeads & ActionSpace.mask(ActionSpace.ATTACK)) != 0
 				? ruled & dev.swordai.core.school.SchoolStages.PUNISH_SHADOW_KEYS : 0;
+		if (mode == Mode.TRAIN) {
+			// Run 123: its keys are taught though its rule presses them (as PUNISH_SHADOW).
+			step.shadowHeads |= spacingPressedNow;
+		}
 		// Run 122: the window after its own hit (that hit at most 20 ticks old, none taken since); the one jump-in of an engagement is not in it.
 		boolean ownHitWindowNow = dev.swordai.core.school.SchoolFighter.ownHitWindow(clock.ticksSinceHitDealt, clock.ticksSinceHitTaken);
 		boolean ownHitTrain = mode == Mode.TRAIN && review < 0 && ownHitWindowNow && !(JUMP_ONCE && jumpInOpen);
@@ -6154,8 +6260,9 @@ public final class SchoolSession implements AgentSession {
 		readyOpenNow = ActionSpace.unlocked(keys, ActionSpace.ATTACK);
 		countReady(0, charge, reader.duel.them.falling() || truth.botFalling(), k2Hold);
 		if (READY_HOLD_COST > 0f && mode == Mode.TRAIN && review < 0 && me.onGround() && charge >= 0.95f && facts.reachDist <= 3.0f
-				&& onOpponent() && action[ActionSpace.ATTACK] == 0 && !k2Hold && reader.duel.them.onGround && !truth.botFalling()) {
+				&& onOpponent() && action[ActionSpace.ATTACK] == 0 && !k2Hold && reader.duel.them.onGround && !truth.botFalling() && !spacingNow) {
 			// Run 96: a ready sword held with them on the ground, in reach, under the crosshair (see READY_HOLD_COST).
+			// Run 123: not on the spacing controller's ticks (its S-tap holds a ready sword nearer than the edge on purpose).
 			enterReward -= READY_HOLD_COST;
 			readyHoldCharged++;
 		}
@@ -6265,13 +6372,15 @@ public final class SchoolSession implements AgentSession {
 		if (ruleOff && mode == Mode.TRAIN) {
 			// nothing counted
 		} else if (judgedApart) {
-			perf.tick(judgedTechnique, judgedHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH)), judgedTarget, action, keys,
+			perf.tick(judgedTechnique, judgedHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH)) & ~spacingPressedNow, judgedTarget, action, keys,
 					facts.damageDealt, facts.damageTaken);
 		} else {
 			// Run 106: the hold teacher's uppercut/lunge/hop ticks are judged as their own technique.
 			int judged = holdLabel >= 0 && step.teacherTechnique == Technique.BASE.ordinal() ? holdLabel : step.teacherTechnique;
 			// Run 119: a hold turned to the swing is not judged on the swing (the technique's own keys only; see TEACHER_HOLD_SWING).
-			int judgedNow = step.teacherHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH) | (holdTurnedNow ? 1 << ActionSpace.ATTACK : 0));
+			// Run 123: nor on the keys the spacing rule pressed (its own keys, not the network's).
+			int judgedNow = step.teacherHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH) | (holdTurnedNow ? 1 << ActionSpace.ATTACK : 0))
+					& ~spacingPressedNow;
 			perf.tick(judged, judgedNow, step.teacher, action, keys, facts.damageDealt, facts.damageTaken);
 		}
 		holdLabel = -1;
@@ -6838,6 +6947,11 @@ public final class SchoolSession implements AgentSession {
 	}
 
 	private void endFight(boolean won, boolean lost) {
+		// Run 123: its combo still running is counted; no hit comes next.
+		dev.swordai.core.school.ComboTally tally123 = run123Tally();
+		if (tally123 != null) {
+			tally123.endFight();
+		}
 		if (fightComboable && mode == Mode.TRAIN) {
 			comboableFights++;
 			holdRuns[fightBreaker ? 1 : 0][0]++;
@@ -7075,6 +7189,8 @@ public final class SchoolSession implements AgentSession {
 		// Run 122: take-offs right after its own hit (the window: its hit at most 20 ticks old, none taken since), A's tried ones the guard let go
 		// of, and what would show a fear of jumping for crits: the jump-ins outside the window and its crits dealt.
 		int[] oa = ownHitTakeoffs[0], ob = ownHitTakeoffs[1];
+		// Run 123: its combos (hits in a row, none taken between) and its hits by distance band, A (the spacing rule on its keys) and B.
+		SwordAi.LOGGER.info("school check run 123 | {}", run123CheckLine());
 		SwordAi.LOGGER.info("school check run 122 | take-offs after its own hit, none taken since, {} ticks (all | 0-3 ticks after the hit | sword under {}"
 				+ " | both | not a rule's) A {} {} {} {} {} | B {} {} {} {} {} | A's own tried there {}, let go of by the guard (within {}, sword under {}) {} ({})"
 				+ " | jump-ins outside it (take-offs at 3-6 blocks moving toward them) A {} B {} | crits dealt A {} B {}",

@@ -9,6 +9,7 @@ import dev.swordai.core.rl.ActionSpace;
 import dev.swordai.core.rl.CritBackRead;
 import dev.swordai.core.rl.Fighter;
 import dev.swordai.core.school.AbPool;
+import dev.swordai.core.school.ComboSpacing;
 import dev.swordai.core.school.SchoolFighter;
 import dev.swordai.core.school.SchoolLearner;
 import dev.swordai.core.vision.ViewGeometry;
@@ -105,6 +106,19 @@ final class FightSession implements AgentSession {
 	private long oldNetOwnHitStripped, oldNetOwnHitTried;
 	/** Run 122: ticks since its own hit (told when the swing is made, as the networks are) and since a hit taken, for the old model's guard. */
 	private int sinceOwnHit = 1000, sinceTakenHit = 1000;
+	/**
+	 * Run 123 (ComboSpacing; the user, 16 Nov 22:40: "hold combo over 10 hits easily"): in its own combo (from its hit until theirs), a rule
+	 * over the network's keys and the other rules' on W/S, the sprint, the jump (never) and the swing: S back to the edge of reach while its
+	 * sword comes back, W again so that the hit is a sprint hit, the swing at the edge (2.6-3.0) the tick the sword is at the rules' line,
+	 * the game's pick on them, not on one falling (K2). With the rules on (an arm without them gets none); the 23 Oct model too. The round
+	 * file's rules show it as 'H'. false = as before.
+	 */
+	static final boolean COMBO_SPACING = ComboSpacing.ON;
+	private final ComboSpacing spacing = new ComboSpacing();
+	/** Run 123: the swing's charge line for the spacing rule (the rules' own: Config.ruleSwingCharge, online ruleSwingChargeOnline). */
+	private final float spacingReady;
+	/** Run 123: the spacing rule held the keys this tick. */
+	private boolean spacingNow;
 	/** Ticks since a hit taken on the ground lifted it, -1 when not lifted (the rules leave W to the network in its fall). */
 	private int liftedFor = -1;
 	private boolean groundBefore = true;
@@ -216,6 +230,9 @@ final class FightSession implements AgentSession {
 			schoolLearner = null;
 			school = null;
 		}
+		// Run 123: the spacing rule's swing waits for the rules' line (Fighter#ruleMinCharge's parts).
+		this.spacingReady = mc.hasSingleplayerServer() ? Math.max(loaded.cfg.swingMinCharge, loaded.cfg.ruleSwingCharge)
+				: Math.max(loaded.cfg.swingMinChargeOnline, loaded.cfg.ruleSwingChargeOnline);
 		this.groundY = mc.player.getY();
 		this.body.patchedUp = school == null && loaded.patchedUp;
 		SwordFiles.clearLastError();
@@ -433,6 +450,8 @@ final class FightSession implements AgentSession {
 			}
 			fighter.hitTaken();
 			hitsTaken++;
+			// Run 123: their hit ends its combo (the spacing rule lets go).
+			spacing.hitTaken();
 		}
 		lastOwnHurt = me.hurtTime;
 		boolean dealtNow = opp.hurtTime > lastOpponentHurt && ticksSinceConnect <= HIT_CREDIT_TICKS;
@@ -499,12 +518,14 @@ final class FightSession implements AgentSession {
 				jumpInAir = true;
 			}
 			// Run 49: the jump's ticks from their ground flag (the user's 5 Nov numbers), not from the rise drawn a tick later.
-			school.holdJumpInSwing(SchoolSession.JUMP_IN_HOLD_THROUGH_HIT && SchoolSession.JUMP_IN_GUARD && jumpInAir
-					&& SchoolSession.jumpInTick(them) > SchoolSession.JUMP_IN_SWING_TICKS && !SchoolSession.critSwingNow(me));
-			school.holdSwing(!SchoolSession.JUMP_IN_HOLD_THROUGH_HIT && SchoolSession.JUMP_IN_GUARD && jumpInAir
+			boolean jumpInHold = SchoolSession.JUMP_IN_HOLD_THROUGH_HIT && SchoolSession.JUMP_IN_GUARD && jumpInAir
+					&& SchoolSession.jumpInTick(them) > SchoolSession.JUMP_IN_SWING_TICKS && !SchoolSession.critSwingNow(me);
+			boolean swingHold = !SchoolSession.JUMP_IN_HOLD_THROUGH_HIT && SchoolSession.JUMP_IN_GUARD && jumpInAir
 					&& SchoolSession.jumpInTick(them) > SchoolSession.JUMP_IN_SWING_TICKS
 					&& !(SchoolSession.JUMP_IN_LET_CRIT && SchoolSession.critSwingNow(me)) || SchoolSession.K2_GUARD && me.isSprinting()
-					&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, ownPingTicks() + SchoolSession.K2_MARGIN));
+					&& dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, ownPingTicks() + SchoolSession.K2_MARGIN);
+			school.holdJumpInSwing(jumpInHold);
+			school.holdSwing(swingHold);
 			double reachNow = Math.sqrt(opp.getBoundingBox().distanceToSqr(me.getEyePosition()));
 			school.rulesLetGo(SchoolSession.RULES_LET_GO_IN_LIFT && liftedFor >= 0 && !me.onGround() && reachNow <= 3.5
 					&& me.getAttackStrengthScale(0f) > 0.5f
@@ -514,6 +535,8 @@ final class FightSession implements AgentSession {
 			// Run 122: eye to their hitbox, for the own-hit jump guard (SchoolFighter#ownHitJumpGuard).
 			school.reachNow(reachNow);
 			action = school.decide(observer.frame, body, reader.memory());
+			// Run 123: in its own combo the spacing rule's keys (with the rules on); the guards as SchoolFighter applies them.
+			applySpacing(action, rulesOn, swingHold && spacing.sinceHit() > SchoolFighter.K2_COMBO_TICKS || jumpInHold);
 			AgentController.apply(mc, action, school.yawRate(), school.pitchRate());
 			chargeAtClick = me.getAttackStrengthScale(0f);
 			sprintAtClick = me.isSprinting();
@@ -552,6 +575,8 @@ final class FightSession implements AgentSession {
 					oldNetOwnHitStripped++;
 				}
 			}
+			// Run 123: in its own combo the spacing rule's keys over the 23 Oct model's (its view of them read above with the faller guard).
+			applySpacing(action, OLD_NET_FALLER_GUARD, false);
 			AgentController.apply(mc, action, fighter.yawRate(), fighter.pitchRate());
 			chargeAtClick = me.getAttackStrengthScale(0f);
 			sprintAtClick = me.isSprinting();
@@ -565,7 +590,8 @@ final class FightSession implements AgentSession {
 				rounds.start(opponentName, arm != null ? arm.tag : null);
 			}
 			// With the school's network under the installed model's rules, the rules that pressed keys are recorded too (1 Nov: the timelines could not tell them from the network).
-			rounds.tick(me, opp, body, action, school != null && !rulesOn ? 0 : fighter.rules(), dealtNow, takenNow);
+			rounds.tick(me, opp, body, action, (school != null && !rulesOn ? 0 : fighter.rules()) | (spacingNow ? ComboSpacing.RULE_BIT : 0),
+					dealtNow, takenNow);
 		}
 		clicked = action[ActionSpace.ATTACK] == 1;
 		clickResolved = false;
@@ -613,6 +639,8 @@ final class FightSession implements AgentSession {
 				school.hitDealt();
 			}
 			fighter.hitDealt();
+			// Run 123: its hit, told when the swing is made, as the networks are: its combo goes on (the spacing rule holds the keys).
+			spacing.hitDealt();
 			sinceOwnHit = 0;
 		}
 	}
@@ -656,6 +684,25 @@ final class FightSession implements AgentSession {
 			SwordAi.LOGGER.info("round: {}", line);
 			if (!"open".equals(result)) {
 				say(line);
+			}
+		}
+	}
+
+	/**
+	 * Run 123 (COMBO_SPACING): in its own combo the spacing rule's W/S, sprint, jump (none) and swing over {@code action} (the network's
+	 * and the rules' keys), its swing only with the game's pick on them, and the rules' fighter told the keys really pressed.
+	 *
+	 * @param on        the rule may play (the rules over the network are on)
+	 * @param swingHeld the session's guards hold the swing this tick
+	 */
+	private void applySpacing(int[] action, boolean on, boolean swingHeld) {
+		spacingNow = COMBO_SPACING && on && spacing.tick(reader.duel, spacingReady, onOpponent(), swingHeld,
+				ownPingTicks() + SchoolSession.K2_MARGIN, ownPingTicks());
+		if (spacingNow) {
+			spacing.press(action);
+			int[] ruleKeys = fighter.action();
+			if (ruleKeys != action) {
+				System.arraycopy(action, 0, ruleKeys, 0, ActionSpace.HEADS);
 			}
 		}
 	}
@@ -733,6 +780,7 @@ final class FightSession implements AgentSession {
 	private void resetBrain(boolean forget) {
 		fighter.reset();
 		critBack.reset();
+		spacing.reset();
 		sinceOwnHit = 1000;
 		sinceTakenHit = 1000;
 		if (school != null) {
@@ -811,7 +859,9 @@ final class FightSession implements AgentSession {
 				+ String.format(Locale.ROOT, "; run 122 (%s): its own take-offs right after its own hit (no hit taken since, %d ticks) %d, let go of"
 						+ " (within %.1f, sword under %.1f) %d", OWN_HIT_JUMP_GUARD ? "on" : "off", SchoolFighter.OWN_HIT_WINDOW,
 						school != null ? school.ownHitJumpsTried : oldNetOwnHitTried, SchoolFighter.OWN_HIT_GUARD_REACH,
-						SchoolFighter.OWN_HIT_GUARD_CHARGE, school != null ? school.ownHitJumpsStripped : oldNetOwnHitStripped);
+						SchoolFighter.OWN_HIT_GUARD_CHARGE, school != null ? school.ownHitJumpsStripped : oldNetOwnHitStripped)
+				// Run 123: the spacing rule's ticks in its own combo by what it did, and the combos it held.
+				+ String.format(Locale.ROOT, "; run 123 combo spacing (%s, swing at %.2f): %s", COMBO_SPACING ? "on" : "off", spacingReady, spacing.counts());
 	}
 
 	private static float percent(long part, long whole) {
