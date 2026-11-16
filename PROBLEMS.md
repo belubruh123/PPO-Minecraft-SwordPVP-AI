@@ -2127,3 +2127,14 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Run 124: run-in 133, swing 11, stood aside for other rules 547.
 - Punish crit chances critted 53%. Told and landed fell to 34% (from 39-42%): B1 is now told on every punishable lift, harder ones included. Watch it.
 - Next check about 02:35. No new real rounds.
+
+## 17 Nov 02:43 review + the 02:41 check (first with runs 122-124)
+
+- ROUNDS WON A 27/44 vs B 32/44 (z -1.7). Net -14.3 HP a fight (se 4.1). Damage a minute A 356/326, B 429/307.
+- Their third hit A 12/83 (14%) vs B 13/56 (23%).
+- Swung when ready in reach: outside their combo A 27% vs B 52%; in their combo A 34% vs B 41%.
+- Run 123 tally: A's sprint hits from 2.6+ 85% (B 58%). Its combos 2+ 13, 3+ 5, 5+ 0, mean 2.5 (B 8/6/1, mean 3.4). Their hit next after A's 2.6+ sprint hits 12/20.
+- Run 124: they came into its reach with its sword ready 16 times, its hit first 13. Their 3+ runs on it 0 (B 2). No long S.
+- Run 122: own take-offs after its own hit A 0, B 3. Jump-ins outside A 9 vs B 4; crits dealt A 6 vs B 7.
+- Punish crit chances critted 59%; told and landed 41%.
+- Cause: run 123's swing gate (2.6-3.0 and sprinting only) held ready swings in reach. Fix: run 123b (6ce703f), SWING_ANY_IN_REACH; redeploy requested 02:51.
