@@ -428,17 +428,19 @@ public final class SchoolPpo implements AutoCloseable {
 				if (byTech && h == ActionSpace.ATTACK && r.swingPull[i] > 0f) {
 					pull = Math.max(pull, r.swingPull[i]);
 				}
+				// Run 124: the counter-spacing lesson (CounterSpacing) on W/S, A/D, the sprint and the swing at its own pull, whatever the label
+				// and however the moment went (also where its rule pressed the key: the step's shadowHeads).
+				boolean spacingHere = byTech && r.spacingPull[i] > 0f && (CounterSpacing.HEADS & (1 << h)) != 0;
+				if (spacingHere) {
+					pull = Math.max(pull, r.spacingPull[i]);
+				}
 				// Learned from the fight (SchoolStages#FROM_THE_FIGHT): a technique's keys only where the moment went better than expected.
 				// Run 122 (SchoolStages#B1_KEYS_ALWAYS): B1's gated W/S and sprint on every told tick too.
 				boolean b1Swing = which == dev.swordai.core.pvp.Technique.B1.ordinal() && (SchoolStages.B1_SWING_ALWAYS && h == ActionSpace.ATTACK
 						|| SchoolStages.B1_KEYS_ALWAYS && (SchoolStages.B1_GATED_HEADS & (1 << h)) != 0);
-				if (SchoolStages.FROM_THE_FIGHT && byTech && !camera && adv <= 0f && !b1Swing && !everyJump
+				if (SchoolStages.FROM_THE_FIGHT && byTech && !camera && adv <= 0f && !b1Swing && !everyJump && !spacingHere
 						&& (which != dev.swordai.core.pvp.Technique.BASE.ordinal() || r.letGoPull[i] > 0f)) {
 					pull = 0f;
-				}
-				// Run 123: the combo spacing controller's keys in its own combo (ComboSpacing), at its own pull whatever the outcome or label.
-				if (byTech && r.spacingPull[i] > 0f && (ComboSpacing.HEADS & (1 << h)) != 0) {
-					pull = Math.max(pull, r.spacingPull[i]);
 				}
 				if (ruledHere) {
 					// Not weighed by presses (Teacher.pressWeight) as a technique teacher's keys are: the first updates of run 30b brought the
@@ -508,7 +510,8 @@ public final class SchoolPpo implements AutoCloseable {
 							ruleAgree[k] += stored[off + best] >= Teacher.ANY ? 1 : 0;
 						}
 					}
-				} else if (shadowed) {
+				} else if (shadowed && r.spacingPull[i] == 0f) {
+					// (Run 124: the counter-spacing heads shadowed under its rule count with the technique keys below, not as punish shadows.)
 					if (stored[off + 1] >= Teacher.ANY) {
 						shadowSwings++;
 						shadowSwingAgree += best == 1 ? 1 : 0;

@@ -38,6 +38,11 @@ import dev.swordai.core.rl.ActionSpace;
  * of reach until they land); never a jump.</li>
  * </ol>
  * Distances are the session's: eye to their box ({@link Duel#reach}), as the game measures reach and the pick reaches 3.0. Deterministic.
+ *
+ * <p>Where it plays: the user's duels (FightSession) press its keys through run 124's outside-rule slot ({@link SchoolFighter#outsideRule},
+ * over CounterSpacing's on the ticks both would play; the jump is stripped after the decision); training and checks (SchoolSession) preset
+ * them like a rule's for side A where the rules play, and in training put them on the teacher's target at run 124's shared spacing pull
+ * (CounterSpacing stands aside on its ticks). Side B (the installed model in checks) is never touched.
  */
 public final class ComboSpacing {
 	/** Run 123's switch for the sessions (FightSession, SchoolSession): false = no controller, no target, as before. */
@@ -63,17 +68,17 @@ public final class ComboSpacing {
 	 */
 	public static final int RULE_BIT = 1 << 20;
 
-	/** The swing from here to the reach: the evidence's band where their hit came next 15% (2.0-2.6: 54%, under 2.0: 72%). */
-	public static final double SWING_FROM = 2.6;
+	/** The swing from here to the reach: the evidence's band where their hit came next 15% (2.0-2.6: 54%, under 2.0: 72%); run 124's edge (shared). */
+	public static final double SWING_FROM = CounterSpacing.EDGE_FROM;
 	/** S below this (the task's "back to the edge of reach, about 2.7-3.0"). */
 	public static final double EDGE_LO = 2.7;
 	/** Where the approach aims to be as its sword is back: the middle of the edge band 2.7-3.0. */
 	public static final double EDGE_TARGET = 2.85;
 	/**
 	 * A sprint's speed on the ground, blocks a tick: the game's sprint push 0.13 a tick (LivingEntity: 0.1 walking, x1.3 sprinting) over
-	 * ground friction 0.546, 0.13 / (1 - 0.546) = 0.286 (Config's "a run closes on that one by 0.28"; tools/combosim's physics).
+	 * ground friction 0.546, 0.13 / (1 - 0.546) = 0.286 (Config's "a run closes on that one by 0.28"; tools/combosim's physics); run 124's SPRINT_TICK (shared).
 	 */
-	public static final double SPRINT_SPEED = 0.28;
+	public static final double SPRINT_SPEED = CounterSpacing.SPRINT_TICK;
 	/** A walk's (and S's) speed, 0.1 / (1 - 0.546) = 0.22: the most their walking away is counted (a flight from its hit slows and lands). */
 	public static final double WALK_SPEED = 0.22;
 	/**

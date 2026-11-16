@@ -300,6 +300,31 @@ public final class SchoolSession implements AgentSession {
 	static final boolean SWING_IN_REACH = true;
 	private int swingTaught;
 	/**
+	 * Run 124 (agent 58; dev.swordai.core.school.CounterSpacing): side A only, in their combo and as they close in, on the ground with them on
+	 * the ground: its sword ready, the sprint in and the hit at the edge as they enter reach; not ready, S taps just outside their reach and a
+	 * strafe; never a long S, never a jump. A rule in the checks and in training where the rules play (CounterSpacing.RULE_IN_TRAINING; not
+	 * in a fight without the rules nor run 84's combo-exit fights, where the network presses its keys), and the teacher's target at full pull
+	 * in training (step.spacingPull, shadow-taught under the rule). There the long S escapes (C2, C3, C4) are not taught: their moment is the
+	 * ordinary fight's. It stands aside for the rules that come first (CounterSpacing.RULES_FIRST: the jump reset, the punish crit, keep,
+	 * m, J), the jump and crit techniques told or taught (CounterSpacing#keeps), and one in the air. B (the 23 Oct reference) unchanged.
+	 * false = as before.
+	 */
+	static final boolean COUNTER_SPACING = true;
+	/** Run 124: also in the benchmark's episodes (off: the benchmarks stay comparable with the earlier ones). */
+	static final boolean COUNTER_SPACING_BENCH = false;
+	private final dev.swordai.core.school.CounterSpacing counter = new dev.swordai.core.school.CounterSpacing();
+	private final dev.swordai.core.school.CounterSpacing.Input counterIn = new dev.swordai.core.school.CounterSpacing.Input();
+	/** Run 124's tallies: [0] training (A), [1] checks A, [2] checks B. */
+	private final dev.swordai.core.school.CounterSpacing.Tally[] counterTally = {new dev.swordai.core.school.CounterSpacing.Tally(),
+			new dev.swordai.core.school.CounterSpacing.Tally(), new dev.swordai.core.school.CounterSpacing.Tally()};
+	/** Run 124, [0] training, [1] checks: its decisions in its moments (CounterSpacing.WHY_NAMES), ticks pressed as a rule, rule b's S overridden. */
+	private final int[][] counterBy = new int[2][dev.swordai.core.school.CounterSpacing.WHY_NAMES.length];
+	private final int[] counterRuled = new int[2], counterBackOver = new int[2];
+	/** Run 124 (training): ticks taught, C2/C3/C4 moments turned to the ordinary fight's, heads freed from the rules for the network. */
+	private int counterTaught, counterReplaced, counterFreedTicks;
+	/** Run 124, this tick: heads freed from the rules (label only), and heads not judged for the technique (its keys or its target). */
+	private int counterFree, counterJudgedOut;
+	/**
 	 * Run 118 (counter only): of the ready ticks outside their combo held with the swing open, the crosshair's pick on them and them
 	 * on the ground and not falling, why the swing lesson did not make it swing: the lesson was on (the network held anyway), a
 	 * teacher's "hold" on the swing, a teacher's "swing", a technique moment with no swing target, the jump-in guard or K2, other.
@@ -5479,6 +5504,10 @@ public final class SchoolSession implements AgentSession {
 			applyAction(installed.fighter.yawRate(), installed.fighter.pitchRate());
 			clicked = action[ActionSpace.ATTACK] == 1;
 			countReady(1, charge, reader.duel.them.falling() || truth.botFalling(), false);
+			if (mode == Mode.CHECK) {
+				// Run 124: B's tally (B unchanged).
+				counterTick(2, charge);
+			}
 			showBar(truth);
 			return;
 		}
@@ -5519,6 +5548,7 @@ public final class SchoolSession implements AgentSession {
 		step.swingPull = 0f;
 		step.noJumpPull = 0f;
 		step.spacingPull = 0f;
+		counterJudgedOut = 0;
 		// A teacher with no pull leaves its keys to the installed model (NO_PULL_YIELDS): its target would replace the installed
 		// model's on those keys and teach nothing. The technique's moment is still judged on its own keys (perf, below).
 		float[] pulls = stages.techPulls();
@@ -6073,9 +6103,12 @@ public final class SchoolSession implements AgentSession {
 			spacingTicks[sm]++;
 			spacingPressTicks[sm] += spacingPressedNow != 0 ? 1 : 0;
 			if (mode == Mode.TRAIN) {
-				step.teacherHeads |= spacing.target(step.teacher);
+				// A/D left to the network (the shared spacing pull would teach any other teacher's strafe at full pull); its "no jump" by
+				// the outcome on the step's jumpPull (SchoolPpo: everyJump).
+				step.teacherHeads = (step.teacherHeads & ~(1 << ActionSpace.STRAFE)) | spacing.target(step.teacher);
 				step.teacherTechnique = base;
 				step.spacingPull = SPACING_PULL;
+				step.jumpPull = Math.max(step.jumpPull, SPACING_PULL);
 				spacingTaught++;
 			}
 			// The installed rules' keys are not put on its heads (the loop below); its own are, after it.
@@ -6139,6 +6172,14 @@ public final class SchoolSession implements AgentSession {
 		if (ownHitTrain && OWN_HIT_NO_JUMP_PULL > 0f && me.onGround() && (ruled & (1 << ActionSpace.JUMP)) == 0 && !ruleJumpWould) {
 			// The "no jump" lesson's pull rides on the step; SchoolPpo teaches it only if the network then presses the jump (the attempt).
 			step.noJumpPull = OWN_HIT_NO_JUMP_PULL;
+		}
+		// Run 124 (COUNTER_SPACING): A's counter spacing in their combo and as they close in, a rule and (training) the teacher's target.
+		int counterPress = counterStep(keys, ruled, charge, installedDecided, guardWould || k2Hold,
+				them.falling() || dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, fightLag + K2_MARGIN));
+		ruled = (ruled & ~counterFree) | counterPress;
+		keys = (keys | counterFree) & ~counterPress;
+		if (counterPress != 0) {
+			counter.plan().writeTo(action);
 		}
 		learner.act(step, keys, ruled, mode == Mode.TRAIN, cfg.playTemperature, action);
 		// Run 122: the network's own take-off tried in the window: charged and taught (training), let go of within 3.5 with the sword under 0.9
@@ -6372,15 +6413,17 @@ public final class SchoolSession implements AgentSession {
 		if (ruleOff && mode == Mode.TRAIN) {
 			// nothing counted
 		} else if (judgedApart) {
-			perf.tick(judgedTechnique, judgedHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH)) & ~spacingPressedNow, judgedTarget, action, keys,
+			// (Run 124: nor on CounterSpacing's keys or target: counterJudgedOut. Run 123: nor on the keys its spacing rule pressed.)
+			perf.tick(judgedTechnique, judgedHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH) | counterJudgedOut | spacingPressedNow), judgedTarget, action, keys,
 					facts.damageDealt, facts.damageTaken);
 		} else {
 			// Run 106: the hold teacher's uppercut/lunge/hop ticks are judged as their own technique.
 			int judged = holdLabel >= 0 && step.teacherTechnique == Technique.BASE.ordinal() ? holdLabel : step.teacherTechnique;
 			// Run 119: a hold turned to the swing is not judged on the swing (the technique's own keys only; see TEACHER_HOLD_SWING).
+			// Run 124: nor on CounterSpacing's keys or target (counterJudgedOut): the technique is judged on its own keys.
 			// Run 123: nor on the keys the spacing rule pressed (its own keys, not the network's).
-			int judgedNow = step.teacherHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH) | (holdTurnedNow ? 1 << ActionSpace.ATTACK : 0))
-					& ~spacingPressedNow;
+			int judgedNow = step.teacherHeads & ~((1 << ActionSpace.YAW) | (1 << ActionSpace.PITCH) | (holdTurnedNow ? 1 << ActionSpace.ATTACK : 0)
+					| counterJudgedOut | spacingPressedNow);
 			perf.tick(judged, judgedNow, step.teacher, action, keys, facts.damageDealt, facts.damageTaken);
 		}
 		holdLabel = -1;
@@ -6418,9 +6461,117 @@ public final class SchoolSession implements AgentSession {
 			liftStage = Math.max(liftStage, 5);
 		}
 		traceDrillLift(me, truth, action, ruled);
+		// Run 124: A's tally (training or check) and the S-tap / strafe clock on the keys really pressed.
+		counterTick(mode == Mode.CHECK ? 1 : 0, charge);
 		System.arraycopy(action, 0, lastAction, 0, ActionSpace.HEADS);
 		hasLastAction = true;
 		showBar(truth);
+	}
+
+	/**
+	 * Run 124 (COUNTER_SPACING): plans A's CounterSpacing for this tick. Returns the heads it presses as a rule (in a check, and in training
+	 * where the rules play); in training writes its target on the step (full pull, shadow-taught under its rule), turns a C2/C3/C4 moment to
+	 * the ordinary fight's, and where it does not press leaves its heads free of the rules for the network (counterFree).
+	 */
+	private int counterStep(int keys, int ruled, float charge, boolean decided, boolean swingHeld, boolean themFalling) {
+		counterFree = 0;
+		counter.plan().clear();
+		if (!COUNTER_SPACING || !dev.swordai.core.school.CounterSpacing.ON || review >= 0 || installed == null || !decided
+				|| benchTag != null && !COUNTER_SPACING_BENCH || ruleOff && mode == Mode.CHECK
+				|| spacingNow) {
+			// Run 123: its own combo is ComboSpacing's (one controller on the shared spacing pull at a time).
+			return 0;
+		}
+		Technique taught = step.teacherTechnique >= 0 ? Technique.ALL[step.teacherTechnique] : null;
+		dev.swordai.core.school.CounterSpacing.Input in = counterIn;
+		in.duel = reader.duel;
+		in.charge = charge;
+		in.readyCharge = Math.max(cfg.swingMinCharge, cfg.ruleSwingCharge);
+		in.pick = pickNow;
+		in.sinceTaken = clock.ticksSinceHitTaken;
+		in.sinceDealt = clock.ticksSinceHitDealt;
+		in.jumpIn = jumpInAir;
+		in.themFalling = themFalling;
+		in.swingHeld = swingHeld;
+		in.yield = (installed.fighter.rules() & dev.swordai.core.school.CounterSpacing.RULES_FIRST) != 0
+				|| dev.swordai.core.school.CounterSpacing.keeps(learner.told()) || mode == Mode.TRAIN && dev.swordai.core.school.CounterSpacing.keeps(taught);
+		dev.swordai.core.school.CounterSpacing.Plan p = counter.plan(in);
+		int side = mode == Mode.CHECK ? 1 : 0;
+		if (p.moment != dev.swordai.core.school.CounterSpacing.NO_MOMENT) {
+			counterBy[side][p.why]++;
+		}
+		if (!p.active()) {
+			return 0;
+		}
+		boolean rule = mode == Mode.CHECK || dev.swordai.core.school.CounterSpacing.RULE_IN_TRAINING && !ruleOff && !comboExitFight;
+		int press = rule ? p.heads & (keys | ruled) : 0;
+		if (mode == Mode.TRAIN) {
+			if (taught != null && dev.swordai.core.school.CounterSpacing.replaces(taught)) {
+				// The long S out (C2/C3/C4) where it counters by spacing: the ordinary fight's moment; the escape's jump goes too, a "no jump" stays.
+				int jo = ActionSpace.OFFSETS[ActionSpace.JUMP];
+				int drop = ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.STRAFE, ActionSpace.SPRINT)
+						| (step.teacher[jo + 1] > step.teacher[jo] ? 1 << ActionSpace.JUMP : 0);
+				step.teacherHeads &= ~drop;
+				step.teacherTechnique = Technique.BASE.ordinal();
+				counterReplaced++;
+			}
+			int heads = dev.swordai.core.school.CounterSpacing.target(p, step.teacher);
+			step.teacherHeads |= heads;
+			if (step.teacherTechnique < 0) {
+				step.teacherTechnique = Technique.BASE.ordinal();
+			}
+			step.spacingPull = dev.swordai.core.school.CounterSpacing.PULL;
+			step.ruledHeads &= ~(heads | press);
+			counterJudgedOut |= heads;
+			if (rule) {
+				step.shadowHeads |= heads & press;
+			} else {
+				counterFree = p.heads & ruled & ~ActionSpace.mask(ActionSpace.ATTACK);
+				counterFreedTicks += counterFree != 0 ? 1 : 0;
+			}
+			counterTaught++;
+		}
+		counterJudgedOut |= press;
+		counterRuled[side] += press != 0 ? 1 : 0;
+		int fwd = 1 << ActionSpace.FORWARD;
+		if ((ruled & fwd) != 0 && (p.heads & fwd) != 0 && installed.fighter.action()[ActionSpace.FORWARD] == dev.swordai.core.rl.BackNudge.BACK
+				&& p.forward != dev.swordai.core.rl.BackNudge.BACK) {
+			counterBackOver[side]++;
+		}
+		return press;
+	}
+
+	/** Run 124: one tick of a side's tally ([0] training A, [1] checks A, [2] checks B) and the controller's clock on A's keys. */
+	private void counterTick(int tally, float charge) {
+		if (tally < 2) {
+			counter.pressed(action[ActionSpace.FORWARD], action[ActionSpace.STRAFE]);
+		}
+		if (review < 0 && COUNTER_SPACING) {
+			// Its sword "ready" at Body.CHARGED (0.9) here, as in the round files' tally and their "beaten to the hit".
+			counterTally[tally].tick(facts.hitsDealt > 0, facts.hitsTaken > 0, facts.reachDist, charge,
+					dev.swordai.core.pvp.Body.CHARGED, action[ActionSpace.FORWARD] == dev.swordai.core.rl.BackNudge.BACK);
+		}
+	}
+
+	/** Run 124: the training update line's segment (A's tally and the controller's counts since the last update). */
+	private String counterSpacingLine() {
+		String s = String.format(Locale.ROOT, " | run 124 counter spacing (%s, rule in training %s): ticks pressed as a rule %d, taught %d (C2/C3/C4 moments turned %d,"
+						+ " heads left to the network %d), rule b's S overridden %d; in its moments:%s | A: %s", COUNTER_SPACING ? "on" : "off",
+				dev.swordai.core.school.CounterSpacing.RULE_IN_TRAINING, counterRuled[0], counterTaught, counterReplaced, counterFreedTicks, counterBackOver[0],
+				counterWhyLine(0), counterTally[0].line());
+		counterRuled[0] = counterTaught = counterReplaced = counterFreedTicks = counterBackOver[0] = 0;
+		java.util.Arrays.fill(counterBy[0], 0);
+		counterTally[0].clear();
+		return s;
+	}
+
+	private String counterWhyLine(int side) {
+		StringBuilder b = new StringBuilder();
+		for (int w = 1; w < counterBy[side].length; w++) {
+			b.append(String.format(Locale.ROOT, " %s %d%s", dev.swordai.core.school.CounterSpacing.WHY_NAMES[w], counterBy[side][w],
+					w + 1 < counterBy[side].length ? "," : ""));
+		}
+		return b.toString();
 	}
 
 	/** What it is doing, on the screen above the hotbar: the stage, the technique whose moment it is, its keys, the bot's. */
@@ -6952,6 +7103,11 @@ public final class SchoolSession implements AgentSession {
 		if (tally123 != null) {
 			tally123.endFight();
 		}
+		// Run 124: the fight's open runs and windows counted; a fresh S-tap and strafe clock.
+		for (dev.swordai.core.school.CounterSpacing.Tally t : counterTally) {
+			t.endFight();
+		}
+		counter.reset();
 		if (fightComboable && mode == Mode.TRAIN) {
 			comboableFights++;
 			holdRuns[fightBreaker ? 1 : 0][0]++;
@@ -7216,6 +7372,14 @@ public final class SchoolSession implements AgentSession {
 		ruleTicks = 0;
 		k2Truth = 0;
 		k2Seen = 0;
+		// Run 124: A's and B's tallies, and A's CounterSpacing decisions in its moments (B has none).
+		SwordAi.LOGGER.info("school check run 124 ({}) | A: {} | B: {} | A's counter spacing: ticks pressed {}, rule b's S overridden {}; in its moments:{}",
+				COUNTER_SPACING && (benchTag == null || COUNTER_SPACING_BENCH) ? "on" : "off", counterTally[1].line(), counterTally[2].line(),
+				counterRuled[1], counterBackOver[1], counterWhyLine(1));
+		counterTally[1].clear();
+		counterTally[2].clear();
+		counterRuled[1] = counterBackOver[1] = 0;
+		java.util.Arrays.fill(counterBy[1], 0);
 	}
 
 	/**
@@ -7838,7 +8002,7 @@ public final class SchoolSession implements AgentSession {
 				+ "| crit chances {}, swung on {}, sprint let go taught on {} lift ticks, aim on {}, turned to find them on {} (off the screen {}) | their hits: {} | punish chances by their hit:{} | swings taught but kept back by a rule (sword gate/whiff guard):{} | technique reward {} for {} moments paid ({} won damage), K2 broken {}{} (the golden rule held the swing on {} ticks, the installed model's rules set keys on {}) | swings: {} | review of the old stages:{} | bots went into:{} | taught now:{} | sparring the installed model:{} | take-over:{}", lastUpdateLine, stages.describe(), learner.predictorLine(),
 				learner.chooserLine(), learner.replayLine(), bots, taught, perfLine(perf), perf.whyLine(),
 				perf.keysLine(), ownLine(0), critLine(0), jumpInLine(0), punishCritsPaid, drillPunishCrits, drillFights, otherCrits, comboHitsPaid, combo3Paid, chaseCrits, madeMiss, deflectStarts, deflectChances, deflectMade, deflectMissed, airJumpHits,
-				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2KindLine(), k2Held, ruleTicks, swingLine(0), reviewLine(), used, taughtNowLine(), sparLine(), takeOverLine() + jumpAlongLine() + dev.swordai.server.TechniqueBot.critLine());
+				critChances, critSwings, sprintLetGo, liftAim, findAim, findBlind, reader.takeTheirHits(), liftLine(), blockedLine(), String.format(Locale.ROOT, "%.1f", shapingPaid), momentsPaid, momentsWon, k2Broken, k2KindLine(), k2Held, ruleTicks, swingLine(0), reviewLine(), used, taughtNowLine(), sparLine(), takeOverLine() + jumpAlongLine() + dev.swordai.server.TechniqueBot.critLine() + counterSpacingLine());
 		java.util.Arrays.fill(swingCount[0], 0L);
 		punishCritsPaid = 0;
 		comboHitsPaid = 0;

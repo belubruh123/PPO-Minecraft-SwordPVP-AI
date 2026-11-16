@@ -23,7 +23,7 @@ public final class ComboTally {
 	public static final int BANDS = 5;
 	public static final String[] BAND_NAMES = {"sprint <2.0", "sprint 2.0-2.6", "sprint 2.6+", "crit", "other"};
 	public static final double NEAR = 2.0;
-	public static final double EDGE = 2.6;
+	public static final double EDGE = CounterSpacing.EDGE_FROM;
 	/** The evidence's window: "followed within 20 ticks by another hit" (SchoolSession.COMBO_GAP). */
 	public static final int NEXT_WITHIN = 20;
 

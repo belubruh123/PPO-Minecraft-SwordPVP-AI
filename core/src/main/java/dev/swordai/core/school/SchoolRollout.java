@@ -79,8 +79,9 @@ public final class SchoolRollout {
 	 */
 	public final float[] noJumpPull;
 	/**
-	 * Run 123: the combo spacing controller's own pull on its heads of the step (ComboSpacing#HEADS: W/S, the sprint, the jump, the swing;
-	 * SchoolSession#SPACING_PULL; 0: none), whatever the outcome or the label; see SchoolPpo#teach.
+	 * Run 124: the counter-spacing lesson's own pull (CounterSpacing#PULL) on the step's W/S, A/D, sprint and swing heads where it taught
+	 * them (the step's teacherHeads), not by the outcome; 0: none. See SchoolPpo#teach. Run 123 shares it in its own combo (ComboSpacing:
+	 * W/S, the sprint and the swing at SchoolSession#SPACING_PULL; its "no jump" rides on the step's jumpPull).
 	 */
 	public final float[] spacingPull;
 	/** The technique teacher that spoke (a {@link Technique} ordinal), or -1: for the logs. */
@@ -211,7 +212,7 @@ public final class SchoolRollout {
 		public float swingPull;
 		/** Run 122: see SchoolRollout#noJumpPull. */
 		public float noJumpPull;
-		/** Run 123: see SchoolRollout#spacingPull. */
+		/** Runs 124 and 123: see SchoolRollout#spacingPull. */
 		public float spacingPull;
 		public int teacherTechnique = -1;
 		public float policyWeight = 1f;

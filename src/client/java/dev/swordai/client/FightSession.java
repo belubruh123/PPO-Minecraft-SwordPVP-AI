@@ -110,15 +110,33 @@ final class FightSession implements AgentSession {
 	 * Run 123 (ComboSpacing; the user, 16 Nov 22:40: "hold combo over 10 hits easily"): in its own combo (from its hit until theirs), a rule
 	 * over the network's keys and the other rules' on W/S, the sprint, the jump (never) and the swing: S back to the edge of reach while its
 	 * sword comes back, W again so that the hit is a sprint hit, the swing at the edge (2.6-3.0) the tick the sword is at the rules' line,
-	 * the game's pick on them, not on one falling (K2). With the rules on (an arm without them gets none); the 23 Oct model too. The round
-	 * file's rules show it as 'H'. false = as before.
+	 * the game's pick on them, not on one falling (K2). With the rules on (an arm without them gets none), through run 124's outside-rule
+	 * slot (SchoolFighter#outsideRule; over CounterSpacing's on the ticks both would play); the 23 Oct model too. The round file's rules show
+	 * it as 'H'. false = as before.
 	 */
 	static final boolean COMBO_SPACING = ComboSpacing.ON;
 	private final ComboSpacing spacing = new ComboSpacing();
 	/** Run 123: the swing's charge line for the spacing rule (the rules' own: Config.ruleSwingCharge, online ruleSwingChargeOnline). */
 	private final float spacingReady;
-	/** Run 123: the spacing rule held the keys this tick. */
+	/** Run 123: the spacing rule held the keys this tick; its keys for the outside-rule slot. */
 	private boolean spacingNow;
+	private final int[] spacingKeys = new int[ActionSpace.HEADS];
+	/**
+	 * Run 124 (dev.swordai.core.school.CounterSpacing): in their combo and as they close in, with the rules on over the school's network, a
+	 * rule of its own ('C' in the round files): its sword ready, the sprint in and the hit at the edge as they enter reach; not ready, S taps
+	 * just outside their reach and a strafe; no long S, no jump; it stands aside for the jump reset, the punish crit, K2 and jump-ins.
+	 * false = as before.
+	 */
+	static final boolean COUNTER_SPACING = true;
+	private final dev.swordai.core.school.CounterSpacing counter = new dev.swordai.core.school.CounterSpacing();
+	private final dev.swordai.core.school.CounterSpacing.Input counterIn = new dev.swordai.core.school.CounterSpacing.Input();
+	private final int[] counterKeys = new int[ActionSpace.HEADS];
+	/** Run 124: the least charge for its swing here (the rules' swing charge on this server or world). */
+	private final float counterReady;
+	/** Run 124: its ticks pressed, by decision (CounterSpacing.WHY_NAMES). */
+	private final long[] counterBy = new long[dev.swordai.core.school.CounterSpacing.WHY_NAMES.length];
+	/** Run 124: its keys were pressed on this tick (the round file's 'C'). */
+	private boolean counterRule;
 	/** Ticks since a hit taken on the ground lifted it, -1 when not lifted (the rules leave W to the network in its fall). */
 	private int liftedFor = -1;
 	private boolean groundBefore = true;
@@ -187,6 +205,9 @@ final class FightSession implements AgentSession {
 			fighter.swingNoEarlierThan(loaded.cfg.swingMinChargeOnline, loaded.cfg.swingExtraTicksOnline);
 			fighter.rulesNoEarlierThan(loaded.cfg.ruleSwingChargeOnline);
 		}
+		// Run 124: CounterSpacing swings no earlier than a rule's swing (Fighter's ruleMinCharge): 1.0 on a server.
+		this.counterReady = mc.hasSingleplayerServer() ? Math.max(loaded.cfg.swingMinCharge, loaded.cfg.ruleSwingCharge)
+				: Math.max(loaded.cfg.swingMinChargeOnline, loaded.cfg.ruleSwingChargeOnline);
 		Path network = arm != null ? arm.network : SwordFiles.schoolCheckpoint();
 		if (Files.exists(network)) {
 			SchoolLearner l = new SchoolLearner(System.nanoTime(), 1, 0.99f, 0.95f, 1);
@@ -534,9 +555,35 @@ final class FightSession implements AgentSession {
 			school.inLift(liftedFor >= 0 && !me.onGround());
 			// Run 122: eye to their hitbox, for the own-hit jump guard (SchoolFighter#ownHitJumpGuard).
 			school.reachNow(reachNow);
+			// Run 124: CounterSpacing's keys as a rule over the network (with the rules on), standing aside where they come first.
+			dev.swordai.core.school.CounterSpacing.Plan counterPlan = null;
+			if (COUNTER_SPACING && rulesOn && dev.swordai.core.school.CounterSpacing.ON) {
+				boolean k2Now = SchoolSession.K2_GUARD && dev.swordai.core.pvp.PvpPlayer.fallingByTheHit(them, ownPingTicks() + SchoolSession.K2_MARGIN);
+				counterIn.duel = reader.duel;
+				counterIn.charge = me.getAttackStrengthScale(0f);
+				counterIn.readyCharge = counterReady;
+				counterIn.pick = onOpponent();
+				counterIn.sinceTaken = sinceTakenHit;
+				counterIn.sinceDealt = sinceOwnHit;
+				counterIn.jumpIn = jumpInAir;
+				counterIn.themFalling = k2Now;
+				counterIn.swingHeld = jumpInAir || k2Now;
+				counterIn.yield = (fighter.rules() & dev.swordai.core.school.CounterSpacing.RULES_FIRST) != 0
+						|| dev.swordai.core.school.CounterSpacing.keeps(schoolLearner.told());
+				counterPlan = counter.plan(counterIn);
+				school.outsideRule(counterPlan.heads, counterPlan.keys(counterKeys));
+				counterBy[counterPlan.why] += counterPlan.active() ? 1 : 0;
+			}
+			// Run 123: in its own combo the spacing rule's W/S, sprint and swing through the same slot, over CounterSpacing's (with the rules
+			// on); the guards as SchoolFighter applies them. Its "no jump" after the decision (the slot never presses the jump).
+			if (spacingTick(rulesOn, swingHold && spacing.sinceHit() > SchoolFighter.K2_COMBO_TICKS || jumpInHold)) {
+				spacing.press(spacingKeys);
+				school.outsideRule(ComboSpacing.HEADS & ~ActionSpace.mask(ActionSpace.JUMP), spacingKeys);
+			}
 			action = school.decide(observer.frame, body, reader.memory());
-			// Run 123: in its own combo the spacing rule's keys (with the rules on); the guards as SchoolFighter applies them.
-			applySpacing(action, rulesOn, swingHold && spacing.sinceHit() > SchoolFighter.K2_COMBO_TICKS || jumpInHold);
+			spacingNoJump(action);
+			counter.pressed(action[ActionSpace.FORWARD], action[ActionSpace.STRAFE]);
+			counterRule = counterPlan != null && counterPlan.active() && !spacingNow;
 			AgentController.apply(mc, action, school.yawRate(), school.pitchRate());
 			chargeAtClick = me.getAttackStrengthScale(0f);
 			sprintAtClick = me.isSprinting();
@@ -590,7 +637,8 @@ final class FightSession implements AgentSession {
 				rounds.start(opponentName, arm != null ? arm.tag : null);
 			}
 			// With the school's network under the installed model's rules, the rules that pressed keys are recorded too (1 Nov: the timelines could not tell them from the network).
-			rounds.tick(me, opp, body, action, (school != null && !rulesOn ? 0 : fighter.rules()) | (spacingNow ? ComboSpacing.RULE_BIT : 0),
+			rounds.tick(me, opp, body, action, (school != null && !rulesOn ? 0 : fighter.rules())
+					| (school != null && counterRule ? dev.swordai.core.school.CounterSpacing.RULE_BIT : 0) | (spacingNow ? ComboSpacing.RULE_BIT : 0),
 					dealtNow, takenNow);
 		}
 		clicked = action[ActionSpace.ATTACK] == 1;
@@ -689,21 +737,34 @@ final class FightSession implements AgentSession {
 	}
 
 	/**
-	 * Run 123 (COMBO_SPACING): in its own combo the spacing rule's W/S, sprint, jump (none) and swing over {@code action} (the network's
-	 * and the rules' keys), its swing only with the game's pick on them, and the rules' fighter told the keys really pressed.
+	 * Run 123 (COMBO_SPACING): the spacing controller's tick, before the keys are chosen (its swing only with the game's pick on them).
 	 *
 	 * @param on        the rule may play (the rules over the network are on)
 	 * @param swingHeld the session's guards hold the swing this tick
+	 * @return whether it holds its own combo's keys this tick
 	 */
-	private void applySpacing(int[] action, boolean on, boolean swingHeld) {
+	private boolean spacingTick(boolean on, boolean swingHeld) {
 		spacingNow = COMBO_SPACING && on && spacing.tick(reader.duel, spacingReady, onOpponent(), swingHeld,
 				ownPingTicks() + SchoolSession.K2_MARGIN, ownPingTicks());
+		return spacingNow;
+	}
+
+	/** Run 123: on a tick it holds, no jump at all (the network's or a rule's), and the rules' fighter told the keys really pressed. */
+	private void spacingNoJump(int[] action) {
 		if (spacingNow) {
-			spacing.press(action);
+			action[ActionSpace.JUMP] = 0;
 			int[] ruleKeys = fighter.action();
 			if (ruleKeys != action) {
 				System.arraycopy(action, 0, ruleKeys, 0, ActionSpace.HEADS);
 			}
+		}
+	}
+
+	/** Run 123, the 23 Oct model (no outside-rule slot there): the spacing rule's W/S, sprint, jump (none) and swing over {@code action}. */
+	private void applySpacing(int[] action, boolean on, boolean swingHeld) {
+		if (spacingTick(on, swingHeld)) {
+			spacing.press(action);
+			spacingNoJump(action);
 		}
 	}
 
@@ -783,6 +844,7 @@ final class FightSession implements AgentSession {
 		spacing.reset();
 		sinceOwnHit = 1000;
 		sinceTakenHit = 1000;
+		counter.reset();
 		if (school != null) {
 			school.reset();
 			if (forget) {
@@ -860,8 +922,19 @@ final class FightSession implements AgentSession {
 						+ " (within %.1f, sword under %.1f) %d", OWN_HIT_JUMP_GUARD ? "on" : "off", SchoolFighter.OWN_HIT_WINDOW,
 						school != null ? school.ownHitJumpsTried : oldNetOwnHitTried, SchoolFighter.OWN_HIT_GUARD_REACH,
 						SchoolFighter.OWN_HIT_GUARD_CHARGE, school != null ? school.ownHitJumpsStripped : oldNetOwnHitStripped)
+				+ counterLine()
 				// Run 123: the spacing rule's ticks in its own combo by what it did, and the combos it held.
 				+ String.format(Locale.ROOT, "; run 123 combo spacing (%s, swing at %.2f): %s", COMBO_SPACING ? "on" : "off", spacingReady, spacing.counts());
+	}
+
+	/** Run 124: CounterSpacing's ticks pressed as a rule, by decision (the slot's count includes run 123's ticks). */
+	private String counterLine() {
+		StringBuilder b = new StringBuilder(String.format(Locale.ROOT, "; run 124 counter spacing (%s): ticks pressed (the slot, run 123's too) %d",
+				COUNTER_SPACING && rulesOn ? "on" : "off", school != null ? school.outsideTicks : 0L));
+		for (int w = dev.swordai.core.school.CounterSpacing.RUN_IN; w < counterBy.length; w++) {
+			b.append(String.format(Locale.ROOT, ", %s %d", dev.swordai.core.school.CounterSpacing.WHY_NAMES[w], counterBy[w]));
+		}
+		return b.toString();
 	}
 
 	private static float percent(long part, long whole) {
