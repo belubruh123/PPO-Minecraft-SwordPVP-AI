@@ -72,6 +72,14 @@ public final class ComboSpacing {
 	public static final double SWING_FROM = CounterSpacing.EDGE_FROM;
 	/** S below this (the task's "back to the edge of reach, about 2.7-3.0"). */
 	public static final double EDGE_LO = 2.7;
+	/**
+	 * Run 123b (17 Nov 02:50): a ready sword with the game's pick on them always swings, at once when nearer than SWING_FROM (no
+	 * run-up there). In the 02:41 check (the first with run 123) A swung on 27% of its ready-in-reach ticks outside their combo
+	 * against B's 52% (55-61% before), dealt 356 a minute against 429 and lost 14.3 HP a fight (3.5 se): holding a ready swing
+	 * because they were nearer than 2.6 or it was not sprinting cost more than the close hit's trade. The user, 16 Nov 06:45:
+	 * "swung when ready in reach 90% ... still only swing when charged". The spacing (S back, W-tap, chase, the edge) stays.
+	 */
+	public static final boolean SWING_ANY_IN_REACH = true;
 	/** Where the approach aims to be as its sword is back: the middle of the edge band 2.7-3.0. */
 	public static final double EDGE_TARGET = 2.85;
 	/**
@@ -247,8 +255,8 @@ public final class ComboSpacing {
 			// them), or they rise early in their jump (T8; C7: they jumped before the hit, "in the air when your hit lands").
 			boolean nearNow = r < SWING_FROM && (theyCanHit && comingIn || goingAway || them.rising() && !falling);
 			boolean free = pickOn && !swingHeld && !falling;
-			if (free && (spaced || nearNow)) {
-				if (me.sprinting || runUpTicks >= RUN_UP_MOST) {
+			if (free && (spaced || nearNow || SWING_ANY_IN_REACH)) {
+				if (me.sprinting || runUpTicks >= RUN_UP_MOST || SWING_ANY_IN_REACH && !spaced) {
 					// (A run-up that brought no sprint, as with too little food to sprint, does not hold the swing back for ever.)
 					set(SWING, 1, true);
 					attack = true;

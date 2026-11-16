@@ -124,10 +124,11 @@ class ComboSpacingTest {
 	@Test
 	void noSwingTooCloseWithTheirSwordEmpty() {
 		ComboSpacing c = after(13);
-		// Sprinting, its sword ready, them at 2.2, their sword not back, not coming in: S back to the edge.
+		// Sprinting, its sword ready, them at 2.2, their sword not back, not coming in. Run 123b (SWING_ANY_IN_REACH): a ready sword
+		// with the pick on them swings anyway (the user: swing when ready in reach); before it, S back to the edge.
 		assertTrue(c.tick(place(2.2, 0, 1f, true), READY, true, false, K2_LAG, LAG));
-		assertEquals(ComboSpacing.S_TAP, c.decision());
-		assertFalse(c.attack());
+		assertEquals(ComboSpacing.SWING_ANY_IN_REACH ? ComboSpacing.SWING : ComboSpacing.S_TAP, c.decision());
+		assertEquals(ComboSpacing.SWING_ANY_IN_REACH, c.attack());
 	}
 
 	@Test

@@ -2377,3 +2377,17 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - **Risks:** fewer hits a minute (it waits for the edge); they walk out of the combo while it stands/S-taps; trades where their sword comes back as it runs up; the online ready charge (higher) waits longer; checks may look worse against the bots because they do not punish 2.0-2.6 hits.
 - **Revert:** ComboSpacing.ON = false (everything); or FightSession.COMBO_SPACING / SchoolSession.COMBO_SPACING; SchoolSession.SPACING_PULL 0 (label only, no target).
 - **Tests:** school + pvp 119 found, 114 passed, 5 aborted (known), 0 failed; new school.ComboSpacingTest (15, incl. 2000 random states: never a jump, never an uncharged swing). Compile-check of FightSession, SchoolSession, RoundRecorder against this worktree's core: OK (the known class_6880 line).
+
+## Run 123b (17 Nov ~03:00): a ready sword with the pick on them always swings (ComboSpacing.SWING_ANY_IN_REACH)
+
+- The 02:41 check, the first with runs 122-124: ROUNDS WON A 27/44 vs B 32/44 (z -1.7), -14.3 HP a fight (se 4.1).
+- A dealt 356 a minute against 429. It swung on only 27% of its ready-in-reach ticks outside their combo, against B 52% (55-61% before run 123).
+- Run 123 swung only at 2.6-3.0 blocks and sprinting, so it held ready swings when they were nearer or it was not sprinting.
+- Now: with its sword ready and the pick on them, it swings; at once when nearer than 2.6, after the run-up only at the edge. The spacing moves (S back while the sword comes back, W-tap, chase, the edge) stay.
+- Run 124 in that check looked right:
+  - they came into its reach with its sword ready 16 times, its hit first 13;
+  - their runs of hits on it of 3+: 0 (B 2);
+  - no long S;
+  - their third hit A 14% vs B 23%.
+- Run 122: 0 own take-offs after its own hit (B 3). Jump-ins outside the window A 9 vs B 4, crits dealt A 6 vs B 7: no fear yet.
+- Revert: SWING_ANY_IN_REACH = false.
