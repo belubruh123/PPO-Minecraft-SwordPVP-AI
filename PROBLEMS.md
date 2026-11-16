@@ -2025,3 +2025,12 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - B1 in check: A 37/52 (71%) vs B 24/53 (45%). Punish crit chances critted, live: 56% of 300.
 - Live rates: T1 0% (FEW), T2 29% (rising), C3 33% (FEW), T9 39% (stuck, by design: rules' JumpReset), T1c 50% (FEW), T9b 54%, T9c 62%, C6 72% (stuck, own 29%), T6 73%, T4 75%, T1a 75%, T5 76%, C7 78%, C1 81%, K3 82%, T6a 89%, B1 89%, T7 95%, K2 99%, C4 100%, T9a 100%.
 - No new real rounds (the user's game log unchanged since 15 Nov 22:26). Training runs; no change this review.
+
+## 16 Nov 21:43 review + 21:41 check; 21:47 INSTALL for the user's human test
+
+- 21:41 check: ROUNDS WON A 30/44 vs B 31/44 (z -0.3), net -4.2 HP a fight (se 4.9); damage a minute A 422/337, B 424/312.
+- Their third hit after their second: A 8/66 (12%) vs B 9/53 (17%). Swung on the ground outside their combo A 55% vs B 55%; in their combo A 40% vs B 39%, held in the air 26% vs 28% (the 20:52 gap of 29% vs 20% did not repeat).
+- Take-offs per check (jumps.csv): A 87-109, B 26-35 in the last six checks. In the 2-4 Nov checks (the run35 era) A took off 110-145 a check, so the jump count is now lower than run35's, not higher.
+- Real rounds 15 Nov (rounds.csv, by time): new2134 26 rounds, hits 355/338, 44 swings a minute, taken on jump-ins 18 a minute; run35 17 rounds, hits 259/215, 53 swings a minute, taken on jump-ins 14 a minute.
+- 21:47 the user: "get the better one let me test it". Installed checked-1116-2048 (the 20:52 check, A 39-37, +3.2 HP, third hit 4% vs 12%) with the 16 Nov 15:07 jar (run 121 code, TickMemory). run35 + the 14 Nov jar are in the profile's swordai/backup-before-school-20261116-214729 (checkpoint = anchor.bin, verified). Same mode as run35: the rules on, no temperatures, no no-rules file. The real game's whiff guard unchanged.
+- 21:48 training paused (training-stop.sh) so the user's game runs smoothly. Resume when the user's Minecraft is closed after their test.
