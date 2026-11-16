@@ -1892,3 +1892,11 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - The whiff guard stays strict everywhere. Runs 115-119, K2, the jump-in guard, the crit waits, C7 and the punish crit are untouched.
 - **Disproof test** (the new counter "run 120: swing not open by cause"): "within 3.0" plus "pick on" are half or more of the on-body ticks in about 5 updates, or on-body-no-pick is not down from 15% to 10% or less after about 20 updates.
 - Tests: 78 passed, 5 aborted (known), 0 failed; compile-check OK.
+
+## 16 Nov 13:06 check (run 119, about 2.5 h); run 120 asked 13:08
+
+- **ROUNDS WON: A 29/44 (66%), B 33/44 (75%), z about -1.3.** Net A-B -13.7 HP a fight (se 4.4). Dealt/taken: A 410 / 350, B 441 / 290.
+- Their third hit after their second: A 25% (16), B 26% (11).
+- Outside their combo, ready and in reach: A swung 36%, B 57%.
+- **Jumps a minute off/on its moments: A 62/80, B 29/28.** Up again: 35 (10:17), 60 (11:27), 37 (12:17), 62 (13:06).
+  - So the jumps are not solved. Run 116 took the own-combo take-offs; the next excess is the re-engaging jump-ins (agent 51: 376 vs 73). That is agent 55's task after 14:44, with the run 116 check counter (own-combo take-offs by source).
