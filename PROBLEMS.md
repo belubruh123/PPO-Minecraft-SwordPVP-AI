@@ -1990,3 +1990,7 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **ROUNDS WON: A 35/44 (80%), B 30/44 (68%), z about +1.9** (only A won 6, only B won 1). Net A-B **+5.4 HP** a fight (se 4.2). Dealt/taken: A 431 / 302, B 424 / 327.
 - Their third hit after their second: **A 15% (9), B 20% (11).** Swung (ready, in reach): A 54%, B 59%.
 - Punish crit chances critted 51% of 300 (back over 50%).
+
+## 16 Nov 18:43 review
+
+- Training runs (run 121). The next check is about 18:26-18:30 or later; see the next review.
