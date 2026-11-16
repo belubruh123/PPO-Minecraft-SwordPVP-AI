@@ -2084,3 +2084,14 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 ## 16 Nov 22:42 short review (5-hour window 93%)
 
 - Training runs; no new check since 21:41. Agents 56-58 are building runs 122-124.
+
+## 17 Nov 01:11 review (the usage limit stopped everything 22:45-01:10)
+
+- Training ran through it (31.98M steps).
+- Checks:
+  - 23:46: A 31/44 vs B 32/44 (z -0.3), -5.7 HP; their third hit A 21% vs B 21%.
+  - 00:35: A 32/44 vs B 37/44 (z -1.5), -2.5 HP; their third hit A 12% vs B 11%.
+  - The earlier edge on their third hit is gone. Both checks were before run 122.
+- Punish crit chances critted 46% of 300 (under 50%); told and landed 39%.
+- No new real rounds.
+- 01:12: run 122 merged (d1b0902) and redeploy requested. Agents 57 (run 123) and 58 (run 124) were cut off by the limit and resumed at 01:12.
