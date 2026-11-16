@@ -2140,3 +2140,10 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Cause: run 123's swing gate (2.6-3.0 and sprinting only) held ready swings in reach. Fix: run 123b (6ce703f), SWING_ANY_IN_REACH; redeploy requested 02:51.
 
 - Run 123b redeployed (see the redeploy log above; next check about 45 min after the restart).
+
+## 17 Nov 03:13 review
+
+- Training runs (32.28M steps; run 123b since 03:01).
+- Punish crit chances critted 62% of 300 (inside 50-65%, rising from 46-53%); told and landed 47% (34-41% before).
+- Run 123 update 7661 (a fight without the rules, label only): combos 2+ 11, 3+ 2, mean 2.3.
+- Next check about 03:45. No new real rounds.
