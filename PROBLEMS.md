@@ -1904,3 +1904,10 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 ## 16 Nov 13:12 review
 
 - Training runs (run 119). The run 120 redeploy was asked at 13:08 and not yet taken; the watchdog takes it on its next pass. Punish crit chances critted 55% of 300.
+
+## 16 Nov 13:43 review
+
+- Run 120 is live: redeploy 13:16-13:19, 0 test failures; training runs.
+- **Run 120 counter, last update:** on its body without the pick, the ray meets their box within 3.0 (pick a tick behind) 3, at 3.0-3.15 18, at 3.15-3.3 1, beyond 0.
+  - So mostly just past reach, not pick lag. Agent 54's diagnosis stands (its first disproof test passes).
+- Punish crit chances critted 54% of 300. The first check with run 120 is about 14:04.
