@@ -1794,3 +1794,11 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - Kept: pull 1.0, the swing in their combo and in the air, K2/jump-in, and the technique teachers' holds.
   - A new counter says why the lesson missed the held ticks; that is the way to 90%.
 - **Disproof test:** the crosshair-on share back to 95%+ within about 5 updates. The swung share back to 45%+ at T-B within about 20 updates. Fewer than 100 network-sure holds with the crosshair on in the next T-B check.
+
+## 16 Nov 08:42 review
+
+- Run 118 is live: redeploy 08:36-08:39, 0 test failures; training runs.
+- First update: ready with them in reach 115 ticks, swung 36, held otherwise 38, held with them falling 16, swing not open 25.
+- **The run 118 counter, held otherwise with the pick on them, on the ground:** the lesson on 1, **a teacher's hold 23**, a teacher's swing 4, a technique with no swing target 0, the guard/K2 0.
+  - If it stays so over more updates, the next bottleneck is the technique teachers' holds (T4/T6 waits, crit holds) on ticks where a swing would land.
+- Punish crit chances critted 48% of 300 (under 50%); told and landed 42%. The next check is about 09:24.
