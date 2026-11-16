@@ -1810,3 +1810,13 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - So the next bottleneck is the technique teachers' holds on ticks where a swing would land.
   - Next: name which techniques hold there (T6 "make them miss", T4/T5 waits, crit holds), and let the swing through where the user's 90% asks. Agent 53 after 10:15, or me after the 09:24 check.
 - Punish crit chances critted 48% of 300; told and landed 39%.
+
+## 16 Nov 09:28 check: run 118 (about 50 min in)
+
+- **ROUNDS WON: A 32/45 (71%), B 34/45 (76%), z about -0.7.** Net A-B -6.6 HP a fight (se 3.9). Dealt/taken: A 412 / 333, B 427 / 306.
+- Their third hit after their second: A 15% (11), B 14% (8).
+- **Outside their combo, ready and in reach: A swung 45% (07:57: 29%), B 58%.** In their combo: A 38%.
+  - Network-sure holds with the crosshair on: **58 (07:57: 120)**, under the disproof bar of 100, so run 118's diagnosis stands. Split: a rule or gate 7, network sure 58, 10-50% 19, 50%+ 14.
+- Jumps a minute off/on its moments: A 40/70, B 34/32.
+- **Next (agent 53 after 10:15):** the technique teachers' holds on ticks where a swing lands. In training they are 50 of the 61 held-with-pick ticks.
+- Punish crit chances critted 49% of 300; told and landed 38%.
