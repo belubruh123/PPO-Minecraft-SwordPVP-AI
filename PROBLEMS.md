@@ -1952,3 +1952,16 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - **Watch:** K2 fell from 93-100% (earlier today) to 70%, and C6 from 85-100% to 48%, since runs 119-121.
   - K2 is the user's "no sprint hit on a late rising and falling player". The swing lessons (115-119) exclude a falling player, but check "K2 broken" and late jump-in hits in the 15:53 check.
   - If K2 broken rises, gate run 119's turned holds and the swing lesson on their falling-by-the-hit prediction (fallingByTheHit), not only them.falling().
+
+## 16 Nov 15:57 check: run 121 (about 50 min in)
+
+- **ROUNDS WON: A 34/45 (76%), B 31/45 (69%), z about +0.9.** Net A-B +1.3 HP a fight (se 4.3). Dealt/taken: A 422 / 308, B 432 / 318.
+- **Outside their combo, ready and in reach: A swung 56%, B 60%.** Nearly level (07:57: 29% vs 59%).
+- Their third hit after their second: A 15% (10), B 10% (6).
+- **K2 broken (knockback hits on them falling): A 57, B 44** (the 21:38 network: 39). Late knock-away hits on jump-ins (rising): A 18, B 20.
+- **Cause chain, K2:**
+  - The swing lessons (115, 118, 119) need them on the ground and not falling, so they do not teach these hits directly.
+  - The more general swing habit spreads to fallers, and the K2 skill fell 93-100% -> 70%.
+  - The real game keeps the K2 guard (no sprint hit on one falling by the hit), so the user's duels stay protected; the checks switch the guard off (GUARD_LEARNED).
+  - K2 at 70% raises its run 104 priority (more K2 practice). If K2 broken stays above B in 2 checks, raise K2's pull or add a "no swing" target on falling-in-reach ticks.
+- Punish crit chances critted 51% of 300.
