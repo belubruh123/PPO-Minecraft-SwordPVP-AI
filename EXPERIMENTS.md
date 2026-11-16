@@ -2194,3 +2194,24 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
   - Under runs 115/116 the lesson fired on only about 11 of about 65 open, not-falling ready ticks an update (17%). This counter says which gate keeps it off the rest. It is the next bottleneck if run 118 restores the swing.
 - **Disproof test:** within about 5 updates, the training crosshair-on share should be back to 95% or more. If within about 20 updates at T-B the training swung of ready ticks is not back to 45% or more, the diagnosis is wrong. The same holds if the next T-B check still has 100 or more network-sure holds with the crosshair on.
 - **Tests:** school + pvp unit tests (see the commit); compile-check OK (the known class_6880 line).
+
+## Run 119 (agent 53, 16 Nov ~10:40): a technique teacher's hold turned to the swing where it lands now (TEACHER_HOLD_SWING)
+
+- **Evidence (run 118's counter, 66 training updates 08:40-10:22, held ticks with the pick on them, on the ground, outside their combo, them on the ground and not falling, swing open):** a teacher's hold 963 (14.6 an update), the lesson on 104, a teacher's swing 88, no swing target 22, the guard or K2 0, other 0.
+  - All ready ticks in reach outside their combo on the ground: 8922; swung 3433 (38%), swing not open 2261, them falling 1245, held otherwise 1983.
+  - So a technique teacher is there on nearly every such tick, and the run 115 lesson stands aside for it.
+- **Which teachers hold there (PvpPlayer#step; the log has no per-technique split, so this is the code):**
+  - T4/T5: S under 2.3 and no swing until sprinting. T6/T6a phase 0: stop or S while they come in, no swing until their swing (up to 14 ticks, 20 after its punish crit). T6 phase 1: none under 2.2 or not sprinting.
+  - T7 and C1: no swing while not sprinting. C3: S and the jump. The combo-hold teacher's S-taps.
+  - C7: started only in reach with the sword ready and them on the ground, so every C7 tick is one of these, up to 6 held.
+  - K3: its take-off tick. The crit family's ground holds are already untaught (CRIT_HOLD_UNTAUGHT: the 22 "no swing target").
+  - Moment ticks an update (T-C, mean of 64 updates): T7 197, T4 64, C7 59, C6 49, B1 42, K3 39, T5 29, T6 16, T6a 17, C1 15, C3 11.
+- **Turned to the swing (the document):** T4 "sprint-hit the opponent immediately after they attack you" (the hold is a wait to back off or sprint; "Too late ... there is no stun"). T6 "stop moving or hold S, so their swing misses" (it asks for the stop or S, not no swing; those stay taught). T7 "sprint-hit the opponent before they are close enough to hit you back". C1 "sprint-hit them". C3/C4 "attack them right before you hold S".
+- **Kept (the definition is not swinging then):** K2 "Don't knockback-hit someone who is falling", and the jump-in guard. B1 "you crit them on the way down". The crit family T1/T1a/T1b/T1c/T2/C6. K3 "forced to hit you as you are falling ... Use it to crit". C7 "delay your sprint hit. They jump before you hit them" (RUN119_KEEP_C7; the user's 14 Nov "only hold hit when other go for a jump in" speaks against it, so flip it if C7 is the main kept hold).
+- **Change (TRAIN only):** on the ground, charge 0.95+, the pick on them within 3.0, them on the ground and not falling, no jump-in up, no guard or K2 tick, swing open: a teacher's "hold" on the swing becomes "swing". Its other keys and its label stay, and the technique's pull applies.
+  - The moment is judged without the swing on those ticks (Performance), so technique rates stay the document's.
+  - Checks, benchmarks and the user's game are unchanged.
+- **Counter:** "run 119 (on, C7 kept): teachers' holds turned to the swing N ticks (by technique; in their combo N), held anyway N; the teachers' holds left by technique: ...".
+- **Expect:** training swung of ready ticks 38% -> about 50% within about 10 updates (the 963 held ticks are about 11% of ready ticks), "a teacher's hold" down to the kept ones (C7, K3), then checks' A swung up toward B's 58%.
+- **Disproof test:** if after about 15 updates "held anyway" stays at 10+ an update (the network still sure), or swung of ready ticks stays under 45%, the teachers were not the bottleneck: next is the swing gate ("swing not open" 2261).
+- **Risks to watch:** whiffs (the pick is required, so few); their hit through its swing when too close (T4/T6 "too close"; the edge sprint hits and the hits' mean distance line); T6/T4 rates (judged without the swing, so they should hold); punish crit chances critted (B1 untouched, 48-54%); K2 broken and late jump-in hits (the guard/K2 ticks are never turned).
