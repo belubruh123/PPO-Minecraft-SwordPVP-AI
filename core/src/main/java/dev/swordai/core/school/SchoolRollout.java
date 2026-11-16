@@ -73,6 +73,11 @@ public final class SchoolRollout {
 	public final float[] camPull;
 	/** Run 115: the ordinary fight's swing lesson's own pull on the step's swing head (SchoolSession#SWING_PULL; 0: none). */
 	public final float[] swingPull;
+	/**
+	 * Run 122: the own-hit "no jump" lesson's pull (SchoolSession#OWN_HIT_JUMP_COST): taught only where the step's own jump was pressed
+	 * (an attempt in the window after its own hit), whatever technique was told and not by the outcome; 0: none. See SchoolPpo#teach.
+	 */
+	public final float[] noJumpPull;
 	/** The technique teacher that spoke (a {@link Technique} ordinal), or -1: for the logs. */
 	public final int[] teacherTechnique;
 	/** 1 when the step's policy loss counts, 0 when the step was one where nothing could be decided. */
@@ -119,6 +124,7 @@ public final class SchoolRollout {
 		holdPull = new float[capacity];
 		camPull = new float[capacity];
 		swingPull = new float[capacity];
+		noJumpPull = new float[capacity];
 		teacherTechnique = new int[capacity];
 		policyWeight = new float[capacity];
 		botTechnique = new int[capacity];
@@ -166,6 +172,7 @@ public final class SchoolRollout {
 		holdPull[i] = s.holdPull;
 		camPull[i] = s.camPull;
 		swingPull[i] = s.swingPull;
+		noJumpPull[i] = s.noJumpPull;
 		teacherTechnique[i] = s.teacherTechnique;
 		policyWeight[i] = s.policyWeight;
 		botTechnique[i] = s.botTechnique;
@@ -195,6 +202,8 @@ public final class SchoolRollout {
 		public float holdPull;
 		public float camPull;
 		public float swingPull;
+		/** Run 122: see SchoolRollout#noJumpPull. */
+		public float noJumpPull;
 		public int teacherTechnique = -1;
 		public float policyWeight = 1f;
 		public int botTechnique = -1;

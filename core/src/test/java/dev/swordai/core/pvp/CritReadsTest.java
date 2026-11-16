@@ -112,6 +112,13 @@ class CritReadsTest {
 			Random r = new Random(500L + f);
 			Style s = Specialists.draw(bot, r);
 			Style teacher = Teacher.style(family);
+			// Run 122: the teacher no longer starts the crit chains (SchoolStages.CRIT_CHAINS_TAUGHT) and punish-crits every punishable lift
+			// (Teacher.PUNISH_ALWAYS); this test reads run 107's opening of T1, so the teacher is put back as it was then.
+			teacher.noCritChains = false;
+			teacher.punishAlways = false;
+			for (Technique c : family) {
+				teacher.set(c, 1f);
+			}
 			teacher.punishChanceInReach = inReach;
 			Bout b = new Bout(teacher, s, 5.0, 91L + f);
 			Technique last = Technique.BASE;

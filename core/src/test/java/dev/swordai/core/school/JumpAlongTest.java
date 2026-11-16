@@ -94,11 +94,17 @@ class JumpAlongTest {
 	@Test
 	void theCounterJumpsAreTaughtIntoTheirOwnLayers() {
 		org.junit.jupiter.api.Assumptions.assumeTrue(SchoolStages.COUNTER_JUMPS_TAUGHT, "the counter jumps are not taught");
-		assertEquals(SchoolStages.T1C_GATED_HEADS, SchoolStages.gatedHeads(Technique.T1C.ordinal()));
-		assertEquals(SchoolStages.T1C_GATED_HEADS, SchoolStages.taughtHeads(Technique.T1C.ordinal()));
+		if (SchoolStages.CRIT_CHAINS_TAUGHT) {
+			assertEquals(SchoolStages.T1C_GATED_HEADS, SchoolStages.gatedHeads(Technique.T1C.ordinal()));
+			assertEquals(SchoolStages.T1C_GATED_HEADS, SchoolStages.taughtHeads(Technique.T1C.ordinal()));
+			assertTrue(SchoolStages.runTaught(Technique.T1C.ordinal()));
+		} else {
+			// Run 122 (SchoolStages.CRIT_CHAINS_TAUGHT off): T1c, a crit chain right after its own hit, has no layer and no pull.
+			assertEquals(0, SchoolStages.gatedHeads(Technique.T1C.ordinal()));
+			assertTrue(!SchoolStages.runTaught(Technique.T1C.ordinal()));
+		}
 		assertEquals(SchoolStages.T9B_GATED_HEADS, SchoolStages.gatedHeads(Technique.T9B.ordinal()));
 		assertEquals(SchoolStages.T9B_GATED_HEADS, SchoolStages.taughtHeads(Technique.T9B.ordinal()));
-		assertTrue(SchoolStages.runTaught(Technique.T1C.ordinal()));
 		// Run 102 (15 Nov): T9b, a jump reset of its own, is taught only with SchoolStages.JUMP_RESETS_TAUGHT (the user: no jump reset
 		// unless certain, above 95%).
 		assertEquals(SchoolStages.JUMP_RESETS_TAUGHT, SchoolStages.runTaught(Technique.T9B.ordinal()));

@@ -47,6 +47,22 @@ public final class Chooser {
 	 * 28 told the teacher's.
 	 */
 	public static final float OUTCOME_TEMPERATURE = 0.5f;
+	/**
+	 * Run 122 (agent 56; the user, 16 Nov 22:05: "always get a sprint hit stun and then jump for no reason"): the techniques the decider
+	 * never tells, its likeliest and its drawn choice alike: the crit chains while they are not taught (SchoolStages#CRIT_CHAINS_TAUGHT:
+	 * T1, T1b, T1c, T2, C6, the jumps right after its own hit). Told one of them, the network's own option layer for it added its jump
+	 * (CRIT_GATED_HEADS) right after its hit; in the real rounds of checked-1116-2048 14 of the 20 own-combo take-offs of lost rounds
+	 * were the network's. Training, the checks and the user's game alike (a chain's logit is set to UNTOLD_LOGIT before the softmax, so
+	 * its chance is 0 and it learns nothing). false = as before.
+	 */
+	public static final boolean UNTOLD_MASK = true;
+	static final float UNTOLD_LOGIT = -1e9f;
+
+	/** Run 122: whether the decider may not tell technique {@code t} (see UNTOLD_MASK). */
+	public static boolean untold(int t) {
+		return UNTOLD_MASK && SchoolStages.critChainOff(t);
+	}
+
 	public static final int IN = ObsSpec.VEC + SchoolObs.MEM + Predictor.OUT + SchoolNet.INTENT;
 	public static final int HIDDEN = 128;
 
@@ -101,6 +117,12 @@ public final class Chooser {
 		hidden2.forward(ws.h1, 0, ws.h2, 0);
 		relu(ws.h2);
 		out.forward(ws.h2, 0, ws.logits, 0);
+		// Run 122: the untold techniques have no chance (UNTOLD_MASK); draw() reads the same logits.
+		for (int i = 0; i < Technique.COUNT; i++) {
+			if (untold(i)) {
+				ws.logits[i] = UNTOLD_LOGIT;
+			}
+		}
 		float max = Float.NEGATIVE_INFINITY;
 		for (int i = 0; i < Technique.COUNT; i++) {
 			max = Math.max(max, ws.logits[i]);
@@ -271,8 +293,12 @@ public final class Chooser {
 			int size = Math.min(batch, n);
 			for (int k = 0; k < size; k++) {
 				int i = labelled[rng.nextInt(n)];
-				int best = forward(ws, r.vec[i], r.mem[i], r.pred[i], r.prevIntent[i]);
 				int label = r.intentLabel[i];
+				if (untold(label)) {
+					// Run 122: no lesson toward a technique it may not tell (the teacher no longer shows the crit chains).
+					continue;
+				}
+				int best = forward(ws, r.vec[i], r.mem[i], r.pred[i], r.prevIntent[i]);
 				int before = techniqueOf(r.prevIntent[i], 0);
 				boolean start = label != base && label != before;
 				float w = AWR ? (float) Math.min(AWR_MOST, Math.exp((r.advantage[i] - mean) / std / AWR_BETA)) : 1f;

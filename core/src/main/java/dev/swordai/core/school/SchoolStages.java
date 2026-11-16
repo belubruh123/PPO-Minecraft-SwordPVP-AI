@@ -428,6 +428,53 @@ public final class SchoolStages {
 				Technique.T6A, Technique.K2, Technique.T9A, Technique.T9C, Technique.C2, Technique.C3, Technique.C4}) {
 			RUN104_TAUGHT[t.ordinal()] = true;
 		}
+		// Run 122 (SchoolStages.CRIT_CHAINS_TAUGHT false): T1, T1b, T1c, T2 and C6 off the list, unweighted, and not taught.
+		for (int t = 0; t < Technique.COUNT; t++) {
+			if (critChainOff(t)) {
+				INCLUDED[t] = false;
+				EXCLUDED[t] = true;
+				FAVOURED[t] = false;
+				WEIGHT[t] = 1f;
+				RUN104_TAUGHT[t] = false;
+			}
+		}
+	}
+
+	/**
+	 * Run 122 (agent 56; the user, 16 Nov 22:05, after a real test of checked-1116-2048 against human players: "The bot always get a
+	 * sprint hit stun and then jump for no reason ... every time it is close to opponent it finally get a stun and then jump and make
+	 * other combo them. it is performing worse and worse"). The crit chains that jump right after its own hit are not taught: T1 (double
+	 * crit), T1b (around them), T1c (punish crit into double crit), T2 (standing crit) and C6 (standing crit against a jump reset). The
+	 * document: T1 "Only works if the opponent tries to punish-crit you. Countered by: a sprint hit (C1)"; C6 "Only works if your sprint
+	 * hit stuns them. If it doesn't, they sprint-hit you away before your crit lands". Human players sprint-hit it in that jump.
+	 *
+	 * <p>The real rounds, every tick (profile fights): its take-offs in its own combo (after its hit, before a hit taken, within 20 ticks)
+	 * in lost rounds, checked-1116-2048 against run35: 9.5 vs 4.7 a minute, hit in that jump 55% vs 36%; 0-3 ticks after its hit 12 of
+	 * 20 vs 0 of 14; under 2 blocks 10 of 20 vs 0; by the network alone 14 of 20 vs 2 of 14. The run 104c list (the user's 15 Nov list:
+	 * T1, T1c, T2, C6 "heavily prioritize as crit comber") had taken C6 from 19% to 72%.
+	 *
+	 * <p>Off (false): out of INCLUDED, FAVOURED, WEIGHT, RUN104_TAUGHT and RUN_TAUGHT (T1c's counter jump too); no option layer is taught
+	 * or added for them (gatedHeads 0); the teacher never starts them (Teacher#style, Style#noCritChains); the decider never tells them
+	 * (Chooser#untold); the own-combo scene kinds practise the ground holds (T6a) instead of T2/C6 (SchoolSession.KIND_TECHS); the
+	 * stage mastery and the weakest-technique fights pass over them and over C2, whose only moment follows a double crit
+	 * ({@link #momentless}). T1a (the first jump-in crit), B1, K2, K3, T9/T9a-c, C1-C4 are kept. true = as before.
+	 */
+	public static final boolean CRIT_CHAINS_TAUGHT = false;
+
+	/** Run 122: the crit chains that jump right after its own hit (T1, T1b, T1c, T2, C6). */
+	public static boolean critChain(int t) {
+		return t == Technique.T1.ordinal() || t == Technique.T1B.ordinal() || t == Technique.T1C.ordinal() || t == Technique.T2.ordinal()
+				|| t == Technique.C6.ordinal();
+	}
+
+	/** Run 122: a crit chain while they are not taught (see CRIT_CHAINS_TAUGHT). */
+	public static boolean critChainOff(int t) {
+		return !CRIT_CHAINS_TAUGHT && critChain(t);
+	}
+
+	/** Run 122: a technique that can have no moments while the crit chains are off: the chains, and C2 (it follows only a double crit). */
+	public static boolean momentless(int t) {
+		return critChainOff(t) || !CRIT_CHAINS_TAUGHT && t == Technique.C2.ordinal();
 	}
 
 	/** Run 104: whether technique {@code t} is one of the user's included skills (15 Nov 15:15). */
@@ -490,7 +537,8 @@ public final class SchoolStages {
 
 	/** The jump and crit again after its punish crit (T1c), the jump right after its attack (T9b): run 71's counter jumps. */
 	public static boolean counterJump(int technique) {
-		return technique == Technique.T1C.ordinal() || technique == Technique.T9B.ordinal();
+		// Run 122: T1c is a crit chain, not taught while CRIT_CHAINS_TAUGHT is off.
+		return technique == Technique.T1C.ordinal() && CRIT_CHAINS_TAUGHT || technique == Technique.T9B.ordinal();
 	}
 
 	/** The combo escape's techniques taught by run 65: the jump reset in their rhythm (T9a) and the hit before the S (C4). */
@@ -581,6 +629,14 @@ public final class SchoolStages {
 	 * but those plans spread jumps into the fight (75 a minute to run 6's 44); the punish crit has no jump of its own.
 	 */
 	public static final boolean B1_SWING_ALWAYS = true; // run 14 (25 Oct 19:05)
+	/**
+	 * Run 122 (agent 56; the user, 16 Nov 22:25: "you need massive consistency" on the punish crit; told it and landed it 39-42% of 300
+	 * against the bar of 90%): B1's W/S and sprint (its own option layer, B1_GATED_HEADS: S while still sprinting, then W to the swing) taught
+	 * on every told tick like its swing (B1_SWING_ALWAYS), not only where the lift went better than the critic expected (FROM_THE_FIGHT):
+	 * a lift that came down out of reach or was hit again is exactly the one whose keys were wrong. Gated, so nothing reaches the trunk
+	 * (the 28 Oct spread was the trunk's). false = as before.
+	 */
+	public static final boolean B1_KEYS_ALWAYS = true;
 
 	/** Whether technique {@code t} is one the run teaches (RUN_TAUGHT, with RUN_PULL_CAP on). */
 	public static boolean runTaught(int t) {
@@ -632,6 +688,12 @@ public final class SchoolStages {
 			}
 			for (int t = 0; t < Technique.COUNT; t++) {
 				RUN_TAUGHT[t] |= RUN104_TAUGHT[t];
+			}
+		}
+		// Run 122: no crit chain has a pull (T1c's counter jump included).
+		for (int t = 0; t < Technique.COUNT; t++) {
+			if (critChainOff(t)) {
+				RUN_TAUGHT[t] = false;
 			}
 		}
 	}
@@ -885,7 +947,8 @@ public final class SchoolStages {
 	 * favoured one has 3.15, at 12% 2.19, at 31% 1.03, at 58% 0.18. Monotone: the smallest rate has the most.
 	 */
 	public float priority(int t) {
-		if (!ALL_TO_70 || !included(t)) {
+		// Run 122: C2 follows only a double crit (T1, T1c), which is not taught (CRIT_CHAINS_TAUGHT): no fights drawn for it.
+		if (!ALL_TO_70 || !included(t) || momentless(t)) {
 			return 0f;
 		}
 		if (later(t)) {
@@ -899,7 +962,7 @@ public final class SchoolStages {
 
 	/** Run 104: the cap on a taught technique's pull grows under 50%, up to 1 + PULL_BOOST at 0% (half that if not favoured); B1 as before. */
 	public float pullBoost(int t) {
-		if (!ALL_TO_70 || !included(t) || t == Technique.B1.ordinal() || later(t)) {
+		if (!ALL_TO_70 || !included(t) || t == Technique.B1.ordinal() || later(t) || momentless(t)) {
 			return 1f;
 		}
 		float under = Math.max(0f, HALF - priorityRate(t)) / HALF;
@@ -950,6 +1013,10 @@ public final class SchoolStages {
 		int judged = 0;
 		for (Technique t : current().techniques) {
 			int i = t.ordinal();
+			if (momentless(i)) {
+				// Run 122: the crit chains (and C2 after them) have no moments while they are not taught; their old window is not judged.
+				continue;
+			}
 			// A technique that has not had its moments is not learned: the crit trades (T-B) passed in an hour with the double
 			// crit (T1), T1b, C1 and C2 never once come up (24 Oct). The stage then goes on to its step cap.
 			if (momentCount[i] < ENOUGH) {
@@ -987,7 +1054,7 @@ public final class SchoolStages {
 		java.util.List<Technique> seen = new java.util.ArrayList<>();
 		for (Technique t : current().techniques) {
 			int i = t.ordinal();
-			if (momentCount[i] < 5) {
+			if (momentCount[i] < 5 || momentless(i)) {
 				continue;
 			}
 			judged++;
@@ -1052,7 +1119,7 @@ public final class SchoolStages {
 		int n = 0;
 		for (Technique t : STAGES[family].techniques) {
 			int i = t.ordinal();
-			if (momentCount[i] >= 5) {
+			if (momentCount[i] >= 5 && !momentless(i)) {
 				sum += doneRate(i);
 				n++;
 			}

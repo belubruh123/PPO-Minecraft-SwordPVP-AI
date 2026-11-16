@@ -55,6 +55,18 @@ public final class Teacher {
 	 * critter's crit, the ordinary fight after its own crit). false = as before.
 	 */
 	public static final boolean CRIT_READS = true;
+	/**
+	 * Run 122 (agent 56; the user, 16 Nov 22:25: "all the time it pcrit the opponent instead double crit or sprint hit back ... you need
+	 * massive consistency"; the 27 Oct method: the decider picks WHEN, from the teacher's labels): the teacher answers every hit of theirs
+	 * that throws it up with a punish crit possible by the punish crit (Style#punishAlways), after the jump the hit would have had. What
+	 * decided it before (PvpPlayer#hitTaken, in order): C1 before B1 half the times against one read as double critting (run 105), the
+	 * T9a jump with B1 after it, the T9b jump with no B1, the reverse deflection T5, the jump reset T9 on every sprint hit's lift with no
+	 * B1 after it, and only then B1 (its sword 0.5 back, them within 2.6). So after their sprint hits (most lifts) the label of the lift
+	 * was T9 then the ordinary fight, and the decider learned to tell B1 almost only after plain hits and crits: live "punish crit chances
+	 * critted (whatever was chosen)" 49-59%, "told the punish crit and landed it" 39-42% (16 Nov). Not punishable: as before (C1, T5, T9,
+	 * C3). false = as before.
+	 */
+	public static final boolean PUNISH_ALWAYS = true;
 	/** Of a target, the share on the teacher's key; the rest is spread over the other keys of the head. */
 	static final float SURE = 0.99f;
 	/** A key the target holds at least this much of is one the teacher asks for (alone, or with others alike). */
@@ -228,6 +240,16 @@ public final class Teacher {
 		// Run 107: a punish-crit chance only where they come down in reach (see CRIT_READS).
 		s.punishChanceInReach = CRIT_READS;
 		s.jumpInLands = true;
+		// Run 122: B1 on every lift that can be punished (PUNISH_ALWAYS); no crit chain after its own hit (SchoolStages.CRIT_CHAINS_TAUGHT).
+		s.punishAlways = PUNISH_ALWAYS;
+		if (!SchoolStages.CRIT_CHAINS_TAUGHT) {
+			s.noCritChains = true;
+			for (Technique t : Technique.ALL) {
+				if (SchoolStages.critChain(t.ordinal())) {
+					s.set(t, 0f);
+				}
+			}
+		}
 		return s;
 	}
 

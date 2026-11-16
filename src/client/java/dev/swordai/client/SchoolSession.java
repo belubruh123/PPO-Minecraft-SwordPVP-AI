@@ -184,6 +184,53 @@ public final class SchoolSession implements AgentSession {
 	 */
 	static final boolean OWN_COMBO_JUMP_COST = true;
 	/**
+	 * Run 122 (agent 56; the user, 16 Nov 22:05, after a real test against human players: "The bot always get a sprint hit stun and then
+	 * jump for no reason ... every time it is close to opponent it finally get a stun and then jump and make other combo them"; 22:25:
+	 * "punish like 100000 if it jump while doing stun that makes absolute zero sense at all"). The real rounds, every tick: in lost rounds
+	 * checked-1116-2048 took off in its own combo 9.5 a minute against run35's 4.7, hit in that jump 55% vs 36%; 12 of its 20 came 0-3
+	 * ticks after its hit, 14 of 20 with its sword under 0.9, 14 of 20 pressed by the network alone (run35: 0, 4, 2 of 14). Run 116's
+	 * cost let off every jump a technique was told for (T1, T1c, T2, C6, T9b, T9c, K3), the crit chains' own jumps (SchoolStages
+	 * CRIT_CHAINS_TAUGHT, now off).
+	 *
+	 * <p>Side A, training and the paired checks (as FightSession in the user's game):
+	 * <ul>
+	 * <li>OWN_HIT_JUMP_GUARD: in the window after its own hit (SchoolFighter#ownHitWindow: that hit at most 20 ticks old, no hit taken
+	 * since), on the ground, within 3.5 blocks and its sword under 0.9, the network's own jump key is let go of after it chose it (no
+	 * take-off). A rule's jump (ruled) is never touched.</li>
+	 * <li>OWN_HIT_JUMP_COST (training): every take-off the network tries in that window, whatever technique it was told and whatever the
+	 * distance and its sword (the guard lets those over 3.5 or with the sword back take off), costs this on the step of the attempt. The
+	 * largest single cost in the reward: a hit taken is PER_HEALTH x its damage (a sprint hit of a diamond sword on diamond armour about
+	 * 1.9 HP, 0.19; a crit about 3.2 HP, 0.32), THEIR_ROW_COST adds 0.3 for their 2nd+ hit in a row and CRIT_BACK_COST 0.3 for a crit
+	 * after its punish crit, KNOCKOUT and K2_BROKEN are 1.0: 1.5 is about 8 sprint hits taken, 3 times their combo's hit (0.49), 1.5
+	 * knockouts. The reward scaler divides by the return's spread and clips at 10 (RewardScaler.CLIP), so the value head sees it as
+	 * any other large term. Not charged on the one jump-in of an engagement (jumpInOpen, run 95/121), a rule's jump, or outside the window
+	 * (the punish crit follows their hit: outside it). It replaces NEAR_JUMP_COST on that take-off (not both).</li>
+	 * <li>OWN_HIT_NO_JUMP_PULL (training): on the same attempts alone, "no jump" taught at this pull, not weighed by the outcome and
+	 * whatever was told (SchoolRollout#noJumpPull, SchoolPpo#ownHitNoJumpApplies): the step's own jump key was pressed, the head was its
+	 * own. The guard strips the jump after the network chose it, so the step keeps the attempt (its key, its chance) for PPO and the
+	 * lesson.</li>
+	 * </ul>
+	 * Counters: "run 122" on the training update line; "school check run 122" per check (A and B: take-offs in the window, 0-3 ticks
+	 * after its hit, with the sword under 0.9; jump-ins outside it at 3-6 blocks; crits dealt). It must not make it afraid to jump for
+	 * crits: if A's jump-ins outside the window or its crits dealt fall by more than a quarter against the checks before run 122, halve
+	 * OWN_HIT_JUMP_COST. false / 0 = as before.
+	 */
+	static final boolean OWN_HIT_JUMP_GUARD = true;
+	static final float OWN_HIT_JUMP_COST = 1.5f;
+	static final float OWN_HIT_NO_JUMP_PULL = 1.0f;
+	/** Run 122 counters: [0] training, [1] checks: the network's take-offs tried in the window, and those the guard let go of. */
+	private final int[] ownHitTried = new int[2], ownHitStripped = new int[2];
+	/** Run 122 (training): attempts charged OWN_HIT_JUMP_COST, and those with the "no jump" lesson on them. */
+	private int ownHitCharged, ownHitTaught;
+	/** Run 122: this step's take-off was charged OWN_HIT_JUMP_COST (NEAR_JUMP_COST not on top). */
+	private boolean ownHitChargedNow;
+	/**
+	 * Run 122 (checks), per side (A, B): take-offs in the window after its own hit: all, 0-3 ticks after the hit, with its sword under 0.9,
+	 * both, the network's own (not a rule's); jump-ins outside the window (take-offs at 3-6 blocks, moving toward them); crits dealt.
+	 */
+	private final int[][] ownHitTakeoffs = new int[2][5];
+	private final int[] checkJumpIns = new int[2], checkCrits = new int[2];
+	/**
 	 * Run 95 ("always start a combo ALWAYS"): after its hit (none taken that tick), neither its next hit nor theirs within COMBO_GAP while
 	 * still under JUMP_IN_REOPEN blocks: the combo it did not go on with costs this (training, every fight).
 	 */
@@ -426,6 +473,20 @@ public final class SchoolSession implements AgentSession {
 		if (src == 1 && told != null) {
 			takeoffToldBy[situation][told.ordinal()]++;
 		}
+		// Run 122: take-offs in the window after its own hit (none taken since, 20 ticks): how soon after the hit, its sword, whose; and the
+		// jump-ins outside it (3-6 blocks, moving toward them), which a cost too broad would cut (fear of jumping for crits).
+		if (dev.swordai.core.school.SchoolFighter.ownHitWindow(clock.ticksSinceHitDealt, clock.ticksSinceHitTaken)) {
+			boolean soon = clock.ticksSinceHitDealt <= 3;
+			boolean empty = mc.player.getAttackStrengthScale(0f) < dev.swordai.core.school.SchoolFighter.OWN_HIT_GUARD_CHARGE;
+			int[] c = ownHitTakeoffs[side];
+			c[0]++;
+			c[1] += soon ? 1 : 0;
+			c[2] += empty ? 1 : 0;
+			c[3] += soon && empty ? 1 : 0;
+			c[4] += src != 0 ? 1 : 0;
+		} else if (facts.reachDist >= 3f && facts.reachDist <= 6f && reader.duel.iClose > 0.05) {
+			checkJumpIns[side]++;
+		}
 	}
 
 	/** Run 121 (checks): ticks, and ticks with the jump key down in the air (no take-off possible), per side. */
@@ -435,6 +496,8 @@ public final class SchoolSession implements AgentSession {
 		}
 		checkKeyTicks[side]++;
 		airJumpKeyTicks[side] += !onGround && action[ActionSpace.JUMP] == 1 ? 1 : 0;
+		// Run 122: its crits dealt (the game's), per side: a cost on jumping that made it afraid to jump for crits would show here.
+		checkCrits[side] += facts.hitsDealt > 0 && facts.critDealt ? 1 : 0;
 	}
 
 	/**
@@ -459,8 +522,9 @@ public final class SchoolSession implements AgentSession {
 		}
 		// Run 104: the told standing crit (T2, "as soon as the hit lands, jump straight up and crit them on your way down") too, as the
 		// double crits and C6 are: when they hit back before its jump, reason 4 lapsed and its jump was charged and taught "no jump".
-		if (told == Technique.K3 || told == Technique.T1 || told == Technique.T1C || told == Technique.C6
-				|| SchoolStages.ALL_TO_70 && told == Technique.T2
+		// Run 122: the crit chains are no reason while they are not taught (SchoolStages.CRIT_CHAINS_TAUGHT).
+		if (told == Technique.K3 || SchoolStages.CRIT_CHAINS_TAUGHT && (told == Technique.T1 || told == Technique.T1C || told == Technique.C6
+				|| SchoolStages.ALL_TO_70 && told == Technique.T2)
 				|| (!LATE_JUMP_GUARD || dev.swordai.core.school.SchoolStages.JUMP_RESETS_TAUGHT)
 						&& (told == Technique.T9A || told == Technique.T9B || told == Technique.T9C)) {
 			return 2;
@@ -495,8 +559,9 @@ public final class SchoolSession implements AgentSession {
 		// again (the user lists them, 17:55); its own late reaction jump after a hit stays stripped (Fighter.lateJumpGuard).
 		return (!LATE_JUMP_GUARD || dev.swordai.core.school.SchoolStages.JUMP_RESETS_TAUGHT) && (t == Technique.T9A || t == Technique.T9B
 				|| t == Technique.T9C) || dev.swordai.core.school.SchoolStages.COMBO_JUMPS_TAUGHT && (t == Technique.T10 || t == Technique.T11A
-				|| t == Technique.T11B || t == Technique.T11C) || t == Technique.K3 || t == Technique.T1C || t == Technique.C6
-				|| SchoolStages.ALL_TO_70 && t == Technique.T2;
+				|| t == Technique.T11B || t == Technique.T11C) || t == Technique.K3
+				// Run 122: the crit chains ask for no jump while they are not taught (SchoolStages.CRIT_CHAINS_TAUGHT).
+				|| SchoolStages.CRIT_CHAINS_TAUGHT && (t == Technique.T1C || t == Technique.C6 || SchoolStages.ALL_TO_70 && t == Technique.T2);
 	}
 	/**
 	 * Run 68 (10 Nov, PROBLEMS.md 4, agent 6): the T1c window's credit. Their crit on its rising jump keeps the window open; no
@@ -1599,6 +1664,12 @@ public final class SchoolSession implements AgentSession {
 				+ String.format(Locale.ROOT, ", run 116 (%s) its own combo charged %d", ownComboJumpCharged() ? "on" : "off", ownComboJumpsCharged)
 				+ String.format(Locale.ROOT, ", run 121 (%s): reopen held shut (5+ blocks under %d ticks after a hit) %d, take-offs the old reopen let off now charged %d, needed %d",
 						REOPEN_SETTLED ? "on" : "off", REOPEN_QUIET, reopenHeld, reopenOldFreeCharged, reopenOldFreeNeeded)
+				// Run 122: its own take-offs tried right after its own hit (none taken since, 20 ticks), charged, taught "no jump", let go of.
+				+ String.format(Locale.ROOT, " | run 122 (guard %s, cost %.2f, no-jump pull %.1f, crit chains %s): its own take-offs tried right after"
+						+ " its own hit %d, charged %d, taught \"no jump\" %d, let go of by the guard (within %.1f, sword under %.1f) %d",
+						OWN_HIT_JUMP_GUARD ? "on" : "off", OWN_HIT_JUMP_COST, OWN_HIT_NO_JUMP_PULL,
+						SchoolStages.CRIT_CHAINS_TAUGHT ? "taught" : "not taught", ownHitTried[0], ownHitCharged, ownHitTaught,
+						dev.swordai.core.school.SchoolFighter.OWN_HIT_GUARD_REACH, dev.swordai.core.school.SchoolFighter.OWN_HIT_GUARD_CHARGE, ownHitStripped[0])
 				+ String.format(Locale.ROOT, " | run 96: ready sword held at them on the ground charged %d ticks", readyHoldCharged)
 				+ String.format(Locale.ROOT, " | run 115 (%s): the ordinary swing taught %d ticks", SWING_TAUGHT ? "on" : "off", swingTaught)
 				+ String.format(Locale.ROOT, "; run 118 (%s, pick only): held otherwise with the pick on them on the ground, by the lesson: on %d, a teacher's hold %d,"
@@ -1717,6 +1788,8 @@ public final class SchoolSession implements AgentSession {
 		jumpInsTaken = jumpInReopened = nearJumpCharged = nearJumpNeededTakeoffs = nearNoJumpTaught = teacherJumpFlipped = comboDropped = 0;
 		ownComboJumpsCharged = 0;
 		reopenHeld = reopenOldFreeCharged = reopenOldFreeNeeded = 0;
+		ownHitTried[0] = ownHitStripped[0] = 0;
+		ownHitCharged = ownHitTaught = 0;
 		readyHoldCharged = 0;
 		swingTaught = 0;
 		java.util.Arrays.fill(readyHeldWhy, 0);
@@ -2033,14 +2106,18 @@ public final class SchoolSession implements AgentSession {
 	 * the crit trade's answers (T1, T1a, T1b since run 105, T1c, T2, C1, K3), the jump-in scenes T8/K2/K3/B1, the combo-escape scenes nothing included
 	 * (the get-out part: C3, T9), the punish scenes B1 and T1c, the own-combo scenes its follow-ups (T2, C6, C7), the deflection T4/T5.
 	 */
+	static final Technique[] OWN_COMBO_TECHS = dev.swordai.core.school.SchoolStages.CRIT_CHAINS_TAUGHT
+			? new Technique[] {Technique.T2, Technique.C6, Technique.C7} : new Technique[] {Technique.T6A, Technique.C7};
 	static final Technique[][] KIND_TECHS = {
 			{Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2, Technique.C1, Technique.K3},
 			{Technique.T8, Technique.K2, Technique.K3, Technique.B1},
 			// Run 111 (the user, 22:25: no one gets a combo on it): the combo-escape scenes practise the get-out part.
 			{Technique.C3, Technique.C4, Technique.T9A, Technique.T6, Technique.T6A},
 			{Technique.B1, Technique.T1C},
-			{Technique.T2, Technique.C6, Technique.C7},
-			{Technique.T2, Technique.C6, Technique.C7},
+			// Run 122 (SchoolStages.CRIT_CHAINS_TAUGHT off): its own combo is held on the ground (ComboHolder: W-tap, S-tap, the strafe taps
+			// labelled T6a), so the own-combo scenes go by T6a and C7, not by the standing crits T2/C6.
+			OWN_COMBO_TECHS,
+			OWN_COMBO_TECHS,
 			{Technique.T1, Technique.T1A, Technique.T1B, Technique.T1C, Technique.T2, Technique.C1, Technique.K3},
 			{Technique.T8, Technique.K2, Technique.K3, Technique.B1},
 			{Technique.T4, Technique.T5},
@@ -2851,7 +2928,12 @@ public final class SchoolSession implements AgentSession {
 				+ "its own crits (not punish, not a double's 2nd) %d, against one so read %d; T1 starts %d; their crits felt %d (the game's, of them looked "
 				+ "so %d), the teacher saw as crits %d by the look and %d by the game only, with a double crit expected %d; C1 starts %d; their sprint hits "
 				+ "on its double crit %d, C2 starts %d", Teacher.CRIT_READS, r[0] == 0 ? 0.0 : 100.0 * r[1] / r[0], r[0], r[2], r[3], r[8], gameCritsFelt,
-				gameCritsLookedSo, r[4], r[5], r[6], r[7], r[9], r[10]);
+				gameCritsLookedSo, r[4], r[5], r[6], r[7], r[9], r[10])
+				// Run 122 (Teacher.PUNISH_ALWAYS): the teacher's lifts by their hit, those with a punish crit possible, B1 started on them.
+				+ String.format(Locale.ROOT, " | run 122, the teacher's punish crit on every punishable lift (%s): lifts by their hit %d, punishable"
+						+ " (sword %.1f+, within %.1f) %d, B1 started %d (after the jump reset's timed jump %d)", Teacher.PUNISH_ALWAYS ? "on" : "off",
+						r[dev.swordai.core.pvp.PvpPlayer.READ_LIFTS], dev.swordai.core.pvp.PvpPlayer.PUNISH_CHARGE, dev.swordai.core.pvp.PvpPlayer.PUNISH_ALWAYS_REACH, r[dev.swordai.core.pvp.PvpPlayer.READ_LIFTS_PUNISHABLE],
+						r[dev.swordai.core.pvp.PvpPlayer.READ_B1_ALWAYS], r[dev.swordai.core.pvp.PvpPlayer.READ_B1_AFTER_JUMP]);
 		gameCritsFelt = 0;
 		gameCritsLookedSo = 0;
 		return s;
@@ -5358,6 +5440,7 @@ public final class SchoolSession implements AgentSession {
 		step.holdPull = 0f;
 		step.camPull = 0f;
 		step.swingPull = 0f;
+		step.noJumpPull = 0f;
 		// A teacher with no pull leaves its keys to the installed model (NO_PULL_YIELDS): its target would replace the installed
 		// model's on those keys and teach nothing. The technique's moment is still judged on its own keys (perf, below).
 		float[] pulls = stages.techPulls();
@@ -5718,6 +5801,8 @@ public final class SchoolSession implements AgentSession {
 		}
 		boolean installedDecided = step.teacherWeight > 0f && installed != null;
 		int ruled = 0;
+		// Run 122: the rules pressed (or, in a fight without them, would have pressed) the jump this tick.
+		boolean ruleJumpWould = false;
 		// The heads the rules press on this tick (or would, in a fight played without them): the target of RULED_PULL.
 		int ruledTaught = 0;
 		benchRules = 0;
@@ -5829,6 +5914,8 @@ public final class SchoolSession implements AgentSession {
 				// Run 95: nor the rules' jump where no jump is needed.
 				ruledTaught &= ~ActionSpace.mask(ActionSpace.JUMP);
 			}
+			// Run 122: in a fight played without the rules, a take-off where the rules would have jumped (the jump reset, J) counts as theirs.
+			ruleJumpWould = (ruled & (1 << ActionSpace.JUMP)) != 0 && installed.fighter.action()[ActionSpace.JUMP] == 1;
 			if (ruleOff) {
 				ruled = 0;
 			}
@@ -5940,7 +6027,33 @@ public final class SchoolSession implements AgentSession {
 				&& learner.told() == Technique.B1 && step.teacherTechnique == Technique.B1.ordinal()
 				&& (step.teacherHeads & ActionSpace.mask(ActionSpace.ATTACK)) != 0
 				? ruled & dev.swordai.core.school.SchoolStages.PUNISH_SHADOW_KEYS : 0;
+		// Run 122: the window after its own hit (that hit at most 20 ticks old, none taken since); the one jump-in of an engagement is not in it.
+		boolean ownHitWindowNow = dev.swordai.core.school.SchoolFighter.ownHitWindow(clock.ticksSinceHitDealt, clock.ticksSinceHitTaken);
+		boolean ownHitTrain = mode == Mode.TRAIN && review < 0 && ownHitWindowNow && !(JUMP_ONCE && jumpInOpen);
+		if (ownHitTrain && OWN_HIT_NO_JUMP_PULL > 0f && me.onGround() && (ruled & (1 << ActionSpace.JUMP)) == 0 && !ruleJumpWould) {
+			// The "no jump" lesson's pull rides on the step; SchoolPpo teaches it only if the network then presses the jump (the attempt).
+			step.noJumpPull = OWN_HIT_NO_JUMP_PULL;
+		}
 		learner.act(step, keys, ruled, mode == Mode.TRAIN, cfg.playTemperature, action);
+		// Run 122: the network's own take-off tried in the window: charged and taught (training), let go of within 3.5 with the sword under 0.9
+		// (OWN_HIT_JUMP_GUARD, training and checks). The step keeps the attempt (its key and chance) for PPO and the lesson.
+		ownHitChargedNow = false;
+		if (me.onGround() && ownHitWindowNow && action[ActionSpace.JUMP] == 1 && (ruled & (1 << ActionSpace.JUMP)) == 0 && !ruleJumpWould
+				&& (mode == Mode.TRAIN || mode == Mode.CHECK)) {
+			int m = mode == Mode.CHECK ? 1 : 0;
+			ownHitTried[m]++;
+			if (ownHitTrain && OWN_HIT_JUMP_COST > 0f) {
+				enterReward -= OWN_HIT_JUMP_COST;
+				ownHitChargedNow = true;
+				ownHitCharged++;
+				ownHitTaught += step.noJumpPull > 0f ? 1 : 0;
+			}
+			if (OWN_HIT_JUMP_GUARD && dev.swordai.core.school.SchoolFighter.ownHitJumpGuard(clock.ticksSinceHitDealt, clock.ticksSinceHitTaken,
+					true, facts.reachDist, charge)) {
+				action[ActionSpace.JUMP] = 0;
+				ownHitStripped[m]++;
+			}
+		}
 		if (airKeepYieldNow && action[ActionSpace.ATTACK] == 1) {
 			airKeepYieldSwung[mode == Mode.CHECK ? 1 : 0]++;
 		}
@@ -5984,6 +6097,8 @@ public final class SchoolSession implements AgentSession {
 				if (jumpInOpen) {
 					jumpInOpen = false;
 					jumpInsTaken++;
+				} else if (ownHitChargedNow) {
+					// Run 122: charged OWN_HIT_JUMP_COST above (the guard let it take off: over 3.5 blocks or its sword back), not NEAR_JUMP_COST too.
 				} else if (jumpNotNeeded) {
 					enterReward -= NEAR_JUMP_COST;
 					nearJumpCharged++;
@@ -6957,6 +7072,22 @@ public final class SchoolSession implements AgentSession {
 		}
 		java.util.Arrays.fill(checkKeyTicks, 0);
 		java.util.Arrays.fill(airJumpKeyTicks, 0);
+		// Run 122: take-offs right after its own hit (the window: its hit at most 20 ticks old, none taken since), A's tried ones the guard let go
+		// of, and what would show a fear of jumping for crits: the jump-ins outside the window and its crits dealt.
+		int[] oa = ownHitTakeoffs[0], ob = ownHitTakeoffs[1];
+		SwordAi.LOGGER.info("school check run 122 | take-offs after its own hit, none taken since, {} ticks (all | 0-3 ticks after the hit | sword under {}"
+				+ " | both | not a rule's) A {} {} {} {} {} | B {} {} {} {} {} | A's own tried there {}, let go of by the guard (within {}, sword under {}) {} ({})"
+				+ " | jump-ins outside it (take-offs at 3-6 blocks moving toward them) A {} B {} | crits dealt A {} B {}",
+				dev.swordai.core.school.SchoolFighter.OWN_HIT_WINDOW, dev.swordai.core.school.SchoolFighter.OWN_HIT_GUARD_CHARGE, oa[0], oa[1], oa[2], oa[3],
+				oa[4], ob[0], ob[1], ob[2], ob[3], ob[4], ownHitTried[1], dev.swordai.core.school.SchoolFighter.OWN_HIT_GUARD_REACH,
+				dev.swordai.core.school.SchoolFighter.OWN_HIT_GUARD_CHARGE, ownHitStripped[1], OWN_HIT_JUMP_GUARD ? "on" : "off", checkJumpIns[0],
+				checkJumpIns[1], checkCrits[0], checkCrits[1]);
+		java.util.Arrays.fill(oa, 0);
+		java.util.Arrays.fill(ob, 0);
+		ownHitTried[1] = 0;
+		ownHitStripped[1] = 0;
+		java.util.Arrays.fill(checkJumpIns, 0);
+		java.util.Arrays.fill(checkCrits, 0);
 		SwordAi.LOGGER.info("school check rules | A: the golden rule (K2) held the swing on {} ticks, the installed model's rules set keys on {} ticks; "
 				+ "sprint hits outside its combos on one falling: on the server {}, as seen {} | lost view: A {} of {} ticks off the screen ({} times), "
 				+ "B {} of {} ticks ({} times)", k2Held, ruleTicks, k2Truth, k2Seen, lostTicks[0], viewTicks[0], lostTimes[0], lostTicks[1], viewTicks[1],
