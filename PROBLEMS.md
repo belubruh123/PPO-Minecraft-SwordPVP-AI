@@ -2015,3 +2015,13 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 ## 16 Nov 20:43 review
 
 - Training runs (run 121). The last check, 20:03, was A 34-31; their third hit 6% vs 13%. The next check is about 20:53.
+
+## 16 Nov 21:13 review + 20:52 check
+
+- 20:52 check: ROUNDS WON A 39/45 vs B 37/45 (z +0.8), net +3.2 HP a fight (se 3.5); damage a minute A 470/300, B 439/297.
+- Their third hit after their second: A 2/55 (4%) vs B 6/49 (12%).
+- Swung on the ground, outside their combo: A 61% vs B 57%. In their combo: A 40% vs B 44%; held in the air A 29% vs B 20% (level in the three checks before: 24/24, 16/19, 22/21). Watch at the next check.
+- Ground take-offs a minute in the last check fights: A 15-24 vs B 7-13 (about 2x). Run 121 held 28 reopens shut.
+- B1 in check: A 37/52 (71%) vs B 24/53 (45%). Punish crit chances critted, live: 56% of 300.
+- Live rates: T1 0% (FEW), T2 29% (rising), C3 33% (FEW), T9 39% (stuck, by design: rules' JumpReset), T1c 50% (FEW), T9b 54%, T9c 62%, C6 72% (stuck, own 29%), T6 73%, T4 75%, T1a 75%, T5 76%, C7 78%, C1 81%, K3 82%, T6a 89%, B1 89%, T7 95%, K2 99%, C4 100%, T9a 100%.
+- No new real rounds (the user's game log unchanged since 15 Nov 22:26). Training runs; no change this review.
