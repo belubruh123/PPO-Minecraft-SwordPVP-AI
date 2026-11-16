@@ -1867,3 +1867,8 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Their third hit after their second: A 21% (15), B 16% (10). Worse than 10:17 (14% vs 19%).
 - **Jumps a minute off/on its moments: A 60/91, B 30/29**, back up from 35/59 at 10:17. If it holds in the next check, look at the run 116 counter (own-combo take-offs) and the re-engaging jump-ins (agent 51's second excess).
 - Punish crit chances critted 59% of 300.
+
+## 16 Nov 12:13 review
+
+- Training runs (run 119). Punish crit chances critted 55% of 300. Training update: run 116 charged 2 own-combo take-offs; run 119 turned 1 teacher hold.
+- The next check is about 12:17. If A's jumps stay about 2x B (11:27: 60 vs 30), agent 54 takes the jumps (the re-engaging jump-ins). Otherwise agent 54 takes the swing that is not open (crosshair on its body, no pick).
