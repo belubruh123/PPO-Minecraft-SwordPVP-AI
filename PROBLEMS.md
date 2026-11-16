@@ -2060,3 +2060,21 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - Under 70%: T9 43%, T5 58% (stuck, was 94%), T1a 60%.
   - 70% and up: T4 70%, T6a 70%, T9b 70%, T9c 71%, B1 72%, T9a 73%, T2 75%, C6 76%, C7 77%, K3 79%, C3 87%, C1 88%, T6 90%, T7 91%, K2 99%.
 - No new real rounds since the 21:47-21:59 test, which was read tick by tick at 22:05. Run 122 (agent 56) is still building.
+
+## 16 Nov 22:40 the user: 10+ hit combos by tomorrow morning, uncomboable by tomorrow night, "use max method"
+
+- The user's asks:
+  - "ultimate consistency to hold combo over 10 hits easily";
+  - "always crit back after their punish crit";
+  - "a better model on basically no way to combo it because it learns all the counter by tmr's night";
+  - "its combo always do stupid jump after it hit"; "escaping combo still gets them two free hits anyway so it is bad as well".
+- Real rounds since 1 Nov (installed arm, every tick):
+  - Its combos: 2+ hits 44, 3+ 18, 5+ 5, 10+ 1 (run35); 33-35 of ~43 end with their hit.
+  - What follows its hits, by distance: its sprint hit under 2.0 blocks -> their hit next 72%; 2.0-2.6 -> 54%; 2.6+ -> 15%; its crits 62-76%.
+  - What follows their hits, by distance: under 2.0 -> its hit next 61%, their next 20%; 2.6+ -> their next 48%.
+  - When their next hit came (108): it had held S in 71 and its sword was ready in 59; they were within 3.0 in 103.
+  - Spacing decides the stun both ways; the S escape does not save it.
+- Three agents, run in parallel (the user: "anything wild"):
+  - run 122 (agent 56): no jump after its own hit; crit chains not taught; B1 every chance; jump in its own combo the largest penalty.
+  - run 123 (agent 57): COMBO_SPACING, its own combo hits from the edge of reach (2.6-3.0) with S-tap back, W-tap and chase.
+  - run 124 (agent 58): COUNTER_SPACING, in their combo no long S escape; with a ready sword it hits first as they enter reach; otherwise S-tap and strafe until ready.
