@@ -1781,3 +1781,16 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - But training shows a free-choice swing of about 86% (07:43: held otherwise 4 of 95 ready ticks).
 - **Agent 52 (08:15):** why it swings in training but holds in checks. The candidates are the forced or taught path in training, the check conditions (guard off, strict whiff guard), SWING_LOOSE edge whiffs being punished, and run 116/K2 lessons spreading into holds.
 - Punish crit chances critted 47% of 300 (under 50%), told and landed 42%.
+
+## 16 Nov 08:35: run 118 merged and asked (agent 52)
+
+- **My mistake:** the 07:43 "free-choice swing 86%" was a misread. The update said "held otherwise 43"; my output cut it to 4. The real free share was 37%.
+- Training and checks agree within about 4 points: 35% / 31-36% before run 115; 41-50% / 43-45% with runs 115-116; 37-38% / 29% with run 117.
+- **Run 117's SWING_LOOSE lowered the swing.** It taught swings at 3.0-3.3 blocks without the game's pick and let them through the training whiff guard.
+  - Training swings with the crosshair on them fell from 96-97% to 61-81%: about 20 whiffs an update, each AIR_SWING 0.15 and an empty sword.
+  - The actor has no reach input, so on look-alike ticks the label said "swing" and the outcome said "hold".
+  - Those swings can never happen in checks or the user's game (strict whiff guard), so they bought nothing there.
+- **Run 118 (SWING_IN_REACH):** the swing is taught only with the game's pick on them, and the training whiff guard is strict again.
+  - Kept: pull 1.0, the swing in their combo and in the air, K2/jump-in, and the technique teachers' holds.
+  - A new counter says why the lesson missed the held ticks; that is the way to 90%.
+- **Disproof test:** the crosshair-on share back to 95%+ within about 5 updates. The swung share back to 45%+ at T-B within about 20 updates. Fewer than 100 network-sure holds with the crosshair on in the next T-B check.
