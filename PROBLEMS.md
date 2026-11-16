@@ -2196,3 +2196,7 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Their third hit A 9/44 (20%) vs B 3/49 (6%): worse, a small count. Watch it.
 - Live punish crit chances critted 55%; told and landed 28% (noisy).
 - The first candidate for the 21:10 test: the network of this check. No new real rounds.
+
+## 17 Nov 06:43 review
+
+- Training runs. No new check since 06:10 (A 36-31). No new real rounds.
