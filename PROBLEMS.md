@@ -2097,3 +2097,5 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - 01:12: run 122 merged (d1b0902) and redeploy requested. Agents 57 (run 123) and 58 (run 124) were cut off by the limit and resumed at 01:12.
 
 - 01:23 run 122 redeployed (tests passed; cycle restarted 01:23). Watch the "run 122" counters and the "school check run 122" line at the next check.
+
+- 01:25 run 124 (agent 58, COUNTER_SPACING) merged (b579c01): in their combo and while closing in, with a ready sword it runs in and swings on the pick; otherwise S taps, strafe or stand at the edge; no long S escape; rule C in round files. Redeploy queued for 01:45 (20 min after run 122), only when no check is playing. Agent 57 (run 123) is still building.
