@@ -2147,3 +2147,9 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Punish crit chances critted 62% of 300 (inside 50-65%, rising from 46-53%); told and landed 47% (34-41% before).
 - Run 123 update 7661 (a fight without the rules, label only): combos 2+ 11, 3+ 2, mean 2.3.
 - Next check about 03:45. No new real rounds.
+
+## 17 Nov 03:43 review
+
+- Training runs (32.37M steps). The first check with run 123b is still to come (about 03:45-03:50).
+- Punish crit chances critted 63%; told and landed 53% (rising: 34% at 02:13, 41% at 02:43, 47% at 03:13).
+- No new real rounds.
