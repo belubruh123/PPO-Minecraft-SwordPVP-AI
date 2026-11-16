@@ -2113,3 +2113,17 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Weekly usage 75%: no more agents tonight unless something breaks.
 
 - 01:51 runs 123 + 124 redeployed (cycle restarted 01:51). First check with runs 122-124 about 02:35: watch "school check run 122/123/124".
+
+## 17 Nov 02:13 review (first counters with runs 122-124)
+
+- Training runs (32.13M steps).
+- Run 122:
+  - 0 take-offs tried right after its own hit in update 7625 (5 at 01:43);
+  - teacher B1 started on 52 of 52 punishable lifts.
+- Run 123, in training:
+  - its combos 2+ 12, 3+ 8, 5+ 3, 10+ 1, longest 10, mean 3.7;
+  - 84 of 100 held combos ended by their hit;
+  - ticks: stand 380, chase 381, S 75, W-tap 61, swing 32.
+- Run 124: run-in 133, swing 11, stood aside for other rules 547.
+- Punish crit chances critted 53%. Told and landed fell to 34% (from 39-42%): B1 is now told on every punishable lift, harder ones included. Watch it.
+- Next check about 02:35. No new real rounds.
