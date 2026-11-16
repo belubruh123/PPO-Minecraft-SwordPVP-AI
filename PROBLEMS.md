@@ -1995,3 +1995,7 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 
 - Training runs (run 121). The next check is about 18:26-18:30 or later; see the next review.
 - **18:25 check: ROUNDS WON A 34/45 (76%), B 28/45 (62%), z about +1.7** (only A won 9, only B won 3). The second strong check in a row (17:36: 35-30).
+
+## 16 Nov 19:13 review
+
+- Training runs (run 121). The last check, 18:25, was A 34-28 (z +1.7), swung 60% vs 53%. The next check is about 19:15.
