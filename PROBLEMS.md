@@ -2293,3 +2293,7 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Training runs. A check finished at 15:11 (next line). No new real rounds.
 - 15:11 check: ROUNDS WON A 30/44 vs B 34/44 (z -1.6), -2.8 HP a fight (se 3.9). Their third hit A 16% vs B 20%. B1 in the check A 81/121 (67%) vs B 38/134 (28%).
 - The rounds after the 11:55 peak: 34-32, 33-33, 31-34, 30-34. Drifting down; live told-and-landed punish crits 23%. The 11:51 network stays the choice for 21:10.
+
+## 17 Nov 15:43 review
+
+- Training runs. No new check since 15:11 (30-34). No new real rounds.
