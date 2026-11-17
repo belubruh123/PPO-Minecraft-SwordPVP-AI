@@ -2347,3 +2347,13 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
   - checked-1117-1913 (36-30, z +1.7, +9.6 HP, third hit 4% vs 11%, B1 61%; 7 more hours of training).
 - The jar build/libs 04:31 holds the merged code (runs 122 + 124, run 123 off; last code commit 04:18).
 - Since run 123 went off: 586-553 over eighteen checks. No new real rounds.
+
+## 17 Nov 20:13 review + the 20:07 check; 20:14 INSTALL for the user's 21:10 test
+
+- 20:07 check: ROUNDS WON A 31/45 vs B 31/45 (z 0.0), -2.1 HP a fight. Their third hit A 14% vs B 19%. B1 A 69% vs B 30%.
+- Installed checked-1117-1913 (the 19:17 check: A 36-30, +9.6 HP, their third hit 4% vs 11%, B1 61% vs 26%) with the 17 Nov 04:31 jar.
+  - The jar has runs 122 + 124; run 123 is off.
+  - In the real game: no network jump right after its own hit while close with an uncharged sword; T1/T1c/T2/C6 never told; rule C (counter spacing) in their combo and while closing in.
+- Verified by cmp. run35 + the 14 Nov jar are in the profile's swordai/backup-before-school-20261117-201324.
+- Training paused for the test (training-stop.sh).
+- After the test, read every tick of its rounds (scratchpad lost-frames.py, own-combo-jumps.py, own-combos.py, combo-breaks.py, their-combos.py). The new round files also carry the run 122 and run 124 tallies.
