@@ -2331,3 +2331,7 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Their third hit A 11% vs B 11%. B1 in the check A 75/111 (68%) vs B 32/133 (24%).
 - Since run 123 went off: 550-523 over seventeen checks.
 - Training runs (34.85M steps). No new real rounds.
+
+## 17 Nov 19:13 review
+
+- Training runs. No new check since 18:28 (A 32-29). No new real rounds.
