@@ -225,6 +225,10 @@ public final class ArenaServer {
 		if (s.pendingStyle != null && s.techPlays) {
 			// Its memory of where the agent was (aim, motion, swings) from this moment on, not from before the put-back.
 			s.tech.start(s.pendingStyle, s.pendingSeed);
+			if (s.pendingStyle.comboDrill) {
+				// Run 125 (ComboDrill): the drill begins the tick after the agent's sprint hit on the bot: the bot feels it now.
+				s.tech.drillStart(SceneRecorder.agentTicker(scene));
+			}
 		}
 		// The restore check (7 Nov, the user: verify the recreation is exact): compared 1 and 3 ticks on in publish().
 		s.restoreExpect = scene.clone();

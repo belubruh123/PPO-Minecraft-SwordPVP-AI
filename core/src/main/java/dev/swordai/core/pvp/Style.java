@@ -227,6 +227,17 @@ public final class Style {
 	/** Run 100: of its answers to a crit that lifted it, the share made as a punish crit back (below 0: PvpPlayer's ANSWER_BY_CRIT). */
 	public float answerByCrit = -1f;
 	/**
+	 * Run 125 (dev.swordai.core.school.ComboDrill#victim): the bot of a combo-hold drill, put back the tick after the AI's sprint hit on it;
+	 * TechniqueBot feels that hit on its first tick and takes the AI's sword as just swung (TechniqueBot#drillStart). false for every other.
+	 */
+	public boolean comboDrill = false;
+	/**
+	 * Run 125: the chance, per hit it takes, of a swing back right through it while the other is still in its reach as it judges it,
+	 * the sword (nearly) back (PvpPlayer: a tick or two after the hit is felt, for a few ticks). The real rounds: their hit came within 5
+	 * ticks of its hit in 172 of 272. 0 (none) for every style but the combo drill's bot.
+	 */
+	public float answerHit = 0f;
+	/**
 	 * What it takes the other to do before it has seen anything, by {@link Habits} index; below zero for
 	 * no belief. A counter specialist expects the thing it counters (the crit-breaker expects double crits).
 	 */
@@ -315,6 +326,8 @@ public final class Style {
 		s.critSpam = critSpam;
 		s.critFromSpread = critFromSpread;
 		s.answerByCrit = answerByCrit;
+		s.comboDrill = comboDrill;
+		s.answerHit = answerHit;
 		System.arraycopy(believe, 0, s.believe, 0, believe.length);
 		s.heldOut = heldOut;
 		s.human = human;

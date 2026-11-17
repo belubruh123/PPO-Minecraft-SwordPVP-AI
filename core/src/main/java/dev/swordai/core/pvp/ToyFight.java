@@ -80,6 +80,12 @@ public final class ToyFight {
 		refresh();
 	}
 
+	/** Run 125 (the combo drill's calibration): fighter {@code i}'s sword this many ticks into coming back (100: back). */
+	public void setTicker(int i, int ticks) {
+		ticker[i] = ticks;
+		refresh();
+	}
+
 	@SuppressWarnings("unchecked")
 	private static java.util.ArrayDeque<double[]>[] newQueues() {
 		return new java.util.ArrayDeque[] {new java.util.ArrayDeque<double[]>(), new java.util.ArrayDeque<double[]>()};

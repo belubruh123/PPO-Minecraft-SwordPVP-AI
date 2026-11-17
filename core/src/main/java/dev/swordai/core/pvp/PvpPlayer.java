@@ -344,6 +344,8 @@ public final class PvpPlayer {
 		selectLeft = 0;
 		selectRolled = false;
 		stunLeft = 0;
+		hitBackFrom = -1;
+		hitBackUntil = -1;
 		escRising = false;
 		escEmpty = false;
 		takenAt = -1000;
@@ -700,6 +702,13 @@ public final class PvpPlayer {
 		} else if (answerUntil >= 0 && tick > answerUntil) {
 			answerUntil = -1;
 		}
+		// Run 125 (Style#answerHit, the combo drill's bot): the swing back through the hit it took, while the other is still in its reach.
+		if (hitBackUntil >= tick && tick >= hitBackFrom && !k.attack && judged(d) <= Duel.REACH && me.charge >= ANSWER_CHARGE && stunLeft == 0) {
+			k.attack = true;
+			hitBackUntil = -1;
+		} else if (hitBackUntil >= 0 && tick > hitBackUntil) {
+			hitBackUntil = -1;
+		}
 		// The golden rule (K2) for every knockback hit, a technique's too: "don't knockback-hit someone who is falling,
 		// whether during a combo or while they are critting you." A falling one sticks to the floor (K1) and crits back.
 		if (k.attack && k2 && fallingByTheHit(d.them) && (me.sprinting || k.sprint) && k.technique != Technique.K2
@@ -748,6 +757,11 @@ public final class PvpPlayer {
 
 	/** Run 59: the swing back at their crit, from this tick until that one (-1: none). */
 	private long answerFrom = -1, answerUntil = -1;
+	/** Run 125 (Style#answerHit): the swing back through any hit taken, from this tick until that one (-1: none); its delay and window. */
+	private long hitBackFrom = -1, hitBackUntil = -1;
+	static final int HIT_BACK_LEAST = 1;
+	static final int HIT_BACK_SPREAD = 2;
+	static final int HIT_BACK_TICKS = 4;
 	private static final int ANSWER_CRIT_TICKS = 6;
 	/** Run 59b: the answer to their crit may come a little short of a full sword (real answers were mostly not sprint hits). */
 	private static final float ANSWER_CHARGE = 0.8f;
@@ -960,6 +974,11 @@ public final class PvpPlayer {
 			// is possible against it (Style#backAfterHit); its W-tap is dropped, the S is the whole answer.
 			stapLeft = style.backAfterHit;
 			wtapLeft = 0;
+		}
+		if (style.answerHit > 0f && rng.nextFloat() < style.answerHit) {
+			// Run 125 (Style#answerHit): a person hit with the other still in reach clicks back through it (hit through), a tick or two on.
+			hitBackFrom = tick + HIT_BACK_LEAST + rng.nextInt(HIT_BACK_SPREAD);
+			hitBackUntil = hitBackFrom + HIT_BACK_TICKS;
 		}
 		if (breaker() && breakOut(d, e)) {
 			return;

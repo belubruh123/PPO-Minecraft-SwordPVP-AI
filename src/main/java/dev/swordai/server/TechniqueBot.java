@@ -152,6 +152,16 @@ public final class TechniqueBot {
 		lastKeys = 0;
 	}
 
+	/**
+	 * Run 125 (Style#comboDrill, ComboDrill): the drill is put back the tick after the agent's sprint hit on the bot, its knockback already
+	 * in the bot's motion. The bot feels that hit on its first tick (its counters, C3 and T9, are rolled there) and takes the agent's sword
+	 * as swung {@code agentTicks} ticks ago (it judges the agent's sword by its swings). Call right after {@link #start}.
+	 */
+	void drillStart(int agentTicks) {
+		hitsComing.addLast(new int[] {(int) (now + 1), Events.SPRINT, -1});
+		agentSinceSwing = Math.max(0, agentTicks);
+	}
+
 	void stop() {
 		active = false;
 	}

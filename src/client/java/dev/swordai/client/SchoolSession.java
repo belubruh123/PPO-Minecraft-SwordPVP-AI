@@ -1068,7 +1068,8 @@ public final class SchoolSession implements AgentSession {
 
 	/** True once the waiting scene (if any) is put back and this client stands where it was put, moving as it was. */
 	private boolean scenePutBackReady() {
-		if (sceneNow == null) {
+		// Run 125: a combo drill's start is put back as a scene is.
+		if (sceneNow == null && !comboDrillNow) {
 			return true;
 		}
 		if (!putBackAsked) {
@@ -1613,9 +1614,36 @@ public final class SchoolSession implements AgentSession {
 	private final dev.swordai.core.school.ComboTally trainTally = new dev.swordai.core.school.ComboTally();
 	private final dev.swordai.core.school.ComboTally[] checkTally = {new dev.swordai.core.school.ComboTally(), new dev.swordai.core.school.ComboTally()};
 
-	/** Run 123: the tally this fight feeds (null for the old stages' reviews). */
+	/** Run 123: the tally this fight feeds (null for the old stages' reviews, and for run 125's drills: they have their own). */
 	private dev.swordai.core.school.ComboTally run123Tally() {
-		return mode == Mode.CHECK ? checkTally[installedPlays ? 1 : 0] : review < 0 ? trainTally : null;
+		return mode == Mode.CHECK ? checkTally[installedPlays ? 1 : 0] : review < 0 && !comboDrillNow ? trainTally : null;
+	}
+	// ---- Run 125 (agent 59, 17 Nov ~21:00): the combo-hold drill from its own stun (COMBO_DRILL) ------------------------------------------
+	/**
+	 * Run 125 (the user, 17 Nov 20:50: "purposely let the bot be stunned and then just purposely let the AI have a chance to combo it and
+	 * teach it to hold the combo perfectly"; see dev.swordai.core.school.ComboDrill): COMBO_DRILL_SHARE of the training fights start the
+	 * tick after its own sprint hit (put back as a scene, ComboDrill#startState) against a person being comboed (ComboDrill#victim); played
+	 * without the rules and with no copy of the installed model's keys (the network presses every key, PPO); the chain's reward
+	 * (ComboDrill.Chain) on top of the fight's; the drill ends at the bot's hit, or the bot out of range for 20 ticks; the light teacher's
+	 * W/S, sprint and "no jump" at ComboDrill.PULL by the outcome (step.holdPull, as the combo-hold teacher's). Kept out of the full fights'
+	 * tallies, the stages, the scenes and run 123's training combo counts; its own segment on the training update line. false = as before.
+	 */
+	static final boolean COMBO_DRILL = dev.swordai.core.school.ComboDrill.ON;
+	static final float COMBO_DRILL_SHARE = dev.swordai.core.school.ComboDrill.SHARE;
+	/** Run 125: this fight is a combo drill; its start, its chain, the drills' counters and the ticks its teacher taught. */
+	private boolean comboDrillNow;
+	private double[] drillState;
+	private dev.swordai.core.school.ComboDrill.Chain drillChain = new dev.swordai.core.school.ComboDrill.Chain();
+	private final dev.swordai.core.school.ComboDrill.Tally drillTally = new dev.swordai.core.school.ComboDrill.Tally();
+	private int drillTaught;
+
+	/** Run 125: the training update line's segment; the counts start again. */
+	private String run125Line() {
+		String s = String.format(Locale.ROOT, " | run 125 combo drill (%s, share %.2f of training fights, teacher pull %.1f by the outcome, taught %d ticks): %s",
+				COMBO_DRILL ? "on" : "off", COMBO_DRILL_SHARE, dev.swordai.core.school.ComboDrill.PULL, drillTaught, drillTally.line());
+		drillTally.clear();
+		drillTaught = 0;
+		return s;
 	}
 
 	/** Run 123: the spacing rule's swing line, as A's rules' own (Fighter: Config.swingMinCharge and ruleSwingCharge). */
@@ -1802,6 +1830,7 @@ public final class SchoolSession implements AgentSession {
 				+ stages.run104Line() + (dev.swordai.core.school.SchoolStages.ALL_TO_70 ? ";" + priorityKindLine() : "")
 				+ run107Line()
 				+ run123Line()
+				+ run125Line()
 				+ String.format(Locale.ROOT, " | run 86, its own take-offs after their 2nd hit: their next hit within %d ticks anyway (charged) %d, out %d",
 						COMBO_TAKEOFF_WINDOW, comboTakeoffFail, comboTakeoffOut)
 				+ String.format(Locale.ROOT, " | run 84, their combo from their 2nd hit, W/S/sprint/jump the network's: %d ticks, S pressed %d; their 3rd hit after their 2nd: those fights %d/%d, other fights %d/%d",
@@ -4102,6 +4131,7 @@ public final class SchoolSession implements AgentSession {
 
 	private void beginFight(Truth truth) {
 		sceneNow = null;
+		comboDrillNow = false;
 		critsPending = 0;
 		gameCritLeft = 0;
 		jumpInFrom = -1;
@@ -4213,15 +4243,17 @@ public final class SchoolSession implements AgentSession {
 			reviewHop = truth.hopId();
 		} else {
 			boolean drill = mode == Mode.TRAIN && rng.nextFloat() < DRILL_SHARE;
+			// Run 125 (COMBO_DRILL): a combo-hold drill, ahead of the scenes and the full fights.
+			comboDrillNow = COMBO_DRILL && mode == Mode.TRAIN && benchNow < 0 && !drill && rng.nextFloat() < COMBO_DRILL_SHARE;
 			sceneReview = false;
-			Scene comboPick = mode == Mode.TRAIN && !drill ? comboScenePick() : null;
+			Scene comboPick = mode == Mode.TRAIN && !drill && !comboDrillNow ? comboScenePick() : null;
 			if (comboPick != null) {
 				// Run 66: a combo-escape scene, ahead of the repeat queue.
 				sceneNow = comboPick;
 				comboScenePicks++;
-			} else if (repeatPick(drill)) {
+			} else if (!comboDrillNow && repeatPick(drill)) {
 				sceneNow = repeatScene;
-			} else if (mode == Mode.TRAIN && !drill && (!scenes.isEmpty() || !mastered.isEmpty())
+			} else if (mode == Mode.TRAIN && !drill && !comboDrillNow && (!scenes.isEmpty() || !mastered.isEmpty())
 					&& rng.nextFloat() < (repeatActive() ? (mastered.isEmpty() ? 0f : REPEAT_TEST_SHARE) : sceneChance())) {
 				// While one is repeated (run 48) the other fights are full fights or a learned replay tested again.
 				sceneReview = !mastered.isEmpty() && (repeatActive() || scenes.isEmpty() || rng.nextFloat() < SCENE_REVIEW_SHARE);
@@ -4292,9 +4324,17 @@ public final class SchoolSession implements AgentSession {
 				fightStyle = styleOf(fightBot, fightStyleSeed, fightVaried, fightReplica);
 				agentLag = sceneNow.agentLag;
 			}
+			if (comboDrillNow) {
+				// Run 125: the drill's bot (a person being comboed, in the straight sprinter's slot) and its start, the tick after its stun.
+				fightBot = Specialists.STRAIGHT_SPRINTER;
+				fightVaried = false;
+				fightReplica = false;
+				fightStyle = dev.swordai.core.school.ComboDrill.victim(new Random(fightStyleSeed ^ 0xC0DB125L));
+				drillState = dev.swordai.core.school.ComboDrill.startState(rng);
+			}
 			plan = EpisodePlan.school(fightStyle, drill ? DRILL_NEAR : NEAREST, drill ? DRILL_FAR : FARTHEST);
 			sparFight = sceneNow != null ? sceneNow.spar && sparring != null
-					: !drill && sparring != null && (mode == Mode.TRAIN ? rng.nextFloat() < SPAR_SHARE : sparCheck);
+					: !drill && !comboDrillNow && sparring != null && (mode == Mode.TRAIN ? rng.nextFloat() < SPAR_SHARE : sparCheck);
 			rivalNow = sparFight && sceneNow == null && mode == Mode.TRAIN && !league.isEmpty() && rng.nextFloat() < LEAGUE_SHARE
 					? 1 + rng.nextInt(league.size()) : 0;
 			if (benchNow >= 0) {
@@ -4304,7 +4344,7 @@ public final class SchoolSession implements AgentSession {
 				sparFight = rivalNow > 0;
 			}
 			plan.rivalIndex = rivalNow;
-			boolean fullTrainFight = mode == Mode.TRAIN && benchNow < 0 && sceneNow == null && !drill && !sparFight && rivalNow == 0;
+			boolean fullTrainFight = mode == Mode.TRAIN && benchNow < 0 && sceneNow == null && !drill && !comboDrillNow && !sparFight && rivalNow == 0;
 			if (OUTSIDE_SHARE > 0f && fullTrainFight && ArenaServer.hasBotCommand(server) && rng.nextFloat() < OUTSIDE_SHARE) {
 				// Run 103: a full fight against Carpet PvP's sword bot (see OUTSIDE_SHARE); ArenaServer.setOutside hands it the arena's bot.
 				fightOutside = true;
@@ -4350,6 +4390,9 @@ public final class SchoolSession implements AgentSession {
 			sparBotLag = plan.botLag;
 			if (sceneNow != null) {
 				plan.scene = sceneNow.state;
+			} else if (comboDrillNow) {
+				// Run 125: put back as a scene is (ArenaServer: turned about the middle at random; the bot feels the stun, TechniqueBot#drillStart).
+				plan.scene = drillState;
 			}
 			if (drill) {
 				plan.drillLift = true;
@@ -4365,8 +4408,14 @@ public final class SchoolSession implements AgentSession {
 			// Run 47c (the user, 14:25: many replays and still not learned): every replay is played without the rules, so the network
 			// presses every key of the moment itself and gets the gradient for it (with the rules on, about half the replays, the
 			// rules pressed the deciding keys and those got none).
-			: review < 0 && !drillFight && (sceneNow != null && mode == Mode.TRAIN || rng.nextFloat() < ruleOffShare());
-		drillTicker = plan.drillLift ? plan.drillAgentTicker : sceneNow != null ? SceneRecorder.agentTicker(sceneNow.state) : -1;
+			// Run 125: a combo drill too (no rule presses its keys: run 123's controller held ready swings).
+			: review < 0 && !drillFight && (sceneNow != null && mode == Mode.TRAIN || comboDrillNow || rng.nextFloat() < ruleOffShare());
+		drillTicker = plan.drillLift ? plan.drillAgentTicker : sceneNow != null ? SceneRecorder.agentTicker(sceneNow.state)
+				: comboDrillNow ? SceneRecorder.agentTicker(drillState) : -1;
+		if (comboDrillNow) {
+			drillChain = new dev.swordai.core.school.ComboDrill.Chain();
+			drillTally.start(dev.swordai.core.school.ComboDrill.stunReset(drillState));
+		}
 		drillFights += plan.drillLift ? 1 : 0;
 		plan.seed = seed;
 		plan.seedYaw = mode == Mode.CHECK;
@@ -4465,12 +4514,17 @@ public final class SchoolSession implements AgentSession {
 		obLastTheirHit = -1000;
 		// An own-combo scene starts the tick after its first hit: a hit within COMBO_GAP is that combo's follow-up (COMBO_HIT).
 		boolean ownScene = sceneNow != null && (sceneNow.kind == KIND_OWN || sceneNow.kind == KIND_OWN2);
-		lastOwnHitAt = ownScene ? -1 : -1000;
-		rewardRow = !ownScene ? 0 : sceneNow.kind == KIND_OWN2 ? 2 : 1;
+		// Run 125: a combo drill starts after its own hit too (the stun is the chain's first hit, COMBO_HIT pays the follow-ups), the
+		// engagement's one jump-in already spent, and its own hit just made on its clock (the network's input, the own-hit jump guard).
+		lastOwnHitAt = ownScene || comboDrillNow ? -1 : -1000;
+		rewardRow = comboDrillNow ? 1 : !ownScene ? 0 : sceneNow.kind == KIND_OWN2 ? 2 : 1;
+		if (comboDrillNow) {
+			clock.ticksSinceHitDealt = SceneRecorder.agentTicker(drillState);
+		}
 		cbFollowAt = -1;
 		dropAt = -1;
-		jumpInOpen = true;
-		oldJumpInOpen = true;
+		jumpInOpen = !comboDrillNow;
+		oldJumpInOpen = !comboDrillNow;
 		reopenHeldNoted = false;
 		awayTicks = 0;
 		heldPending = 0f;
@@ -4960,9 +5014,27 @@ public final class SchoolSession implements AgentSession {
 			fightDealt += facts.damageDealt;
 			fightTaken += facts.damageTaken;
 			boolean ko = facts.koDealt || facts.koTaken;
+			// Run 125 (COMBO_DRILL): the drill's chain: its pay this tick, the bot's hit back by its last hit's distance, and its end.
+			float drillPay = 0f;
+			boolean drillOver = false;
+			if (comboDrillNow && mode == Mode.TRAIN) {
+				boolean dealtNow = facts.hitsDealt > 0, takenNow = facts.hitsTaken > 0;
+				if (takenNow) {
+					drillTally.hitBack();
+				} else if (dealtNow) {
+					drillTally.hit(clicked ? reachAtClick : facts.reachDist);
+				}
+				drillPay = drillChain.tick(dealtNow, takenNow, facts.reachDist);
+				if (ko) {
+					drillChain.knockout();
+				}
+				drillTally.reward(drillPay);
+				drillOver = drillChain.over();
+			}
+			boolean drillTerminal = drillOver && drillChain.terminal();
 			boolean timeUp = review >= 0 ? fightTicks >= Math.min(basics[review].bot.attacks ? FIGHT_TICKS : REVIEW_TICKS, basics[review].episodeTicks)
 					|| reviewRewards.lostTooLong(basics[review])
-					: fightTicks >= (sceneNow != null ? sceneNow.ticks() : FIGHT_TICKS) || repeatEndNow && fightTicks >= REPEAT_MIN_TICKS;
+					: fightTicks >= (sceneNow != null ? sceneNow.ticks() : FIGHT_TICKS) || repeatEndNow && fightTicks >= REPEAT_MIN_TICKS || drillOver;
 			if (mode == Mode.TRAIN && review < 0 && sceneNow == null && !drillFight && !ruleOff) {
 				trackOwnCombo(facts.hitsDealt > 0, facts.hitsTaken > 0);
 				harvest(truth.tick(), facts.damageDealt - facts.damageTaken, facts.critsTaken > 0, ko || timeUp);
@@ -4989,6 +5061,8 @@ public final class SchoolSession implements AgentSession {
 				float reward = PER_HEALTH * (DEALT_WEIGHT * facts.damageDealt - facts.damageTaken) + (facts.koDealt ? KNOCKOUT : 0f) - (facts.koTaken ? KNOCKOUT : 0f);
 				reward += enterReward;
 				enterReward = 0f;
+				// Run 125: the combo drill's chain pay (0 outside drills).
+				reward += drillPay;
 				// Run 92: too close with its own sword empty and theirs ready (TOO_CLOSE_COST); a sprint hit from the edge of reach, not on
 				// one falling (EDGE_HIT), by the distance when its swing was chosen.
 				if (TOO_CLOSE_COST > 0f && facts.reachDist < TOO_CLOSE_WITHIN && me.getAttackStrengthScale(0f) < TOO_CLOSE_CHARGE
@@ -5365,7 +5439,8 @@ public final class SchoolSession implements AgentSession {
 				reward += shaping;
 				shapingPaid += shaping;
 				shaping = 0f;
-				learner.complete(reward, ko, !ko && (timeUp || full), step.obs);
+				// Run 125: a drill's chain broken or dropped is its end (no value after it); its time up is bootstrapped as any.
+				learner.complete(reward, ko || drillTerminal, !ko && !drillTerminal && (timeUp || full), step.obs);
 			}
 			if (ko || timeUp || full) {
 				if (benchNow >= 0) {
@@ -5901,6 +5976,19 @@ public final class SchoolSession implements AgentSession {
 				}
 			}
 		}
+		// Run 125 (COMBO_DRILL): in a drill, the light teacher's W/S, sprint and "no jump" (ComboDrill#target) at ComboDrill.PULL, taught only
+		// where the moment went better than the critic expected (SchoolPpo: holdPull). The swing stays the swing lesson's (SWING_TAUGHT, below:
+		// sword ready, the pick on them, never held); no rule presses any key here (the drill is played without the rules).
+		if (comboDrillNow && mode == Mode.TRAIN && !drillChain.over() && step.letGoPull == 0f
+				&& (step.teacherTechnique < 0 || step.teacherTechnique == base)) {
+			step.teacherHeads |= dev.swordai.core.school.ComboDrill.target(step.teacher, clock.ticksSinceHitDealt, charge, facts.reachDist);
+			step.holdPull = dev.swordai.core.school.ComboDrill.PULL;
+			step.jumpPull = 0f;
+			if (step.teacherTechnique < 0) {
+				step.teacherTechnique = base;
+			}
+			drillTaught++;
+		}
 		if (k2Hold) {
 			keys &= ~ActionSpace.mask(ActionSpace.ATTACK);
 			// Neither "swing" nor "don't" is taught on a tick the rule holds.
@@ -6013,7 +6101,8 @@ public final class SchoolSession implements AgentSession {
 				// Run 90: on the guard's ticks the rules do not swing for it.
 				ruled &= ~ActionSpace.mask(ActionSpace.ATTACK);
 			}
-			ruledTaught = ruleOff ? (sceneNow != null && mode == Mode.TRAIN ? 0 : keys & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH)) : ruled;
+			// Run 125: nor in a combo drill (the installed model's keys, rules and all, are not its target there: it learns the chain by PPO).
+			ruledTaught = ruleOff ? ((sceneNow != null || comboDrillNow) && mode == Mode.TRAIN ? 0 : keys & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH)) : ruled;
 			if (guardFree) {
 				// Run 90: nor is the rules' swing (or hold) a target there.
 				ruledTaught &= ~ActionSpace.mask(ActionSpace.ATTACK);
@@ -6119,7 +6208,7 @@ public final class SchoolSession implements AgentSession {
 		// agreement, while the network without the rules already lands 97% of its swings to the installed model's 89%.
 		int bodyKeys = ActionSpace.ALL_HEADS & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
 		step.ruledHeads = mode == Mode.TRAIN && review < 0 ? ruledTaught & bodyKeys & ~step.teacherHeads : 0;
-		if (OWN_FOLLOWUP_AWR && mode == Mode.TRAIN && review < 0 && installedDecided && installed != null
+		if (OWN_FOLLOWUP_AWR && mode == Mode.TRAIN && review < 0 && !comboDrillNow && installedDecided && installed != null
 				&& ownGroundHitAt >= 0 && fightTicks - ownGroundHitAt <= B_FOLLOWUP_TICKS && clock.ticksSinceHitTaken > fightTicks - ownGroundHitAt) {
 			// Run 81: B's movement keys after its own ground hit, by the outcome.
 			int follow = ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT, ActionSpace.JUMP) & ~step.teacherHeads;
@@ -6300,6 +6389,10 @@ public final class SchoolSession implements AgentSession {
 		}
 		readyOpenNow = ActionSpace.unlocked(keys, ActionSpace.ATTACK);
 		countReady(0, charge, reader.duel.them.falling() || truth.botFalling(), k2Hold);
+		if (comboDrillNow && mode == Mode.TRAIN && charge >= 0.95f && facts.reachDist <= 3.0f && pickNow) {
+			// Run 125: its swing on the drill's ready-in-reach ticks (the game's pick on them): must not fall (run 123 held them).
+			drillTally.ready(action[ActionSpace.ATTACK] == 1);
+		}
 		if (READY_HOLD_COST > 0f && mode == Mode.TRAIN && review < 0 && me.onGround() && charge >= 0.95f && facts.reachDist <= 3.0f
 				&& onOpponent() && action[ActionSpace.ATTACK] == 0 && !k2Hold && reader.duel.them.onGround && !truth.botFalling() && !spacingNow) {
 			// Run 96: a ready sword held with them on the ground, in reach, under the crosshair (see READY_HOLD_COST).
@@ -7108,6 +7201,22 @@ public final class SchoolSession implements AgentSession {
 			t.endFight();
 		}
 		counter.reset();
+		if (comboDrillNow && mode == Mode.TRAIN) {
+			// Run 125: a combo drill has its own tally and line (not a full fight, not a fight without the rules, not the stages' or a bot's).
+			if (won || lost) {
+				drillChain.knockout();
+			}
+			drillTally.end(drillChain);
+			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school combo drill: chain %d (stun = 1), ended by %s; dealt %.1f, taken %.1f, ticks %d; %s",
+					drillChain.length(), dev.swordai.core.school.ComboDrill.END_NAMES[drillChain.over() ? drillChain.end() : dev.swordai.core.school.ComboDrill.TIME],
+					fightDealt, fightTaken, fightTicks, fightStyle.describe()));
+			comboDrillNow = false;
+			hasLastAction = false;
+			clicked = false;
+			java.util.Arrays.fill(recentCrits, 0);
+			sinceFallingHit = 1000;
+			return;
+		}
 		if (fightComboable && mode == Mode.TRAIN) {
 			comboableFights++;
 			holdRuns[fightBreaker ? 1 : 0][0]++;

@@ -2399,3 +2399,34 @@ With fewer of its own jumps, the rules' keep rarely fires and the answer is a gr
 - Its combos in the checks: mean 2.3-2.5 vs B 3.4.
 - Their third hit A 6% vs B 15%. Run 124: their 3+ runs on it 0.
 - Runs 122 and 124 stay. The next check shows whether the swing and damage come back without run 123; if not, run 124 is next.
+
+## Run 125 (agent 59, 17 Nov ~21:00): combo-hold drill from its own stun (COMBO_DRILL)
+
+- **The user (17 Nov 20:50):** "Why didn't you purposely let the bot be stunned and then just purposely let the AI have a chance to combo it and teach it to hold the combo perfectly". Goal: combos of 10+.
+- **Evidence (the user's real rounds, mostly run35):**
+  - Its chains of 2+ hits: 44; 3+ 18, 5+ 5, 10+ 1 (mean about 3); 35 ended with their hit.
+  - Their hit next after its sprint hit: from under 2.0 blocks 72% (110), 2.0-2.6 54% (103), 2.6+ 15% (26). Within 5 ticks 172 of 272; jump reset of its hit 91 of 272.
+  - The training bots and tools/combosim punished only hits under about 1.5 blocks, so close follow-ups looked fine in training.
+  - Run 123 (a rule pressing the spacing keys): A swung 27-29% of ready-in-reach ticks vs B 52-59%, -14 to -17 HP a fight. So no rule presses keys here.
+- **What changed:**
+  - core/school/ComboDrill (new): the drill start, the bot, the chain reward, the teacher, the counters.
+  - The start (ComboDrill.startState, put back as a scene, turned at random): the tick after its sprint hit from 2.3-3.0 blocks. The bot knocked away 0.67-0.70 a tick and up 0.4 (the game's 0.4 then 0.5 knockback), hurt 9, grace 19; a jump reset of the stun in 33% (up 0.42, 0.2 less away). Its sword back in 75%, else 4-9 ticks into it. The AI's sword 1-2 ticks into coming back, not sprinting, moving on 0.10-0.18 a tick. Both on the ground facing each other, 20 HP.
+  - The bot (ComboDrill.victim, humanized at TechniqueBot#start, in the straight sprinter's slot, kept out of its tallies): a person's body (drawHuman); jump reset T9 0.35-0.65 (C5); fly out C3 0.1-0.3 (jump and hold S); strafe 0.15-0.5; closeIn 0-0.15; a swing back through the hit (new Style.answerHit 0.4-0.7: a tick or two after the hit is felt, for 4 ticks, while the AI is in its reach as it judges it and its sword is 0.8+). No opening crit, no hit selecting. TechniqueBot#drillStart: it feels the stun on its first tick and takes the AI's sword as just swung.
+  - Calibration (ComboDrillTest; the toy fight with the game's movement and hit rules, 3000 drills; a follower spacing 1.5-3.0 and swinging on 55% of its ready ticks, as the installed model does in the checks): their hit next after a hit from under 2.0 71% (real 72%), 2.0-2.6 43% (real 54%), 2.6+ 27% (real 15%, of 26); hit back within 5 ticks 70% (real 63%); take-offs within 2 ticks of a hit 31% (real 33%). A follower that never holds the ready swing: chains mean 3.05 vs 2.28, 10+ 55 vs 15 of 1500.
+  - The chain (ComboDrill.Chain): the stun is hit 1. Each further hit pays 0.2 x (length - 1), at most 0.8 (2nd 0.2, 3rd 0.4, 4th 0.6, 5th on 0.8), on top of the fight's own (damage, COMBO_HIT 0.4, COMBO_HIT3 0.4). The bot's hit (a trade too) costs 1.0 and ends the drill. Out of range (5.0) 20 ticks in a row, or no hit for 40 ticks, costs 0.3 and ends it. Those ends are terminal (no value after); time up (400 ticks) is bootstrapped. Per-tick rewards stay under 3, inside the scaler's clip of 10.
+  - Learning: 25% of training fights are drills (ComboDrill.SHARE), drawn before the scenes and the full fights. Played without the rules (ruleOff) and with no copy of the installed model's keys (ruledTaught 0, as in scenes; no OWN_FOLLOWUP_AWR): the network presses every key (PPO). rewardRow 1 and lastOwnHitAt -1 at the start, so COMBO_HIT pays the first follow-up; its clock says it just hit (the own-hit jump guard and cost apply); the one jump-in starts spent.
+  - The light teacher (ComboDrill.target, step.holdPull 0.3, only where the moment went better than the critic expected, as ComboHolder's): W let go 2 ticks after its hit (W-tap); with the sword under 0.84: S nearer than 2.6, W and sprint beyond 3.0 (chase), else not W; with the sword 0.84+: W and sprint; never the jump. A/D, the camera and the swing are left: the swing is SWING_TAUGHT's (sword ready, the pick on them), never a hold.
+- **Counters:** the training update line, "run 125 combo drill": drills, chain mean (stun = 1), 3+/5+/10+, longest, how they ended (their hit, out of range, no hit, time, knockout), the bot's hit back after the stun and after its hits by distance (<2.0 / 2.0-2.6 / 2.6+, hit back / followed by a hit), its swing on ready-in-reach ticks in drills, the drill reward a tick. Each drill's log line "school combo drill: chain N, ended by ...". Run 123's training tally leaves drills out; the checks' "school check run 123" combo line is unchanged (it never needed ComboSpacing on).
+- **Watch:**
+  - The drill chain mean and 5+/10+ rising over the hours.
+  - The drill's hit back by band near the calibration (about 70 / 45 / 25%); far off means the arena bot differs from the toy.
+  - The checks' combo mean for A above about 3.0-3.2, 5+/10+ up, ended by their hit down.
+  - Its swing on ready-in-reach ticks (drill line and checks) not falling; HP a fight and rounds won not falling.
+  - Take-offs after its own hit (run 122's counters) not rising.
+- **Risks:**
+  - The 1.0 break cost could teach holding the swing near them. Against it: READY_HOLD_COST, SWING_TAUGHT on every ready-in-reach ground tick, and the bot walks in and hits anyway. Watch the drill's swing rate.
+  - The S-back target (under 2.6 while the sword comes back) could carry into full fights as backing off. It is taught by the outcome only.
+  - Drill swings count in the "without the rules" swing counters (the drill is played without the rules).
+  - The bot's swing back is judged by its lagged view: in the arena it may hit back more or less than in the toy.
+- **Revert:** ComboDrill.ON = false (no drills, everything as before); or ComboDrill.SHARE 0; or ComboDrill.PULL 0 (no teacher, the reward stays).
+- **Tests:** school + pvp 126 found, 121 passed, 5 aborted (known), 0 failed; new school.ComboDrillTest (7: the start state, the bot, the reward and chain end, the teacher, the calibration, chains when the swing is never held). Compile-check of SchoolSession, ArenaServer, TechniqueBot against this worktree's core: OK (the known class_6880 line).
