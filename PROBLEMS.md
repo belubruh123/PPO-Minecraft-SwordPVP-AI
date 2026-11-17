@@ -2244,3 +2244,7 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Their third hit A 13% vs B 10%. B1 in the check A 92/127 (72%) vs B 29/111 (26%): still high, so the training slide of "told and landed" (27%) is not showing in the checks.
 - Since run 123 went off: 226-212 over seven checks.
 - Training runs (33.53M steps). No new real rounds.
+
+## 17 Nov 11:13 review
+
+- Training runs. No new check since 10:16 (A 32-28). No new real rounds.
