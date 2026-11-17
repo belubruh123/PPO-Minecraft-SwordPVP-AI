@@ -2363,3 +2363,5 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Training paused for the user's 21:10 test (my stop, 20:13). checked-1117-1913 + the 17 Nov 04:31 jar are installed. Their Minecraft is not open yet; no new rounds.
 
 - 20:55 the user: "purposely let the bot be stunned and then let the AI combo it and teach it to hold the combo perfectly". Run 125 (agent 59) launched: COMBO_DRILL. Drills start right after its stun; the bot reacts like a human being comboed (hit back 72% from under 2.0, 15% from 2.6+); chain reward; no rule pressing keys. Load it into training after the user's test.
+
+- 21:3x run 125 (combo drill, agent 59, 8b2e835) merged; training started with it. The user: stop monitoring after this.
