@@ -2357,3 +2357,7 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Verified by cmp. run35 + the 14 Nov jar are in the profile's swordai/backup-before-school-20261117-201324.
 - Training paused for the test (training-stop.sh).
 - After the test, read every tick of its rounds (scratchpad lost-frames.py, own-combo-jumps.py, own-combos.py, combo-breaks.py, their-combos.py). The new round files also carry the run 122 and run 124 tallies.
+
+## 17 Nov 20:43 review
+
+- Training paused for the user's 21:10 test (my stop, 20:13). checked-1117-1913 + the 17 Nov 04:31 jar are installed. Their Minecraft is not open yet; no new rounds.
