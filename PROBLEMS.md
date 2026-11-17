@@ -2324,3 +2324,10 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 ## 17 Nov 18:13 review
 
 - Training runs. No new check since 17:39 (A 33-29). No new real rounds.
+
+## 17 Nov 18:43 review + the 18:28 check
+
+- 18:28 check: ROUNDS WON A 32/44 vs B 29/44 (z +0.8), +0.5 HP a fight (se 4.5). Damage a minute A 413/322, B 417/329.
+- Their third hit A 11% vs B 11%. B1 in the check A 75/111 (68%) vs B 32/133 (24%).
+- Since run 123 went off: 550-523 over seventeen checks.
+- Training runs (34.85M steps). No new real rounds.
