@@ -2335,3 +2335,15 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 ## 17 Nov 19:13 review
 
 - Training runs. No new check since 18:28 (A 32-29). No new real rounds.
+
+## 17 Nov 19:43 review + the 19:17 check
+
+- 19:17 check: ROUNDS WON A 36/45 vs B 30/45 (z +1.7). Net +9.6 HP a fight (se 4.2), the best margin today. Damage a minute A 458/293, B 427/328.
+- Their third hit A 2 (4%) vs B 6 (11%). B1 in the check A 68/112 (61%) vs B 31/117 (26%).
+- Swung when ready in reach outside their combo A 52% vs B 60%.
+- Run 122: own take-offs after its own hit A 2, 1 stripped. Jump-ins outside A 3 vs B 4. Crits dealt A 8 vs B 4.
+- Candidates for the 21:10 test:
+  - checked-1117-1151 (34-25, z +2.7, +9.1 HP, third hit 8% vs 12%, B1 72%);
+  - checked-1117-1913 (36-30, z +1.7, +9.6 HP, third hit 4% vs 11%, B1 61%; 7 more hours of training).
+- The jar build/libs 04:31 holds the merged code (runs 122 + 124, run 123 off; last code commit 04:18).
+- Since run 123 went off: 586-553 over eighteen checks. No new real rounds.
