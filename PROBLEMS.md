@@ -2217,3 +2217,7 @@ Next: run 92 (one combo-first package) built by an Opus agent in a worktree, rev
 - Their third hit A 7% vs B 9%. B1 in the check A 105/141 (74%) vs B 22/110 (20%).
 - Live punish crit chances critted 65%; told and landed 33%.
 - Training runs (33.12M steps). No new real rounds.
+
+## 17 Nov 08:43 review
+
+- Training runs. No new check since 07:49. No new real rounds.
