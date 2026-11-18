@@ -37,7 +37,7 @@ changing anything.
 
 ## 4. The long-running loop
 - Training runs unattended: `start-training.cmd` starts it, the watchdog restarts crashes, `stop-training.cmd` stops
-  it. Do not watch it. Look at most once a day, or when the user asks.
+  it. Do not watch it. One check every 6 hours: a one-line reply unless the run is 24 h+ old.
 - **One run = one structural change, trained at least 24 hours before it is judged.** No edits mid-run. Stop early only
   on a crash, or a collapse (under 30% of rounds against the installed network after 6 hours).
 - **Judge** with the head-to-head (section 1). Better means more rounds won, beyond the noise. Then the user tests it
