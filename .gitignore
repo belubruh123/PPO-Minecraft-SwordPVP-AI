@@ -26,3 +26,6 @@ external/
 tactiq-*.txt
 tools/*.log
 tools/a31/pairs.json
+
+# Python caches
+__pycache__/
