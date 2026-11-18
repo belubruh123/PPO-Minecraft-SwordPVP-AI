@@ -1241,6 +1241,15 @@ public final class SchoolSession implements AgentSession {
 	 * school folder a check plays side A without the rules, to see how far the network is from taking over.
 	 */
 	static final String RULES_OFF_CHECK_FILE = "rules-off-check";
+	/**
+	 * Run 127, distillation (docs/DESIGN.md section 4 step 3): with this file in the school folder, training has no reward gradient; the
+	 * network learns only to press what the play-time rules press, on every tick they speak, in fights played with the rules (their states)
+	 * and without them (its own states, DAgger), half each. Judged by a check with RULES_OFF_CHECK_FILE against the rules-on baseline.
+	 */
+	static final String DISTILL_FILE = "distill";
+	static final float DISTILL_RULE_OFF = 0.5f;
+	static final float DISTILL_PULL = 1.0f;
+	private boolean distill;
 	/** Run 90: a paired check in which A's jump-in guard does not hold (the network's own choice), while this file exists. */
 	static final String GUARD_OFF_CHECK_FILE = "guard-off-check";
 	/** With this file in the school folder a real fight (FightSession) is played without the rules: the network alone. */
@@ -3729,6 +3738,10 @@ public final class SchoolSession implements AgentSession {
 			installedBody.patchedUp = installed.patchedUp;
 			sparCheck = mode == Mode.CHECK && Files.exists(SwordFiles.schoolDir().resolve(SPAR_CHECK_FILE));
 			rulesOffCheck = mode == Mode.CHECK && Files.exists(SwordFiles.schoolDir().resolve(RULES_OFF_CHECK_FILE));
+			distill = mode == Mode.TRAIN && Files.exists(SwordFiles.schoolDir().resolve(DISTILL_FILE));
+			if (distill) {
+				SwordAi.LOGGER.info("school: DISTILL (run 127): no reward gradient, the rules' keys copied, half the fights without the rules");
+			}
 			guardOffCheck = mode == Mode.CHECK && Files.exists(SwordFiles.schoolDir().resolve(GUARD_OFF_CHECK_FILE));
 			if (SPAR_SHARE > 0f && mode == Mode.TRAIN || sparCheck) {
 				sparring = LoadedFighter.loadFrom(teacherFile, icfg, SwordFiles.installedCopy().resolve("curriculum.properties"));
@@ -4409,6 +4422,7 @@ public final class SchoolSession implements AgentSession {
 			// presses every key of the moment itself and gets the gradient for it (with the rules on, about half the replays, the
 			// rules pressed the deciding keys and those got none).
 			// Run 125: a combo drill too (no rule presses its keys: run 123's controller held ready swings).
+			: distill ? review < 0 && !drillFight && rng.nextFloat() < DISTILL_RULE_OFF
 			: review < 0 && !drillFight && (sceneNow != null && mode == Mode.TRAIN || comboDrillNow || rng.nextFloat() < ruleOffShare());
 		drillTicker = plan.drillLift ? plan.drillAgentTicker : sceneNow != null ? SceneRecorder.agentTicker(sceneNow.state)
 				: comboDrillNow ? SceneRecorder.agentTicker(drillState) : -1;
@@ -6102,7 +6116,9 @@ public final class SchoolSession implements AgentSession {
 				ruled &= ~ActionSpace.mask(ActionSpace.ATTACK);
 			}
 			// Run 125: nor in a combo drill (the installed model's keys, rules and all, are not its target there: it learns the chain by PPO).
-			ruledTaught = ruleOff ? ((sceneNow != null || comboDrillNow) && mode == Mode.TRAIN ? 0 : keys & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH)) : ruled;
+			// Run 127 (distill): the target is what the rules press (or would), nothing else: the network's own keys stay its own.
+			ruledTaught = distill ? ruled
+					: ruleOff ? ((sceneNow != null || comboDrillNow) && mode == Mode.TRAIN ? 0 : keys & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH)) : ruled;
 			if (guardFree) {
 				// Run 90: nor is the rules' swing (or hold) a target there.
 				ruledTaught &= ~ActionSpace.mask(ActionSpace.ATTACK);
@@ -6207,7 +6223,7 @@ public final class SchoolSession implements AgentSession {
 		// push), and in the first updates of run 30b it was 53% of the rules' head-ticks at cross-entropy 3.4 to 5.1 and 20%
 		// agreement, while the network without the rules already lands 97% of its swings to the installed model's 89%.
 		int bodyKeys = ActionSpace.ALL_HEADS & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
-		step.ruledHeads = mode == Mode.TRAIN && review < 0 ? ruledTaught & bodyKeys & ~step.teacherHeads : 0;
+		step.ruledHeads = mode == Mode.TRAIN && review < 0 ? ruledTaught & bodyKeys & (distill ? ActionSpace.ALL_HEADS : ~step.teacherHeads) : 0;
 		if (OWN_FOLLOWUP_AWR && mode == Mode.TRAIN && review < 0 && !comboDrillNow && installedDecided && installed != null
 				&& ownGroundHitAt >= 0 && fightTicks - ownGroundHitAt <= B_FOLLOWUP_TICKS && clock.ticksSinceHitTaken > fightTicks - ownGroundHitAt) {
 			// Run 81: B's movement keys after its own ground hit, by the outcome.
@@ -8037,7 +8053,13 @@ public final class SchoolSession implements AgentSession {
 		set.oldPull = stages.oldPull();
 		set.oldBodyPull = stages.bodyPull();
 		set.installedBody = OVERLAY;
-		set.ruledPull = ruledPullNow;
+		set.ruledPull = distill ? DISTILL_PULL : ruledPullNow;
+		if (distill) {
+			set.distill = true;
+			set.ruledByOutcome = false;
+			set.replayBatches = 0;
+			set.shadowBatches = 0;
+		}
 		set.criticOnly = warmupLeft > 0;
 		set.actorLr = ACTOR_LR;
 		set.maxActorLr = MAX_ACTOR_LR;

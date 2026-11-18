@@ -69,6 +69,11 @@ public final class SchoolPpo implements AutoCloseable {
 		public boolean ruledByOutcome = RULED_AWR;
 		/** Minibatches of the rules' keys kept (TeacherReplay#ruledOnly, drawn rule first), after the update. */
 		public int ruledBatches = 12;
+		/**
+		 * Distillation (run 127): no policy gradient and no entropy bonus; the actor learns only to press what the play-time rules
+		 * (and the spacing rules) press, at {@link #ruledPull}, on every tick they speak. The network then plays without them.
+		 */
+		public boolean distill;
 		/** Learn the critic only. */
 		public boolean criticOnly;
 		/** After the update, minibatches of the technique teachers' kept examples ({@link TeacherReplay}), and their step. */
@@ -325,8 +330,8 @@ public final class SchoolPpo implements AutoCloseable {
 					float surr1 = ratio * adv;
 					float surr2 = Math.max(1f - set.clip, Math.min(1f + set.clip, ratio)) * adv;
 					boolean inside = ratio >= 1f - set.clip && ratio <= 1f + set.clip;
-					float dLogp = (surr1 <= surr2 || inside) ? -adv * ratio * w : 0f;
-					Policy.gradient(mask, r.action[i], probs, ent, dLogp, w > 0f ? entropyCoefficients(r, i, set) : ZERO, aw.dLogits);
+					float dLogp = !set.distill && (surr1 <= surr2 || inside) ? -adv * ratio * w : 0f;
+					Policy.gradient(mask, r.action[i], probs, ent, dLogp, w > 0f && !set.distill ? entropyCoefficients(r, i, set) : ZERO, aw.dLogits);
 					teach(r, i, mask, set, adv);
 					actor.backward(aw, r.peri[i], r.fovea[i], r.vec[i], r.mem[i]);
 					policyLoss -= Math.min(surr1, surr2) * w;
@@ -360,7 +365,7 @@ public final class SchoolPpo implements AutoCloseable {
 			boolean old = r.teacherWeight[i] > 0f;
 			// The keys the rules press (locked in the step, or open in a fight played without them): the rule's key is the target,
 			// unless a technique teacher speaks on the head.
-			int ruledBits = set.ruledPull > 0f ? r.ruledHeads[i] & ~tech : 0;
+			int ruledBits = set.ruledPull > 0f ? r.ruledHeads[i] & (set.distill ? ActionSpace.ALL_HEADS : ~tech) : 0;
 			// Run 122: the own-hit "no jump" lesson, on the attempt alone (its own jump pressed in the window after its own hit), at its own
 			// pull, whatever technique was told and however the moment went; the jump head is then taught by it alone on this step.
 			boolean ownHitNoJump = ownHitNoJumpApplies(r.noJumpPull[i], r.action[i][ActionSpace.JUMP], mask);
@@ -463,8 +468,18 @@ public final class SchoolPpo implements AutoCloseable {
 				} else if (!byTech && !installedHere || shadowed && !byTech) {
 					continue;
 				}
+				if (set.distill) {
+					// Run 127: only the rules' keys and the spacing rules' keys (both play-time rules) are copied.
+					boolean spacingKey = byTech && r.spacingPull[i] > 0f && ((CounterSpacing.HEADS | ComboSpacing.HEADS) & (1 << h)) != 0;
+					if (!ruledHere && !spacingKey) {
+						continue;
+					}
+					if (!ruledHere) {
+						pull = set.ruledPull;
+					}
+				}
 				// Told another technique than the teacher's (the chooser's, in training a step in a few): only the camera is taught.
-				if (!camera && !r.intentAgrees[i]) {
+				if (!set.distill && !camera && !r.intentAgrees[i]) {
 					continue;
 				}
 				int off = ActionSpace.OFFSETS[h];
@@ -493,7 +508,7 @@ public final class SchoolPpo implements AutoCloseable {
 						best = k;
 					}
 					if (pull > 0f) {
-						into[off + k] += (byTech ? pull * Teacher.pressWeight(stored, h, r.vec[i], which) : pull) * (p - t);
+						into[off + k] += (byTech && !set.distill ? pull * Teacher.pressWeight(stored, h, r.vec[i], which) : pull) * (p - t);
 					}
 				}
 				if (ruledHere) {
