@@ -107,8 +107,8 @@ def parse_update(line, m):
 
 
 def current_run():
-    """The last run of EXPERIMENTS.md: its number, start, the one change, its result so far."""
-    path = os.path.join(REPO, 'EXPERIMENTS.md')
+    """The last run of RUNS.md: its number, start, the one change, its result so far."""
+    path = os.path.join(REPO, 'RUNS.md')
     if not os.path.exists(path):
         return None
     last = None
@@ -351,14 +351,14 @@ def punish_rolling(log):
 
 
 def check_time(date):
-    """'6 Nov 06:20' (EXPERIMENTS.md) as '11-06 06:20' (the checks log), to place a run on the checks' time line."""
+    """'6 Nov 06:20' (RUNS.md) as '11-06 06:20' (the checks log), to place a run on the checks' time line."""
     m = re.match(r'(\d+) ([A-Z][a-z]{2}) (\d\d:\d\d)', date or '')
     return '%02d-%02d %s' % (MONTHS[m.group(2)], int(m.group(1)), m.group(3)) if m and m.group(2) in MONTHS else None
 
 
 def read_experiments(n=14):
-    """EXPERIMENTS.md: its last n rows (runs and their checks) and every run's start, for the charts."""
-    path = os.path.join(REPO, 'EXPERIMENTS.md')
+    """RUNS.md: its last n rows (runs and their checks) and every run's start, for the charts."""
+    path = os.path.join(REPO, 'RUNS.md')
     rows, runs = [], []
     try:
         lines = open(path, encoding='utf8', errors='replace').read().splitlines()
