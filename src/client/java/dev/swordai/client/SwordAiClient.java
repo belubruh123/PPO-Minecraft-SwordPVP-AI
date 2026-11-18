@@ -27,8 +27,6 @@ public class SwordAiClient implements ClientModInitializer {
 	private static KeyMapping menuKey;
 	/** Starts {@code /swordai fight} against the nearest player, or stops whatever is running. No key until one is given in Controls. */
 	private static KeyMapping fightKey;
-	/** While the user is recorded ({@code /swordai demo}): recording on from the next fight, or off. */
-	private static KeyMapping recordKey;
 
 	@Override
 	public void onInitializeClient() {
@@ -37,22 +35,11 @@ public class SwordAiClient implements ClientModInitializer {
 				org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_SHIFT, KeyMapping.Category.MISC));
 		fightKey = KeyBindingHelper.registerKeyBinding(new KeyMapping("key.swordai.fight", InputConstants.Type.KEYSYM,
 				InputConstants.UNKNOWN.getValue(), KeyMapping.Category.MISC));
-		recordKey = KeyBindingHelper.registerKeyBinding(new KeyMapping("key.swordai.record", InputConstants.Type.KEYSYM,
-				org.lwjgl.glfw.GLFW.GLFW_KEY_K, KeyMapping.Category.MISC));
 		ClientLifecycleEvents.CLIENT_STOPPING.register(mc -> stop("game closing"));
 		ClientTickEvents.START_CLIENT_TICK.register(mc -> {
 			AgentSession s = session;
 			if (s != null) {
 				s.tick();
-			}
-			resumeIfDue(mc);
-		});
-		// A recording the game closed in the middle of: the scripts are not to wait for it.
-		ClientLifecycleEvents.CLIENT_STARTED.register(mc -> {
-			try {
-				Files.deleteIfExists(SwordFiles.demoLock());
-			} catch (IOException e) {
-				dev.swordai.SwordAi.LOGGER.warn("could not remove an old demo lock", e);
 			}
 		});
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
@@ -69,11 +56,6 @@ public class SwordAiClient implements ClientModInitializer {
 			while (menuKey.consumeClick()) {
 				if (mc.screen == null && mc.player != null) {
 					mc.setScreen(new SwordAiScreen());
-				}
-			}
-			while (recordKey.consumeClick()) {
-				if (mc.screen == null && session instanceof Trainer t && t.demo != null && !t.stopped()) {
-					t.demoRecord(!t.demoRecordingOrArmed());
 				}
 			}
 			while (fightKey.consumeClick()) {
@@ -123,7 +105,7 @@ public class SwordAiClient implements ClientModInitializer {
 			if (command.startsWith("/")) {
 				command = command.substring(1);
 			}
-			if (personPlays() && !command.startsWith("swordai demo") && !command.equals("swordai status")) {
+			if (personPlays() && !command.equals("swordai status")) {
 				// The user is being recorded: what a script asks for waits until they are done.
 				held.add(line);
 				continue;
@@ -171,23 +153,6 @@ public class SwordAiClient implements ClientModInitializer {
 		return fightKey;
 	}
 
-	/** The record key as the user sees it, for what is said during a recording. */
-	static String recordKeyName() {
-		return recordKey == null ? "the record key" : recordKey.getTranslatedKeyMessage().getString();
-	}
-
-	/** The current or most recent session if it was training (or play / self-test), on the screen or off it, else null. */
-	static Trainer training() {
-		return session instanceof Trainer t ? t : null;
-	}
-
-	/** Training without the screen: the agent is a fake player and nothing is drawn for it; see {@link HeadlessSession}. */
-	static HeadlessSession startHeadless(Minecraft mc) throws IOException {
-		HeadlessSession started = new HeadlessSession(mc);
-		session = started;
-		return started;
-	}
-
 	static void setTickMillis(float millis) {
 		tickMillis = millis;
 	}
@@ -200,65 +165,6 @@ public class SwordAiClient implements ClientModInitializer {
 
 	static boolean running() {
 		return session != null && !session.stopped();
-	}
-
-	static TrainingSession start(Minecraft mc, TrainingSession.Mode mode) throws IOException {
-		TrainingSession started = new TrainingSession(mc, mode);
-		session = started;
-		return started;
-	}
-
-	/** Training goes on by itself once the user's recording ends; see {@link #demoEnded}. */
-	private static boolean resumeTraining;
-
-	/**
-	 * The user plays the training's fights and is recorded ({@code /swordai demo}). The lock file tells
-	 * the scripts that drive training through the inbox to wait.
-	 */
-	static TrainingSession startDemo(Minecraft mc, DemoPlan plan) throws IOException {
-		Files.createDirectories(SwordFiles.dir());
-		Files.writeString(SwordFiles.demoLock(), plan.kind + "\n", StandardCharsets.UTF_8);
-		try {
-			TrainingSession started = new TrainingSession(mc, TrainingSession.Mode.TRAIN, plan);
-			session = started;
-			return started;
-		} catch (IOException | RuntimeException e) {
-			Files.deleteIfExists(SwordFiles.demoLock());
-			throw e;
-		}
-	}
-
-	/** The recording is over: the lock goes, and training that was running when it began starts again. */
-	static void demoEnded(DemoPlan plan, int fights) {
-		try {
-			Files.deleteIfExists(SwordFiles.demoLock());
-		} catch (IOException e) {
-			dev.swordai.SwordAi.LOGGER.warn("could not remove the demo lock", e);
-		}
-		resumeTraining = plan.resume;
-		say(fights + " of your fights are saved in swordai/demos." + (plan.resume ? " Training goes on." : ""));
-	}
-
-	private static void say(String message) {
-		dev.swordai.SwordAi.LOGGER.info(message);
-		Minecraft mc = Minecraft.getInstance();
-		if (mc.gui != null) {
-			mc.gui.getChat().addMessage(net.minecraft.network.chat.Component.literal("[SwordAI] " + message));
-		}
-	}
-
-	/** Start of a client tick with nothing running: training put aside for the user's recording is started again. */
-	private static void resumeIfDue(Minecraft mc) {
-		if (!resumeTraining || running() || mc.player == null || mc.getSingleplayerServer() == null || mc.screen != null) {
-			return;
-		}
-		resumeTraining = false;
-		try {
-			start(mc, TrainingSession.Mode.TRAIN);
-		} catch (IOException | RuntimeException e) {
-			dev.swordai.SwordAi.LOGGER.error("SwordAI could not take training up again", e);
-			say("Training could not start again: " + e + ". Use /swordai train.");
-		}
 	}
 
 	/** The technique school on the screen; see {@link SchoolSession}. */
@@ -275,27 +181,6 @@ public class SwordAiClient implements ClientModInitializer {
 	/** The network plays the user's character against another player; see {@link FightSession}. */
 	static FightSession startFight(Minecraft mc, String opponentName) throws IOException {
 		FightSession started = new FightSession(mc, opponentName);
-		session = started;
-		return started;
-	}
-
-	/** The user fights the network, which plays the fake player; see {@link SparSession}. */
-	static SparSession startSpar(Minecraft mc) throws IOException {
-		SparSession started = new SparSession(mc);
-		session = started;
-		return started;
-	}
-
-	/** The same fight, and the network learns from it as well; see {@link FightLearnSession}. */
-	static FightLearnSession startFightLearning(Minecraft mc, String opponentName) throws IOException {
-		FightLearnSession started = new FightLearnSession(mc, opponentName);
-		session = started;
-		return started;
-	}
-
-	/** The same sparring, and the network learns from it as well; see {@link SparLearnSession}. */
-	static SparLearnSession startSparLearning(Minecraft mc) throws IOException {
-		SparLearnSession started = new SparLearnSession(mc);
 		session = started;
 		return started;
 	}

@@ -125,7 +125,6 @@ final class SwordAiScreen extends Screen {
 		y = section(x, y, "Fight");
 		col(x, 0, y, "Fight nearest", "Your character fights the nearest player, played by the AI. Stop (or the fight key) gives it back to you.",
 				!running, () -> run("swordai fight"));
-		col(x, 1, y, "Spar: you vs it", "You fight the AI here, in this world.", !running, () -> run("swordai spar"));
 		Button stop = col(x, 2, y, "Stop", running ? "Stops what is running and gives you the controls back." : "Nothing is running.",
 				running, () -> run("swordai stop"));
 		if (running) {
@@ -134,9 +133,9 @@ final class SwordAiScreen extends Screen {
 		y += BUTTON_H + 2 * PAD + SECTION_GAP;
 
 		y = section(x, y, "Train");
-		col(x, 0, y, "Train on screen", "Trains in this world, on the screen, the way it fights: first person.", !running, () -> run("swordai train"));
-		col(x, 1, y, "Train headless", "Trains without drawing the fights, which is faster. Leave the game open.", !running,
-				() -> run("swordai train headless"));
+		col(x, 0, y, "Train", "Trains in this world, on the screen, the way it fights: first person.", !running, () -> run("swordai school"));
+		col(x, 1, y, "Check", "The head-to-head against the installed network.", !running,
+				() -> run("swordai school check"));
 		speedControl(x + 2 * (COL_W + GAP), y, cfg.trainSpeed, !running);
 		y += BUTTON_H + 2 * PAD + SECTION_GAP;
 
@@ -153,8 +152,8 @@ final class SwordAiScreen extends Screen {
 
 		int quarter = (CONTENT_W - 3 * GAP) / 4;
 		boolean skin = cfg.showOpponentSkin;
-		addRenderableWidget(Button.builder(Component.literal("Report"), b -> run("swordai report"))
-				.tooltip(Tooltip.create(Component.literal("Copies a report of the training to the clipboard (and swordai/report.txt).")))
+		addRenderableWidget(Button.builder(Component.literal("Status"), b -> run("swordai status"))
+				.tooltip(Tooltip.create(Component.literal("Says in chat what is running and how it is going.")))
 				.bounds(x, y, quarter, BUTTON_H).build());
 		addRenderableWidget(Button.builder(Component.literal(skin ? "Skins: real" : "Skins: keyed"), b -> {
 			if (minecraft.player != null) {

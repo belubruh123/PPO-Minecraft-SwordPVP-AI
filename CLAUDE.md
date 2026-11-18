@@ -66,5 +66,8 @@ changing anything.
 - `core/` holds the pure-Java network, PPO and fight model, with tests (`gradlew :core:test`). `src/` holds the
   Minecraft side: sessions, arena server, mixins.
 - `tools/`: training start/stop and watchdog, the head-to-head (`schoolcycle.sh`, `net-check.sh`, `bench-run.sh`),
-  real-duel reading (`duels.py`, `duel-hits.py`), and the dashboard (`tools/dashboard`, http://localhost:8765).
+  real-duel reading (`duels.py`, `duel-hits.py`), the dashboard (`tools/dashboard`, http://localhost:8765),
+  `install-school.sh` (puts a network into the user's profile, with a backup first) and `install-watchdog.ps1` (the
+  Windows task that runs `watchdog.sh` every 10 minutes; it expires after 7 days, so re-run it).
+- Shell scripts must keep LF line endings: edit them with Edit or sed, never Python text mode.
 - The full old history (EXPERIMENTS.md, PROBLEMS.md, the old SOPs) is in the git tag `backup-before-cleanup-2026-11-18`.

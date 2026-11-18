@@ -71,9 +71,9 @@ final class LoadedFighter implements AutoCloseable {
 		int headMask = curriculum.current().headMask;
 		// And it is pushed towards a jump exactly as its training pushes it right now.
 		learner.setJumpNudge(curriculum.jumpNudge());
-		learner.setBackNudge(Report.backRule(cfg, curriculum) ? 0f : curriculum.backNudge());
+		learner.setBackNudge((cfg.backRule && curriculum.current().backNudgeKeep > 0f) ? 0f : curriculum.backNudge());
 		Fighter fighter = new Fighter(learner, cfg, headMask, curriculum.current().ideas, System.nanoTime());
-		fighter.backOutRule(Report.backRule(cfg, curriculum));
+		fighter.backOutRule((cfg.backRule && curriculum.current().backNudgeKeep > 0f));
 		fighter.planHolds(curriculum.current().reward.mixTiming > 0f);
 		return new LoadedFighter(cfg, curriculum, learner, fighter, SwordFiles.readFrameAgeMillis() / 50f, curriculum.current().bot.agentImmortal);
 	}
@@ -95,9 +95,9 @@ final class LoadedFighter implements AutoCloseable {
 		}
 		// The copy picks its actions exactly as the agent does while it trains.
 		learner.setJumpNudge(curriculum.jumpNudge());
-		learner.setBackNudge(Report.backRule(cfg, curriculum) ? 0f : curriculum.backNudge());
+		learner.setBackNudge((cfg.backRule && curriculum.current().backNudgeKeep > 0f) ? 0f : curriculum.backNudge());
 		Fighter fighter = new Fighter(learner, cfg, headMask, curriculum.current().ideas, 1f, System.nanoTime());
-		fighter.backOutRule(Report.backRule(cfg, curriculum));
+		fighter.backOutRule((cfg.backRule && curriculum.current().backNudgeKeep > 0f));
 		fighter.planHolds(curriculum.current().reward.mixTiming > 0f);
 		// A copy that plays the opponent in training is shown its health as it is: that is its training.
 		return new LoadedFighter(cfg, curriculum, learner, fighter, frameAgeTicks, false);

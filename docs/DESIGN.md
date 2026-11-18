@@ -50,7 +50,8 @@ evaluation = rounds won against a fixed pool: installed net, run35, 3 past snaps
 - **Code target**: env (arena, observation, actions), net, PPO, league, eval. Under about 10k lines, against ~60k now.
 
 ## 4. The rewrite, step by step (each step keeps current ability)
-1. **Clean (done 18 Nov):** 430 unused scripts and ~800 KB of stale docs deleted, one short SOP (`CLAUDE.md`).
+1. **Clean (done 18 Nov):** 430 unused scripts, ~800 KB of stale docs and the old pre-school training pipeline
+   (~9k lines: `Trainer`, the train/headless/spar/demo/learn sessions) deleted, one short SOP (`CLAUDE.md`).
 2. **Freeze the evaluation:** a fixed opponent pool (above) and a 200-round head-to-head. Baseline = the installed
    network with its rules.
 3. **Distill the rules away:** train one network to copy what the installed network *plus its rules* does, on its own
