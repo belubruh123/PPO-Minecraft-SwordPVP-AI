@@ -43,6 +43,9 @@ changing anything.
 - **Judge** with the head-to-head (section 1). Better means more rounds won, beyond the noise. Then the user tests it
   on people. Only the user decides on an install.
 - **Log** one line in `RUNS.md`: date, the change, the literal problem it fixes, and the result.
+- **Status in one command** (don't read the big logs):
+  `grep -a "^===\|ROUNDS WON" run/school-checks.log | tail -12`. The flag files in `run/swordai/school/` say what
+  mode training is in (`distill`, `rules-off-check`).
 - **After 3 runs without improvement, stop changing things.** Watch real lost rounds again and question the premise:
   is this even what loses rounds? Deleting code is a valid next run.
 
