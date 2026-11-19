@@ -88,10 +88,10 @@ Get them through structure (`docs/DESIGN.md` section 4: distill the rules, fixed
 replays of real players, memory), not new rules, rewards or drills.
 
 ## Current state (keep this section to a few lines; update it, don't append)
-- **Run 127, distill** (since 18 Nov 20:40, about 21 h trained by 19 Nov 19:00): the flag files `run/swordai/school/distill`
-  and `rules-off-check` are on. Goal: 66% rounds won **without** rules (start 54%). Hourly checks so far are flat at
-  about 60%. If it reaches the target, delete the rules from the play code (DESIGN.md step 3). If not, the copy is
-  capped by something literal (see section 2): find it before changing anything.
+- **Run 127, distill** (18 Nov 20:40 to 19 Nov 21:05, about 23 h trained, then stopped for the hand-over to another agent):
+  without rules it went from 54% to a flat ~60% rounds won (target 66%, the same network with rules). Network saved as
+  `run/swordai/school/run127-distill-1119-2105.bin`; the `distill` and `rules-off-check` flag files are still on.
+  Untested idea for why it caps: the copy target leaves out the camera (yaw/pitch), which the aim rule also presses.
 - **Installed in the user's game:** checked-1117-1913 + the 17 Nov 04:31 jar. run35 + the 14 Nov jar are backed up in
   the profile's `swordai/backup-before-school-20261117-201324`.
 
