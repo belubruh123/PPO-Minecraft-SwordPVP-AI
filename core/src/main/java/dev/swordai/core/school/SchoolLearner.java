@@ -49,6 +49,8 @@ public final class SchoolLearner implements AutoCloseable {
 	 * and in every fight that is not training, the chooser's.
 	 */
 	public float teacherForcing = 0.85f;
+	/** Full-policy distillation: keep Chooser deterministic (greedy argmax), matching check and play time. */
+	public boolean distillMode;
 	private final Random intentRng;
 	private final Intent mine = new Intent();
 	private final Intent baseIntent = new Intent();
@@ -282,6 +284,13 @@ public final class SchoolLearner implements AutoCloseable {
 		rollout.computeAdvantages(lastValue, gamma, lambda);
 		rollout.labelPredictions();
 		SchoolPpo.Stats s = ppo.update(rollout, rng, set);
+		if (set.distill) {
+			rollout.clear();
+			hasPending = false;
+			lastValue = 0f;
+			updates++;
+			return s;
+		}
 		if (replay == null) {
 			// Made on the first update only: a network that only plays (the user's fights) has no use for it.
 			replay = new TeacherReplay(20_000);
@@ -496,7 +505,7 @@ public final class SchoolLearner implements AutoCloseable {
 		step.intentLabel = record ? label : -1;
 		int intent = record && st.forced ? label : st.chosen;
 		// Its own choice in training is drawn from its chances, so that it tries other techniques and learns which won.
-		if (record && !st.forced && Chooser.OUTCOME) {
+		if (record && !st.forced && !distillMode && Chooser.OUTCOME) {
 			intent = ch.draw(cw, intentRng.nextFloat());
 		}
 		step.choice = record && !st.forced ? intent : -1;

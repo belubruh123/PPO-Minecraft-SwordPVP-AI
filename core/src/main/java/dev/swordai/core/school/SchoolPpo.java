@@ -360,6 +360,66 @@ public final class SchoolPpo implements AutoCloseable {
 
 		private void teach(SchoolRollout r, int i, int mask, Settings set, float adv) {
 			float[] stored = r.teacher[i];
+			if (set.distill) {
+				// Run 128: full-policy DAgger distillation. Copy ALL play-time rules (including camera YAW/PITCH)
+				// on ruled heads, and the frozen base network's exact softmax distribution on every other unlocked
+				// head so non-ruled behaviour (e.g. ground swings) never suffers forgetting.
+				int ruledBits = set.ruledPull > 0f ? r.ruledHeads[i] : 0;
+				boolean hasBase = r.teacherWeight[i] > 0f && set.oldPull > 0f;
+				if (ruledBits == 0 && !hasBase) {
+					return;
+				}
+				boolean hitTick = dev.swordai.core.rl.JumpReset.hitOnThisTick(r.vec[i]);
+				for (int h = 0; h < ActionSpace.HEADS; h++) {
+					boolean ruledHere = (ruledBits & (1 << h)) != 0;
+					boolean unlocked = ActionSpace.unlocked(mask, h);
+					if (!ruledHere && (!unlocked || !hasBase)) {
+						continue;
+					}
+					int off = ActionSpace.OFFSETS[h];
+					int size = ActionSpace.SIZES[h];
+					if (!unlocked) {
+						Policy.softmax(aw.logits, off, size, probs);
+					}
+					float pull = ruledHere ? set.ruledPull * (hitTick ? HIT_TICK_WEIGHT : 1f) : set.oldPull;
+					double ce = 0;
+					int best = 0;
+					for (int k = 0; k < size; k++) {
+						float p = probs[off + k];
+						float t = stored[off + k];
+						if (t > 0f) {
+							ce -= t * Math.log(Math.max(p, 1e-9f));
+						}
+						if (p > probs[off + best]) {
+							best = k;
+						}
+						aw.dLogits[off + k] += pull * (p - t);
+					}
+					if (ruledHere) {
+						ruledCe += ce;
+						ruledSteps++;
+						ruledAgree += stored[off + best] >= Teacher.ANY ? 1 : 0;
+						ruledCeHead[h] += ce;
+						ruledNHead[h]++;
+						ruledAgreeHead[h] += stored[off + best] >= Teacher.ANY ? 1 : 0;
+						for (int k = 0; k < RULE_NAMES.length; k++) {
+							if ((r.ruleBits[i] & (1 << k)) != 0) {
+								ruleCe[k] += ce;
+								ruleN[k]++;
+								ruleAgree[k] += stored[off + best] >= Teacher.ANY ? 1 : 0;
+							}
+						}
+					} else {
+						oldCe += ce;
+						oldSteps++;
+						if (h != ActionSpace.YAW && h != ActionSpace.PITCH) {
+							oldBodyCe += ce;
+							oldBodySteps++;
+						}
+					}
+				}
+				return;
+			}
 			float[] q = aimed;
 			int tech = r.teacherHeads[i];
 			boolean old = r.teacherWeight[i] > 0f;
@@ -747,7 +807,7 @@ public final class SchoolPpo implements AutoCloseable {
 			st.entropyOpen[h] = entOpenN[h] == 0 ? 0f : (float) (entOpen[h] / entOpenN[h]);
 			st.entropyOpenN[h] = (int) (entOpenN[h] / Math.max(1, st.epochs));
 		}
-		if (ENTROPY_FLOOR && !set.criticOnly) {
+		if (ENTROPY_FLOOR && !set.criticOnly && !set.distill) {
 			adaptEntropy(st, set);
 		}
 		System.arraycopy(entCoef, 0, st.entropyCoef, 0, ActionSpace.HEADS);

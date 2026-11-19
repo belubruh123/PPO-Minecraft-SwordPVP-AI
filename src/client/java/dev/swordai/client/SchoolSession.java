@@ -1247,8 +1247,10 @@ public final class SchoolSession implements AgentSession {
 	 * and without them (its own states, DAgger), half each. Judged by a check with RULES_OFF_CHECK_FILE against the rules-on baseline.
 	 */
 	static final String DISTILL_FILE = "distill";
-	static final float DISTILL_RULE_OFF = 0.5f;
-	static final float DISTILL_PULL = 1.0f;
+	static final String DISTILL_TEACHER_FILE = "distill-teacher.bin";
+	static final float DISTILL_RULE_OFF = 0.7f;
+	static final float DISTILL_PULL = 2.0f;
+	static final float DISTILL_LR = 1.5e-4f;
 	private boolean distill;
 	/** Run 90: a paired check in which A's jump-in guard does not hold (the network's own choice), while this file exists. */
 	static final String GUARD_OFF_CHECK_FILE = "guard-off-check";
@@ -3697,11 +3699,24 @@ public final class SchoolSession implements AgentSession {
 			learner.loadOldTeacher(teacherFile, true);
 			warmupLeft = CRITIC_WARMUP;
 		}
-		Path anchor = SwordFiles.schoolDir().resolve(ANCHOR_FILE);
-		if (mode == Mode.TRAIN && ANCHOR_TO_BEST && Files.exists(anchor)) {
-			learner.loadBase(anchor);
+		distill = mode == Mode.TRAIN && Files.exists(SwordFiles.schoolDir().resolve(DISTILL_FILE));
+		if (distill) {
+			Path dt = SwordFiles.schoolDir().resolve(DISTILL_TEACHER_FILE);
+			if (!Files.exists(dt)) {
+				dt = SwordFiles.schoolCheckpoint();
+			}
+			learner.loadBase(dt);
 			learner.anchorToBase(true);
-			SwordAi.LOGGER.info("school: copying targets from the frozen best fighter {} (learning without forgetting)", anchor.getFileName());
+			learner.distillMode = true;
+			SwordAi.LOGGER.info("school: DISTILL v2 (run 128): full-policy DAgger copying frozen {} + all rules (camera included), {} rule-off",
+					dt.getFileName(), DISTILL_RULE_OFF);
+		} else {
+			Path anchor = SwordFiles.schoolDir().resolve(ANCHOR_FILE);
+			if (mode == Mode.TRAIN && ANCHOR_TO_BEST && Files.exists(anchor)) {
+				learner.loadBase(anchor);
+				learner.anchorToBase(true);
+				SwordAi.LOGGER.info("school: copying targets from the frozen best fighter {} (learning without forgetting)", anchor.getFileName());
+			}
 		}
 		loadBasics();
 		if (mode == Mode.TRAIN) {
@@ -3738,10 +3753,6 @@ public final class SchoolSession implements AgentSession {
 			installedBody.patchedUp = installed.patchedUp;
 			sparCheck = mode == Mode.CHECK && Files.exists(SwordFiles.schoolDir().resolve(SPAR_CHECK_FILE));
 			rulesOffCheck = mode == Mode.CHECK && Files.exists(SwordFiles.schoolDir().resolve(RULES_OFF_CHECK_FILE));
-			distill = mode == Mode.TRAIN && Files.exists(SwordFiles.schoolDir().resolve(DISTILL_FILE));
-			if (distill) {
-				SwordAi.LOGGER.info("school: DISTILL (run 127): no reward gradient, the rules' keys copied, half the fights without the rules");
-			}
 			guardOffCheck = mode == Mode.CHECK && Files.exists(SwordFiles.schoolDir().resolve(GUARD_OFF_CHECK_FILE));
 			if (SPAR_SHARE > 0f && mode == Mode.TRAIN || sparCheck) {
 				sparring = LoadedFighter.loadFrom(teacherFile, icfg, SwordFiles.installedCopy().resolve("curriculum.properties"));
@@ -4226,7 +4237,7 @@ public final class SchoolSession implements AgentSession {
 			fightStyle = styleOf(fightBot, fightStyleSeed, fightVaried);
 			seed = rng.nextLong();
 		}
-		review = mode == Mode.CHECK ? checkReview : drawBasic();
+		review = mode == Mode.CHECK ? checkReview : distill ? (rng.nextFloat() < 0.25f ? TIMER + rng.nextInt(CHECK_FIGHTS) : -1) : drawBasic();
 		Random lagDraw = new Random(seed ^ 0x1A6L);
 		// What it sees of them comes 1 to 4 ticks late, as on a real server (the user's fights, 24 Oct: 55-82 ms each way); 0 to 3
 		// and mostly 0 or 1 before, so a jump-in crit seen late was sprint-hit and a combo answered late.
@@ -4255,18 +4266,18 @@ public final class SchoolSession implements AgentSession {
 			reviewRewards.reset();
 			reviewHop = truth.hopId();
 		} else {
-			boolean drill = mode == Mode.TRAIN && rng.nextFloat() < DRILL_SHARE;
+			boolean drill = !distill && mode == Mode.TRAIN && rng.nextFloat() < DRILL_SHARE;
 			// Run 125 (COMBO_DRILL): a combo-hold drill, ahead of the scenes and the full fights.
-			comboDrillNow = COMBO_DRILL && mode == Mode.TRAIN && benchNow < 0 && !drill && rng.nextFloat() < COMBO_DRILL_SHARE;
+			comboDrillNow = !distill && COMBO_DRILL && mode == Mode.TRAIN && benchNow < 0 && !drill && rng.nextFloat() < COMBO_DRILL_SHARE;
 			sceneReview = false;
-			Scene comboPick = mode == Mode.TRAIN && !drill && !comboDrillNow ? comboScenePick() : null;
+			Scene comboPick = !distill && mode == Mode.TRAIN && !drill && !comboDrillNow ? comboScenePick() : null;
 			if (comboPick != null) {
 				// Run 66: a combo-escape scene, ahead of the repeat queue.
 				sceneNow = comboPick;
 				comboScenePicks++;
-			} else if (!comboDrillNow && repeatPick(drill)) {
+			} else if (!distill && !comboDrillNow && repeatPick(drill)) {
 				sceneNow = repeatScene;
-			} else if (mode == Mode.TRAIN && !drill && !comboDrillNow && (!scenes.isEmpty() || !mastered.isEmpty())
+			} else if (!distill && mode == Mode.TRAIN && !drill && !comboDrillNow && (!scenes.isEmpty() || !mastered.isEmpty())
 					&& rng.nextFloat() < (repeatActive() ? (mastered.isEmpty() ? 0f : REPEAT_TEST_SHARE) : sceneChance())) {
 				// While one is repeated (run 48) the other fights are full fights or a learned replay tested again.
 				sceneReview = !mastered.isEmpty() && (repeatActive() || scenes.isEmpty() || rng.nextFloat() < SCENE_REVIEW_SHARE);
@@ -4422,7 +4433,7 @@ public final class SchoolSession implements AgentSession {
 			// presses every key of the moment itself and gets the gradient for it (with the rules on, about half the replays, the
 			// rules pressed the deciding keys and those got none).
 			// Run 125: a combo drill too (no rule presses its keys: run 123's controller held ready swings).
-			: distill ? review < 0 && !drillFight && rng.nextFloat() < DISTILL_RULE_OFF
+			: distill ? (review < 0 || review >= TIMER) && !drillFight && rng.nextFloat() < DISTILL_RULE_OFF
 			: review < 0 && !drillFight && (sceneNow != null && mode == Mode.TRAIN || comboDrillNow || rng.nextFloat() < ruleOffShare());
 		drillTicker = plan.drillLift ? plan.drillAgentTicker : sceneNow != null ? SceneRecorder.agentTicker(sceneNow.state)
 				: comboDrillNow ? SceneRecorder.agentTicker(drillState) : -1;
@@ -4471,7 +4482,7 @@ public final class SchoolSession implements AgentSession {
 		holdAt = -1;
 		holdJumpAir = false;
 		fightLag = agentLag;
-		learner.teacherForcing = punishDrill ? 1f : sceneNow != null ? 1f - SCENE_DECIDER_SHARE : TEACHER_FORCING;
+		learner.teacherForcing = distill ? 0f : punishDrill ? 1f : sceneNow != null ? 1f - SCENE_DECIDER_SHARE : TEACHER_FORCING;
 		learner.resetIntent();
 		shaping = 0f;
 		lastMomentTechnique = -1;
@@ -5656,7 +5667,7 @@ public final class SchoolSession implements AgentSession {
 			step.teacherHeads = yielded ? 0 : step.teacherHeads & ~(1 << ActionSpace.ATTACK);
 		}
 		boolean judgedApart = yielded || holdUntaught;
-		if (mode == Mode.TRAIN && stages.oldPull() > 0f && (installed != null || learner.hasOldTeacher())) {
+		if (!distill && mode == Mode.TRAIN && stages.oldPull() > 0f && (installed != null || learner.hasOldTeacher())) {
 			if (installed != null) {
 				// What the installed model would press here, rules and all: its choice, as a target.
 				observer.fillBody(installedBody, me, bot, truth.floorY());
@@ -6009,6 +6020,20 @@ public final class SchoolSession implements AgentSession {
 			step.teacherHeads &= ~(1 << ActionSpace.ATTACK);
 			k2Held++;
 		}
+		if (distill) {
+			// Run 128: pure full-policy DAgger distillation; no scripted teacher lessons interfere.
+			step.teacherHeads = 0;
+			step.teacherTechnique = -1;
+			step.letGoPull = 0f;
+			step.jumpPull = 0f;
+			step.holdPull = 0f;
+			step.camPull = 0f;
+			step.swingPull = 0f;
+			step.noJumpPull = 0f;
+			step.spacingPull = 0f;
+			step.shadowHeads = 0;
+			step.policyWeight = 1f;
+		}
 		boolean installedDecided = step.teacherWeight > 0f && installed != null;
 		int ruled = 0;
 		// Run 122: the rules pressed (or, in a fight without them, would have pressed) the jump this tick.
@@ -6057,7 +6082,7 @@ public final class SchoolSession implements AgentSession {
 				// The rules give way to a technique being learned, on its keys: in training where its teacher teaches them, in
 				// a check (as in a real fight) while the decider has chosen it (SchoolStages#runTaught).
 				int body = ActionSpace.ALL_HEADS & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
-				int give = mode == Mode.TRAIN ? step.teacherHeads & body
+				int give = mode == Mode.TRAIN && !distill ? step.teacherHeads & body
 						: dev.swordai.core.school.SchoolStages.runTaught(learner.told().ordinal())
 								&& !(dev.swordai.core.school.SchoolStages.STARTERS_TAUGHT && dev.swordai.core.school.SchoolStages.starter(learner.told().ordinal())) ? body : 0;
 				ruled &= ~give;
@@ -6119,11 +6144,11 @@ public final class SchoolSession implements AgentSession {
 			// Run 127 (distill): the target is what the rules press (or would), nothing else: the network's own keys stay its own.
 			ruledTaught = distill ? ruled
 					: ruleOff ? ((sceneNow != null || comboDrillNow) && mode == Mode.TRAIN ? 0 : keys & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH)) : ruled;
-			if (guardFree) {
+			if (guardFree && !distill) {
 				// Run 90: nor is the rules' swing (or hold) a target there.
 				ruledTaught &= ~ActionSpace.mask(ActionSpace.ATTACK);
 			}
-			if (jumpNotNeeded) {
+			if (jumpNotNeeded && !distill) {
 				// Run 95: nor the rules' jump where no jump is needed.
 				ruledTaught &= ~ActionSpace.mask(ActionSpace.JUMP);
 			}
@@ -6223,8 +6248,9 @@ public final class SchoolSession implements AgentSession {
 		// push), and in the first updates of run 30b it was 53% of the rules' head-ticks at cross-entropy 3.4 to 5.1 and 20%
 		// agreement, while the network without the rules already lands 97% of its swings to the installed model's 89%.
 		int bodyKeys = ActionSpace.ALL_HEADS & ~ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH);
-		step.ruledHeads = mode == Mode.TRAIN && review < 0 ? ruledTaught & bodyKeys & (distill ? ActionSpace.ALL_HEADS : ~step.teacherHeads) : 0;
-		if (OWN_FOLLOWUP_AWR && mode == Mode.TRAIN && review < 0 && !comboDrillNow && installedDecided && installed != null
+		step.ruledHeads = mode == Mode.TRAIN && (review < 0 || distill && review >= TIMER)
+				? ruledTaught & (distill ? ActionSpace.ALL_HEADS : bodyKeys & ~step.teacherHeads) : 0;
+		if (!distill && OWN_FOLLOWUP_AWR && mode == Mode.TRAIN && review < 0 && !comboDrillNow && installedDecided && installed != null
 				&& ownGroundHitAt >= 0 && fightTicks - ownGroundHitAt <= B_FOLLOWUP_TICKS && clock.ticksSinceHitTaken > fightTicks - ownGroundHitAt) {
 			// Run 81: B's movement keys after its own ground hit, by the outcome.
 			int follow = ActionSpace.mask(ActionSpace.FORWARD, ActionSpace.SPRINT, ActionSpace.JUMP) & ~step.teacherHeads;
@@ -6274,9 +6300,18 @@ public final class SchoolSession implements AgentSession {
 		// Run 122: the window after its own hit (that hit at most 20 ticks old, none taken since); the one jump-in of an engagement is not in it.
 		boolean ownHitWindowNow = dev.swordai.core.school.SchoolFighter.ownHitWindow(clock.ticksSinceHitDealt, clock.ticksSinceHitTaken);
 		boolean ownHitTrain = mode == Mode.TRAIN && review < 0 && ownHitWindowNow && !(JUMP_ONCE && jumpInOpen);
-		if (ownHitTrain && OWN_HIT_NO_JUMP_PULL > 0f && me.onGround() && (ruled & (1 << ActionSpace.JUMP)) == 0 && !ruleJumpWould) {
+		if (!distill && ownHitTrain && OWN_HIT_NO_JUMP_PULL > 0f && me.onGround() && (ruled & (1 << ActionSpace.JUMP)) == 0 && !ruleJumpWould) {
 			// The "no jump" lesson's pull rides on the step; SchoolPpo teaches it only if the network then presses the jump (the attempt).
 			step.noJumpPull = OWN_HIT_NO_JUMP_PULL;
+		}
+		if (distill && OWN_HIT_JUMP_GUARD && me.onGround() && ownHitWindowNow && (step.ruledHeads & (1 << ActionSpace.JUMP)) == 0
+				&& !ruleJumpWould && dev.swordai.core.school.SchoolFighter.ownHitJumpGuard(clock.ticksSinceHitDealt, clock.ticksSinceHitTaken,
+				true, facts.reachDist, charge)) {
+			// Run 128: distill the own-hit jump guard as JUMP=0 so it can be deleted from play time.
+			int jo = ActionSpace.OFFSETS[ActionSpace.JUMP];
+			step.teacher[jo] = 1f;
+			step.teacher[jo + 1] = 0f;
+			step.ruledHeads |= 1 << ActionSpace.JUMP;
 		}
 		// Run 124 (COUNTER_SPACING): A's counter spacing in their combo and as they close in, a rule and (training) the teacher's target.
 		int counterPress = counterStep(keys, ruled, charge, installedDecided, guardWould || k2Hold,
@@ -6285,6 +6320,11 @@ public final class SchoolSession implements AgentSession {
 		keys = (keys | counterFree) & ~counterPress;
 		if (counterPress != 0) {
 			counter.plan().writeTo(action);
+		}
+		if (distill) {
+			// Fill every non-ruled head with the frozen teacher's exact softmax distribution via anchorTargets.
+			step.teacherHeads = 0;
+			step.teacherWeight = 1f;
 		}
 		learner.act(step, keys, ruled, mode == Mode.TRAIN, cfg.playTemperature, action);
 		// Run 122: the network's own take-off tried in the window: charged and taught (training), let go of within 3.5 with the sword under 0.9
@@ -6300,7 +6340,7 @@ public final class SchoolSession implements AgentSession {
 				ownHitCharged++;
 				ownHitTaught += step.noJumpPull > 0f ? 1 : 0;
 			}
-			if (OWN_HIT_JUMP_GUARD && dev.swordai.core.school.SchoolFighter.ownHitJumpGuard(clock.ticksSinceHitDealt, clock.ticksSinceHitTaken,
+			if (!ruleOff && OWN_HIT_JUMP_GUARD && dev.swordai.core.school.SchoolFighter.ownHitJumpGuard(clock.ticksSinceHitDealt, clock.ticksSinceHitTaken,
 					true, facts.reachDist, charge)) {
 				action[ActionSpace.JUMP] = 0;
 				ownHitStripped[m]++;
@@ -6614,7 +6654,23 @@ public final class SchoolSession implements AgentSession {
 		}
 		boolean rule = mode == Mode.CHECK || dev.swordai.core.school.CounterSpacing.RULE_IN_TRAINING && !ruleOff && !comboExitFight;
 		int press = rule ? p.heads & (keys | ruled) : 0;
-		if (mode == Mode.TRAIN) {
+		if (mode == Mode.TRAIN && distill) {
+			int active = p.heads & (keys | ruled);
+			if (active != 0) {
+				int[] ck = new int[ActionSpace.HEADS];
+				p.keys(ck);
+				for (int h = 0; h < ActionSpace.HEADS; h++) {
+					if ((active & (1 << h)) != 0) {
+						int off = ActionSpace.OFFSETS[h];
+						for (int k = 0; k < ActionSpace.SIZES[h]; k++) {
+							step.teacher[off + k] = k == ck[h] ? 1f : 0f;
+						}
+					}
+				}
+				step.ruledHeads |= active;
+			}
+			counterTaught++;
+		} else if (mode == Mode.TRAIN) {
 			if (taught != null && dev.swordai.core.school.CounterSpacing.replaces(taught)) {
 				// The long S out (C2/C3/C4) where it counters by spacing: the ordinary fight's moment; the escape's jump goes too, a "no jump" stays.
 				int jo = ActionSpace.OFFSETS[ActionSpace.JUMP];
@@ -8054,19 +8110,28 @@ public final class SchoolSession implements AgentSession {
 		set.oldBodyPull = stages.bodyPull();
 		set.installedBody = OVERLAY;
 		set.ruledPull = distill ? DISTILL_PULL : ruledPullNow;
+		float predictorLr = distill ? 0f : 1e-3f;
+		set.actorLr = ACTOR_LR;
+		set.maxActorLr = MAX_ACTOR_LR;
 		if (distill) {
 			set.distill = true;
+			set.oldPull = 1.0f;
+			set.oldBodyPull = 1.0f;
 			set.ruledByOutcome = false;
 			set.replayBatches = 0;
 			set.shadowBatches = 0;
+			set.ruledBatches = 0;
+			set.adaptiveLr = false;
+			set.klStop = 0f;
+			set.actorLr = DISTILL_LR;
+			set.maxActorLr = DISTILL_LR;
+			set.maxGradNorm = 1.0f;
+			set.epochs = 4;
 		}
 		set.criticOnly = warmupLeft > 0;
-		set.actorLr = ACTOR_LR;
-		set.maxActorLr = MAX_ACTOR_LR;
 		if (warmupLeft > 0) {
 			warmupLeft--;
 		}
-		float predictorLr = 1e-3f;
 		Path checkpoint = SwordFiles.schoolCheckpoint();
 		Path stagesFile = SwordFiles.schoolStages();
 		pending = updater.submit(() -> {

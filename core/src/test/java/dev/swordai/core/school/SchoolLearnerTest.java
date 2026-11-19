@@ -488,4 +488,58 @@ class SchoolLearnerTest {
 			assertTrue(b >= 0 && b < Specialists.KINDS);
 		}
 	}
+
+	/** Run 128: full-policy distill copies ruled camera + body heads while keeping non-ruled base heads from forgetting. */
+	@Test
+	void distillCopiesCameraAndRulesWithoutForgettingBasePolicy() {
+		SchoolLearner l = new SchoolLearner(11L, 400, 0.99f, 0.95f, 2);
+		l.keepBase();
+		l.anchorToBase(true);
+		l.distillMode = true;
+		l.teacherForcing = 0f;
+		Random rng = new Random(19);
+		SchoolRollout.Step s = new SchoolRollout.Step();
+		int[] act = new int[ActionSpace.HEADS];
+		int ruledCam = ActionSpace.mask(ActionSpace.YAW, ActionSpace.PITCH, ActionSpace.ATTACK);
+		int wantYaw = 12;
+		int wantPitch = 8;
+		SchoolPpo.Stats last = null;
+		for (int u = 0; u < 4; u++) {
+			for (int t = 0; t < 256; t++) {
+				fill(rng, s);
+				s.teacherHeads = 0;
+				s.teacherTechnique = -1;
+				s.teacherWeight = 1f;
+				s.policyWeight = 1f;
+				boolean ruledStep = (t & 1) == 0;
+				s.ruledHeads = ruledStep ? ruledCam : 0;
+				if (ruledStep) {
+					java.util.Arrays.fill(s.teacher, 0f);
+					s.teacher[ActionSpace.OFFSETS[ActionSpace.YAW] + wantYaw] = 1f;
+					s.teacher[ActionSpace.OFFSETS[ActionSpace.PITCH] + wantPitch] = 1f;
+					s.teacher[ActionSpace.OFFSETS[ActionSpace.ATTACK]] = 1f;
+				}
+				l.act(s, ActionSpace.ALL_HEADS, true, 1f, act);
+				fill(rng, s);
+				l.complete(0f, t % 64 == 63, false, s.obs);
+			}
+			SchoolPpo.Settings set = new SchoolPpo.Settings();
+			set.distill = true;
+			set.ruledPull = 2f;
+			set.oldPull = 1f;
+			set.oldBodyPull = 1f;
+			set.ruledByOutcome = false;
+			set.adaptiveLr = false;
+			set.klStop = 0f;
+			set.actorLr = 3e-4f;
+			set.epochs = 4;
+			last = l.update(set, 0f);
+			assertTrue(Float.isFinite(last.ruledCe) && Float.isFinite(last.oldCe), last.toString());
+		}
+		assertTrue(last.ruledNHead[ActionSpace.YAW] > 0 && last.ruledNHead[ActionSpace.PITCH] > 0, "camera must be distilled: " + last);
+		assertTrue(last.ruledAgreeHead[ActionSpace.YAW] > 0.7f, "yaw agreement too low: " + last);
+		assertTrue(last.ruledAgreeHead[ActionSpace.PITCH] > 0.7f, "pitch agreement too low: " + last);
+		assertTrue(last.oldCe > 0f && last.oldBodyCe > 0f, "non-ruled heads must stay anchored: " + last);
+		l.close();
+	}
 }

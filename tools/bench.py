@@ -498,6 +498,182 @@ def det_basics(ep):
     return [(0, {'swings': len(sw), 'landed': sum(1 for k in sw if k != 'miss')})]
 
 
+# ---------------------------------------------------------------------------------------------------------------------
+# Four-goal diagnostics (diagnostic only; never enters the benchmark total or training reward).
+
+def _ep_diagnostics(ep):
+    """Computes the four goal diagnostics on one Episode:
+      1. Combo start rate: share of exchanges where AI starts a combo (stun or 2+ hits in a row).
+      2. Average combo length: mean hits in AI's combo runs (runs starting with a stun or of 2+ hits).
+      3. Crits taken vs crit attempts by type: jump_in, double_crit, crit_spam.
+      4. Crit-back chain length after its punish crit: consecutive AI crits starting from a landed punish crit.
+    """
+    n = ep.n
+    # 1 & 2. Exchanges and own combo runs.
+    hit_ticks = [(h.d, 'd', h) for h in ep.hits] + [(t, 't', None) for t in range(n) if ep.taken[t]]
+    hit_ticks.sort(key=lambda x: x[0])
+    exchanges = []
+    cur_ex = []
+    for item in hit_ticks:
+        if cur_ex and item[0] - cur_ex[-1][0] > GAP:
+            exchanges.append(cur_ex)
+            cur_ex = []
+        cur_ex.append(item)
+    if cur_ex:
+        exchanges.append(cur_ex)
+
+    own_runs = []
+    cur_run = []
+    for h in ep.hits:
+        if cur_run and (h.d - cur_run[-1].d > GAP or ep.n_taken(cur_run[-1].d + 1, h.d)):
+            own_runs.append(cur_run)
+            cur_run = []
+        cur_run.append(h)
+    if cur_run:
+        own_runs.append(cur_run)
+
+    combo_starts = 0
+    for ex in exchanges:
+        # Count own consecutive runs inside this exchange.
+        streak = 0
+        started = False
+        for _, side, h in ex:
+            if side == 'd':
+                streak += 1
+                if streak >= 2 or ep.stun(h):
+                    started = True
+                    break
+            else:
+                streak = 0
+        if started:
+            combo_starts += 1
+
+    combo_lengths = []
+    for r in own_runs:
+        if len(r) >= 2 or any(ep.stun(h) for h in r):
+            combo_lengths.append(len(r))
+
+    # 3. Opponent crit attempts by type: jump_in, double_crit, crit_spam.
+    # Each airborne spell of the opponent (not lifted by AI's own hit) that reaches falling near AI or lands a crit.
+    crit_types = {k: [0, 0] for k in ('jump_in', 'double_crit', 'crit_spam')}  # [taken, attempts]
+    last_opp_crit_tick = -1000
+    t = 1
+    while t < n:
+        took_off = ep.oppAir[t] and not ep.oppAir[t - 1] and max(ep.oppUp[t:t + 4]) > 0.1
+        standalone_crit = ep.takenCrit[t] and not ep.oppAir[t - 1]
+        if not (took_off or standalone_crit):
+            t += 1
+            continue
+        lifted_by_me = ep.n_dealt(t - 3, t) > 0
+        end = next((k for k in range(t + 1, min(n, t + JUMP_SPAN + 1)) if not ep.oppAir[k]), min(n - 1, t + JUMP_SPAN))
+        near_fall = any(ep.oppAir[k] and ep.oppUp[k] < 0 and ep.dist[k] < NEAR for k in range(t, end + 1))
+        landed = sum(1 for k in range(t, min(n, end + 2)) if ep.takenCrit[k])
+        if not lifted_by_me and (near_fall or landed > 0):
+            is_jump_in = took_off and ep.oppToward[t] >= 0.1 and 2.0 <= ep.dist[t] < 6.0
+            is_double = (t - last_opp_crit_tick) <= 28
+            kind = 'double_crit' if is_double else ('jump_in' if is_jump_in else 'crit_spam')
+            crit_types[kind][1] += 1
+            if landed > 0:
+                crit_types[kind][0] += 1
+                last_opp_crit_tick = next(k for k in range(t, min(n, end + 2)) if ep.takenCrit[k])
+            else:
+                # A failed follow-up attempt still updates only if it actually critted.
+                pass
+        t = max(t + 1, end + 1)
+
+    # 4. Crit-back chain length after its own punish crit.
+    chains = []
+    crits = [h for h in ep.hitsBySwing if h.kind == 'crit']
+    for s in range(1, n):
+        if not ep.taken[s] or ep.meAir[s - 1]:
+            continue
+        a = next((k for k in range(s, min(n, s + 4)) if ep.meAir[k]), None)
+        if a is None:
+            continue
+        land = next((k for k in range(a + 1, min(n, s + LIFT_SPAN)) if not ep.meAir[k]), min(n, s + LIFT_SPAN))
+        first_idx = None
+        for idx, h in enumerate(crits):
+            if h.u > land:
+                break
+            if h.u >= s:
+                first_idx = idx
+                break
+        if first_idx is None:
+            continue
+        chain = 1
+        prev_u = crits[first_idx].u
+        for idx in range(first_idx + 1, len(crits)):
+            if crits[idx].u - prev_u <= 28:
+                chain += 1
+                prev_u = crits[idx].u
+            else:
+                break
+        chains.append(chain)
+
+    return {
+        'exchanges': len(exchanges),
+        'combo_starts': combo_starts,
+        'combo_lengths': combo_lengths,
+        'crit_types': crit_types,
+        'crit_chains': chains,
+    }
+
+
+def four_goal_diagnostics(eps):
+    """Aggregates the four goal diagnostics over a list of Episodes (diagnostic only)."""
+    exchanges = combo_starts = 0
+    lengths = []
+    crit_types = {k: [0, 0] for k in ('jump_in', 'double_crit', 'crit_spam')}
+    chains = []
+    for ep in eps:
+        d = _ep_diagnostics(ep)
+        exchanges += d['exchanges']
+        combo_starts += d['combo_starts']
+        lengths.extend(d['combo_lengths'])
+        for k in crit_types:
+            crit_types[k][0] += d['crit_types'][k][0]
+            crit_types[k][1] += d['crit_types'][k][1]
+        chains.extend(d['crit_chains'])
+    tot_taken = sum(v[0] for v in crit_types.values())
+    tot_att = sum(v[1] for v in crit_types.values())
+    return {
+        'combo_start_rate': (combo_starts / exchanges) if exchanges else None,
+        'combo_starts': combo_starts,
+        'exchanges': exchanges,
+        'avg_combo_length': (sum(lengths) / len(lengths)) if lengths else None,
+        'combos': len(lengths),
+        'longest_combo': max(lengths) if lengths else 0,
+        'crits_by_type': {
+            k: {'taken': v[0], 'attempts': v[1], 'rate': (v[0] / v[1]) if v[1] else None}
+            for k, v in crit_types.items()
+        },
+        'crits_all': {'taken': tot_taken, 'attempts': tot_att, 'rate': (tot_taken / tot_att) if tot_att else None},
+        'punish_crits': len(chains),
+        'avg_crit_back_chain': (sum(chains) / len(chains)) if chains else None,
+        'crit_back_2plus_rate': (sum(1 for c in chains if c >= 2) / len(chains)) if chains else None,
+        'max_crit_back_chain': max(chains) if chains else 0,
+    }
+
+
+def print_diagnostics(label, diag):
+    print('Four-goal diagnostics [%s] (diagnostic only):' % label)
+    print('  1. Combo start rate:   %s (%d/%d exchanges)' % (
+        fmt_rate(diag['combo_start_rate'], 'share'), diag['combo_starts'], diag['exchanges']))
+    print('  2. Avg combo length:   %s hits (%d combos, longest %d)' % (
+        fmt_rate(diag['avg_combo_length'], 'mean'), diag['combos'], diag['longest_combo']))
+    parts = []
+    for k in ('jump_in', 'double_crit', 'crit_spam'):
+        c = diag['crits_by_type'][k]
+        parts.append('%s %d/%d (%s)' % (k, c['taken'], c['attempts'], fmt_rate(c['rate'], 'share').strip()))
+    ca = diag['crits_all']
+    print('  3. Crits taken/att:    all %d/%d (%s) | %s' % (
+        ca['taken'], ca['attempts'], fmt_rate(ca['rate'], 'share').strip(), ', '.join(parts)))
+    print('  4. Crit-back chain:    avg %s after punish crit (2+ rate %s, max %d, n=%d)' % (
+        fmt_rate(diag['avg_crit_back_chain'], 'mean'),
+        fmt_rate(diag['crit_back_2plus_rate'], 'share').strip(),
+        diag['max_crit_back_chain'], diag['punish_crits']))
+
+
 # Each test: key, name, technique IDs, the bots of docs/BENCHMARK.md that create it, the detector, its rate (outcome key,
 # 'share' or 'mean', +1 = higher is better, -1 = lower is better, label), extra outcomes shown, in the total or not.
 TESTS = [
@@ -865,6 +1041,7 @@ def cmd_score(tag, all_bots):
         ko = [ep.knockouts() for ep in part]
         print('%s: %d fights, HP net per fight %+.2f%s, knockouts %d-%d' % (
             name, n, m, (' (se %.2f)' % se) if se is not None else '', sum(1 for a, b in ko if a), sum(1 for a, b in ko if b)))
+    print_diagnostics(tag, four_goal_diagnostics(eps))
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -995,6 +1172,7 @@ def compare(eps_c, eps_r, tag_c, tag_r, weights, parts, all_bots, out_path, done
               'skills': {'value': skills_v, 'se': skills_se, 'sum_of_tests': raw, 'sum_of_tests_se': raw_se,
                          'overlap': overlap},
               'h2h': h2h, 'bots': bots, 'bots_from': 'all bot episodes (every suite bot, not h2h)', 'mixer': mixer,
+              'diagnostics': {'c': four_goal_diagnostics(eps_c), 'r': four_goal_diagnostics(eps_r)},
               'total': {'value': total, 'se': total_se}, 'verdict': verdict, 'notes': notes}
     print_compare(result)
     if out_path:
@@ -1031,6 +1209,9 @@ def print_compare(r):
     pu = r['parts_used']
     print('TOTAL = %s = %s  ->  %s' % (' + '.join('%.2f %s' % (pu[k], k) for k in ('skills', 'h2h', 'bots') if k in pu),
                                        _pm(r['total']['value'], r['total']['se']), r['verdict']))
+    if 'diagnostics' in r:
+        print_diagnostics('C: ' + r['tag_c'], r['diagnostics']['c'])
+        print_diagnostics('R: ' + r['tag_r'], r['diagnostics']['r'])
     for n in r['notes']:
         print('  note: ' + n)
 
