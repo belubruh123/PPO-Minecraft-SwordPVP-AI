@@ -116,14 +116,25 @@ public final class ObsSpec {
 	public static final int SC_STYLE_AWAY = 27;
 	public static final int SC_STYLE_EDGE = 28;
 	public static final int SC_STYLE_DIST = 29;
-	public static final int SCALARS = 30;
-	/**
-	 * Scalar counts of earlier versions (0.1.0, 0.1.1 to 0.1.2, 0.1.3 to 0.1.4, 0.2.0 to 0.6.1, up to
-	 * 18 October 2026 in 0.14.0, and up to 0.15.3). New
-	 * scalars are only ever added after the existing ones, which is what lets an older checkpoint be
-	 * upgraded on load.
-	 */
-	public static final int[] SCALARS_BEFORE = {16, 21, 23, 25, 26, 27};
+	// ---- Step D: explicit combat-timing scalars for combos, crits, and crit-back chains ---------
+	/** 1 when airborne and descending (crit-eligible fall), 0 otherwise. */
+	public static final int SC_OWN_FALLING = 30;
+	/** 1 when opponent is on the ground (observable directly from their feet/jump animation). */
+	public static final int SC_OPP_ON_GROUND = 31;
+	/** Opponent's own vertical velocity (scaled, unconfounded by own vertical motion); 0 when unseen. */
+	public static final int SC_OPP_VEL_UP = 32;
+	/** 1 when opponent is airborne and descending (jump-in crit / double-crit threat); 0 when unseen. */
+	public static final int SC_OPP_FALLING = 33;
+	/** Own consecutive hits landed without taking one (combo streak / 5, capped at 1). */
+	public static final int SC_HITS_DEALT_ROW = 34;
+	/** Own hits in the current exchange (resets after 20 ticks without a hit; / 5, capped at 1). */
+	public static final int SC_EXCHANGE_OWN_HITS = 35;
+	/** Opponent hits in the current exchange (/ 5, capped at 1). */
+	public static final int SC_EXCHANGE_OPP_HITS = 36;
+	/** Consecutive crits landed by own side in this exchange (crit-back chain / 4, capped at 1). */
+	public static final int SC_CRIT_CHAIN = 37;
+	public static final int SCALARS = 38;
+	public static final int[] SCALARS_BEFORE = {16, 21, 23, 25, 26, 27, 30};
 
 	// ---- actor vector layout --------------------------------------------------------------------
 	public static final int VEC_STATS = 0;

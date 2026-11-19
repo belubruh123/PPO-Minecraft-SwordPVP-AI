@@ -63,6 +63,12 @@ public final class ParamSet {
 		return g;
 	}
 
+	public static void zeroGrads(float[][] g) {
+		for (float[] a : g) {
+			Arrays.fill(a, 0f);
+		}
+	}
+
 	public static void zero(float[][] grads) {
 		for (float[] g : grads) {
 			Arrays.fill(g, 0f);

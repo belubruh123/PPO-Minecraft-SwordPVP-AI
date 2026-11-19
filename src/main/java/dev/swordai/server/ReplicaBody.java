@@ -286,6 +286,7 @@ public final class ReplicaBody {
 		state.pitch = pitch;
 		state.height = (float) (body.getY() - floorY);
 		state.onGround = body.onGround();
+		state.oppOnGround = opponent.onGround();
 		state.setMotion(body.getX() - lastX, body.getY() - lastY, body.getZ() - lastZ);
 		state.setOpponentMotion(shown.movedX(), shown.movedY(), shown.movedZ());
 		state.charge = Mth.clamp(clientCooldown / cooldownTicks, 0f, 1f);

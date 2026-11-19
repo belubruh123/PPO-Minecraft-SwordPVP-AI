@@ -51,6 +51,13 @@ public final class BodyState {
 	public float oppVelRight;
 	public float oppVelUp;
 	public float oppVelForward;
+	/** Step D: directly observable opponent ground state and exchange/combo/crit-chain counters. */
+	public boolean oppOnGround = true;
+	public int hitsDealtRow;
+	public int exchangeOwnHits;
+	public int exchangeOppHits;
+	public int critChain;
+	private int ticksSinceAnyHit = 1000;
 
 	private final float[] view = new float[3];
 
@@ -107,14 +114,57 @@ public final class BodyState {
 		oppLastSwingTime = swingTime;
 	}
 
-	/** A new fight: nothing is known of the opponent's sword. */
+	/** A new fight: nothing is known of the opponent's sword or exchange state. */
 	public void resetOpponentSwing() {
 		oppTicksSinceSwing = 1000;
 		oppWasSwinging = false;
 		oppLastSwingTime = 0;
+		oppOnGround = true;
+		hitsDealtRow = 0;
+		exchangeOwnHits = 0;
+		exchangeOppHits = 0;
+		critChain = 0;
+		ticksSinceAnyHit = 1000;
 		styleAway = 0f;
 		styleEdge = 0f;
 		styleDist = 0.5f;
+	}
+
+	/** Advances exchange timeout and records hits for Step D combo/exchange/crit-chain scalars. */
+	public void updateExchange(boolean dealtNow, boolean dealtCrit, boolean takenNow) {
+		if (dealtNow || takenNow) {
+			if (ticksSinceAnyHit >= 20) {
+				exchangeOwnHits = 0;
+				exchangeOppHits = 0;
+				critChain = 0;
+			}
+			ticksSinceAnyHit = 0;
+		} else if (ticksSinceAnyHit < 1000) {
+			ticksSinceAnyHit++;
+			if (ticksSinceAnyHit == 20) {
+				exchangeOwnHits = 0;
+				exchangeOppHits = 0;
+				critChain = 0;
+			}
+		}
+		if (dealtNow) {
+			hitsDealtRow++;
+			exchangeOwnHits++;
+			critChain = dealtCrit ? critChain + 1 : 0;
+		}
+		if (takenNow) {
+			hitsDealtRow = 0;
+			exchangeOppHits++;
+		}
+	}
+
+	/** Apparent distance to the opponent estimated solely from their on-screen silhouette height. */
+	public static float apparentDistance(float[] v) {
+		if (v[ObsSpec.VEC_STATS + ObsSpec.ST_ANY_VISIBLE] < 0.5f) {
+			return Float.MAX_VALUE;
+		}
+		float h = v[ObsSpec.VEC_STATS + ObsSpec.ST_TOP] - v[ObsSpec.VEC_STATS + ObsSpec.ST_BOTTOM];
+		return h <= 1e-4f ? Float.MAX_VALUE : ViewGeometry.apparentSize(1.8f, 1f) / h;
 	}
 
 	/** The opponent's sword, 0 to 1, as {@code ObsSpec.SC_OPP_CHARGE} has it. */
@@ -143,12 +193,20 @@ public final class BodyState {
 		ObsBuilder.writeScalar(v, ObsSpec.SC_HITS_TAKEN_ROW, hitsTakenInRow);
 		ObsBuilder.writeScalar(v, ObsSpec.SC_OPP_CHARGE, opponentCharge());
 		ObsBuilder.writeScalar(v, ObsSpec.SC_FRAME_STALE, stale ? 1f : 0f);
+		ObsBuilder.writeScalar(v, ObsSpec.SC_OWN_FALLING, (!onGround && velUp < -0.02f) ? 1f : 0f);
+		ObsBuilder.writeScalar(v, ObsSpec.SC_HITS_DEALT_ROW, Math.min(5, hitsDealtRow) / 5f);
+		ObsBuilder.writeScalar(v, ObsSpec.SC_EXCHANGE_OWN_HITS, Math.min(5, exchangeOwnHits) / 5f);
+		ObsBuilder.writeScalar(v, ObsSpec.SC_EXCHANGE_OPP_HITS, Math.min(5, exchangeOppHits) / 5f);
+		ObsBuilder.writeScalar(v, ObsSpec.SC_CRIT_CHAIN, Math.min(4, critChain) / 4f);
 		if (enemyVisible) {
 			ObsBuilder.writeScalar(v, ObsSpec.SC_REL_VEL_FORWARD, (oppVelForward - velForward) * VELOCITY_SCALE);
 			ObsBuilder.writeScalar(v, ObsSpec.SC_REL_VEL_RIGHT, (oppVelRight - velRight) * VELOCITY_SCALE);
 			ObsBuilder.writeScalar(v, ObsSpec.SC_REL_VEL_UP, (oppVelUp - velUp) * VELOCITY_SCALE);
+			ObsBuilder.writeScalar(v, ObsSpec.SC_OPP_ON_GROUND, oppOnGround ? 1f : 0f);
+			ObsBuilder.writeScalar(v, ObsSpec.SC_OPP_VEL_UP, oppVelUp * VELOCITY_SCALE);
+			ObsBuilder.writeScalar(v, ObsSpec.SC_OPP_FALLING, (!oppOnGround && oppVelUp < -0.02f) ? 1f : 0f);
 			// The opponent's ways, from what is seen of it: once a decision, so once a tick.
-			float distance = Math.min(8f, dev.swordai.core.rl.JumpIn.distance(v));
+			float distance = Math.min(8f, apparentDistance(v));
 			float away = oppVelForward * VELOCITY_SCALE;
 			boolean edge = distance >= EDGE_FROM && distance <= EDGE_TO && Math.abs(away) < EDGE_STILL;
 			styleAway += STYLE_RATE * (away - styleAway);

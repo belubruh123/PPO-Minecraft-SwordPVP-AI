@@ -18,4 +18,26 @@ public final class SessionClock {
 		episodeFraction = 0f;
 		combo = 0;
 	}
+
+	public void reset() {
+		resetEpisode();
+	}
+
+	public void tick() {
+		if (ticksSinceHitDealt < 1000) ticksSinceHitDealt++;
+		if (ticksSinceHitTaken < 1000) ticksSinceHitTaken++;
+		takenStreak.tick(0, 0);
+	}
+
+	public void hitDealt() {
+		ticksSinceHitDealt = 0;
+		combo++;
+		takenStreak.tick(1, 0);
+	}
+
+	public void hitTaken() {
+		ticksSinceHitTaken = 0;
+		combo = 0;
+		takenStreak.tick(0, 1);
+	}
 }

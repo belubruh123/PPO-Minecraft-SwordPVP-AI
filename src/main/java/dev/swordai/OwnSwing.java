@@ -53,4 +53,11 @@ public final class OwnSwing {
 	public static boolean sweep() {
 		return sweep;
 	}
+
+	public static String lastKind() {
+		if (crit) return "crit";
+		if (sprinting && charge > 0.9f) return "sprint";
+		if (sweep) return "sweep";
+		return "plain";
+	}
 }

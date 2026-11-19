@@ -57,7 +57,7 @@ public final class ObsBuilder {
 	 * @param body       its own state now, with the hit clocks set
 	 * @param lastAction the action taken on the previous tick, or null at the start of an episode
 	 */
-	public static void writeActor(Obs obs, MaskFrame frame, SightTracker sight, BodyState body, AimMotor motor, MixIdea idea,
+	public static void writeActor(Obs obs, MaskFrame frame, SightTracker sight, BodyState body, AimMotor motor,
 			int[] lastAction, int headMask) {
 		Arrays.fill(obs.vec, 0f);
 		System.arraycopy(frame.peri, 0, obs.peri, 0, ObsSpec.PERI_SIZE);
@@ -68,7 +68,6 @@ public final class ObsBuilder {
 		// the opponent is actually on screen.
 		body.write(obs.vec, frame.enemyVisible());
 		motor.write(obs.vec);
-		idea.write(obs.vec);
 		writeLastAction(obs.vec, lastAction);
 		writeHeadMask(obs.vec, headMask);
 	}
