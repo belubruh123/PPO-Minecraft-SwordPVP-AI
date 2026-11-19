@@ -3,7 +3,7 @@
 A Fabric mod for Minecraft 1.21.11 in which one neural network (pure Java, trained with PPO) plays 1.9+ sword PvP
 in first person and fights real players.
 
-- **Rules for working on it:** [CLAUDE.md](CLAUDE.md)
+- **Rules for working on it:** [AGENTS.md](AGENTS.md) (Claude Code reads it through CLAUDE.md)
 - **How it is built and where it is going:** [docs/DESIGN.md](docs/DESIGN.md)
 - **What was learned:** [docs/LESSONS.md](docs/LESSONS.md)
 - **Run log:** [RUNS.md](RUNS.md)

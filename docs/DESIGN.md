@@ -51,7 +51,7 @@ evaluation = rounds won against a fixed pool: installed net, run35, 3 past snaps
 
 ## 4. The rewrite, step by step (each step keeps current ability)
 1. **Clean (done 18 Nov):** 430 unused scripts, ~800 KB of stale docs and the old pre-school training pipeline
-   (~9k lines: `Trainer`, the train/headless/spar/demo/learn sessions) deleted, one short SOP (`CLAUDE.md`).
+   (~9k lines: `Trainer`, the train/headless/spar/demo/learn sessions) deleted, one short SOP (`AGENTS.md`).
 2. **Freeze the evaluation:** a fixed opponent pool (above) and a 200-round head-to-head. Baseline = the installed
    network with its rules.
 3. **Distill the rules away:** train one network to copy what the installed network *plus its rules* does, on its own
@@ -62,6 +62,6 @@ evaluation = rounds won against a fixed pool: installed net, run35, 3 past snaps
 5. **Rewrite the code** around the target in section 3. Delete `school/`, `curriculum/` and the rule classes in `rl/`.
    Keep the Minecraft glue (mixins, arena server, round recorder) and the pure-Java NN and PPO, which work and are
    tested.
-6. **After that, only fixes found through CLAUDE.md section 2** (see, do, meet, reward, remember, bug).
+6. **After that, only fixes found through AGENTS.md section 2** (see, do, meet, reward, remember, bug).
 
 Steps 3 and 4 need training. Start them only when the user says to train.
