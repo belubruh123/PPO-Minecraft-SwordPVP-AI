@@ -2,61 +2,26 @@ package dev.swordai.server;
 
 import dev.swordai.core.env.StepFacts;
 
-/**
- * Collects combat events on the server thread until the client thread's next decision picks them
- * up. All access is synchronised; the amounts involved are a handful of numbers per tick.
- */
+/** Synchronised bridge passing server-thread combat events to the client thread each tick. */
 public final class CombatLog {
-	/** Vanilla turns a sprinting swing into a knockback hit only above this charge. */
 	private static final float KNOCKBACK_CHARGE = 0.9f;
-
 	private static float pendingCharge;
-	private static boolean pendingSprint;
-	private static boolean pendingCrit;
-	private static boolean pendingRising;
-	private static boolean pendingSweep;
-	private static boolean pendingBotCrit;
-	private static boolean pendingBotSprint;
-
-	private static int hitsDealt;
-	private static float hitCharge;
-	private static boolean sprintHit;
-	private static boolean critDealt;
-	private static boolean risingSprintHit;
-	private static boolean sweepDealt;
-	private static float damageDealt;
-	private static int hitsTaken;
-	private static int critsTaken;
-	private static int sprintsTaken;
-	private static float damageTaken;
-	private static boolean koDealt;
-	private static boolean koTaken;
+	private static boolean pendingSprint, pendingCrit, pendingBotCrit;
+	private static int hitsDealt, hitsTaken, critsTaken;
+	private static float hitCharge, damageDealt, damageTaken;
+	private static boolean sprintHit, critDealt, koDealt, koTaken;
 
 	private CombatLog() {
 	}
 
-	/**
-	 * The agent has started an attack; remember how charged it was, whether it was sprinting,
-	 * whether vanilla will make it a critical hit or a sweep, and whether it was in the air and still
-	 * going up.
-	 */
 	public static synchronized void agentSwung(float charge, boolean sprinting, boolean crit, boolean rising, boolean sweep) {
 		pendingCharge = charge;
 		pendingSprint = sprinting;
 		pendingCrit = crit;
-		pendingRising = rising;
-		pendingSweep = sweep;
 	}
 
-	/** The bot has started an attack. */
-	public static synchronized void botSwung(boolean crit) {
-		botSwung(crit, false);
-	}
-
-	/** @param sprintHit a charged swing made sprinting: a knockback hit */
 	public static synchronized void botSwung(boolean crit, boolean sprintHit) {
 		pendingBotCrit = crit;
-		pendingBotSprint = sprintHit;
 	}
 
 	public static synchronized void agentDamagedBot(float amount) {
@@ -65,11 +30,7 @@ public final class CombatLog {
 		hitCharge = pendingCharge;
 		sprintHit |= pendingSprint && pendingCharge > KNOCKBACK_CHARGE;
 		critDealt |= pendingCrit;
-		risingSprintHit |= pendingRising && pendingSprint && pendingCharge > KNOCKBACK_CHARGE;
-		sweepDealt |= pendingSweep;
 		pendingCrit = false;
-		pendingRising = false;
-		pendingSweep = false;
 	}
 
 	public static synchronized void botDamagedAgent(float amount) {
@@ -78,45 +39,22 @@ public final class CombatLog {
 		if (pendingBotCrit) {
 			critsTaken++;
 			pendingBotCrit = false;
-		} else if (pendingBotSprint) {
-			sprintsTaken++;
 		}
-		pendingBotSprint = false;
 	}
 
 	public static synchronized void knockout(boolean botDown) {
-		if (botDown) {
-			koDealt = true;
-		} else {
-			koTaken = true;
-		}
+		if (botDown) koDealt = true;
+		else koTaken = true;
 	}
 
-	/** Hits the agent has taken since the log was last emptied; the log is left as it is. */
-	public static synchronized int hitsTakenSoFar() {
-		return hitsTaken;
-	}
-
-	/** Empties the log and returns how many hits the agent had taken. */
-	public static synchronized int clearCountingTaken() {
-		int taken = hitsTaken;
-		clear();
-		return taken;
-	}
-
-	/** Moves everything gathered so far into {@code facts} and starts over. */
 	public static synchronized void drain(StepFacts facts) {
 		facts.hitsDealt = hitsDealt;
 		facts.hitCharge = hitCharge;
 		facts.sprintHit = sprintHit;
 		facts.critDealt = critDealt;
-		// Whether the rise came from a jump of its own is for the client to say.
-		facts.uppercut = risingSprintHit;
-		facts.sweep = sweepDealt;
 		facts.damageDealt = damageDealt;
 		facts.hitsTaken = hitsTaken;
 		facts.critsTaken = critsTaken;
-		facts.sprintsTaken = sprintsTaken;
 		facts.damageTaken = damageTaken;
 		facts.koDealt = koDealt;
 		facts.koTaken = koTaken;
@@ -124,18 +62,8 @@ public final class CombatLog {
 	}
 
 	public static synchronized void clear() {
-		hitsDealt = 0;
-		hitCharge = 0f;
-		sprintHit = false;
-		critDealt = false;
-		risingSprintHit = false;
-		sweepDealt = false;
-		damageDealt = 0f;
-		hitsTaken = 0;
-		critsTaken = 0;
-		sprintsTaken = 0;
-		damageTaken = 0f;
-		koDealt = false;
-		koTaken = false;
+		hitsDealt = hitsTaken = critsTaken = 0;
+		hitCharge = damageDealt = damageTaken = 0f;
+		sprintHit = critDealt = koDealt = koTaken = false;
 	}
 }
