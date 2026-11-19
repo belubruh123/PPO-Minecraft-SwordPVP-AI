@@ -65,7 +65,7 @@ cycles() {
 age=$(( $(date +%s) - $(stat -c %Y $L 2>/dev/null || echo 0) ))
 # Training stopped with the client still up (7 Nov 07:55: "the server did not start the next fight"; the server's "Can't keep up"
 # lines kept the log new for 23 minutes): the age of the last school line counts too.
-last=$(grep -a "(swordai) school \|school bench\|school pair" $L 2>/dev/null | tail -1 | grep -o '^\[[0-9:]*\]' | tr -d '[]')
+last=$(grep -aE "\(swordai\) (school|league) |school bench|school pair" $L 2>/dev/null | tail -1 | grep -o '^\[[0-9:]*\]' | tr -d '[]')
 if [ -n "$last" ] && [ $age -lt 600 ]; then
   ls_=$(( $(date -d "$last" +%s 2>/dev/null || date +%s) ))
   [ $ls_ -gt $(date +%s) ] && ls_=$(( ls_ - 86400 ))
