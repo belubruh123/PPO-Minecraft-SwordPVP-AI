@@ -118,6 +118,8 @@ final class LeagueSession implements AgentSession {
 			pool.add(new CheckOpp("combo-player", League.SparStyle.COMBO_PLAYER, null, false));
 			pool.add(new CheckOpp("mixer", League.SparStyle.MIXER, null, false));
 			checkPool = pool; benchDirA = SwordFiles.benchDir().resolve("A"); benchDirB = SwordFiles.benchDir().resolve("B");
+			Files.deleteIfExists(benchDirA.resolve("DONE"));
+			Files.deleteIfExists(benchDirB.resolve("DONE"));
 		}
 
 		boolean fast = cfg.trainSpeed > 1f;
@@ -242,7 +244,8 @@ final class LeagueSession implements AgentSession {
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school pair %d %s %s: dealt %.1f, taken %.1f, ticks %d%s",
 					checkPair, side, checkOppName, epDealt, epTaken, epTicks, ko));
 			String res = koD ? "won" : koT ? "lost" : "open";
-			recorder.finishTo(checkSideB ? benchDirB : benchDirA, String.format(Locale.ROOT, "pair%03d-%s-%s.txt.gz", checkPair, checkOppName, res), res);
+			String benchTag = "baseline".equals(checkOppName) ? "h2h" : checkOppName;
+			recorder.finishTo(checkSideB ? benchDirB : benchDirA, String.format(Locale.ROOT, "%04d-%s.txt.gz", checkPair, benchTag), res);
 			if (checkSideB) { checkSideB = false; checkPair++; } else checkSideB = true;
 			requestNextEpisode(truth); return;
 		}
@@ -263,7 +266,10 @@ final class LeagueSession implements AgentSession {
 
 	private void runUpdate(float bootstrap) {
 		server.execute(() -> ArenaServer.setIdle(true)); AgentController.release(mc);
-		LeaguePpo.Stats s = learner.update(bootstrap, priorNet, PRIOR_KL, 0f);
+		// Strong initial prior pull for the first 6 updates internalises legacy SwingGate/whiffGuard
+		// into pure SwordNet weights (zero play-time rules), then relaxes to AlphaStar's gentle 0.02 KL pull.
+		float pKl = learner.updates < 6 ? 0.50f : PRIOR_KL;
+		LeaguePpo.Stats s = learner.update(bootstrap, priorNet, pKl, 0f);
 		LeagueLearner.copyWeights(learner.actor, selfNet);
 		float demoCe = 0f, searchCe = 0f;
 		if (stage >= 4) {
@@ -352,6 +358,10 @@ final class LeagueSession implements AgentSession {
 		if (stopped) return;
 		stopped = true;
 		if (mode == Mode.TRAIN && learner != null) saveAll();
+		if (mode == Mode.CHECK && benchDirA != null) {
+			try { Files.createDirectories(benchDirA); Files.writeString(benchDirA.resolve("DONE"), "ok\n");
+				Files.createDirectories(benchDirB); Files.writeString(benchDirB.resolve("DONE"), "ok\n"); } catch (IOException ignored) {}
+		}
 		AgentController.release(mc); SwordAiClient.setTickMillis(0f);
 		KeyedSkin.setActive(false); KeyedSkin.setShowReal(false);
 		WindowGuard.restore(mc); OptionsGuard.restore(mc); grabber.close();

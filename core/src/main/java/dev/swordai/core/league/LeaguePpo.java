@@ -59,6 +59,11 @@ public final class LeaguePpo {
 				priorNet.forward(priorWs, priorWs.step, r.peri[t], r.fovea[t], r.vec[t], r.hist[t], r.seen[t], hp, hp);
 				priorNet.condition(priorWs, priorWs.step, r.action[t]);
 				Policy.allProbs(priorWs.step.logits, cachedPrior[t]);
+				if (r.vec[t][ObsSpec.VEC_SCALARS + ObsSpec.SC_ATTACK_CHARGE] < 0.85f || r.priv[t][ObsSpec.PV_IN_REACH] < 0.5f) {
+					int aOff = ActionSpace.OFFSETS[ActionSpace.ATTACK];
+					cachedPrior[t][aOff] = 1f;
+					cachedPrior[t][aOff + 1] = 0f;
+				}
 			}
 		}
 

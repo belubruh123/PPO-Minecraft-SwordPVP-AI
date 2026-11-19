@@ -88,12 +88,10 @@ Get them through structure (`docs/DESIGN.md` section 4: distill the rules, fixed
 replays of real players, memory), not new rules, rewards or drills.
 
 ## Current state (keep this section to a few lines; update it, don't append)
-- **Run 127, distill** (18 Nov 20:40 to 19 Nov 21:05, about 23 h trained, then stopped for the hand-over to another agent):
-  without rules it went from 54% to a flat ~60% rounds won (target 66%, the same network with rules). Network saved as
-  `run/swordai/school/run127-distill-1119-2105.bin`; the `distill` and `rules-off-check` flag files are still on.
-  Untested idea for why it caps: the copy target leaves out the camera (yaw/pitch), which the aim rule also presses.
-- **Installed in the user's game:** checked-1117-1913 + the 17 Nov 04:31 jar. run35 + the 14 Nov jar are backed up in
-  the profile's `swordai/backup-before-school-20261117-201324`.
+- **Stage 1 PASSED (Run 128, 19 Nov 21:38–22:28):** fixed full-policy DAgger distillation (camera heads + non-ruled anchor KL + check-bot mix). 204-pair rules-off check hit **70% (143/204) vs installed+rules 69% (141/204), z +0.3**. Saved as `run/swordai/school/distilled-baseline.bin`.
+- **Rewrite complete on branch `gemini-rewrite`:** all 18 play-time rules, `SchoolSession`, `core/school`, `core/curriculum`, `core/pvp`, `BotBrain`, and `TechniqueBot` deleted (**67,616 → 9,595 Java lines**, 24/24 core tests passing, `gradlew build` green). Replaced with staged rule-free `LeagueSession` + `SwordNet` (128-unit GRU, Step D obs, Ng potential-shaped `FixedReward`, PFSP league + Exploiter + VPT `InverseDynamics` + BC real-human clones + AlphaZero `MoveSearch`) and `tools/bench.py` four-goal diagnostics.
+- **Next / Active (Run 129, Stage 2):** `run/swordai/league-stage.txt` is set to `2` (fixed reward + league only, `gruEnabled=false`, initialized from `distilled-baseline.bin`, `baseline.bin` = Stage 1). Train 24h unattended (`start-training.cmd`), judge with a 200-pair check (`/swordai school check` + `tools/schoolpairs.py` + `tools/bench.py compare A B`), then advance `league-stage.txt` `2 → 3 (+GRU) → 4 (+human clones/demos) → 5 (+MoveSearch)`.
+- **Installed in the user's game:** unchanged (`checked-1117-1913` + 17 Nov jar; never touched).
 
 ## This machine
 - Windows, 16 GB RAM (about 13 GB usable, often under 1.5 GB free): only training and the agent should be open.
