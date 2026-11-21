@@ -150,6 +150,26 @@ public final class SwordNet {
 		conditionAttack(ws, sc, ws.act);
 	}
 
+	public static final float[] PLAY_TEMP = {0.20f, 0.20f, 0.60f, 0.60f, 0.60f, 0.50f, 0.15f};
+
+	public float samplePlay(Workspace ws, StepCache sc, Random rng, int[] actionOut) {
+		float logp = 0f;
+		for (int h = 0; h < ActionSpace.HEADS; h++) {
+			if (h == ActionSpace.JUMP) conditionJump(ws, sc, actionOut);
+			else if (h == ActionSpace.ATTACK) conditionAttack(ws, sc, actionOut);
+			int off = ActionSpace.OFFSETS[h], n = ActionSpace.SIZES[h];
+			float invT = 1f / PLAY_TEMP[h];
+			for (int i = 0; i < n; i++) ws.probs[off + i] = sc.logits[off + i] * invT;
+			Policy.softmax(ws.probs, off, n, ws.probs);
+			float u = rng.nextFloat(), acc = 0f;
+			int choice = n - 1;
+			for (int i = 0; i < n; i++) { acc += ws.probs[off + i]; if (u < acc) { choice = i; break; } }
+			actionOut[h] = choice;
+			logp += (float) Math.log(Math.max(ws.probs[off + choice], 1e-12f));
+		}
+		return logp;
+	}
+
 	public float sample(Workspace ws, StepCache sc, int headMask, boolean greedy, float temperature, Random rng, int[] actionOut) {
 		float logp = 0f;
 		for (int h = 0; h < ActionSpace.HEADS; h++) {

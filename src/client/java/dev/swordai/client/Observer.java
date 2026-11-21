@@ -11,8 +11,10 @@ import dev.swordai.core.vision.MaskFrame;
 import dev.swordai.core.vision.ViewGeometry;
 import dev.swordai.server.Sightline;
 import dev.swordai.server.Truth;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -70,6 +72,8 @@ final class Observer {
 		b.setOpponentMotion(opponent.getX() - opponent.xo, opponent.getY() - opponent.yo, opponent.getZ() - opponent.zo);
 		b.charge = me.getAttackStrengthScale(0f);
 		b.noteOpponentSwing(opponent.swinging, opponent.swingTime);
+		b.oppHurt = Math.min(1f, opponent.hurtTime / 10f);
+		b.onTarget = Minecraft.getInstance().hitResult instanceof EntityHitResult hit && hit.getEntity() == opponent;
 		b.setHealth(me.getHealth() / Math.max(1f, me.getMaxHealth()));
 		b.sprinting = me.isSprinting();
 		b.stale = stale;

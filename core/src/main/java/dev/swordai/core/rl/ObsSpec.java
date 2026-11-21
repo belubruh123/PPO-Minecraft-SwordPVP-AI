@@ -21,11 +21,11 @@ public final class ObsSpec {
 	public static final int SC_PITCH = 5, SC_ATTACK_CHARGE = 6, SC_HEALTH = 7, SC_SPRINTING = 8;
 	public static final int SC_SINCE_HIT_DEALT = 9, SC_SINCE_HIT_TAKEN = 10;
 	public static final int SC_REL_VEL_FORWARD = 11, SC_REL_VEL_RIGHT = 12, SC_REL_VEL_UP = 13;
-	public static final int SC_FRAME_STALE = 14, SC_UNUSED_15 = 15;
+	public static final int SC_FRAME_STALE = 14, SC_OPP_HURT = 15;
 	public static final int SC_TURNED_YAW = 16, SC_TURNED_PITCH = 17;
 	public static final int SC_LAST_SEEN_SIDE = 18, SC_LAST_SEEN_UP = 19, SC_SINCE_SEEN = 20;
 	public static final int SC_TURN_RATE_YAW = 21, SC_TURN_RATE_PITCH = 22;
-	public static final int SC_IDEA_STRAFE = 23, SC_IDEA_HOLD = 24;
+	public static final int SC_ON_TARGET = 23, SC_IDEA_HOLD = 24;
 	public static final int SC_HITS_TAKEN_ROW = 25, SC_OPP_CHARGE = 26;
 	public static final int SC_STYLE_AWAY = 27, SC_STYLE_EDGE = 28, SC_STYLE_DIST = 29;
 	// Step D additions: explicit falling, opp vertical motion/ground, combo/exchange/crit-chain

@@ -12,8 +12,8 @@ public final class BodyState {
 	private static final float HEIGHT_SCALE = 3f;
 	private static final float STYLE_RATE = 1f / 60f;
 
-	public float yaw, pitch, height, velRight, velUp, velForward, charge, health, hitsTakenInRow;
-	public boolean onGround, sprinting, stale, oppOnGround = true;
+	public float yaw, pitch, height, velRight, velUp, velForward, charge, health, hitsTakenInRow, oppHurt;
+	public boolean onGround, sprinting, stale, oppOnGround = true, onTarget;
 	public int ticksSinceHitDealt = 1000, ticksSinceHitTaken = 1000, oppTicksSinceSwing = 1000;
 	public float oppVelRight, oppVelUp, oppVelForward;
 	public int hitsDealtRow, exchangeOwnHits, exchangeOppHits, critChain;
@@ -48,6 +48,8 @@ public final class BodyState {
 		oppWasSwinging = false;
 		oppLastSwingTime = 0;
 		oppOnGround = true;
+		oppHurt = 0f;
+		onTarget = false;
 		hitsDealtRow = exchangeOwnHits = exchangeOppHits = critChain = 0;
 		ticksSinceAnyHit = 1000;
 		styleAway = styleEdge = 0f;
@@ -97,6 +99,8 @@ public final class BodyState {
 		ObsBuilder.writeScalar(v, ObsSpec.SC_HITS_TAKEN_ROW, hitsTakenInRow);
 		ObsBuilder.writeScalar(v, ObsSpec.SC_OPP_CHARGE, opponentCharge());
 		ObsBuilder.writeScalar(v, ObsSpec.SC_FRAME_STALE, stale ? 1f : 0f);
+		ObsBuilder.writeScalar(v, ObsSpec.SC_OPP_HURT, oppHurt);
+		ObsBuilder.writeScalar(v, ObsSpec.SC_ON_TARGET, onTarget ? 1f : 0f);
 		ObsBuilder.writeScalar(v, ObsSpec.SC_OWN_FALLING, (!onGround && velUp < -0.02f) ? 1f : 0f);
 		ObsBuilder.writeScalar(v, ObsSpec.SC_HITS_DEALT_ROW, Math.min(5, hitsDealtRow) / 5f);
 		ObsBuilder.writeScalar(v, ObsSpec.SC_EXCHANGE_OWN_HITS, Math.min(5, exchangeOwnHits) / 5f);

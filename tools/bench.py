@@ -625,6 +625,7 @@ def four_goal_diagnostics(eps):
     lengths = []
     crit_types = {k: [0, 0] for k in ('jump_in', 'double_crit', 'crit_spam')}
     chains = []
+    clicks = low_chg = b2b = whiffs = 0
     for ep in eps:
         d = _ep_diagnostics(ep)
         exchanges += d['exchanges']
@@ -634,6 +635,18 @@ def four_goal_diagnostics(eps):
             crit_types[k][0] += d['crit_types'][k][0]
             crit_types[k][1] += d['crit_types'][k][1]
         chains.extend(d['crit_chains'])
+        prev_x = False
+        for t in range(ep.n):
+            x = len(ep.keys[t]) >= 5 and ep.keys[t][4] == 'x'
+            if x:
+                clicks += 1
+                if ep.mySw[t] < 0.85:
+                    low_chg += 1
+                if prev_x:
+                    b2b += 1
+                if ep.swing[t] is None or ep.swing[t] == 'miss':
+                    whiffs += 1
+            prev_x = x
     tot_taken = sum(v[0] for v in crit_types.values())
     tot_att = sum(v[1] for v in crit_types.values())
     return {
@@ -652,6 +665,10 @@ def four_goal_diagnostics(eps):
         'avg_crit_back_chain': (sum(chains) / len(chains)) if chains else None,
         'crit_back_2plus_rate': (sum(1 for c in chains if c >= 2) / len(chains)) if chains else None,
         'max_crit_back_chain': max(chains) if chains else 0,
+        'clicks': clicks,
+        'whiff_rate': (whiffs / clicks) if clicks else None,
+        'low_chg_rate': (low_chg / clicks) if clicks else None,
+        'b2b_rate': (b2b / clicks) if clicks else None,
     }
 
 
@@ -672,6 +689,11 @@ def print_diagnostics(label, diag):
         fmt_rate(diag['avg_crit_back_chain'], 'mean'),
         fmt_rate(diag['crit_back_2plus_rate'], 'share').strip(),
         diag['max_crit_back_chain'], diag['punish_crits']))
+    if diag.get('clicks'):
+        print('  5. Click hygiene:      whiff %s, uncharged(<0.85) %s, double-click %s (%d clicks)' % (
+            fmt_rate(diag['whiff_rate'], 'share').strip(),
+            fmt_rate(diag['low_chg_rate'], 'share').strip(),
+            fmt_rate(diag['b2b_rate'], 'share').strip(), diag['clicks']))
 
 
 # Each test: key, name, technique IDs, the bots of docs/BENCHMARK.md that create it, the detector, its rate (outcome key,

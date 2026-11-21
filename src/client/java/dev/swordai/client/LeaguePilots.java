@@ -49,7 +49,8 @@ final class LeaguePilots {
 			ObsBuilder.writeActor(obs, body.frame(), sight, st, motor, hasLast ? lastAction : null, ActionSpace.ALL_HEADS);
 			memory.pushSeen(obs.vec);
 			net.forward(ws, ws.step, obs.peri, obs.fovea, obs.vec, memory.hist, memory.seen, memory.hidden, memory.hidden);
-			net.sample(ws, ws.step, ActionSpace.ALL_HEADS, false, temp, rng, action);
+			if (temp <= 0f) net.samplePlay(ws, ws.step, rng, action);
+			else net.sample(ws, ws.step, ActionSpace.ALL_HEADS, false, temp, rng, action);
 			memory.pushAction(action);
 			idmRec.record(bot, opp, action);
 			motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));

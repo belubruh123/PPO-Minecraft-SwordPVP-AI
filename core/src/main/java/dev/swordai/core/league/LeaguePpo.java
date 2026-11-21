@@ -9,7 +9,9 @@ import java.util.*;
 public final class LeaguePpo {
 	public static final int CHUNK = 32, EPOCHS = 4, CHUNKS_PER_BATCH = 8;
 	public static final float GAMMA = FixedReward.GAMMA, LAMBDA = 0.95f, CLIP = 0.2f, VALUE_COEF = 0.5f, MAX_GRAD_NORM = 0.5f;
-	private static final float[] ENTROPY_COEF = {0.005f, 0.005f, 0.010f, 0.010f, 0.010f, 0.005f, 0.012f};
+	// Low entropy on precision heads (YAW, PITCH, ATTACK) prevents aim dithering and uncharged/whiff click floors;
+	// keep tactical exploration on movement heads (FORWARD, STRAFE, SPRINT, JUMP).
+	private static final float[] ENTROPY_COEF = {0.001f, 0.001f, 0.006f, 0.006f, 0.006f, 0.004f, 0.001f};
 
 	public static final class Stats {
 		public int steps, epochsRun;

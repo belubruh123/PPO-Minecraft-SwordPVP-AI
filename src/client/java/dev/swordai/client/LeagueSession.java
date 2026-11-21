@@ -58,10 +58,12 @@ final class LeagueSession implements AgentSession {
 
 	private League.Match currentMatch;
 	private MoveSearch.SearchJob activeSearch;
-	private int searchTick, searchMaxOwn, searchMaxOpp, checkPair, waitingEp, expectedPutBack, settleLeft, epTicks, epDone;
+	private int searchTick, searchMaxOwn, searchMaxOpp, checkPair, waitingEp, expectedPutBack, settleLeft, epTicks, epDone, activeLag;
 	private int ownCombo, oppCombo, critChain, ownSwingsSeen = OwnSwing.count();
+	private int statClose, statOnBody, statClicks, statLowChg, statWhiffs, statSwings;
+	private final int[] chkClose = new int[2], chkOnBody = new int[2], chkClicks = new int[2], chkLowChg = new int[2], chkWhiffs = new int[2];
 	private float searchDealt, searchTaken, prevPhi, epDealt, epTaken, turnYaw, turnPitch;
-	private boolean checkSideB, stopped, arenaRequested, resetPending, waitingPutBack, hasPrev, actedThisTick;
+	private boolean checkSideB, stopped, arenaRequested, resetPending, waitingPutBack, hasPrev, actedThisTick, clicked, clickResolved;
 	private String checkOppName = "";
 	private long totalTicks;
 	private final long startedMs = System.currentTimeMillis();
@@ -124,11 +126,11 @@ final class LeagueSession implements AgentSession {
 
 		boolean fast = cfg.trainSpeed > 1f;
 		int visFov = Math.min(cfg.visionFov, cfg.fov);
-		float crop = ViewGeometry.cropFor(cfg.fov, visFov);
+		float crop = ViewGeometry.cropFor(visFov, cfg.fov);
 		OptionsGuard.apply(mc, cfg.fov, fast);
 		if (fast) { WindowGuard.shrink(mc, crop, cfg.speedWindowRows); SwordAiClient.setTickMillis(50f / cfg.trainSpeed); }
 		ViewGeometry.setFov(visFov); grabber.setCrop(crop); grabber.setSpeed(cfg.trainSpeed); grabber.setEnabled(true);
-		KeyedSkin.setShowReal(false); KeyedSkin.setActive(true);
+		KeyedSkin.setTarget(null); KeyedSkin.setShowReal(false); KeyedSkin.setActive(true);
 
 		UUID meId = mc.player.getUUID();
 		server.execute(() -> {
@@ -149,7 +151,16 @@ final class LeagueSession implements AgentSession {
 	@Override public boolean inControl() { return !stopped && mc.screen == null; }
 	@Override public boolean requestDebugDump() { return false; }
 	@Override public String describe() { return mode == Mode.TRAIN ? ("league stage " + stage) : ("paired check pair " + checkPair); }
-	@Override public void endTick() {}
+	@Override public void endTick() {
+		if (stopped || !clicked || clickResolved) return;
+		clickResolved = true;
+		int made = OwnSwing.count();
+		boolean hit = made != ownSwingsSeen;
+		String kind = hit ? OwnSwing.lastKind() : "miss";
+		if (hit) { ownSwingsSeen = made; statSwings++; }
+		else { statWhiffs++; if (mode == Mode.CHECK) chkWhiffs[checkSideB ? 1 : 0]++; }
+		if (mode == Mode.CHECK) recorder.swing(kind);
+	}
 	@Override public void worldDrawn() { if (!stopped && mc.screen == null) grabber.worldDrawn(mc); }
 	@Override public float viewYawLag(float pt) { return -(1f - pt) * turnYaw; }
 	@Override public float viewPitchLag(float pt) { return -(1f - pt) * turnPitch; }
@@ -165,6 +176,9 @@ final class LeagueSession implements AgentSession {
 		if (truth.error() != null) { stop("arena error: " + truth.error()); return; }
 		if (!truth.active() || !truth.botReady() || truth.botUuid() == null) return;
 		Player bot = mc.level.getPlayerByUUID(truth.botUuid()); if (bot == null) return;
+		SeenLag.follow(bot.getUUID());
+		boolean activeFight = !resetPending && !waitingPutBack && settleLeft == 0 && !arenaRequested;
+		SeenLag.tick(activeFight);
 
 		if (resetPending) { if (truth.episodeId() == waitingEp) return; resetPending = false; settleLeft = SETTLE; }
 		if (waitingPutBack) { if (ArenaServer.scenesPutBack < expectedPutBack) return; waitingPutBack = false; return; }
@@ -238,7 +252,6 @@ final class LeagueSession implements AgentSession {
 	}
 
 	private void tickCheck(LocalPlayer me, Player bot, Truth truth, boolean dNow, boolean tNow, boolean koD, boolean koT) {
-		if (OwnSwing.count() != ownSwingsSeen) { ownSwingsSeen = OwnSwing.count(); recorder.swing(OwnSwing.lastKind()); }
 		if (koD || koT || epTicks >= MAX_EP_TICKS) {
 			String side = checkSideB ? "B" : "A", ko = koD ? ", knockout" : koT ? ", knocked out" : "";
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school pair %d %s %s: dealt %.1f, taken %.1f, ticks %d%s",
@@ -246,13 +259,16 @@ final class LeagueSession implements AgentSession {
 			String res = koD ? "won" : koT ? "lost" : "open";
 			String benchTag = "baseline".equals(checkOppName) ? "h2h" : checkOppName;
 			recorder.finishTo(checkSideB ? benchDirB : benchDirA, String.format(Locale.ROOT, "%04d-%s.txt.gz", checkPair, benchTag), res);
-			if (checkSideB) { checkSideB = false; checkPair++; } else checkSideB = true;
+			if (checkSideB) {
+				checkSideB = false; checkPair++;
+				if (checkPair % 25 == 0) logCheckMechanics();
+			} else checkSideB = true;
 			requestNextEpisode(truth); return;
 		}
 		SwordNet net = checkSideB ? netB : netA; SwordNet.Workspace ws = checkSideB ? wsB : wsA;
 		memCheck.pushSeen(obs.vec);
 		net.forward(ws, ws.step, obs.peri, obs.fovea, obs.vec, memCheck.hist, memCheck.seen, memCheck.hidden, memCheck.hidden);
-		net.sample(ws, ws.step, ActionSpace.ALL_HEADS, false, cfg.playTemperature, rng, dec.action);
+		net.samplePlay(ws, ws.step, rng, dec.action);
 		memCheck.pushAction(dec.action);
 		System.arraycopy(dec.action, 0, lastAction, 0, ActionSpace.HEADS); hasPrev = true;
 		applyAction(dec.action); recorder.tick(me, bot, observer.body(), dec.action, dNow, tNow); epTicks++;
@@ -261,7 +277,28 @@ final class LeagueSession implements AgentSession {
 	private void applyAction(int[] a) {
 		motor.step(ActionSpace.yawDegrees(a), ActionSpace.pitchDegrees(a));
 		turnYaw = motor.yawRate(); turnPitch = motor.pitchRate();
-		AgentController.apply(mc, a, turnYaw, turnPitch); actedThisTick = true;
+		AgentController.apply(mc, a, turnYaw, turnPitch);
+		actedThisTick = true;
+		clicked = a[ActionSpace.ATTACK] == 1; clickResolved = false;
+		int si = checkSideB ? 1 : 0;
+		if (facts.reachDist < 4.5f) {
+			statClose++; if (facts.onBody) statOnBody++;
+			if (mode == Mode.CHECK) { chkClose[si]++; if (facts.onBody) chkOnBody[si]++; }
+		}
+		if (clicked) {
+			statClicks++;
+			boolean low = mc.player.getAttackStrengthScale(0f) < 0.85f;
+			if (low) statLowChg++;
+			if (mode == Mode.CHECK) { chkClicks[si]++; if (low) chkLowChg[si]++; }
+		}
+	}
+
+	private void logCheckMechanics() {
+		SwordAi.LOGGER.info(String.format(Locale.ROOT,
+				"check mechanics @ pair %d | A: aim %.1f%% lowChg %.1f%% whiff %.1f%% (%d clicks) | B: aim %.1f%% lowChg %.1f%% whiff %.1f%% (%d clicks)",
+				checkPair,
+				100f * chkOnBody[0] / Math.max(1, chkClose[0]), 100f * chkLowChg[0] / Math.max(1, chkClicks[0]), 100f * chkWhiffs[0] / Math.max(1, chkClicks[0]), chkClicks[0],
+				100f * chkOnBody[1] / Math.max(1, chkClose[1]), 100f * chkLowChg[1] / Math.max(1, chkClicks[1]), 100f * chkWhiffs[1] / Math.max(1, chkClicks[1]), chkClicks[1]));
 	}
 
 	private void runUpdate(float bootstrap) {
@@ -296,10 +333,12 @@ final class LeagueSession implements AgentSession {
 		saveAll();
 		double secs = Math.max(1.0, (System.currentTimeMillis() - startedMs) / 1000.0);
 		SwordAi.LOGGER.info(String.format(Locale.ROOT,
-				"league update %d (stage %d), %d steps (%.0f/s): pol %.4f val %.4f kl %.4f ent %.3f pKl %.3f ev %.2f lr %.1e gru|w| %.2f idm %.0f%% demoCe %.2f search %d/%d(ce %.2f) | %s",
+				"league update %d (stage %d), %d steps (%.0f/s): pol %.4f val %.4f kl %.4f ent %.3f pKl %.3f ev %.2f lr %.1e aim %.0f%% low %.1f%% whf %.1f%% gru|w| %.2f idm %.0f%% demoCe %.2f search %d/%d(ce %.2f) | %s",
 				learner.updates, stage, learner.totalSteps, totalTicks / secs, s.policyLoss, s.valueLoss, s.approxKl, s.entropy, s.priorKl,
-				s.explainedVar, s.lr, learner.actor.gruWeightNorm(), idm.lastAccuracy() * 100f, demoCe,
+				s.explainedVar, s.lr, 100f * statOnBody / Math.max(1, statClose), 100f * statLowChg / Math.max(1, statClicks),
+				100f * statWhiffs / Math.max(1, statClicks), learner.actor.gruWeightNorm(), idm.lastAccuracy() * 100f, demoCe,
 				moveSearch.targetsFound(), moveSearch.searchesDone(), searchCe, league.summary()));
+		statClose = statOnBody = statClicks = statLowChg = statWhiffs = statSwings = 0;
 		server.execute(() -> ArenaServer.setIdle(false));
 	}
 
@@ -310,12 +349,15 @@ final class LeagueSession implements AgentSession {
 		if (mode == Mode.CHECK) {
 			CheckOpp opp = checkPool.get(checkPair % checkPool.size()); checkOppName = opp.name();
 			long seed = 0x517CC1B727220A95L ^ (checkPair * 0x9E3779B97F4A7C15L);
-			plan = opp.isBaseline() ? EpisodePlan.ofPilot(new LeaguePilots.NetPilot(netB, cfg.aimResponse, cfg.playTemperature, seed + 1L, null), seed, true)
+			plan = opp.isBaseline() ? EpisodePlan.ofPilot(new LeaguePilots.NetPilot(netB, cfg.aimResponse, 0f, seed + 1L, null), seed, true)
 					: opp.human() != null ? EpisodePlan.ofPilot(new LeaguePilots.HumanPilot(opp.human(), seed + 1L), seed, true)
 					: EpisodePlan.ofSpar(opp.spar(), seed, true);
+			// Alternating 0 ms and 100 ms server-lag pairs so the check measures real multiplayer lag robustness.
+			activeLag = (checkPair % 2 == 1) ? 2 : 0;
+			plan.agentLag = activeLag; plan.botLag = activeLag; plan.botPing = activeLag; plan.agentKnockLag = activeLag > 0 ? 1 : 0;
 			recorder.start(checkOppName);
 		} else if (activeSearch != null) {
-			searchTick = searchMaxOwn = searchMaxOpp = 0; searchDealt = searchTaken = 0f;
+			searchTick = searchMaxOwn = searchMaxOpp = 0; searchDealt = searchTaken = 0f; activeLag = 0;
 			plan = EpisodePlan.ofPilot(new LeaguePilots.NetPilot(selfNet, cfg.aimResponse, 1f, rng.nextLong(), null), 0xA1F0L + activeSearch.moment.kind.ordinal(), false);
 			plan.scene = activeSearch.moment.arenaState;
 		} else {
@@ -328,8 +370,13 @@ final class LeagueSession implements AgentSession {
 				case HUMAN_CLONE -> EpisodePlan.ofPilot(new LeaguePilots.HumanPilot(currentMatch.human, rng.nextLong()), 0L, false);
 				case SPAR_BOT -> EpisodePlan.ofSpar(currentMatch.sparStyle, 0L, false);
 			};
+			// Sim-to-real latency randomization (OpenAI Five / GT Sophy): 50% 0 ms, 50% 50-150 ms server lag.
+			activeLag = rng.nextBoolean() ? (1 + rng.nextInt(3)) : 0;
+			plan.agentLag = activeLag; plan.botLag = activeLag; plan.botPing = activeLag;
+			plan.agentKnockLag = activeLag > 0 ? Math.max(1, activeLag - 1) : 0;
 			if (stage >= 5 && currentMatch.startMoment != null) plan.scene = currentMatch.startMoment.arenaState;
 		}
+		SeenLag.set(activeLag, 0f, 0);
 		waitingEp = truth.episodeId(); resetPending = true;
 		server.execute(() -> ArenaServer.reset(plan));
 	}
@@ -351,7 +398,7 @@ final class LeagueSession implements AgentSession {
 		} catch (IOException e) { SwordAi.LOGGER.warn("could not save checkpoints", e); }
 	}
 
-	@Override public boolean beforePlayerMoves() { if (!actedThisTick || stopped) return false; AgentController.hold(mc, dec.action); return dec.action[ActionSpace.ATTACK] == 1; }
+	@Override public boolean beforePlayerMoves() { if (!actedThisTick || stopped) return false; actedThisTick = false; AgentController.hold(mc, dec.action); return clicked; }
 
 	@Override
 	public void stop(String reason) {
@@ -359,11 +406,12 @@ final class LeagueSession implements AgentSession {
 		stopped = true;
 		if (mode == Mode.TRAIN && learner != null) saveAll();
 		if (mode == Mode.CHECK && benchDirA != null) {
+			logCheckMechanics();
 			try { Files.createDirectories(benchDirA); Files.writeString(benchDirA.resolve("DONE"), "ok\n");
 				Files.createDirectories(benchDirB); Files.writeString(benchDirB.resolve("DONE"), "ok\n"); } catch (IOException ignored) {}
 		}
 		AgentController.release(mc); SwordAiClient.setTickMillis(0f);
-		KeyedSkin.setActive(false); KeyedSkin.setShowReal(false);
+		SeenLag.off(); KeyedSkin.setTarget(null); KeyedSkin.setActive(false); KeyedSkin.setShowReal(false);
 		WindowGuard.restore(mc); OptionsGuard.restore(mc); grabber.close();
 		server.execute(() -> ArenaServer.stop(server));
 		SwordAi.LOGGER.info("Stopped ({}): {} ({} ticks)", reason, describe(), totalTicks);

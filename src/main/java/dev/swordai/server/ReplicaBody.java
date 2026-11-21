@@ -76,7 +76,7 @@ public final class ReplicaBody {
 
 	/** Everything about the opponent that decides how it is shown, as of one tick. */
 	private record Seen(double x, double y, double z, float bodyYaw, float headYaw, float headPitch, float attackAnim,
-			boolean crouching, boolean holdsItem, boolean rightHanded, boolean swinging, int swingTime) {
+			boolean crouching, boolean holdsItem, boolean rightHanded, boolean swinging, int swingTime, int hurtTime) {
 	}
 
 	private boolean hasLast;
@@ -240,7 +240,7 @@ public final class ReplicaBody {
 		float bodyYaw = headYaw + Mth.clamp(ViewGeometry.wrapDegrees(opponent.yBodyRot - headYaw), -MAX_BODY_TWIST_DEG, MAX_BODY_TWIST_DEG);
 		Seen sent = new Seen(opponent.getX(), opponent.getY(), opponent.getZ(), bodyYaw, headYaw, opponent.getXRot(),
 				opponent.getAttackAnim(1f), opponent.isCrouching(), !opponent.getMainHandItem().isEmpty(),
-				opponent.getMainArm() == HumanoidArm.RIGHT, opponent.swinging, opponent.swingTime);
+				opponent.getMainArm() == HumanoidArm.RIGHT, opponent.swinging, opponent.swingTime, opponent.hurtTime);
 		lag.send(sent);
 		lag.tick(lagRng, arrived);
 		if (latest == null) {
@@ -252,6 +252,7 @@ public final class ReplicaBody {
 				seen.attackAnim, seen.crouching, seen.holdsItem, seen.rightHanded);
 		// The opponent's sword as a client sees it (Observer does the same on the screen): until 26 Oct it always read ready here.
 		state.noteOpponentSwing(seen.swinging, seen.swingTime);
+		state.oppHurt = Math.min(1f, seen.hurtTime / 10f);
 	}
 
 	/**
@@ -293,6 +294,7 @@ public final class ReplicaBody {
 		state.setHealth(body.getHealth() / Math.max(1f, body.getMaxHealth()));
 		state.sprinting = sprint.client();
 		state.stale = false;
+		state.onTarget = aimedAt(body, opponent);
 		remember(body, eyePos, yaw, pitch);
 	}
 
