@@ -295,6 +295,17 @@ public final class SwordNet {
 		return (float) Math.sqrt(s);
 	}
 
+	/** Marks untrained GRU parameters as born at {@code adamStep} so Adam bias-correction avoids a 3x cold-start jump. */
+	public void markGruBorn(long adamStep) {
+		for (Param p : params.params()) {
+			if (p.name.startsWith("gru.")) {
+				p.bornAt = adamStep;
+				Arrays.fill(p.m, 0f);
+				Arrays.fill(p.v, 0f);
+			}
+		}
+	}
+
 	private static void relu(float[] a) { for (int i = 0; i < a.length; i++) if (a[i] < 0f) a[i] = 0f; }
 	private static void gate(float[] g, float[] a) { for (int i = 0; i < g.length; i++) if (a[i] <= 0f) g[i] = 0f; }
 }

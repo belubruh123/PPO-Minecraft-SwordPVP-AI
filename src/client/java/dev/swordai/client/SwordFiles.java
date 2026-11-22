@@ -26,6 +26,7 @@ final class SwordFiles {
 	static Path realFightsDir() { Path rf = dir().resolve("real-fights"); return Files.isDirectory(rf) ? rf : fightsDir(); }
 	static Path fightsDir() { return dir().resolve("fights"); }
 	static Path benchDir() { return dir().resolve("bench"); }
+	static Path anchorsDir() { return dir().resolve("anchors"); }
 	static Path inbox() { return dir().resolve("inbox.txt"); }
 	static Path config() { return dir().resolve("config.json"); }
 	static Path optionsBackup() { return dir().resolve("options-backup.properties"); }

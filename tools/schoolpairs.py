@@ -8,7 +8,7 @@ import sys
 import math
 from collections import defaultdict
 
-PAT = re.compile(r"\[(\d\d:\d\d:\d\d)\].*school pair (\d+) ([AB]) ([a-z\-]+)( \(held out\))?: dealt ([\d.]+), taken ([\d.]+), ticks (\d+)(, knockout|, knocked out)?")
+PAT = re.compile(r"\[(\d\d:\d\d:\d\d)\].*school pair (\d+) ([AB]) ([a-z0-9\-]+)( \(held out\))?: dealt ([\d.]+), taken ([\d.]+), ticks (\d+)(, knockout|, knocked out)?")
 
 
 def main():

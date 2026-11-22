@@ -240,6 +240,152 @@ final class LeagueTest {
 		assertTrue(league.demoWeight() < earlyDemo, "Demo weight should fade as win rate rises");
 	}
 
+	@Test
+	void stage2ToStage3aNet2NetIsExactAndLearnsThroughGru(@TempDir Path tmp) throws Exception {
+		LeagueLearner stage2 = new LeagueLearner(128, 17L);
+		stage2.setGruEnabled(false);
+		SwordNet prior = new SwordNet(17L);
+		prior.gruEnabled = false;
+		LeagueLearner.copyWeights(stage2.actor, prior);
+		Random rng = new Random(23L);
+		LeagueLearner.Decision dec = new LeagueLearner.Decision();
+
+		for (int u = 0; u < 2; u++) {
+			for (int t = 0; t < 128; t++) {
+				Obs o = randomObs(rng);
+				stage2.decide(o, false, 1f, dec);
+				stage2.record(o, dec, (t % 32 == 31) ? 1f : 0.01f, t % 32 == 31, null, 0f);
+			}
+			stage2.update(0f, prior, 0.02f, 0f);
+		}
+		assertEquals(0f, stage2.actor.gruWeightNorm(), 1e-7f, "Stage 2 must keep GRU output weights exactly zero");
+		Path ckpt = tmp.resolve("stage2.bin");
+		stage2.save(ckpt);
+
+		LeagueLearner s2Check = new LeagueLearner(128, 77L);
+		assertTrue(s2Check.load(ckpt));
+		s2Check.setGruEnabled(false);
+
+		LeagueLearner stage3a = new LeagueLearner(128, 77L);
+		assertTrue(stage3a.load(ckpt));
+		stage3a.setGruEnabled(true);
+
+		// Verify Adam bornAt protection on untrained GRU tensors.
+		for (Param p : stage3a.actor.params.params()) {
+			if (p.name.startsWith("gru.")) assertEquals(stage3a.actor.params.adamSteps, p.bornAt, "missing bornAt on " + p.name);
+		}
+
+		// Verify bit-for-bit identical actor logits AND critic values across a multi-step sequence before update 1.
+		SwordNet.Workspace ws2 = s2Check.actor.newWorkspace(), ws3 = stage3a.actor.newWorkspace();
+		ObsMemory m2 = new ObsMemory(), m3 = new ObsMemory();
+		float[] h2 = new float[ObsMemory.GRU_HIDDEN], h3 = new float[ObsMemory.GRU_HIDDEN];
+		for (int t = 0; t < 12; t++) {
+			Obs o = randomObs(rng);
+			m2.pushSeen(o.vec); m3.pushSeen(o.vec);
+			s2Check.actor.forward(ws2, ws2.step, o.peri, o.fovea, o.vec, m2.hist, m2.seen, h2, h2);
+			stage3a.actor.forward(ws3, ws3.step, o.peri, o.fovea, o.vec, m3.hist, m3.seen, h3, h3);
+			assertArrayEquals(ws2.step.logits, ws3.step.logits, 1e-5f, "Stage 3a actor logits diverged from Stage 2 at tick " + t);
+			assertEquals(s2Check.bootstrapValue(o), stage3a.bootstrapValue(o), 1e-5f, "Stage 3a critic diverged from Stage 2 at tick " + t);
+		}
+
+		// Snapshot GRU cell weights, run 2 Stage 3a recurrent PPO updates, and verify GRU cell weights actually update via BPTT.
+		float[] gruInBefore = null, gruHidBefore = null;
+		for (Param p : stage3a.actor.params.params()) {
+			if (p.name.equals("gru.in.w")) gruInBefore = p.w.clone();
+			if (p.name.equals("gru.hid.w")) gruHidBefore = p.w.clone();
+		}
+		assertNotNull(gruInBefore); assertNotNull(gruHidBefore);
+		stage3a.resetEpisode();
+		for (int u = 0; u < 2; u++) {
+			for (int t = 0; t < 128; t++) {
+				Obs o = randomObs(rng);
+				stage3a.decide(o, false, 1f, dec);
+				stage3a.record(o, dec, (t % 32 == 31) ? 1f : -0.01f, t % 32 == 31, null, 0f);
+			}
+			LeaguePpo.Stats st = stage3a.update(0f, prior, 0.02f, 0f);
+			assertTrue(Float.isFinite(st.policyLoss) && Float.isFinite(st.valueLoss));
+		}
+		assertTrue(stage3a.actor.gruWeightNorm() > 0f, "Stage 3a GRU output projections should grow");
+		double diffIn = 0, diffHid = 0;
+		for (Param p : stage3a.actor.params.params()) {
+			if (p.name.equals("gru.in.w")) for (int i = 0; i < p.w.length; i++) diffIn += Math.abs(p.w[i] - gruInBefore[i]);
+			if (p.name.equals("gru.hid.w")) for (int i = 0; i < p.w.length; i++) diffHid += Math.abs(p.w[i] - gruHidBefore[i]);
+		}
+		assertTrue(diffIn > 1e-5 && diffHid > 1e-5, "BPTT must update gru.in.w and gru.hid.w: diffIn=" + diffIn + " diffHid=" + diffHid);
+	}
+
+	@Test
+	void gruSolvesDelayedCueBeyondShortWindow() {
+		// 14-tick memory task: cue appears ONLY at tick 0; ticks 1..14 are identical zeros (exceeding 8-tick seen & 10-tick hist).
+		final int DELAY = 14;
+		final int atkOff = ActionSpace.OFFSETS[ActionSpace.ATTACK];
+		SwordNet net = new SwordNet(31L);
+		net.gruEnabled = true;
+		SwordNet.Workspace ws = net.newWorkspace();
+		SwordNet.StepCache[] caches = new SwordNet.StepCache[DELAY + 1];
+		for (int t = 0; t <= DELAY; t++) caches[t] = net.newStepCache();
+		byte[] emptyPeri = new byte[ObsSpec.PERI_SIZE], emptyFovea = new byte[ObsSpec.FOVEA_SIZE];
+		float[] emptyHist = new float[ObsMemory.HIST], emptySeen = new float[ObsMemory.SEEN];
+		float[] zeroVec = new float[ObsSpec.VEC], posVec = new float[ObsSpec.VEC], negVec = new float[ObsSpec.VEC];
+		for (int i = 0; i < 8; i++) { posVec[ObsSpec.VEC_SCALARS + i] = 1f; negVec[ObsSpec.VEC_SCALARS + i] = -1f; }
+		float[] hCur = new float[ObsMemory.GRU_HIDDEN], dHNext = new float[ObsMemory.GRU_HIDDEN], dHPrev = new float[ObsMemory.GRU_HIDDEN];
+		float[] probs = new float[ActionSpace.TOTAL_LOGITS];
+
+		// First confirm non-GRU net gives identical logits for +cue and -cue at tick DELAY (cannot solve).
+		SwordNet noGru = new SwordNet(31L);
+		noGru.gruEnabled = false;
+		SwordNet.Workspace wsNo = noGru.newWorkspace();
+		float[] logitsPos = new float[2], logitsNeg = new float[2];
+		for (int sign : new int[]{1, -1}) {
+			Arrays.fill(hCur, 0f);
+			for (int t = 0; t <= DELAY; t++) {
+				float[] v = (t == 0) ? (sign > 0 ? posVec : negVec) : zeroVec;
+				noGru.forward(wsNo, caches[t], emptyPeri, emptyFovea, v, emptyHist, emptySeen, hCur, hCur);
+			}
+			float[] dst = sign > 0 ? logitsPos : logitsNeg;
+			dst[0] = caches[DELAY].logits[atkOff]; dst[1] = caches[DELAY].logits[atkOff + 1];
+		}
+		assertArrayEquals(logitsPos, logitsNeg, 1e-6f, "Feed-forward net without GRU must be blind to 14-tick-old cue");
+
+		// Train GRU net via exact BPTT on paired (+cue -> 1, -cue -> 0) sequences.
+		for (int step = 0; step < 60; step++) {
+			dev.swordai.core.nn.ParamSet.zeroGrads(ws.grads);
+			for (int sign : new int[]{1, -1}) {
+				int target = sign > 0 ? 1 : 0;
+				Arrays.fill(hCur, 0f);
+				for (int t = 0; t <= DELAY; t++) {
+					float[] v = (t == 0) ? (sign > 0 ? posVec : negVec) : zeroVec;
+					net.forward(ws, caches[t], emptyPeri, emptyFovea, v, emptyHist, emptySeen, hCur, hCur);
+				}
+				dev.swordai.core.rl.Policy.softmax(caches[DELAY].logits, atkOff, 2, probs);
+				Arrays.fill(dHNext, 0f);
+				for (int t = DELAY; t >= 0; t--) {
+					Arrays.fill(ws.dLogits, 0f);
+					if (t == DELAY) {
+						ws.dLogits[atkOff] = probs[atkOff] - (target == 0 ? 1f : 0f);
+						ws.dLogits[atkOff + 1] = probs[atkOff + 1] - (target == 1 ? 1f : 0f);
+					}
+					float[] v = (t == 0) ? (sign > 0 ? posVec : negVec) : zeroVec;
+					net.backward(ws, caches[t], emptyPeri, emptyFovea, v, emptyHist, emptySeen, dHNext, dHPrev);
+					System.arraycopy(dHPrev, 0, dHNext, 0, ObsMemory.GRU_HIDDEN);
+				}
+			}
+			dev.swordai.core.nn.Adam.step(net.params, ws.grads, 2e-3f, 0.5f, 1.0f);
+		}
+		int ok = 0;
+		for (int sign : new int[]{1, -1}) {
+			int target = sign > 0 ? 1 : 0;
+			Arrays.fill(hCur, 0f);
+			for (int t = 0; t <= DELAY; t++) {
+				float[] v = (t == 0) ? (sign > 0 ? posVec : negVec) : zeroVec;
+				net.forward(ws, caches[t], emptyPeri, emptyFovea, v, emptyHist, emptySeen, hCur, hCur);
+			}
+			int pick = caches[DELAY].logits[atkOff + 1] > caches[DELAY].logits[atkOff] ? 1 : 0;
+			if (pick == target) ok++;
+		}
+		assertEquals(2, ok, "GRU with BPTT must solve 14-tick delayed cue cleanly");
+	}
+
 	private static Obs randomObs(Random rng) {
 		Obs o = new Obs();
 		for (int i = 0; i < o.vec.length; i++) o.vec[i] = (float) rng.nextGaussian() * 0.2f;

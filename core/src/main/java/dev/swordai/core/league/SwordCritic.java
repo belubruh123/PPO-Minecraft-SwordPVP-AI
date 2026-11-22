@@ -25,9 +25,19 @@ public final class SwordCritic {
 		Random rng = new Random(seed);
 		float relu = (float) Math.sqrt(2.0);
 		l1 = new Dense(params, "critic.l1", IN, HIDDEN, rng, relu);
+		zeroGruInputWeights();
 		l2 = new Dense(params, "critic.l2", HIDDEN, HIDDEN, rng, relu);
 		block = new ResBlock(params, "critic.block", HIDDEN, HIDDEN, rng);
 		out = new Dense(params, "critic.out", HIDDEN, 1, rng, 1f);
+	}
+
+	/** Zeroes the GRU input slice of {@code critic.l1} (and its Adam moments) for exact Stage 2 -> Stage 3 Net2Net continuity. */
+	public void zeroGruInputWeights() {
+		int start = (ObsSpec.VEC + ObsSpec.PRIV) * HIDDEN;
+		int end = IN * HIDDEN;
+		java.util.Arrays.fill(l1.weight.w, start, end, 0f);
+		java.util.Arrays.fill(l1.weight.m, start, end, 0f);
+		java.util.Arrays.fill(l1.weight.v, start, end, 0f);
 	}
 
 	public final class Workspace {
