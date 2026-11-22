@@ -27,8 +27,8 @@ public final class League {
 		}
 	}
 
-	public static final int MAX_SNAPSHOTS = 12;
-	public static final float SELF_SHARE = 0.50f, SNAPSHOT_SHARE = 0.30f, KEY_MOMENT_START_SHARE = 0.25f;
+	public static final int MAX_SNAPSHOTS = 16;
+	public static final float SELF_SHARE = 0.45f, SNAPSHOT_SHARE = 0.25f, KEY_MOMENT_START_SHARE = 0.25f;
 	private static final float WR_ALPHA = 0.05f;
 
 	private final List<Snapshot> snapshots = new ArrayList<>();
@@ -63,11 +63,11 @@ public final class League {
 			return new Match(OpponentKind.PAST_SNAPSHOT, "snap-" + s.id, s, null, null, start);
 		}
 		float v = rng.nextFloat();
-		if (!humans.isEmpty() && v < 0.60f) {
+		if (!humans.isEmpty() && v < 0.50f) {
 			HumanImitation.HumanPolicy h = humans.get(rng.nextInt(humans.size()));
 			return new Match(OpponentKind.HUMAN_CLONE, "human-" + h.name, null, h, null, start);
 		}
-		if (hasExploiter && (humans.isEmpty() ? v < 0.75f : v < 0.90f)) {
+		if (hasExploiter && (humans.isEmpty() ? v < 0.833f : v < 0.85f)) {
 			return new Match(OpponentKind.EXPLOITER, "exploiter", null, null, null, start);
 		}
 		SparStyle st = sampleSpar(rng);
@@ -85,6 +85,10 @@ public final class League {
 			case HUMAN_CLONE -> {}
 		}
 	}
+
+	/** Exploiter's own EMA win rate against Main (1 - Main's win rate vs Exploiter). */
+	public float exploiterWinRate() { return 1f - exploiterWr; }
+	public void resetExploiterStats() { exploiterWr = 0.5f; }
 
 	public float demoWeight() {
 		float progress = Math.max(0f, Math.min(1f, (overallWr - 0.45f) / 0.30f));

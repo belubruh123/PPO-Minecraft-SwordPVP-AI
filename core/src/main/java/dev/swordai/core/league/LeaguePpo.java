@@ -9,9 +9,10 @@ import java.util.*;
 public final class LeaguePpo {
 	public static final int CHUNK = 32, EPOCHS = 4, CHUNKS_PER_BATCH = 8;
 	public static final float GAMMA = FixedReward.GAMMA, LAMBDA = 0.95f, CLIP = 0.2f, VALUE_COEF = 0.5f, MAX_GRAD_NORM = 0.5f;
-	// Low entropy on precision heads (YAW, PITCH, ATTACK) prevents aim dithering and uncharged/whiff click floors;
-	// keep tactical exploration on movement heads (FORWARD, STRAFE, SPRINT, JUMP).
+	// Low entropy on precision heads (YAW, PITCH, invalid ATTACK) prevents aim dithering and spam-click floors;
+	// modest ATTACK entropy on valid ready-in-reach ticks preserves hit-selecting / waiting exploration (T4).
 	private static final float[] ENTROPY_COEF = {0.001f, 0.001f, 0.006f, 0.006f, 0.006f, 0.004f, 0.001f};
+	private static final float READY_ATTACK_ENTROPY = 0.004f;
 
 	public static final class Stats {
 		public int steps, epochsRun;
@@ -26,6 +27,7 @@ public final class LeaguePpo {
 	private final float[] hCur = new float[ObsMemory.GRU_HIDDEN], hZero = new float[ObsMemory.GRU_HIDDEN];
 	private final float[] dHNext = new float[ObsMemory.GRU_HIDDEN], dHPrev = new float[ObsMemory.GRU_HIDDEN];
 	private final float[] probs = new float[ActionSpace.TOTAL_LOGITS], headEnt = new float[ActionSpace.HEADS];
+	private final float[] stepEnt = ENTROPY_COEF.clone();
 	private final float[][] chunkLogitsGrad = new float[CHUNK][ActionSpace.TOTAL_LOGITS];
 	private final Random rng;
 
@@ -103,7 +105,9 @@ public final class LeaguePpo {
 						float ratio = (float) Math.exp(Math.max(-20f, Math.min(20f, logRatio)));
 						float a = adv[t], s1 = ratio * a, s2 = Math.max(1f - CLIP, Math.min(1f + CLIP, ratio)) * a;
 						boolean clipped = (a >= 0f && ratio > 1f + CLIP) || (a < 0f && ratio < 1f - CLIP);
-						Policy.gradient(r.headMask[t], r.action[t], probs, headEnt, clipped ? 0f : -ratio * a, ENTROPY_COEF, chunkLogitsGrad[k]);
+						boolean readyHit = r.vec[t][ObsSpec.VEC_SCALARS + ObsSpec.SC_ATTACK_CHARGE] >= 0.85f && r.priv[t][ObsSpec.PV_IN_REACH] >= 0.5f;
+						stepEnt[ActionSpace.ATTACK] = readyHit ? READY_ATTACK_ENTROPY : ENTROPY_COEF[ActionSpace.ATTACK];
+						Policy.gradient(r.headMask[t], r.action[t], probs, headEnt, clipped ? 0f : -ratio * a, stepEnt, chunkLogitsGrad[k]);
 
 						if (cachedPrior != null) {
 							sumPrior += Policy.kl(r.headMask[t], cachedPrior[t], probs);

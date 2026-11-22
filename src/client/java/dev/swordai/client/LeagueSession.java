@@ -89,7 +89,7 @@ final class LeagueSession implements AgentSession {
 			if (Files.exists(SwordFiles.exploiterCheckpoint())) { try { expL.load(SwordFiles.exploiterCheckpoint()); } catch (IOException ignored) {} }
 			else LeagueLearner.copyWeights(learner.actor, expL.actor);
 			expL.setGruEnabled(stage >= 3);
-			exploiter = new LeaguePilots.ExploiterPilot(expL, cfg.aimResponse);
+			exploiter = new LeaguePilots.ExploiterPilot(expL, priorNet, cfg.aimResponse);
 
 			if (stage >= 4) {
 				try { idm.load(SwordFiles.idmCheckpoint()); } catch (IOException ignored) {}
@@ -235,7 +235,25 @@ final class LeagueSession implements AgentSession {
 			if (k != null) moveSearch.recordMoment(k, ArenaServer.sceneAt(truth.tick()), obs, learner.lastHistIn(), learner.lastSeenIn(), learner.lastHiddenIn());
 		}
 		if (done) {
-			if (currentMatch != null) league.recordOutcome(currentMatch, koD || (!koT && epDealt > epTaken));
+			if (currentMatch != null) {
+				league.recordOutcome(currentMatch, koD || (!koT && epDealt > epTaken));
+				// AlphaStar Main Exploiter freeze-and-reset cycle: snapshot winning exploits into PFSP, then reset to hunt fresh holes.
+				if (currentMatch.kind == League.OpponentKind.EXPLOITER && exploiter != null) {
+					exploiter.rounds++;
+					float expWr = league.exploiterWinRate();
+					if ((exploiter.rounds >= 60 && expWr >= 0.65f) || (exploiter.rounds >= 240 && expWr < 0.45f)) {
+						boolean froze = expWr >= 0.55f;
+						if (froze) league.addSnapshot("exp" + exploiter.gen, exploiter.learner.actor);
+						SwordNet seed = (rng.nextBoolean() && priorNet != null) ? priorNet : learner.actor;
+						SwordAi.LOGGER.info(String.format(Locale.ROOT,
+								"AlphaStar exploiter gen %d %s (expWr=%.0f%% over %d rounds) -> reset to %s",
+								exploiter.gen, froze ? "FROZEN into PFSP" : "unstuck", expWr * 100f, exploiter.rounds,
+								seed == priorNet ? "prior" : "main"));
+						exploiter.resetTo(seed, stage >= 3);
+						league.resetExploiterStats();
+					}
+				}
+			}
 			if (stage >= 5 && ++epDone % SEARCH_EVERY == 0 && moveSearch.totalMoments() >= 4) activeSearch = moveSearch.startSearch(rng);
 			requestNextEpisode(truth); return;
 		}
@@ -386,6 +404,8 @@ final class LeagueSession implements AgentSession {
 			activeLag = rng.nextBoolean() ? (1 + rng.nextInt(3)) : 0;
 			plan.agentLag = activeLag; plan.botLag = activeLag; plan.botPing = activeLag;
 			plan.agentKnockLag = activeLag > 0 ? Math.max(1, activeLag - 1) : 0;
+			// 20% 360-degree spawns so the agent constantly meets off-screen / behind-me opponents and learns instant 180 turn-around.
+			if (rng.nextFloat() < 0.20f) { plan.maxBearingDeg = 180f; plan.minDistance = 2.5f; plan.maxDistance = 6.5f; }
 			if (stage >= 5 && currentMatch.startMoment != null) plan.scene = currentMatch.startMoment.arenaState;
 		}
 		SeenLag.set(activeLag, 0f, 0);

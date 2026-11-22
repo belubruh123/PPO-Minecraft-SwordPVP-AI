@@ -96,6 +96,23 @@ public final class LeagueLearner {
 		}
 	}
 
+	/** AlphaStar Main Exploiter reset: copy seed actor, reset Adam moments & critic, and re-apply GRU Net2Net setup. */
+	public void resetForExploiter(SwordNet seed, boolean enableGru) {
+		copyWeights(seed, actor);
+		actor.params.adamSteps = 0;
+		for (Param p : actor.params.params()) { Arrays.fill(p.m, 0f); Arrays.fill(p.v, 0f); p.bornAt = 0; }
+		SwordCritic fresh = new SwordCritic(System.nanoTime());
+		for (int i = 0; i < critic.params.params().size(); i++) {
+			Param sp = fresh.params.params().get(i), dp = critic.params.params().get(i);
+			System.arraycopy(sp.w, 0, dp.w, 0, sp.w.length);
+			Arrays.fill(dp.m, 0f); Arrays.fill(dp.v, 0f); dp.bornAt = 0;
+		}
+		critic.params.adamSteps = 0;
+		rollout.clear(); memory.reset();
+		ppo.lr = 1.8e-4f;
+		setGruEnabled(enableGru);
+	}
+
 	public void save(Path path) throws IOException {
 		Files.createDirectories(path.getParent());
 		Path tmp = path.resolveSibling(path.getFileName() + ".tmp");

@@ -61,6 +61,7 @@ final class LeaguePilots {
 
 	static final class ExploiterPilot implements SparPilot {
 		final LeagueLearner learner;
+		private final SwordNet priorNet;
 		private final ReplicaBody body = new ReplicaBody(0.5f);
 		private final SightTracker sight = new SightTracker();
 		private final SessionClock clock = new SessionClock();
@@ -73,8 +74,15 @@ final class LeaguePilots {
 		private boolean hasPrev;
 		private float lastMyHp = 20f, lastOppHp = 20f, prevPhi;
 		private int ownCombo, oppCombo;
+		int rounds, gen;
 
-		ExploiterPilot(LeagueLearner learner, float aimResponse) { this.learner = learner; this.motor = new AimMotor(aimResponse); }
+		ExploiterPilot(LeagueLearner learner, SwordNet priorNet, float aimResponse) {
+			this.learner = learner; this.priorNet = priorNet; this.motor = new AimMotor(aimResponse);
+		}
+		void resetTo(SwordNet seed, boolean enableGru) {
+			learner.resetForExploiter(seed, enableGru);
+			rounds = 0; gen++;
+		}
 		@Override public void reset() {
 			body.reset(); sight.reset(); clock.reset(); motor.reset(); learner.resetEpisode();
 			hasPrev = false; lastMyHp = lastOppHp = 20f; prevPhi = 0f; ownCombo = oppCombo = 0;
@@ -107,7 +115,7 @@ final class LeaguePilots {
 			float phi = FixedReward.potential(myHp / 20f, oppHp / 20f, ownCombo, oppCombo, st.charge, opp.getAttackStrengthScale(0f), facts.reachDist, done);
 			if (hasPrev) {
 				learner.record(prevObs, prevDec, FixedReward.step(dd, dt, koD, koT, prevPhi, phi), done, null, 0f);
-				if (learner.rollout.isFull()) learner.update(done ? 0f : learner.bootstrapValue(obs), null, 0f, 0f);
+				if (learner.rollout.isFull()) learner.update(done ? 0f : learner.bootstrapValue(obs), priorNet, priorNet != null ? 0.01f : 0f, 0f);
 			}
 			prevPhi = phi;
 			if (done) { hasPrev = false; return; }
