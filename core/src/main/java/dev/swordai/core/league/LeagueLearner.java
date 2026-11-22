@@ -20,6 +20,7 @@ public final class LeagueLearner {
 	private final SwordCritic.Workspace criticWs;
 	private final Random rng;
 	private final float[] lastHistIn = new float[ObsMemory.HIST], lastSeenIn = new float[ObsMemory.SEEN], lastHIn = new float[ObsMemory.GRU_HIDDEN];
+	private final float[] bootSeen = new float[ObsMemory.SEEN], bootHOut = new float[ObsMemory.GRU_HIDDEN];
 	public long totalSteps, updates;
 
 	public LeagueLearner(int rolloutSize, long seed) {
@@ -53,7 +54,27 @@ public final class LeagueLearner {
 		memory.pushAction(out.action);
 	}
 
-	public float bootstrapValue(Obs obs) { return critic.forward(criticWs, obs.vec, obs.priv, memory.hidden); }
+	/** Activates or deactivates GRU memory cleanly: exact Net2Net continuity on Stage 2 -> Stage 3 transition. */
+	public void setGruEnabled(boolean enabled) {
+		actor.gruEnabled = enabled;
+		if (enabled && actor.gruWeightNorm() == 0f) {
+			critic.zeroGruInputWeights();
+			actor.markGruBorn(actor.params.adamSteps);
+		}
+	}
+
+	public float bootstrapValue(Obs obs) {
+		if (!actor.gruEnabled) return critic.forward(criticWs, obs.vec, obs.priv, memory.hidden);
+		System.arraycopy(memory.seen, 0, bootSeen, ObsMemory.SEEN_PER, ObsMemory.SEEN - ObsMemory.SEEN_PER);
+		int s = ObsSpec.VEC_STATS, c = ObsSpec.VEC_SCALARS;
+		bootSeen[0] = obs.vec[s + ObsSpec.ST_HEAD_VISIBLE]; bootSeen[1] = obs.vec[s + ObsSpec.ST_HEAD_X];
+		bootSeen[2] = obs.vec[s + ObsSpec.ST_HEAD_Y]; bootSeen[3] = obs.vec[s + ObsSpec.ST_HEAD_AREA];
+		bootSeen[4] = obs.vec[s + ObsSpec.ST_ANY_AREA]; bootSeen[5] = obs.vec[c + ObsSpec.SC_REL_VEL_FORWARD];
+		bootSeen[6] = obs.vec[c + ObsSpec.SC_REL_VEL_UP]; bootSeen[7] = obs.vec[c + ObsSpec.SC_OPP_CHARGE];
+		bootSeen[8] = obs.vec[c + ObsSpec.SC_TURNED_YAW]; bootSeen[9] = obs.vec[c + ObsSpec.SC_TURNED_PITCH];
+		actor.forward(actorWs, actorWs.step, obs.peri, obs.fovea, obs.vec, memory.hist, bootSeen, memory.hidden, bootHOut);
+		return critic.forward(criticWs, obs.vec, obs.priv, bootHOut);
+	}
 
 	public void record(Obs obs, Decision dec, float reward, boolean done, int[] demoAction, float demoWeight) {
 		rollout.add(obs, lastHistIn, lastSeenIn, lastHIn, ActionSpace.ALL_HEADS, dec.action, dec.logp, dec.value, reward, done, demoAction, demoWeight);

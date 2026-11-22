@@ -533,7 +533,14 @@ def _ep_diagnostics(ep):
         own_runs.append(cur_run)
 
     combo_starts = 0
+    swung_first = 0
     for ex in exchanges:
+        t0 = ex[0][0]
+        lo = max(0, t0 - 10)
+        my_sw = next((k for k in range(lo, t0 + 1) if len(ep.keys[k]) >= 5 and ep.keys[k][4] == 'x'), None)
+        opp_sw = next((k for k in range(lo, t0 + 1) if ep.theirSwing[k]), None)
+        if my_sw is not None and (opp_sw is None or my_sw < opp_sw):
+            swung_first += 1
         # Count own consecutive runs inside this exchange.
         streak = 0
         started = False
@@ -613,6 +620,7 @@ def _ep_diagnostics(ep):
     return {
         'exchanges': len(exchanges),
         'combo_starts': combo_starts,
+        'swung_first': swung_first,
         'combo_lengths': combo_lengths,
         'crit_types': crit_types,
         'crit_chains': chains,
@@ -621,7 +629,7 @@ def _ep_diagnostics(ep):
 
 def four_goal_diagnostics(eps):
     """Aggregates the four goal diagnostics over a list of Episodes (diagnostic only)."""
-    exchanges = combo_starts = 0
+    exchanges = combo_starts = swung_first = 0
     lengths = []
     crit_types = {k: [0, 0] for k in ('jump_in', 'double_crit', 'crit_spam')}
     chains = []
@@ -630,6 +638,7 @@ def four_goal_diagnostics(eps):
         d = _ep_diagnostics(ep)
         exchanges += d['exchanges']
         combo_starts += d['combo_starts']
+        swung_first += d['swung_first']
         lengths.extend(d['combo_lengths'])
         for k in crit_types:
             crit_types[k][0] += d['crit_types'][k][0]
@@ -669,6 +678,8 @@ def four_goal_diagnostics(eps):
         'whiff_rate': (whiffs / clicks) if clicks else None,
         'low_chg_rate': (low_chg / clicks) if clicks else None,
         'b2b_rate': (b2b / clicks) if clicks else None,
+        'swung_first_rate': (swung_first / exchanges) if exchanges else None,
+        'swung_first': swung_first,
     }
 
 
@@ -690,10 +701,11 @@ def print_diagnostics(label, diag):
         fmt_rate(diag['crit_back_2plus_rate'], 'share').strip(),
         diag['max_crit_back_chain'], diag['punish_crits']))
     if diag.get('clicks'):
-        print('  5. Click hygiene:      whiff %s, uncharged(<0.85) %s, double-click %s (%d clicks)' % (
+        print('  5. Click hygiene:      whiff %s, uncharged(<0.85) %s, double-click %s (%d clicks) | swung first %s (%d/%d)' % (
             fmt_rate(diag['whiff_rate'], 'share').strip(),
             fmt_rate(diag['low_chg_rate'], 'share').strip(),
-            fmt_rate(diag['b2b_rate'], 'share').strip(), diag['clicks']))
+            fmt_rate(diag['b2b_rate'], 'share').strip(), diag['clicks'],
+            fmt_rate(diag['swung_first_rate'], 'share').strip(), diag['swung_first'], diag['exchanges']))
 
 
 # Each test: key, name, technique IDs, the bots of docs/BENCHMARK.md that create it, the detector, its rate (outcome key,

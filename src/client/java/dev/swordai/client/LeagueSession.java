@@ -68,7 +68,7 @@ final class LeagueSession implements AgentSession {
 	private long totalTicks;
 	private final long startedMs = System.currentTimeMillis();
 
-	private record CheckOpp(String name, League.SparStyle spar, HumanImitation.HumanPolicy human, boolean isBaseline) {}
+	private record CheckOpp(String name, League.SparStyle spar, HumanImitation.HumanPolicy human, SwordNet net) {}
 
 	LeagueSession(Minecraft mc, Mode mode) throws IOException {
 		this.mc = mc; this.server = mc.getSingleplayerServer(); this.mode = mode;
@@ -78,9 +78,9 @@ final class LeagueSession implements AgentSession {
 		if (mode == Mode.TRAIN) {
 			learner = new LeagueLearner(ROLLOUT, System.nanoTime());
 			if (Files.exists(ckpt)) learner.load(ckpt); else if (Files.exists(base)) learner.load(base);
-			learner.actor.gruEnabled = (stage >= 3);
+			learner.setGruEnabled(stage >= 3);
 			priorNet = Files.exists(prior) ? LeagueLearner.loadActorOnly(prior) : null;
-			if (priorNet != null) priorNet.gruEnabled = (stage >= 3);
+			if (priorNet != null) priorNet.gruEnabled = priorNet.gruWeightNorm() > 0f;
 			selfNet = new SwordNet(2L); selfNet.gruEnabled = learner.actor.gruEnabled;
 			LeagueLearner.copyWeights(learner.actor, selfNet);
 			league.addSnapshot("start", learner.actor);
@@ -88,7 +88,7 @@ final class LeagueSession implements AgentSession {
 			LeagueLearner expL = new LeagueLearner(2048, System.nanoTime() ^ 0x55AA55AAL);
 			if (Files.exists(SwordFiles.exploiterCheckpoint())) { try { expL.load(SwordFiles.exploiterCheckpoint()); } catch (IOException ignored) {} }
 			else LeagueLearner.copyWeights(learner.actor, expL.actor);
-			expL.actor.gruEnabled = learner.actor.gruEnabled;
+			expL.setGruEnabled(stage >= 3);
 			exploiter = new LeaguePilots.ExploiterPilot(expL, cfg.aimResponse);
 
 			if (stage >= 4) {
@@ -108,17 +108,29 @@ final class LeagueSession implements AgentSession {
 			try { idm.load(SwordFiles.idmCheckpoint()); } catch (IOException ignored) {}
 			humans.loadDirectory(SwordFiles.realFightsDir()); humans.buildFromRealRounds(idm, 42L);
 			List<CheckOpp> pool = new ArrayList<>();
-			for (int i = 0; i < 4; i++) pool.add(new CheckOpp("baseline", null, null, true));
+			for (int i = 0; i < 4; i++) pool.add(new CheckOpp("baseline", null, null, netB));
+			Path ancDir = SwordFiles.anchorsDir();
+			if (Files.isDirectory(ancDir)) {
+				try (var s = Files.list(ancDir)) {
+					for (Path p : s.filter(f -> f.getFileName().toString().endsWith(".bin")).sorted().toList()) {
+						try {
+							String tag = p.getFileName().toString().replaceFirst("\\.bin$", "").toLowerCase(Locale.ROOT)
+									.replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
+							pool.add(new CheckOpp("anchor-" + (tag.isEmpty() ? "fixed" : tag), null, null, LeagueLearner.loadActorOnly(p)));
+						} catch (IOException ignored) {}
+					}
+				}
+			}
 			var hps = humans.opponents();
 			for (int i = 0; i < 4 && !hps.isEmpty(); i++) {
 				var h = hps.get(i % hps.size());
 				String c = h.name.toLowerCase(Locale.ROOT).replaceAll("[^a-z]+", "-").replaceAll("^-|-$", "");
-				pool.add(new CheckOpp("human-" + (c.isEmpty() ? "real" : c), null, h, false));
+				pool.add(new CheckOpp("human-" + (c.isEmpty() ? "real" : c), null, h, null));
 			}
-			pool.add(new CheckOpp("crit-spammer", League.SparStyle.CRIT_SPAMMER, null, false));
-			pool.add(new CheckOpp("jump-in-critter", League.SparStyle.JUMP_IN_CRITTER, null, false));
-			pool.add(new CheckOpp("combo-player", League.SparStyle.COMBO_PLAYER, null, false));
-			pool.add(new CheckOpp("mixer", League.SparStyle.MIXER, null, false));
+			pool.add(new CheckOpp("crit-spammer", League.SparStyle.CRIT_SPAMMER, null, null));
+			pool.add(new CheckOpp("jump-in-critter", League.SparStyle.JUMP_IN_CRITTER, null, null));
+			pool.add(new CheckOpp("combo-player", League.SparStyle.COMBO_PLAYER, null, null));
+			pool.add(new CheckOpp("mixer", League.SparStyle.MIXER, null, null));
 			checkPool = pool; benchDirA = SwordFiles.benchDir().resolve("A"); benchDirB = SwordFiles.benchDir().resolve("B");
 			Files.deleteIfExists(benchDirA.resolve("DONE"));
 			Files.deleteIfExists(benchDirB.resolve("DONE"));
@@ -349,7 +361,7 @@ final class LeagueSession implements AgentSession {
 		if (mode == Mode.CHECK) {
 			CheckOpp opp = checkPool.get(checkPair % checkPool.size()); checkOppName = opp.name();
 			long seed = 0x517CC1B727220A95L ^ (checkPair * 0x9E3779B97F4A7C15L);
-			plan = opp.isBaseline() ? EpisodePlan.ofPilot(new LeaguePilots.NetPilot(netB, cfg.aimResponse, 0f, seed + 1L, null), seed, true)
+			plan = opp.net() != null ? EpisodePlan.ofPilot(new LeaguePilots.NetPilot(opp.net(), cfg.aimResponse, 0f, seed + 1L, null), seed, true)
 					: opp.human() != null ? EpisodePlan.ofPilot(new LeaguePilots.HumanPilot(opp.human(), seed + 1L), seed, true)
 					: EpisodePlan.ofSpar(opp.spar(), seed, true);
 			// Alternating 0 ms and 100 ms server-lag pairs so the check measures real multiplayer lag robustness.
