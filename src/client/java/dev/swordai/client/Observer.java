@@ -34,6 +34,10 @@ final class Observer {
 		body.resetOpponentSwing();
 	}
 
+	void simulateLostSight(int side) {
+		sight.resetJustLost(side);
+	}
+
 	BodyState body() {
 		return body;
 	}

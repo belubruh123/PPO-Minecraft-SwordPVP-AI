@@ -432,8 +432,14 @@ final class LeagueSession implements AgentSession {
 			activeLag = rng.nextBoolean() ? (1 + rng.nextInt(3)) : 0;
 			plan.agentLag = activeLag; plan.botLag = activeLag; plan.botPing = activeLag;
 			plan.agentKnockLag = activeLag > 0 ? Math.max(1, activeLag - 1) : 0;
-			// 20% 360-degree spawns so the agent constantly meets off-screen / behind-me opponents and learns instant 180 turn-around.
-			if (rng.nextFloat() < 0.20f) { plan.maxBearingDeg = 180f; plan.minDistance = 2.5f; plan.maxDistance = 6.5f; }
+			// 20% 360-degree spawns (including close 0.5-2.2 block pass-throughs with ticksSinceSeen=0) so the agent learns instant 180 turn-around.
+			if (rng.nextFloat() < 0.20f) {
+				plan.maxBearingDeg = 180f;
+				boolean passThrough = rng.nextBoolean();
+				plan.minDistance = passThrough ? 0.5f : 2.2f;
+				plan.maxDistance = passThrough ? 2.2f : 5.5f;
+				observer.simulateLostSight(rng.nextInt(3) - 1);
+			}
 			if (stage >= 5 && currentMatch.startMoment != null) plan.scene = currentMatch.startMoment.arenaState;
 		}
 		SeenLag.set(activeLag, 0f, 0);

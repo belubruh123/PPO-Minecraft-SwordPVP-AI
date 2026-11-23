@@ -22,8 +22,8 @@ import java.util.Arrays;
 public final class SightTracker {
 	/** Offsets smaller than this do not change the remembered side (the opponent is dead centre). */
 	private static final float SIDE_DEADBAND = 0.03f;
-	/** "How long ago" saturates after this many ticks. */
-	private static final float SINCE_SEEN_TICKS = 40f;
+	/** "How long ago" saturates after this many ticks (0.4 s, matching close pass-through recovery). */
+	private static final float SINCE_SEEN_TICKS = 8f;
 	/** Turned-since values are scaled so a typical correction is around one. */
 	private static final float TURN_SCALE_DEG = 20f;
 	private static final float LATE_EPSILON_DEG = 0.01f;
@@ -50,6 +50,13 @@ public final class SightTracker {
 		ticksSinceSeen = Integer.MAX_VALUE / 2;
 		Arrays.fill(current, 0f);
 		Arrays.fill(previous, 0f);
+	}
+
+	/** Simulates a mid-fight pass-through where sight was just lost on tick 0 (for behind-spawn training). */
+	public void resetJustLost(int side) {
+		reset();
+		lastSeenSide = Integer.signum(side);
+		ticksSinceSeen = 0;
 	}
 
 	/**

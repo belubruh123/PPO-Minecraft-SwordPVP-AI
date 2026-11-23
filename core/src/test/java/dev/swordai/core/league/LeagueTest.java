@@ -256,6 +256,20 @@ final class LeagueTest {
 	}
 
 	@Test
+	void sightTrackerSaturatesQuicklyAfterPassThrough() {
+		dev.swordai.core.rl.SightTracker st = new dev.swordai.core.rl.SightTracker();
+		st.resetJustLost(0);
+		float[] empty = new float[ObsSpec.STATS], vec = new float[ObsSpec.VEC];
+		st.update(empty, 0f, 0f, 0f, 0f);
+		st.write(vec);
+		assertEquals(0.125f, vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_SINCE_SEEN], 1e-4f);
+		assertEquals(0f, vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_LAST_SEEN_SIDE], 1e-4f);
+		for (int t = 0; t < 7; t++) st.update(empty, 0f, 0f, 0f, 0f);
+		st.write(vec);
+		assertEquals(1.0f, vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_SINCE_SEEN], 1e-4f);
+	}
+
+	@Test
 	void moveSearchSelectsBestOutcomeAndSupervisesActor() {
 		MoveSearch ms = new MoveSearch();
 		LeagueLearner learner = new LeagueLearner(64, 5L);
