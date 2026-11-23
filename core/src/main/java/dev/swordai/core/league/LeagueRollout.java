@@ -30,6 +30,9 @@ public final class LeagueRollout {
 	/** Optional demonstration target (from teacher or human replay) for kickstarting. */
 	public final byte[][] demoAction;
 	public final float[] demoWeight;
+	/** Optional per-step human style probability anchor for Human-KL RL challengers (lazily allocated). */
+	public float[][] styleProbs;
+	public final float[] styleWeight;
 
 	public final float[] advantage;
 	public final float[] returns;
@@ -53,6 +56,7 @@ public final class LeagueRollout {
 		this.done = new boolean[capacity];
 		this.demoAction = new byte[capacity][ActionSpace.HEADS];
 		this.demoWeight = new float[capacity];
+		this.styleWeight = new float[capacity];
 		this.advantage = new float[capacity];
 		this.returns = new float[capacity];
 	}
@@ -99,6 +103,15 @@ public final class LeagueRollout {
 			Arrays.fill(this.demoAction[i], (byte) 0);
 			this.demoWeight[i] = 0f;
 		}
+		this.styleWeight[i] = 0f;
+	}
+
+	/** Attaches a per-step human style probability target to the most recently added rollout step. */
+	public void setStyle(float[] probs, float weight) {
+		if (size <= 0 || probs == null || weight <= 0f) return;
+		if (styleProbs == null) styleProbs = new float[capacity][ActionSpace.TOTAL_LOGITS];
+		System.arraycopy(probs, 0, styleProbs[size - 1], 0, ActionSpace.TOTAL_LOGITS);
+		styleWeight[size - 1] = weight;
 	}
 
 	/** Computes Generalised Advantage Estimation (GAE-lambda) and value targets. */

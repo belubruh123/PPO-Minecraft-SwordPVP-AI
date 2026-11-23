@@ -20,13 +20,13 @@ import java.util.*;
 
 /**
  * Staged rule-free league training (/swordai school) and 200-pair evaluation (/swordai school check):
- * Stage 2 = fixed reward + league; Stage 3 = + GRU; Stage 4 = + VPT IDM & human clones/demos; Stage 5 = + MoveSearch.
+ * Stage 2 = fixed reward + league; Stage 3 = + GRU; Stage 4 = + lagged 5-tick IDM & Human-KL RL challengers; Stage 5 = + MoveSearch.
  */
 final class LeagueSession implements AgentSession {
 	enum Mode { TRAIN, CHECK }
 
 	private static final int ROLLOUT = 4096, MAX_EP_TICKS = 600, SETTLE = 4, SNAP_EVERY = 8, SEARCH_EVERY = 25;
-	private static final float PRIOR_KL = 0.02f;
+	private static final float PRIOR_KL = 0.02f, STAGE4_PRIOR_KL = 0.015f, HUMAN_STYLE_KL = 0.08f;
 
 	private final Minecraft mc;
 	private final MinecraftServer server;
@@ -51,7 +51,7 @@ final class LeagueSession implements AgentSession {
 	private final InverseDynamics idm = new InverseDynamics(7L);
 	private final HumanImitation humans = new HumanImitation();
 	private final MoveSearch moveSearch = new MoveSearch();
-	private final LeaguePilots.ExploiterPilot exploiter;
+	private final LeaguePilots.ExploiterPilot exploiter, humanChallenger;
 	private final ObsMemory memCheck = new ObsMemory();
 	private final List<CheckOpp> checkPool;
 	private final Path benchDirA, benchDirB;
@@ -63,7 +63,7 @@ final class LeagueSession implements AgentSession {
 	private int statClose, statOnBody, statClicks, statLowChg, statWhiffs, statSwings;
 	private final int[] chkClose = new int[2], chkOnBody = new int[2], chkClicks = new int[2], chkLowChg = new int[2], chkWhiffs = new int[2];
 	private float searchDealt, searchTaken, prevPhi, epDealt, epTaken, turnYaw, turnPitch;
-	private boolean checkSideB, stopped, arenaRequested, resetPending, waitingPutBack, hasPrev, actedThisTick, clicked, clickResolved;
+	private boolean checkSideB, stopped, arenaRequested, resetPending, waitingPutBack, hasPrev, actedThisTick, clicked, clickResolved, humansBuiltWithIdm;
 	private String checkOppName = "";
 	private long totalTicks;
 	private final long startedMs = System.currentTimeMillis();
@@ -79,24 +79,38 @@ final class LeagueSession implements AgentSession {
 			learner = new LeagueLearner(ROLLOUT, System.nanoTime());
 			if (Files.exists(ckpt)) learner.load(ckpt); else if (Files.exists(base)) learner.load(base);
 			learner.setGruEnabled(stage >= 3);
-			priorNet = Files.exists(prior) ? LeagueLearner.loadActorOnly(prior) : null;
+			Path priorPath = (stage >= 4 && Files.exists(base)) ? base : prior;
+			priorNet = Files.exists(priorPath) ? LeagueLearner.loadActorOnly(priorPath) : null;
 			if (priorNet != null) priorNet.gruEnabled = priorNet.gruWeightNorm() > 0f;
 			selfNet = new SwordNet(2L); selfNet.gruEnabled = learner.actor.gruEnabled;
 			LeagueLearner.copyWeights(learner.actor, selfNet);
 			league.addSnapshot("start", learner.actor);
 
+			InverseDynamics logIdm = stage >= 4 ? idm : null;
 			LeagueLearner expL = new LeagueLearner(2048, System.nanoTime() ^ 0x55AA55AAL);
 			if (Files.exists(SwordFiles.exploiterCheckpoint())) { try { expL.load(SwordFiles.exploiterCheckpoint()); } catch (IOException ignored) {} }
 			else LeagueLearner.copyWeights(learner.actor, expL.actor);
 			expL.setGruEnabled(stage >= 3);
-			exploiter = new LeaguePilots.ExploiterPilot(expL, priorNet, cfg.aimResponse);
+			exploiter = new LeaguePilots.ExploiterPilot(expL, priorNet, cfg.aimResponse, logIdm);
 
 			if (stage >= 4) {
 				try { idm.load(SwordFiles.idmCheckpoint()); } catch (IOException ignored) {}
 				int nReal = humans.loadDirectory(SwordFiles.realFightsDir());
-				if (nReal > 0) { humans.buildFromRealRounds(idm, 42L); league.setHumanOpponents(humans.opponents()); }
-				SwordAi.LOGGER.info("League Stage {}: {} real rounds -> {} human clones, {} winning demos",
-						stage, nReal, humans.opponents().size(), humans.winningDemos().size);
+				if (nReal > 0) {
+					humans.buildFromRealRounds(idm, 42L);
+					league.setHumanOpponents(humans.opponents());
+					humansBuiltWithIdm = idm.trainedSteps() >= 2048;
+				}
+				LeagueLearner humL = new LeagueLearner(2048, System.nanoTime() ^ 0x33CC33CCL);
+				if (Files.exists(SwordFiles.humanChallengerCheckpoint())) { try { humL.load(SwordFiles.humanChallengerCheckpoint()); } catch (IOException ignored) {} }
+				else LeagueLearner.copyWeights(learner.actor, humL.actor);
+				humL.setGruEnabled(stage >= 3);
+				humanChallenger = new LeaguePilots.ExploiterPilot(humL, priorNet, cfg.aimResponse, logIdm);
+				if (!humans.opponents().isEmpty()) humanChallenger.setStylePrior(humans.opponents().get(0), HUMAN_STYLE_KL);
+				SwordAi.LOGGER.info("League Stage {}: {} real rounds -> {} playstyle clusters (idm steps={}, active={})",
+						stage, nReal, humans.opponents().size(), idm.trainedSteps(), humanChallenger.styleName());
+			} else {
+				humanChallenger = null;
 			}
 			netA = netB = null; wsA = wsB = null; checkPool = List.of(); benchDirA = benchDirB = null;
 		} else {
@@ -104,7 +118,7 @@ final class LeagueSession implements AgentSession {
 			if (!Files.exists(base)) throw new IOException("no baseline checkpoint at " + base);
 			netA = LeagueLearner.loadActorOnly(ckpt); netB = LeagueLearner.loadActorOnly(base);
 			wsA = netA.newWorkspace(); wsB = netB.newWorkspace();
-			learner = null; priorNet = selfNet = null; exploiter = null;
+			learner = null; priorNet = selfNet = null; exploiter = humanChallenger = null;
 			try { idm.load(SwordFiles.idmCheckpoint()); } catch (IOException ignored) {}
 			humans.loadDirectory(SwordFiles.realFightsDir()); humans.buildFromRealRounds(idm, 42L);
 			List<CheckOpp> pool = new ArrayList<>();
@@ -237,20 +251,40 @@ final class LeagueSession implements AgentSession {
 		if (done) {
 			if (currentMatch != null) {
 				league.recordOutcome(currentMatch, koD || (!koT && epDealt > epTaken));
-				// AlphaStar Main Exploiter freeze-and-reset cycle: snapshot winning exploits into PFSP, then reset to hunt fresh holes.
+				// AlphaStar Main Exploiter freeze-and-reset: always reset to Main or a strong PFSP snapshot (never weak Stage 1 prior).
 				if (currentMatch.kind == League.OpponentKind.EXPLOITER && exploiter != null) {
 					exploiter.rounds++;
 					float expWr = league.exploiterWinRate();
 					if ((exploiter.rounds >= 60 && expWr >= 0.65f) || (exploiter.rounds >= 240 && expWr < 0.45f)) {
 						boolean froze = expWr >= 0.55f;
 						if (froze) league.addSnapshot("exp" + exploiter.gen, exploiter.learner.actor);
-						SwordNet seed = (rng.nextBoolean() && priorNet != null) ? priorNet : learner.actor;
+						SwordNet snap = rng.nextBoolean() ? league.randomSnapshot(rng) : null;
+						SwordNet seed = snap != null ? snap : learner.actor;
 						SwordAi.LOGGER.info(String.format(Locale.ROOT,
 								"AlphaStar exploiter gen %d %s (expWr=%.0f%% over %d rounds) -> reset to %s",
 								exploiter.gen, froze ? "FROZEN into PFSP" : "unstuck", expWr * 100f, exploiter.rounds,
-								seed == priorNet ? "prior" : "main"));
+								snap != null ? "pfsp-snap" : "main"));
 						exploiter.resetTo(seed, stage >= 3);
 						league.resetExploiterStats();
+					}
+				} else if (currentMatch.kind == League.OpponentKind.HUMAN_CLONE && humanChallenger != null) {
+					humanChallenger.rounds++;
+					float hWr = league.humanChallengerWinRate();
+					if ((humanChallenger.rounds >= 60 && hWr >= 0.58f) || humanChallenger.rounds >= 180) {
+						boolean froze = hWr >= 0.45f;
+						String stName = humanChallenger.styleName();
+						if (froze) league.addSnapshot("hum-" + stName + "-g" + humanChallenger.gen, humanChallenger.learner.actor);
+						var hps = humans.opponents();
+						if (!hps.isEmpty()) {
+							humanChallenger.styleIdx = (humanChallenger.styleIdx + 1) % hps.size();
+							humanChallenger.setStylePrior(hps.get(humanChallenger.styleIdx), HUMAN_STYLE_KL);
+						}
+						SwordAi.LOGGER.info(String.format(Locale.ROOT,
+								"Human-KL challenger gen %d (%s) %s (hWr=%.0f%% over %d rounds) -> reset to main on %s",
+								humanChallenger.gen, stName, froze ? "FROZEN into PFSP" : "rotated", hWr * 100f,
+								humanChallenger.rounds, humanChallenger.styleName()));
+						humanChallenger.resetTo(learner.actor, stage >= 3);
+						league.resetHumanChallengerStats();
 					}
 				}
 			}
@@ -333,29 +367,22 @@ final class LeagueSession implements AgentSession {
 
 	private void runUpdate(float bootstrap) {
 		server.execute(() -> ArenaServer.setIdle(true)); AgentController.release(mc);
-		// Strong initial prior pull for the first 6 updates internalises legacy SwingGate/whiffGuard
-		// into pure SwordNet weights (zero play-time rules), then relaxes to AlphaStar's gentle 0.02 KL pull.
-		float pKl = learner.updates < 6 ? 0.50f : PRIOR_KL;
+		float baseKl = stage >= 4 ? STAGE4_PRIOR_KL : PRIOR_KL;
+		float pKl = learner.updates < 6 ? 0.50f : baseKl;
 		LeaguePpo.Stats s = learner.update(bootstrap, priorNet, pKl, 0f);
 		LeagueLearner.copyWeights(learner.actor, selfNet);
-		float demoCe = 0f, searchCe = 0f;
-		if (stage >= 4) {
-			if (idm.sampleCount() >= 256) {
-				idm.train(12, 64, 1e-3f, rng);
-				if (learner.updates % 10 == 0 && humans.roundCount() > 0) {
-					humans.buildFromRealRounds(idm, 42L + learner.updates);
-					league.setHumanOpponents(humans.opponents());
+		float searchCe = 0f;
+		if (stage >= 4 && idm.sampleCount() >= 256) {
+			idm.train(16, 64, 1e-3f, rng);
+			boolean firstIdmBuild = !humansBuiltWithIdm && idm.trainedSteps() >= 2048;
+			if (humans.roundCount() > 0 && (firstIdmBuild || learner.updates % 50 == 0)) {
+				humans.buildFromRealRounds(idm, 42L + learner.updates);
+				league.setHumanOpponents(humans.opponents());
+				humansBuiltWithIdm = idm.trainedSteps() >= 2048;
+				if (humanChallenger != null && !humans.opponents().isEmpty()) {
+					int idx = humanChallenger.styleIdx % humans.opponents().size();
+					humanChallenger.setStylePrior(humans.opponents().get(idx), HUMAN_STYLE_KL);
 				}
-			}
-			var wd = humans.winningDemos(); float dw = league.demoWeight();
-			if (wd.size >= 32 && dw > 0.03f) {
-				int bs = 32; byte[][] bp = new byte[bs][], bf = new byte[bs][], ba = new byte[bs][];
-				float[][] bv = new float[bs][], bh = new float[bs][], bse = new float[bs][];
-				for (int i = 0; i < bs; i++) {
-					int k = rng.nextInt(wd.size);
-					bp[i] = wd.peri[k]; bf[i] = wd.fovea[k]; bv[i] = wd.vec[k]; bh[i] = wd.hist[k]; bse[i] = wd.seen[k]; ba[i] = wd.action[k];
-				}
-				demoCe = learner.ppo.supervisedStep(learner.actor, bp, bf, bv, bh, bse, null, ba, bs, learner.ppo.lr * dw);
 			}
 		}
 		if (stage >= 5 && moveSearch.targetCount() >= 8) searchCe = moveSearch.trainActor(learner.actor, learner.ppo, 2, learner.ppo.lr * 0.5f, rng);
@@ -363,10 +390,11 @@ final class LeagueSession implements AgentSession {
 		saveAll();
 		double secs = Math.max(1.0, (System.currentTimeMillis() - startedMs) / 1000.0);
 		SwordAi.LOGGER.info(String.format(Locale.ROOT,
-				"league update %d (stage %d), %d steps (%.0f/s): pol %.4f val %.4f kl %.4f ent %.3f pKl %.3f ev %.2f lr %.1e aim %.0f%% low %.1f%% whf %.1f%% gru|w| %.2f idm %.0f%% demoCe %.2f search %d/%d(ce %.2f) | %s",
+				"league update %d (stage %d), %d steps (%.0f/s): pol %.4f val %.4f kl %.4f ent %.3f pKl %.3f ev %.2f lr %.1e aim %.0f%% low %.1f%% whf %.1f%% gru|w| %.2f idm %.0f%% hStyle %s search %d/%d(ce %.2f) | %s",
 				learner.updates, stage, learner.totalSteps, totalTicks / secs, s.policyLoss, s.valueLoss, s.approxKl, s.entropy, s.priorKl,
 				s.explainedVar, s.lr, 100f * statOnBody / Math.max(1, statClose), 100f * statLowChg / Math.max(1, statClicks),
-				100f * statWhiffs / Math.max(1, statClicks), learner.actor.gruWeightNorm(), idm.lastAccuracy() * 100f, demoCe,
+				100f * statWhiffs / Math.max(1, statClicks), learner.actor.gruWeightNorm(), idm.lastAccuracy() * 100f,
+				humanChallenger != null ? humanChallenger.styleName() : "off",
 				moveSearch.targetsFound(), moveSearch.searchesDone(), searchCe, league.summary()));
 		statClose = statOnBody = statClicks = statLowChg = statWhiffs = statSwings = 0;
 		server.execute(() -> ArenaServer.setIdle(false));
@@ -382,8 +410,8 @@ final class LeagueSession implements AgentSession {
 			plan = opp.net() != null ? EpisodePlan.ofPilot(new LeaguePilots.NetPilot(opp.net(), cfg.aimResponse, 0f, seed + 1L, null), seed, true)
 					: opp.human() != null ? EpisodePlan.ofPilot(new LeaguePilots.HumanPilot(opp.human(), seed + 1L), seed, true)
 					: EpisodePlan.ofSpar(opp.spar(), seed, true);
-			// Alternating 0 ms and 100 ms server-lag pairs so the check measures real multiplayer lag robustness.
-			activeLag = (checkPair % 2 == 1) ? 2 : 0;
+			// Balanced 0 ms / 100 ms lag across every checkPool slot regardless of whether checkPool.size() is even or odd.
+			activeLag = (((checkPair / checkPool.size()) + checkPair) % 2 == 1) ? 2 : 0;
 			plan.agentLag = activeLag; plan.botLag = activeLag; plan.botPing = activeLag; plan.agentKnockLag = activeLag > 0 ? 1 : 0;
 			recorder.start(checkOppName);
 		} else if (activeSearch != null) {
@@ -397,7 +425,7 @@ final class LeagueSession implements AgentSession {
 				case LATEST_SELF -> EpisodePlan.ofPilot(new LeaguePilots.NetPilot(selfNet, cfg.aimResponse, 1f, rng.nextLong(), logIdm), 0L, false);
 				case PAST_SNAPSHOT -> EpisodePlan.ofPilot(new LeaguePilots.NetPilot(currentMatch.snapshot.net, cfg.aimResponse, 1f, rng.nextLong(), logIdm), 0L, false);
 				case EXPLOITER -> EpisodePlan.ofPilot(exploiter, 0L, false);
-				case HUMAN_CLONE -> EpisodePlan.ofPilot(new LeaguePilots.HumanPilot(currentMatch.human, rng.nextLong()), 0L, false);
+				case HUMAN_CLONE -> EpisodePlan.ofPilot(humanChallenger != null ? humanChallenger : new LeaguePilots.HumanPilot(currentMatch.human, rng.nextLong()), 0L, false);
 				case SPAR_BOT -> EpisodePlan.ofSpar(currentMatch.sparStyle, 0L, false);
 			};
 			// Sim-to-real latency randomization (OpenAI Five / GT Sophy): 50% 0 ms, 50% 50-150 ms server lag.
@@ -426,6 +454,7 @@ final class LeagueSession implements AgentSession {
 		try {
 			learner.save(SwordFiles.schoolCheckpoint());
 			if (exploiter != null) exploiter.learner.save(SwordFiles.exploiterCheckpoint());
+			if (humanChallenger != null) humanChallenger.learner.save(SwordFiles.humanChallengerCheckpoint());
 			if (stage >= 4 && idm.trainedSteps() > 0) idm.save(SwordFiles.idmCheckpoint());
 		} catch (IOException e) { SwordAi.LOGGER.warn("could not save checkpoints", e); }
 	}

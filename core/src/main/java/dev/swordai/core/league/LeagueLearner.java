@@ -82,6 +82,8 @@ public final class LeagueLearner {
 		if (done) memory.reset();
 	}
 
+	public void recordStyle(float[] styleProbs, float styleWeight) { rollout.setStyle(styleProbs, styleWeight); }
+
 	public LeaguePpo.Stats update(float bootstrap, SwordNet priorNet, float priorWeight, float kickWeight) {
 		rollout.computeGae(bootstrap, LeaguePpo.GAMMA, LeaguePpo.LAMBDA);
 		LeaguePpo.Stats s = ppo.update(actor, critic, rollout, priorNet, priorWeight, kickWeight);

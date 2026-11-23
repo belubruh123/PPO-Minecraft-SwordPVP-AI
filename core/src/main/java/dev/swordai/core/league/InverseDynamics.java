@@ -1,16 +1,20 @@
 package dev.swordai.core.league;
 
+import dev.swordai.core.env.BodyState;
+import dev.swordai.core.env.RemoteView;
 import dev.swordai.core.nn.*;
 import dev.swordai.core.rl.*;
+import dev.swordai.core.vision.PlayerPose;
+import dev.swordai.core.vision.ViewGeometry;
 
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 
-/** VPT-style inverse dynamics model predicting (forward, strafe, sprint, jump, attack) from (s_{t-1}, s_t, s_{t+1}). */
+/** VPT-style lagged 5-tick inverse dynamics model predicting (W/S, A/D, sprint, jump, attack) from [t-2..t+2]. */
 public final class InverseDynamics {
-	private static final int MAGIC = 0x53574944, HIDDEN = 96, CAPACITY = 32_768;
-	public static final int TICK_DIM = 10, IN_DIM = 3 * TICK_DIM + 1, OUT_DIM = 12;
+	private static final int MAGIC = 0x53574945, HIDDEN = 96, CAPACITY = 32_768;
+	public static final int WINDOW = 5, TICK_DIM = 10, IN_DIM = WINDOW * TICK_DIM + 1, OUT_DIM = 12;
 	public static final int[] HEADS = {ActionSpace.FORWARD, ActionSpace.STRAFE, ActionSpace.SPRINT, ActionSpace.JUMP, ActionSpace.ATTACK};
 	public static final int[] SIZES = {3, 3, 2, 2, 2}, OFFSETS = {0, 3, 6, 8, 10};
 
@@ -47,11 +51,55 @@ public final class InverseDynamics {
 		dst[off + 9] = pitchDeg / 90f;
 	}
 
-	public static void packWindow(float[] tPrev, float[] tCur, float[] tNext, boolean tookHit, float[] out) {
-		System.arraycopy(tPrev, 0, out, 0, TICK_DIM);
-		System.arraycopy(tCur, 0, out, TICK_DIM, TICK_DIM);
-		System.arraycopy(tNext, 0, out, 2 * TICK_DIM, TICK_DIM);
-		out[3 * TICK_DIM] = tookHit ? 1f : 0f;
+	public static void packWindow(float[] tM2, float[] tM1, float[] t0, float[] tP1, float[] tP2, boolean tookHit, float[] out) {
+		System.arraycopy(tM2, 0, out, 0, TICK_DIM);
+		System.arraycopy(tM1, 0, out, TICK_DIM, TICK_DIM);
+		System.arraycopy(t0, 0, out, 2 * TICK_DIM, TICK_DIM);
+		System.arraycopy(tP1, 0, out, 3 * TICK_DIM, TICK_DIM);
+		System.arraycopy(tP2, 0, out, 4 * TICK_DIM, TICK_DIM);
+		out[WINDOW * TICK_DIM] = tookHit ? 1f : 0f;
+	}
+
+	/** Client-matched 3-tick RemoteView glide recorder so IDM training matches RoundRecorder client trajectories. */
+	public static final class LaggedRecorder {
+		public InverseDynamics idm;
+		private final RemoteView view = new RemoteView();
+		private final BodyState swingState = new BodyState();
+		private final float[][] ticks = new float[WINDOW][TICK_DIM];
+		private final int[][] acts = new int[WINDOW][ActionSpace.HEADS];
+		private final boolean[] hits = new boolean[WINDOW];
+		private final float[] win = new float[IN_DIM];
+		private int count;
+		public boolean tookHit;
+
+		public void reset() { view.reset(); swingState.resetOpponentSwing(); count = 0; tookHit = false; }
+
+		public void record(double bx, double by, double bz, float bodyYaw, float headYaw, float pitch,
+				boolean onGround, boolean sprinting, boolean swinging, int swingTime,
+				double ox, double oy, double oz, float dist, int[] action) {
+			if (idm == null) { tookHit = false; return; }
+			view.tick(bx, by, bz, bodyYaw, headYaw, pitch, swinging ? 0.5f : 0f, false, true, true);
+			swingState.noteOpponentSwing(swinging, swingTime);
+			PlayerPose p = view.now();
+			double ux = p.x - ox, uz = p.z - oz, flat = Math.sqrt(ux * ux + uz * uz);
+			ux = flat > 1e-6 ? ux / flat : 0; uz = flat > 1e-6 ? uz / flat : 0;
+			double vx = view.movedX(), vz = view.movedZ();
+			float toward = (float) -(vx * ux + vz * uz);
+			float sideS = (float) (vx * uz - vz * ux);
+			float up = (float) view.movedY();
+			float facing = ViewGeometry.wrapDegrees(p.headYaw - ViewGeometry.yawTo(ox - p.x, oz - p.z));
+			int slot = count % WINDOW;
+			packTick(dist, toward, sideS, up, onGround, sprinting, swingState.opponentCharge(), swinging, facing, p.headPitch, ticks[slot], 0);
+			System.arraycopy(action, 0, acts[slot], 0, ActionSpace.HEADS);
+			hits[slot] = tookHit;
+			tookHit = false;
+			count++;
+			if (count >= WINDOW) {
+				int i0 = (count - WINDOW) % WINDOW, i1 = (i0 + 1) % WINDOW, i2 = (i0 + 2) % WINDOW, i3 = (i0 + 3) % WINDOW, i4 = (i0 + 4) % WINDOW;
+				packWindow(ticks[i0], ticks[i1], ticks[i2], ticks[i3], ticks[i4], hits[i2] || hits[i1], win);
+				idm.addSample(win, acts[i2]);
+			}
+		}
 	}
 
 	public synchronized void addSample(float[] features, int[] fullAction) {
@@ -100,12 +148,13 @@ public final class InverseDynamics {
 
 	public synchronized void predict(float[] f, int[] actionOut) {
 		if (trainedSteps < 512) {
-			int cur = TICK_DIM, nxt = 2 * TICK_DIM;
-			boolean hit = f[3 * TICK_DIM] > 0.5f;
-			actionOut[ActionSpace.FORWARD] = f[nxt + 1] > 0.25f ? 1 : (f[nxt + 1] < -0.25f && !hit ? 2 : 0);
-			actionOut[ActionSpace.STRAFE] = f[nxt + 2] < -0.22f ? 1 : (f[nxt + 2] > 0.22f ? 2 : 0);
-			actionOut[ActionSpace.SPRINT] = f[nxt + 5] > 0.5f ? 1 : 0;
-			actionOut[ActionSpace.JUMP] = (f[cur + 4] > 0.5f && f[nxt + 4] < 0.5f && f[nxt + 3] > 1.2f && !hit) ? 1 : 0;
+			int cur = 2 * TICK_DIM, nxt = 3 * TICK_DIM, nxt2 = 4 * TICK_DIM;
+			boolean hit = f[WINDOW * TICK_DIM] > 0.5f;
+			float vFwd = 0.5f * (f[nxt + 1] + f[nxt2 + 1]), vSide = 0.5f * (f[nxt + 2] + f[nxt2 + 2]);
+			actionOut[ActionSpace.FORWARD] = vFwd > 0.22f ? 1 : (vFwd < -0.22f && !hit ? 2 : 0);
+			actionOut[ActionSpace.STRAFE] = vSide < -0.20f ? 1 : (vSide > 0.20f ? 2 : 0);
+			actionOut[ActionSpace.SPRINT] = (f[cur + 5] > 0.5f || f[nxt + 5] > 0.5f) ? 1 : 0;
+			actionOut[ActionSpace.JUMP] = (f[cur + 4] > 0.5f && (f[nxt + 4] < 0.5f || f[nxt2 + 4] < 0.5f) && Math.max(f[nxt + 3], f[nxt2 + 3]) > 0.9f && !hit) ? 1 : 0;
 			actionOut[ActionSpace.ATTACK] = ((f[cur + 7] < 0.5f && f[nxt + 7] > 0.5f) || (f[nxt + 6] < f[cur + 6] - 0.15f)) ? 1 : 0;
 			return;
 		}

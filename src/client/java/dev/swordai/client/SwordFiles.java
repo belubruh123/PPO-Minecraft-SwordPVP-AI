@@ -21,6 +21,7 @@ final class SwordFiles {
 	static Path baselineCheckpoint() { Path b = schoolDir().resolve("baseline.bin"); return Files.exists(b) ? b : schoolDir().resolve("distilled-baseline.bin"); }
 	static Path priorCheckpoint() { Path p = schoolDir().resolve("distilled-baseline.bin"); return Files.exists(p) ? p : baselineCheckpoint(); }
 	static Path exploiterCheckpoint() { return schoolDir().resolve("exploiter.bin"); }
+	static Path humanChallengerCheckpoint() { return schoolDir().resolve("human-challenger.bin"); }
 	static Path idmCheckpoint() { return schoolDir().resolve("inverse-dynamics.bin"); }
 	static Path leagueStageFile() { return dir().resolve("league-stage.txt"); }
 	static Path realFightsDir() { Path rf = dir().resolve("real-fights"); return Files.isDirectory(rf) ? rf : fightsDir(); }

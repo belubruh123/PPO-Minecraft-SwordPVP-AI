@@ -27,14 +27,14 @@ public final class League {
 		}
 	}
 
-	public static final int MAX_SNAPSHOTS = 16;
+	public static final int MAX_SNAPSHOTS = 24;
 	public static final float SELF_SHARE = 0.45f, SNAPSHOT_SHARE = 0.25f, KEY_MOMENT_START_SHARE = 0.25f;
 	private static final float WR_ALPHA = 0.05f;
 
 	private final List<Snapshot> snapshots = new ArrayList<>();
 	private final List<HumanImitation.HumanPolicy> humans = new ArrayList<>();
 	private final float[] sparWr = {0.5f, 0.5f, 0.5f, 0.5f};
-	private float selfWr = 0.5f, exploiterWr = 0.5f, overallWr = 0.5f;
+	private float selfWr = 0.5f, exploiterWr = 0.5f, humanWr = 0.5f, overallWr = 0.5f;
 	private long totalRounds;
 
 	public void setHumanOpponents(List<HumanImitation.HumanPolicy> list) {
@@ -82,13 +82,18 @@ public final class League {
 			case PAST_SNAPSHOT -> { if (m.snapshot != null) { m.snapshot.games++; m.snapshot.winRate += WR_ALPHA * (y - m.snapshot.winRate); } }
 			case EXPLOITER -> exploiterWr += WR_ALPHA * (y - exploiterWr);
 			case SPAR_BOT -> { if (m.sparStyle != null) { int i = m.sparStyle.ordinal(); sparWr[i] += WR_ALPHA * (y - sparWr[i]); } }
-			case HUMAN_CLONE -> {}
+			case HUMAN_CLONE -> humanWr += WR_ALPHA * (y - humanWr);
 		}
 	}
 
 	/** Exploiter's own EMA win rate against Main (1 - Main's win rate vs Exploiter). */
 	public float exploiterWinRate() { return 1f - exploiterWr; }
 	public void resetExploiterStats() { exploiterWr = 0.5f; }
+	/** Human-KL RL challenger's own EMA win rate against Main. */
+	public float humanChallengerWinRate() { return 1f - humanWr; }
+	public void resetHumanChallengerStats() { humanWr = 0.5f; }
+	/** Returns a random frozen snapshot from PFSP (for strong Exploiter resets), or null if empty. */
+	public SwordNet randomSnapshot(Random rng) { return snapshots.isEmpty() ? null : snapshots.get(rng.nextInt(snapshots.size())).net; }
 
 	public float demoWeight() {
 		float progress = Math.max(0f, Math.min(1f, (overallWr - 0.45f) / 0.30f));
@@ -113,7 +118,7 @@ public final class League {
 	}
 
 	public String summary() {
-		return String.format(Locale.ROOT, "league r=%d wr=%.0f%% (self=%.0f%% exp=%.0f%% snaps=%d humans=%d demoW=%.2f)",
-				totalRounds, overallWr * 100f, selfWr * 100f, exploiterWr * 100f, snapshots.size(), humans.size(), demoWeight());
+		return String.format(Locale.ROOT, "league r=%d wr=%.0f%% (self=%.0f%% exp=%.0f%% hum=%.0f%% snaps=%d humans=%d)",
+				totalRounds, overallWr * 100f, selfWr * 100f, exploiterWr * 100f, humanWr * 100f, snapshots.size(), humans.size());
 	}
 }

@@ -21,14 +21,7 @@ public final class SparBot {
 	private final ReplicaBody body = new ReplicaBody(0.5f);
 	private final AimMotor motor = new AimMotor(0.6f);
 	private final int[] action = new int[ActionSpace.HEADS];
-	private final int[] prevAction = new int[ActionSpace.HEADS];
-	private final float[] tickPrev2 = new float[InverseDynamics.TICK_DIM];
-	private final float[] tickPrev1 = new float[InverseDynamics.TICK_DIM];
-	private final float[] tickCur = new float[InverseDynamics.TICK_DIM];
-	private final float[] idmWindow = new float[InverseDynamics.IN_DIM];
-	private int ticksRecorded;
-	private boolean tookHitPrev;
-	private boolean tookHitCur;
+	private final InverseDynamics.LaggedRecorder idmRec = new InverseDynamics.LaggedRecorder();
 
 	private League.SparStyle style = League.SparStyle.MIXER;
 	private Random rng = new Random(1L);
@@ -38,10 +31,9 @@ public final class SparBot {
 	private int sinceHitTaken = 100;
 	private int ownCombo;
 	private int critChain;
-	private InverseDynamics idm;
 
 	public void setInverseDynamics(InverseDynamics idm) {
-		this.idm = idm;
+		this.idmRec.idm = idm;
 	}
 
 	public void start(League.SparStyle style, long seed, int lagTicks) {
@@ -56,9 +48,7 @@ public final class SparBot {
 		this.sinceHitTaken = 100;
 		this.ownCombo = 0;
 		this.critChain = 0;
-		this.ticksRecorded = 0;
-		this.tookHitPrev = false;
-		this.tookHitCur = false;
+		this.idmRec.reset();
 	}
 
 	public void idle(ServerPlayer bot) {
@@ -73,7 +63,7 @@ public final class SparBot {
 	public void hitTaken() {
 		sinceHitTaken = 0;
 		ownCombo = 0;
-		tookHitCur = true;
+		idmRec.tookHit = true;
 	}
 
 	public void tick(ServerPlayer bot, ServerPlayer opp, double floorY) {
@@ -183,40 +173,11 @@ public final class SparBot {
 		action[ActionSpace.JUMP] = jump;
 		action[ActionSpace.ATTACK] = attack;
 
-		// Feed ground-truth (t-2, t-1, t) -> action_{t-1} transition into InverseDynamics.
-		recordIdmSample(bot, opp, dist, charge);
+		// Feed client-matched 3-tick RemoteView lagged 5-tick transition into InverseDynamics.
+		idmRec.record(bot.getX(), bot.getY(), bot.getZ(), bot.yBodyRot, bot.getYHeadRot(), bot.getXRot(),
+				bot.onGround(), bot.isSprinting(), bot.swinging, bot.swingTime, opp.getX(), opp.getY(), opp.getZ(), dist, action);
 
 		motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));
 		body.act(bot, opp, action, motor.yawRate(), motor.pitchRate());
-		System.arraycopy(action, 0, prevAction, 0, ActionSpace.HEADS);
-		tookHitPrev = tookHitCur;
-		tookHitCur = false;
-	}
-
-	private void recordIdmSample(ServerPlayer bot, ServerPlayer opp, float dist, float charge) {
-		if (idm == null) {
-			return;
-		}
-		double ux = bot.getX() - opp.getX();
-		double uz = bot.getZ() - opp.getZ();
-		double flat = Math.sqrt(ux * ux + uz * uz);
-		ux = flat > 1e-6 ? ux / flat : 0;
-		uz = flat > 1e-6 ? uz / flat : 0;
-		double vx = bot.getX() - bot.xo;
-		double vz = bot.getZ() - bot.zo;
-		float toward = (float) -(vx * ux + vz * uz);
-		float sideSigned = (float) (vx * uz - vz * ux);
-		float up = (float) (bot.getY() - bot.yo);
-		float toOppYaw = ViewGeometry.yawTo(opp.getX() - bot.getX(), opp.getZ() - bot.getZ());
-		float facing = ViewGeometry.wrapDegrees(bot.getYHeadRot() - toOppYaw);
-
-		System.arraycopy(tickPrev1, 0, tickPrev2, 0, InverseDynamics.TICK_DIM);
-		System.arraycopy(tickCur, 0, tickPrev1, 0, InverseDynamics.TICK_DIM);
-		InverseDynamics.packTick(dist, toward, sideSigned, up, bot.onGround(), bot.isSprinting(),
-				charge, bot.swinging, facing, bot.getXRot(), tickCur, 0);
-		if (++ticksRecorded >= 3) {
-			InverseDynamics.packWindow(tickPrev2, tickPrev1, tickCur, tookHitPrev, idmWindow);
-			idm.addSample(idmWindow, prevAction);
-		}
 	}
 }

@@ -2,7 +2,6 @@ package dev.swordai.core.league;
 
 import dev.swordai.core.nn.*;
 import dev.swordai.core.rl.*;
-import dev.swordai.core.vision.*;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -12,17 +11,19 @@ import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 
 /**
- * Learns from recorded real duels (Follow-up #2): labels human keys via {@link InverseDynamics},
- * behaviour-clones losing human opponents into {@link HumanPolicy} league opponents, and extracts
- * outcome-filtered winning human moments rendered through {@link SyntheticEye}.
+ * Playstyle-clustered human imitation from recorded real duels: labels human keys via the
+ * lagged 5-tick VPT {@link InverseDynamics} model and clusters strong human rounds by combat
+ * kinematics (uppercut-spacer, crit-pressure, deflect-combo, all-humans) rather than usernames.
  */
 public final class HumanImitation {
 	public static final int STATE_DIM = 20;
-	private static final int MIN_TICKS = 80, MAX_DEMOS = 2048;
+	public static final String[] CLUSTERS = {"uppercut-spacer", "crit-pressure", "deflect-combo", "all-humans"};
+	private static final int MIN_TICKS = 80, MAX_CLUSTER_SAMPLES = 16_384;
+	private static final float ATTACK_POS_WEIGHT = 2.5f;
 
 	public static final class RoundTick {
 		public float dist, mySword, oppSword, myHp, oppHp, oppUp, oppToward, oppSideS, myToward, oppFacing, oppPitch;
-		public boolean myGround, oppGround, oppSprint, oppSwing, aiDealt, aiTaken;
+		public boolean myGround, oppGround, oppSprint, oppSwing, aiDealt, aiTaken, aiTakenCrit;
 	}
 
 	public static final class Round {
@@ -33,6 +34,9 @@ public final class HumanImitation {
 	}
 
 	public static final class HumanPolicy {
+		/** Movement, sprint, jump, and attack heads used for Human-KL RL anchoring (leaves aim to SwordNet). */
+		public static final int STYLE_HEADS = (1 << ActionSpace.FORWARD) | (1 << ActionSpace.STRAFE)
+				| (1 << ActionSpace.SPRINT) | (1 << ActionSpace.JUMP) | (1 << ActionSpace.ATTACK);
 		private static final int HIDDEN = 96;
 		public final String name;
 		public final int trainingTicks;
@@ -52,6 +56,13 @@ public final class HumanImitation {
 			grads = params.newGrads();
 		}
 
+		public synchronized void probs(float[] state, float[] probsOut) {
+			l1.forward(state, 0, h1, 0); relu(h1);
+			l2.forward(h1, 0, h2, 0); relu(h2);
+			out.forward(h2, 0, logits, 0);
+			Policy.allProbs(logits, probsOut);
+		}
+
 		public synchronized void act(float[] state, float temperature, Random rng, int[] actionOut) {
 			l1.forward(state, 0, h1, 0); relu(h1);
 			l2.forward(h1, 0, h2, 0); relu(h2);
@@ -60,8 +71,14 @@ public final class HumanImitation {
 		}
 
 		synchronized void train(List<float[]> xs, List<byte[]> ys, int epochs, int batchSize, float lr, Random rng) {
-			int n = xs.size(); if (n == 0) return;
-			int[] order = new int[n]; for (int i = 0; i < n; i++) order[i] = i;
+			int total = xs.size(); if (total == 0) return;
+			int n = Math.min(total, MAX_CLUSTER_SAMPLES);
+			int[] idxPool = new int[total];
+			for (int i = 0; i < total; i++) idxPool[i] = i;
+			if (total > n) {
+				for (int i = 0; i < n; i++) { int j = i + rng.nextInt(total - i), t = idxPool[i]; idxPool[i] = idxPool[j]; idxPool[j] = t; }
+			}
+			int[] order = Arrays.copyOf(idxPool, n);
 			for (int ep = 0; ep < epochs; ep++) {
 				for (int i = n - 1; i > 0; i--) { int j = rng.nextInt(i + 1), t = order[i]; order[i] = order[j]; order[j] = t; }
 				for (int b = 0; b < n; b += batchSize) {
@@ -76,7 +93,8 @@ public final class HumanImitation {
 						for (int h = 0; h < ActionSpace.HEADS; h++) {
 							int off = ActionSpace.OFFSETS[h], sz = ActionSpace.SIZES[h], a = y[h];
 							Policy.softmax(logits, off, sz, probs);
-							for (int i = 0; i < sz; i++) dLogits[off + i] = probs[off + i] - (i == a ? 1f : 0f);
+							float w = (h == ActionSpace.ATTACK && a == 1) ? ATTACK_POS_WEIGHT : 1f;
+							for (int i = 0; i < sz; i++) dLogits[off + i] = w * (probs[off + i] - (i == a ? 1f : 0f));
 						}
 						out.backward(h2, 0, dLogits, 0, dH2, 0, grads); gate(dH2, h2);
 						l2.backward(h1, 0, dH2, 0, dH1, 0, grads); gate(dH1, h1);
@@ -101,24 +119,11 @@ public final class HumanImitation {
 		}
 	}
 
-	public static final class WinningDemos {
-		public final byte[][] peri, fovea, action;
-		public final float[][] vec, hist, seen;
-		public final int size;
-		WinningDemos(int n) {
-			size = n; peri = new byte[n][ObsSpec.PERI_SIZE]; fovea = new byte[n][ObsSpec.FOVEA_SIZE];
-			vec = new float[n][ObsSpec.VEC]; hist = new float[n][ObsMemory.HIST]; seen = new float[n][ObsMemory.SEEN];
-			action = new byte[n][ActionSpace.HEADS];
-		}
-	}
-
 	private final List<Round> rounds = new ArrayList<>();
 	private final List<HumanPolicy> opponents = new ArrayList<>();
-	private WinningDemos winningDemos = new WinningDemos(0);
 
 	public int roundCount() { return rounds.size(); }
 	public List<HumanPolicy> opponents() { return opponents; }
-	public WinningDemos winningDemos() { return winningDemos; }
 
 	public int loadDirectory(Path dir) {
 		rounds.clear();
@@ -133,101 +138,119 @@ public final class HumanImitation {
 
 	public void buildFromRealRounds(InverseDynamics idm, long seed) {
 		opponents.clear();
-		if (rounds.isEmpty()) { winningDemos = new WinningDemos(0); return; }
+		if (rounds.isEmpty()) return;
 		Random rng = new Random(seed);
-		Map<String, List<float[]>> byX = new HashMap<>();
-		Map<String, List<byte[]>> byY = new HashMap<>();
-		List<float[]> allX = new ArrayList<>();
-		List<byte[]> allY = new ArrayList<>();
-		List<Round> dRounds = new ArrayList<>();
-		List<Integer> dIdx = new ArrayList<>();
-		List<byte[]> dAct = new ArrayList<>();
 
-		float[] t0 = new float[InverseDynamics.TICK_DIM], t1 = new float[InverseDynamics.TICK_DIM];
-		float[] t2 = new float[InverseDynamics.TICK_DIM], win = new float[InverseDynamics.IN_DIM];
+		List<Round> strong = new ArrayList<>();
+		List<float[]> rawScores = new ArrayList<>();
+		for (Round r : rounds) {
+			float[] feat = styleScores(r);
+			if (feat != null) { strong.add(r); rawScores.add(feat); }
+		}
+		if (strong.isEmpty()) {
+			for (Round r : rounds) { strong.add(r); rawScores.add(new float[] {0f, 0f, 0f}); }
+		}
+		int[] clusterOf = assignPlaystyles(rawScores);
+
+		Map<String, List<float[]>> byX = new LinkedHashMap<>();
+		Map<String, List<byte[]>> byY = new LinkedHashMap<>();
+		for (String name : CLUSTERS) { byX.put(name, new ArrayList<>()); byY.put(name, new ArrayList<>()); }
+
+		float[][] tk = new float[InverseDynamics.WINDOW][InverseDynamics.TICK_DIM];
+		float[] win = new float[InverseDynamics.IN_DIM];
 		int[] pred = new int[ActionSpace.HEADS];
 
-		for (Round r : rounds) {
-			int n = r.ticks.size(); if (n < 4) continue;
+		for (int ri = 0; ri < strong.size(); ri++) {
+			Round r = strong.get(ri);
+			String cl = CLUSTERS[clusterOf[ri]];
+			int n = r.ticks.size(); if (n < 6) continue;
 			int sinceD = 1000, sinceT = 1000, ownC = 0, oppC = 0;
-			for (int t = 1; t < n - 1; t++) {
-				RoundTick p0 = r.ticks.get(t - 1), p1 = r.ticks.get(t), p2 = r.ticks.get(t + 1);
-				if (p1.aiTaken) { sinceD = 0; ownC++; oppC = 0; } else sinceD = Math.min(1000, sinceD + 1);
-				if (p1.aiDealt) { sinceT = 0; oppC++; ownC = 0; } else sinceT = Math.min(1000, sinceT + 1);
+			for (int t = 2; t < n - 2; t++) {
+				RoundTick pM1 = r.ticks.get(t - 1), p0 = r.ticks.get(t), pP1 = r.ticks.get(t + 1);
+				if (p0.aiTaken) { sinceD = 0; ownC++; oppC = 0; } else sinceD = Math.min(1000, sinceD + 1);
+				if (p0.aiDealt) { sinceT = 0; oppC++; ownC = 0; } else sinceT = Math.min(1000, sinceT + 1);
+				if (p0.dist > 8.5f) continue;
 
-				packKin(p0, t0); packKin(p1, t1); packKin(p2, t2);
-				InverseDynamics.packWindow(t0, t1, t2, p1.aiDealt || p0.aiDealt, win);
+				for (int w = 0; w < InverseDynamics.WINDOW; w++) packKin(r.ticks.get(t - 2 + w), tk[w]);
+				InverseDynamics.packWindow(tk[0], tk[1], tk[2], tk[3], tk[4], p0.aiDealt || pM1.aiDealt, win);
 				idm.predict(win, pred);
-				pred[ActionSpace.YAW] = InverseDynamics.nearestBin(wrapDeg(p2.oppFacing - p1.oppFacing), ActionSpace.YAW_BINS);
-				pred[ActionSpace.PITCH] = InverseDynamics.nearestBin(p2.oppPitch - p1.oppPitch, ActionSpace.PITCH_BINS);
+				pred[ActionSpace.YAW] = InverseDynamics.nearestBin(wrapDeg(pP1.oppFacing - p0.oppFacing), ActionSpace.YAW_BINS);
+				pred[ActionSpace.PITCH] = InverseDynamics.nearestBin(pP1.oppPitch - p0.oppPitch, ActionSpace.PITCH_BINS);
 				byte[] ab = new byte[ActionSpace.HEADS];
 				for (int h = 0; h < ActionSpace.HEADS; h++) ab[h] = (byte) pred[h];
 
 				float[] st = new float[STATE_DIM];
-				double rad = Math.toRadians(p1.oppFacing);
-				float ef = (float) (p1.oppToward * Math.cos(rad) + p1.oppSideS * Math.sin(rad));
-				float er = (float) (-p1.oppToward * Math.sin(rad) + p1.oppSideS * Math.cos(rad));
-				HumanPolicy.packLiveState(p1.dist, p1.oppSword, p1.mySword, p1.oppGround, p1.myGround, p1.oppSprint,
-						ef, er, p1.oppUp, p1.myToward, 0f, p1.oppHp / 20f, p1.myHp / 20f, sinceD, sinceT, ownC, oppC,
-						-p1.oppFacing, p1.oppPitch, p0.dist, st);
-				if (r.humanWon) {
-					byX.computeIfAbsent(r.opponent, k -> new ArrayList<>()).add(st);
-					byY.computeIfAbsent(r.opponent, k -> new ArrayList<>()).add(ab);
-					allX.add(st); allY.add(ab);
-				}
-				if (dAct.size() < MAX_DEMOS && humanWinsExchange(r.ticks, t)) { dRounds.add(r); dIdx.add(t); dAct.add(ab); }
+				double rad = Math.toRadians(p0.oppFacing);
+				float ef = (float) (p0.oppToward * Math.cos(rad) + p0.oppSideS * Math.sin(rad));
+				float er = (float) (-p0.oppToward * Math.sin(rad) + p0.oppSideS * Math.cos(rad));
+				HumanPolicy.packLiveState(p0.dist, p0.oppSword, p0.mySword, p0.oppGround, p0.myGround, p0.oppSprint,
+						ef, er, p0.oppUp, p0.myToward, 0f, p0.oppHp / 20f, p0.myHp / 20f, sinceD, sinceT, ownC, oppC,
+						-p0.oppFacing, p0.oppPitch, pM1.dist, st);
+				byX.get(cl).add(st); byY.get(cl).add(ab);
+				byX.get("all-humans").add(st); byY.get("all-humans").add(ab);
 			}
 		}
-		for (var e : byX.entrySet()) {
-			if (e.getValue().size() >= MIN_TICKS) {
-				HumanPolicy hp = new HumanPolicy(e.getKey(), e.getValue().size(), rng.nextLong());
-				hp.train(e.getValue(), byY.get(e.getKey()), 12, 64, 1e-3f, rng);
+		for (String name : CLUSTERS) {
+			List<float[]> xs = byX.get(name);
+			if (xs.size() >= MIN_TICKS || ("all-humans".equals(name) && !xs.isEmpty())) {
+				HumanPolicy hp = new HumanPolicy(name, xs.size(), rng.nextLong());
+				hp.train(xs, byY.get(name), 8, 128, 2e-3f, rng);
 				opponents.add(hp);
 			}
 		}
-		if (!allX.isEmpty()) {
-			HumanPolicy agg = new HumanPolicy("real-humans", allX.size(), rng.nextLong());
-			agg.train(allX, allY, 10, 64, 1e-3f, rng);
-			opponents.add(agg);
-		}
-		winningDemos = renderDemos(dRounds, dIdx, dAct);
 	}
 
-	private static boolean humanWinsExchange(List<RoundTick> ticks, int t) {
-		int end = Math.min(ticks.size(), t + 20), hHits = 0, aHits = 0; boolean soon = false;
-		for (int k = t; k < end; k++) {
-			if (ticks.get(k).aiTaken) { hHits++; if (k <= t + 10) soon = true; }
-			if (ticks.get(k).aiDealt) aHits++;
-		}
-		return soon && hHits > aHits;
-	}
-
-	private static WinningDemos renderDemos(List<Round> dRounds, List<Integer> dIdx, List<byte[]> dAct) {
-		int n = dAct.size();
-		WinningDemos out = new WinningDemos(n);
-		if (n == 0) return out;
-		SyntheticEye eye = new SyntheticEye(); MaskFrame cur = new MaskFrame(), prev = new MaskFrame(); Obs obs = new Obs();
+	/** Returns [uppercutSpacerScore, critPressureScore, deflectComboScore] for strong human rounds, or null. */
+	private static float[] styleScores(Round r) {
+		int n = r.ticks.size(); if (n < 40) return null;
+		int dealt = 0, taken = 0, crits = 0, upcuts = 0, defl = 0, close = 0, air = 0, retreat = 0, strafe = 0;
+		float distSum = 0f;
 		for (int i = 0; i < n; i++) {
-			Round r = dRounds.get(i); int t = dIdx.get(i);
-			RoundTick p0 = r.ticks.get(Math.max(0, t - 1)), p1 = r.ticks.get(t);
-			eye.look(0, 1.62, 0, p0.oppFacing, p0.oppPitch, 0, 0, Math.max(0.6, p0.dist), 180f, 180f, 0f, prev);
-			eye.look(0, 1.62, 0, p1.oppFacing, p1.oppPitch, 0, 0, Math.max(0.6, p1.dist), 180f, 180f, 0f, cur);
-			Arrays.fill(obs.vec, 0f);
-			ObsBuilder.writeVision(obs, cur, prev.stats);
-			ObsBuilder.writeScalar(obs.vec, ObsSpec.SC_ON_GROUND, p1.oppGround ? 1f : 0f);
-			ObsBuilder.writeScalar(obs.vec, ObsSpec.SC_VEL_FORWARD, p1.oppToward * 5f);
-			ObsBuilder.writeScalar(obs.vec, ObsSpec.SC_VEL_RIGHT, p1.oppSideS * 5f);
-			ObsBuilder.writeScalar(obs.vec, ObsSpec.SC_VEL_UP, p1.oppUp * 5f);
-			ObsBuilder.writeScalar(obs.vec, ObsSpec.SC_PITCH, p1.oppPitch / 90f);
-			ObsBuilder.writeScalar(obs.vec, ObsSpec.SC_ATTACK_CHARGE, p1.oppSword);
-			ObsBuilder.writeScalar(obs.vec, ObsSpec.SC_HEALTH, p1.oppHp / 20f);
-			ObsBuilder.writeScalar(obs.vec, ObsSpec.SC_SPRINTING, p1.oppSprint ? 1f : 0f);
-			ObsBuilder.writeScalar(obs.vec, ObsSpec.SC_OPP_CHARGE, p1.mySword);
-			ObsBuilder.writeHeadMask(obs.vec, ActionSpace.ALL_HEADS);
-			System.arraycopy(obs.peri, 0, out.peri[i], 0, ObsSpec.PERI_SIZE);
-			System.arraycopy(obs.fovea, 0, out.fovea[i], 0, ObsSpec.FOVEA_SIZE);
-			System.arraycopy(obs.vec, 0, out.vec[i], 0, ObsSpec.VEC);
-			System.arraycopy(dAct.get(i), 0, out.action[i], 0, ActionSpace.HEADS);
+			RoundTick t = r.ticks.get(i);
+			if (t.aiDealt) dealt++;
+			if (t.dist < 5.5f) {
+				close++; distSum += t.dist;
+				if (!t.oppGround) air++;
+				if (t.oppToward < -0.05f) retreat++;
+				if (Math.abs(t.oppSideS) > 0.08f) strafe++;
+			}
+			if (t.aiTaken) {
+				taken++;
+				if (t.aiTakenCrit) crits++;
+				for (int j = Math.max(0, i - 3); j <= i; j++) {
+					RoundTick p = r.ticks.get(j);
+					if (!p.oppGround && p.oppSprint && p.oppUp > -0.10f) { upcuts++; break; }
+				}
+				for (int j = Math.max(0, i - 10); j < i; j++) {
+					if (r.ticks.get(j).aiDealt) { defl++; break; }
+				}
+			}
+		}
+		if (close < 20) return null;
+		boolean strong = r.humanWon || (taken >= 15 && taken >= 0.85f * dealt);
+		if (!strong) return null;
+		float tk = Math.max(1, taken), cl = close;
+		float upcutScore = (upcuts / tk) + (retreat / cl) + Math.max(0f, (distSum / cl - 2.3f) * 0.5f);
+		float critScore = 2.0f * (crits / tk) + 0.5f * (air / cl);
+		float deflScore = 1.5f * (defl / tk) + 0.5f * (strafe / cl);
+		return new float[] {upcutScore, critScore, deflScore};
+	}
+
+	private static int[] assignPlaystyles(List<float[]> scores) {
+		int n = scores.size();
+		double[] mean = new double[3], std = new double[3];
+		for (float[] s : scores) for (int k = 0; k < 3; k++) mean[k] += s[k];
+		for (int k = 0; k < 3; k++) mean[k] /= Math.max(1, n);
+		for (float[] s : scores) for (int k = 0; k < 3; k++) { double d = s[k] - mean[k]; std[k] += d * d; }
+		for (int k = 0; k < 3; k++) std[k] = Math.sqrt(std[k] / Math.max(1, n)) + 1e-6;
+		int[] out = new int[n];
+		for (int i = 0; i < n; i++) {
+			int best = 0; double bestZ = Double.NEGATIVE_INFINITY;
+			for (int k = 0; k < 3; k++) {
+				double z = (scores.get(i)[k] - mean[k]) / std[k];
+				if (z > bestZ) { bestZ = z; best = k; }
+			}
+			out[i] = best;
 		}
 		return out;
 	}
@@ -261,7 +284,7 @@ public final class HumanImitation {
 					tk.oppUp = pf(p[8]); tk.oppToward = pf(p[9]); tk.myToward = pf(p[11]);
 					tk.oppSideS = pf(p[14]); tk.oppFacing = pf(p[15]); tk.oppPitch = pf(p[16]); tk.oppSwing = "1".equals(p[17]);
 					String ev = p.length > 18 ? p[18] : "";
-					tk.aiDealt = ev.contains("DEALT"); tk.aiTaken = ev.contains("TAKEN");
+					tk.aiDealt = ev.contains("DEALT"); tk.aiTaken = ev.contains("TAKEN"); tk.aiTakenCrit = ev.contains("TAKEN:crit");
 					round.ticks.add(tk);
 				}
 			}

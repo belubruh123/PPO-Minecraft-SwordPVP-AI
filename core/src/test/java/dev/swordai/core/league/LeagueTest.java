@@ -147,51 +147,112 @@ final class LeagueTest {
 	}
 
 	@Test
-	void inverseDynamicsLearnsKeysAndHumanImitationBuildsOpponents() {
+	void inverseDynamicsLearnsKeysAndHumanImitationClustersPlaystyles(@TempDir Path tmp) throws Exception {
 		InverseDynamics idm = new InverseDynamics(11L);
 		Random rng = new Random(12L);
-		float[] t0 = new float[InverseDynamics.TICK_DIM];
-		float[] t1 = new float[InverseDynamics.TICK_DIM];
-		float[] t2 = new float[InverseDynamics.TICK_DIM];
+		float[][] tk = new float[InverseDynamics.WINDOW][InverseDynamics.TICK_DIM];
 		float[] feat = new float[InverseDynamics.IN_DIM];
 		int[] act = new int[ActionSpace.HEADS];
 
-		// Generate synthetic kinematic transitions matching Minecraft physics.
-		for (int i = 0; i < 600; i++) {
+		// Generate synthetic 5-tick kinematic transitions matching client-lerped Minecraft physics.
+		for (int i = 0; i < 800; i++) {
 			int fwd = rng.nextInt(3);
 			int str = rng.nextInt(3);
 			int spr = fwd == 1 && rng.nextBoolean() ? 1 : 0;
 			int jmp = rng.nextInt(6) == 0 ? 1 : 0;
 			int atk = rng.nextInt(5) == 0 ? 1 : 0;
-			act[ActionSpace.FORWARD] = fwd;
-			act[ActionSpace.STRAFE] = str;
-			act[ActionSpace.SPRINT] = spr;
-			act[ActionSpace.JUMP] = jmp;
-			act[ActionSpace.ATTACK] = atk;
+			act[ActionSpace.FORWARD] = fwd; act[ActionSpace.STRAFE] = str;
+			act[ActionSpace.SPRINT] = spr; act[ActionSpace.JUMP] = jmp; act[ActionSpace.ATTACK] = atk;
 
-			InverseDynamics.packTick(3.0f, 0f, 0f, 0f, true, false, 1f, false, 0f, 0f, t0, 0);
-			InverseDynamics.packTick(2.8f, 0f, 0f, 0f, true, false, 1f, false, 0f, 0f, t1, 0);
 			float velFwd = fwd == 1 ? (spr == 1 ? 0.28f : 0.21f) : (fwd == 2 ? -0.18f : 0f);
 			float velSide = str == 1 ? -0.18f : (str == 2 ? 0.18f : 0f);
 			float velUp = jmp == 1 ? 0.42f : 0f;
-			InverseDynamics.packTick(2.8f - velFwd, velFwd, velSide, velUp, jmp == 0, spr == 1,
-					atk == 1 ? 0.1f : 1f, atk == 1, 0f, 0f, t2, 0);
-			InverseDynamics.packWindow(t0, t1, t2, false, feat);
+			InverseDynamics.packTick(3.2f, 0f, 0f, 0f, true, false, 1f, false, 0f, 0f, tk[0], 0);
+			InverseDynamics.packTick(3.0f, 0f, 0f, 0f, true, false, 1f, false, 0f, 0f, tk[1], 0);
+			InverseDynamics.packTick(2.8f, 0f, 0f, 0f, true, false, 1f, false, 0f, 0f, tk[2], 0);
+			InverseDynamics.packTick(2.8f - velFwd * 0.5f, velFwd * 0.5f, velSide * 0.5f, velUp * 0.6f, jmp == 0, spr == 1,
+					atk == 1 ? 0.1f : 1f, atk == 1, 0f, 0f, tk[3], 0);
+			InverseDynamics.packTick(2.8f - velFwd, velFwd, velSide, velUp * 0.8f, jmp == 0, spr == 1,
+					atk == 1 ? 0.18f : 1f, atk == 1, 0f, 0f, tk[4], 0);
+			InverseDynamics.packWindow(tk[0], tk[1], tk[2], tk[3], tk[4], false, feat);
 			idm.addSample(feat, act);
 		}
-		idm.train(80, 64, 3e-3f, rng);
-		assertTrue(idm.lastAccuracy() > 0.85f, "IDM should learn keys cleanly, got acc=" + idm.lastAccuracy());
+		idm.train(100, 64, 3e-3f, rng);
+		assertTrue(idm.lastAccuracy() > 0.85f, "5-tick IDM should learn keys cleanly, got acc=" + idm.lastAccuracy());
+		Path idmFile = tmp.resolve("idm5.bin");
+		idm.save(idmFile);
+		InverseDynamics idmLoaded = new InverseDynamics(99L);
+		assertTrue(idmLoaded.load(idmFile));
+		assertEquals(idm.trainedSteps(), idmLoaded.trainedSteps());
 
-		// Also verify real duel loading if run/swordai/real-fights exists on disk.
+		// Verify LaggedRecorder produces 5-tick client-lerped samples cleanly.
+		InverseDynamics.LaggedRecorder rec = new InverseDynamics.LaggedRecorder();
+		rec.idm = idmLoaded;
+		int before = idmLoaded.sampleCount();
+		for (int t = 0; t < 8; t++) {
+			rec.record(0, 0, t * 0.2, 0f, 0f, 0f, true, true, false, 0, 0, 0, 3.0, 3f - t * 0.2f, act);
+		}
+		assertEquals(before + 4, idmLoaded.sampleCount(), "LaggedRecorder should emit 1 sample per tick after 5-tick warmup");
+
+		// Verify playstyle-clustered HumanImitation on real recorded fights (if present on disk).
 		Path realDir = Path.of("..", "run", "swordai", "real-fights");
 		if (Files.isDirectory(realDir)) {
 			HumanImitation hi = new HumanImitation();
 			int loaded = hi.loadDirectory(realDir);
 			assertTrue(loaded > 0);
 			hi.buildFromRealRounds(idm, 7L);
-			assertFalse(hi.opponents().isEmpty(), "Should clone losing human opponents");
-			assertTrue(hi.winningDemos().size > 0, "Should extract outcome-filtered winning human demos");
+			assertEquals(4, hi.opponents().size(), "Should build 3 playstyle clusters + all-humans");
+			float[] st = new float[HumanImitation.STATE_DIM], pr = new float[ActionSpace.TOTAL_LOGITS];
+			HumanImitation.HumanPolicy.packLiveState(2.6f, 1.0f, 0.5f, true, true, true, 0.2f, 0f, 0f, 0.1f, 0f, 1f, 1f, 20, 4, 0, 1, 0f, 0f, 2.8f, st);
+			for (HumanImitation.HumanPolicy hp : hi.opponents()) {
+				assertTrue(hp.trainingTicks >= 1000, "Each playstyle cluster should be data-rich: " + hp.name + "=" + hp.trainingTicks);
+				hp.probs(st, pr);
+				float sumAtk = pr[ActionSpace.OFFSETS[ActionSpace.ATTACK]] + pr[ActionSpace.OFFSETS[ActionSpace.ATTACK] + 1];
+				assertEquals(1.0f, sumAtk, 1e-4f);
+			}
 		}
+	}
+
+	@Test
+	void humanStyleKlPullsMovementAndRespectsClickHygiene() {
+		LeagueLearner learner = new LeagueLearner(128, 71L);
+		SwordNet prior = new SwordNet(71L);
+		LeagueLearner.copyWeights(learner.actor, prior);
+		Random rng = new Random(73L);
+		// Style target: strong S-tap (FORWARD=2) and ATTACK=1; verify PPO pulls FORWARD->2 while keeping ATTACK=0 when uncharged!
+		float[] style = new float[ActionSpace.TOTAL_LOGITS];
+		for (int h = 0; h < ActionSpace.HEADS; h++) {
+			int off = ActionSpace.OFFSETS[h], sz = ActionSpace.SIZES[h];
+			for (int k = 0; k < sz; k++) style[off + k] = 1f / sz;
+		}
+		int fwdOff = ActionSpace.OFFSETS[ActionSpace.FORWARD], atkOff = ActionSpace.OFFSETS[ActionSpace.ATTACK];
+		style[fwdOff] = 0.02f; style[fwdOff + 1] = 0.03f; style[fwdOff + 2] = 0.95f;
+		style[atkOff] = 0.05f; style[atkOff + 1] = 0.95f;
+
+		Obs probe = randomObs(rng);
+		probe.vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_ATTACK_CHARGE] = 0.2f; // uncharged!
+		probe.priv[ObsSpec.PV_IN_REACH] = 0f;
+		SwordNet.Workspace ws = learner.actor.newWorkspace();
+		float[] pBefore = new float[ActionSpace.TOTAL_LOGITS], pAfter = new float[ActionSpace.TOTAL_LOGITS];
+		learner.actor.forward(ws, ws.step, probe.peri, probe.fovea, probe.vec, new float[ObsMemory.HIST], new float[ObsMemory.SEEN], new float[ObsMemory.GRU_HIDDEN], null);
+		dev.swordai.core.rl.Policy.allProbs(ws.step.logits, pBefore);
+
+		LeagueLearner.Decision dec = new LeagueLearner.Decision();
+		for (int u = 0; u < 3; u++) {
+			for (int t = 0; t < 128; t++) {
+				Obs o = randomObs(rng);
+				o.vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_ATTACK_CHARGE] = 0.2f; // uncharged!
+				o.priv[ObsSpec.PV_IN_REACH] = 0f;
+				learner.decide(o, false, 1f, dec);
+				learner.record(o, dec, 0f, t % 32 == 31, null, 0f);
+				learner.recordStyle(style, 0.25f);
+			}
+			learner.update(0f, prior, 0.01f, 0f);
+		}
+		learner.actor.forward(ws, ws.step, probe.peri, probe.fovea, probe.vec, new float[ObsMemory.HIST], new float[ObsMemory.SEEN], new float[ObsMemory.GRU_HIDDEN], null);
+		dev.swordai.core.rl.Policy.allProbs(ws.step.logits, pAfter);
+		assertTrue(pAfter[fwdOff + 2] > pBefore[fwdOff + 2] + 0.05f, "Style KL must pull FORWARD->S: " + pBefore[fwdOff + 2] + " -> " + pAfter[fwdOff + 2]);
+		assertTrue(pAfter[atkOff + 1] < pBefore[atkOff + 1], "Uncharged click hygiene must prevent style KL from raising uncharged ATTACK: " + pBefore[atkOff + 1] + " -> " + pAfter[atkOff + 1]);
 	}
 
 	@Test

@@ -27,6 +27,7 @@ public final class LeaguePpo {
 	private final float[] hCur = new float[ObsMemory.GRU_HIDDEN], hZero = new float[ObsMemory.GRU_HIDDEN];
 	private final float[] dHNext = new float[ObsMemory.GRU_HIDDEN], dHPrev = new float[ObsMemory.GRU_HIDDEN];
 	private final float[] probs = new float[ActionSpace.TOTAL_LOGITS], headEnt = new float[ActionSpace.HEADS];
+	private final float[] styleBuf = new float[ActionSpace.TOTAL_LOGITS];
 	private final float[] stepEnt = ENTROPY_COEF.clone();
 	private final float[][] chunkLogitsGrad = new float[CHUNK][ActionSpace.TOTAL_LOGITS];
 	private final Random rng;
@@ -112,6 +113,16 @@ public final class LeaguePpo {
 						if (cachedPrior != null) {
 							sumPrior += Policy.kl(r.headMask[t], cachedPrior[t], probs);
 							Policy.addKlGradient(r.headMask[t], cachedPrior[t], probs, priorWeight, chunkLogitsGrad[k]);
+						}
+						if (r.styleProbs != null && r.styleWeight[t] > 0f) {
+							System.arraycopy(r.styleProbs[t], 0, styleBuf, 0, ActionSpace.TOTAL_LOGITS);
+							if (!readyHit) {
+								int aOff = ActionSpace.OFFSETS[ActionSpace.ATTACK];
+								styleBuf[aOff] = 1f;
+								styleBuf[aOff + 1] = 0f;
+							}
+							int sMask = r.headMask[t] & HumanImitation.HumanPolicy.STYLE_HEADS;
+							Policy.addKlGradient(sMask, styleBuf, probs, r.styleWeight[t], chunkLogitsGrad[k]);
 						}
 						if (kickWeight > 0f && r.demoWeight[t] > 0f) {
 							sumDemo += addCeGrad(r.headMask[t], r.demoAction[t], probs, kickWeight * r.demoWeight[t], chunkLogitsGrad[k]);
