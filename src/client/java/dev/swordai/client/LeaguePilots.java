@@ -192,6 +192,10 @@ final class LeaguePilots {
 					sinceD, sinceT, ownC, oppC, yawErr, bot.getXRot(), prevDist, state);
 			prevDist = dist;
 			policy.act(state, 0.85f, rng, action);
+			// If human policy dropped sprint in mid-air to crit, release W for 1 tick so vanilla ClientSprint clears sprinting.
+			if (!bot.onGround() && bot.isSprinting() && action[ActionSpace.SPRINT] == 0 && action[ActionSpace.FORWARD] == 1) {
+				action[ActionSpace.FORWARD] = 0;
+			}
 			// Human-like tight tracking aim so cloned playstyle movement/timing actually lands hits in checks.
 			if (Math.abs(yawErr) > 3f) action[ActionSpace.YAW] = InverseDynamics.nearestBin(yawErr + (rng.nextFloat() - 0.5f) * 2.5f, ActionSpace.YAW_BINS);
 			if (Math.abs(pitchErr) > 3f) action[ActionSpace.PITCH] = InverseDynamics.nearestBin(pitchErr + (rng.nextFloat() - 0.5f) * 2f, ActionSpace.PITCH_BINS);

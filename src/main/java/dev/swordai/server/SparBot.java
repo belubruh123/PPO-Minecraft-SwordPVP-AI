@@ -110,57 +110,69 @@ public final class SparBot {
 
 		switch (activeStyle) {
 			case CRIT_SPAMMER -> {
-				// Close-range crit pressure, double crits, and punish crits when lifted.
-				if (dist < 2.6f && onGround && charge >= 0.65f) {
+				// Close-range crit pressure, T1/T1c double crits, and K3 falling-crit spacing.
+				// Vanilla ClientSprint requires releasing W (fwd=0) for >=1 tick in air to cancel sprint so crits register!
+				if (dist < 3.1f && onGround && (charge >= 0.55f || sinceHitDealt <= 4)) {
 					jump = 1;
+					fwd = dist > 2.3f ? 1 : 0;
 					sprint = 0;
 					critChain++;
-				} else if (dist < 1.8f) {
+				} else if (dist < 1.9f) {
 					fwd = 0;
 					sprint = 0;
 				}
 				if (!onGround) {
 					sprint = 0;
-					attack = (falling && ready && aimed) ? 1 : 0;
+					if (bot.isSprinting() || falling || dist < 2.6f) fwd = 0;
+					attack = (falling && ready && aimed && !bot.isSprinting()) ? 1 : 0;
 				} else {
-					attack = (ready && aimed && (dist > 2.5f || charge >= 0.98f)) ? 1 : 0;
+					attack = (ready && aimed && (dist > 2.7f || charge >= 0.98f)) ? 1 : 0;
 				}
 			}
 			case JUMP_IN_CRITTER -> {
-				// Jump-ins from 3.2-4.8 blocks, then sprint spacing or crit follow-up.
-				if (onGround && dist >= 3.1f && dist <= 4.7f && charge >= 0.72f) {
+				// K3 jump-ins from 3.0-4.6 blocks: sprint-jump to carry momentum, release W mid-air so sprint cancels, land 1.5x crit falling!
+				if (onGround && dist >= 3.0f && dist <= 4.6f && charge >= 0.65f) {
 					jump = 1;
 					fwd = 1;
 					sprint = 1;
 				} else if (!onGround) {
 					sprint = 0;
-					fwd = dist > 2.2f ? 1 : 0;
-					attack = (falling && ready && aimed) ? 1 : 0;
+					// Must release W once airborne so ClientSprint clears sprinting before the falling crit!
+					fwd = (bot.isSprinting() || falling || dist < 2.9f) ? 0 : 1;
+					attack = (falling && ready && aimed && !bot.isSprinting()) ? 1 : 0;
 				} else {
-					if (sinceHitDealt <= 3 && dist < 2.8f) {
-						fwd = 2; // brief back-step on cooldown
+					if (sinceHitDealt <= 4 && dist < 2.8f) {
+						fwd = 2; // S-spacing out on cooldown before next jump-in crit
 						sprint = 0;
 					}
 					attack = (ready && aimed) ? 1 : 0;
 				}
 			}
 			case COMBO_PLAYER, MIXER -> {
-				// W-tap combo spacing around 2.5-3.0 blocks + jump reset on hit + punish crit if lifted close.
-				if (sinceHitTaken == 1 && onGround && dist < 3.4f && rng.nextFloat() < 0.75f) {
-					jump = 1; // jump reset
+				// 3-block W-tap / S-tap spacing + T10 uppercuts after stuns + jump resets + falling punish crits.
+				boolean risingOrPeak = !onGround && bot.getDeltaMovement().y > -0.08;
+				if (sinceHitTaken == 1 && onGround && dist < 3.4f && rng.nextFloat() < 0.70f) {
+					jump = 1; // T9 jump reset
+				} else if (ownCombo >= 1 && sinceHitDealt >= 2 && sinceHitDealt <= 5 && onGround && dist >= 2.6f && dist <= 4.2f) {
+					jump = 1; // T10 uppercut chase after stun
+					fwd = 1;
+					sprint = 1;
 				} else if (ownCombo >= 1 && dist < 2.5f && charge < 0.85f) {
-					fwd = dist < 2.1f ? 2 : 0; // W-tap / S-tap to hold combo spacing
+					fwd = dist < 2.15f ? 2 : 0; // S-tap / W-tap to hold 2.7-3.0 block combo spacing
 					sprint = 0;
 				} else if (sinceHitDealt <= 2) {
-					fwd = 0; // W-tap reset for next sprint hit
+					fwd = 0; // W-tap sprint reset
 					sprint = 0;
-				} else if (oppAir && dist > 2.8f) {
+				} else if (oppAir && dist > 2.7f) {
 					fwd = 1;
 					sprint = 1;
 				}
-				if (!onGround && falling && ready && aimed) {
+				if (!onGround && risingOrPeak && ownCombo >= 1 && ready && aimed) {
+					attack = 1; // T10 uppercut sprint-hit near peak
+				} else if (!onGround && falling && ready && aimed) {
+					fwd = bot.isSprinting() ? 0 : fwd;
 					sprint = 0;
-					attack = 1;
+					attack = !bot.isSprinting() ? 1 : 0;
 				} else if (onGround && ready && aimed) {
 					attack = 1;
 				}

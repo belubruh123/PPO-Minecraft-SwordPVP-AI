@@ -410,8 +410,9 @@ final class LeagueSession implements AgentSession {
 			plan = opp.net() != null ? EpisodePlan.ofPilot(new LeaguePilots.NetPilot(opp.net(), cfg.aimResponse, 0f, seed + 1L, null), seed, true)
 					: opp.human() != null ? EpisodePlan.ofPilot(new LeaguePilots.HumanPilot(opp.human(), seed + 1L), seed, true)
 					: EpisodePlan.ofSpar(opp.spar(), seed, true);
-			// Balanced 0 ms / 100 ms lag across every checkPool slot regardless of whether checkPool.size() is even or odd.
-			activeLag = (((checkPair / checkPool.size()) + checkPair) % 2 == 1) ? 2 : 0;
+			// Balanced 0 ms / 100 ms lag across every checkPool slot whether checkPool.size() is odd or even.
+			int lagBit = (checkPool.size() % 2 == 1) ? (checkPair % 2) : (((checkPair / checkPool.size()) + checkPair) % 2);
+			activeLag = (lagBit == 1) ? 2 : 0;
 			plan.agentLag = activeLag; plan.botLag = activeLag; plan.botPing = activeLag; plan.agentKnockLag = activeLag > 0 ? 1 : 0;
 			recorder.start(checkOppName);
 		} else if (activeSearch != null) {
@@ -428,8 +429,8 @@ final class LeagueSession implements AgentSession {
 				case HUMAN_CLONE -> EpisodePlan.ofPilot(humanChallenger != null ? humanChallenger : new LeaguePilots.HumanPilot(currentMatch.human, rng.nextLong()), 0L, false);
 				case SPAR_BOT -> EpisodePlan.ofSpar(currentMatch.sparStyle, 0L, false);
 			};
-			// Sim-to-real latency randomization (OpenAI Five / GT Sophy): 50% 0 ms, 50% 50-150 ms server lag.
-			activeLag = rng.nextBoolean() ? (1 + rng.nextInt(3)) : 0;
+			// Sim-to-real latency randomization: 80% realistic 50-150 ms server lag (where K3 falling crits & lagged KB punish K2 mistakes), 20% 0 ms.
+			activeLag = rng.nextFloat() < 0.80f ? (1 + rng.nextInt(3)) : 0;
 			plan.agentLag = activeLag; plan.botLag = activeLag; plan.botPing = activeLag;
 			plan.agentKnockLag = activeLag > 0 ? Math.max(1, activeLag - 1) : 0;
 			// 20% 360-degree spawns (including close 0.5-2.2 block pass-throughs with ticksSinceSeen=0) so the agent learns instant 180 turn-around.

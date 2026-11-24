@@ -21,10 +21,10 @@ public final class MaskExtractor {
 
 	/** Frames taller than this are subsampled so the cost stays flat on big windows. */
 	private static final int TARGET_ROWS = 270;
-	/** A key channel must be at least this bright, and at least four times each other channel. */
-	private static final int MIN_KEY = 48;
+	/** A key channel must be at least this bright (FULL_BRIGHT keyed skin), and at least 5x each other channel. */
+	private static final int MIN_KEY = 80;
 	/** Fewer samples than this is treated as noise, not as an enemy. */
-	private static final int MIN_SAMPLES = 2;
+	private static final int MIN_SAMPLES = 4;
 
 	private final int[] periCount = new int[ObsSpec.PERI_SIZE];
 	private final int[] periTotal = new int[ObsSpec.PERI_W * ObsSpec.PERI_H];
@@ -33,10 +33,10 @@ public final class MaskExtractor {
 
 	/** Classifies one pixel; channels are 0..255. */
 	public static int classify(int r, int g, int b) {
-		if (b >= MIN_KEY && r * 4 <= b && g * 4 <= b) {
+		if (b >= MIN_KEY && r * 5 <= b && g * 5 <= b) {
 			return HEAD;
 		}
-		if (g >= MIN_KEY && r * 4 <= g && b * 4 <= g) {
+		if (g >= MIN_KEY && r * 5 <= g && b * 5 <= g) {
 			return BODY;
 		}
 		return NONE;

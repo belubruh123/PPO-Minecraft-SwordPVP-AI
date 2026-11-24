@@ -174,6 +174,11 @@ public final class HumanImitation {
 				for (int w = 0; w < InverseDynamics.WINDOW; w++) packKin(r.ticks.get(t - 2 + w), tk[w]);
 				InverseDynamics.packWindow(tk[0], tk[1], tk[2], tk[3], tk[4], p0.aiDealt || pM1.aiDealt, win);
 				idm.predict(win, pred);
+				// Vanilla Minecraft only clears ClientSprint mid-air when W (FORWARD) is released; kinematic IDM misses 1-tick air W-releases.
+				if (!p0.oppGround && !p0.oppSprint && (pM1.oppSprint || p0.oppUp < 0.08f)) {
+					if (pred[ActionSpace.FORWARD] == 1) pred[ActionSpace.FORWARD] = 0;
+					pred[ActionSpace.SPRINT] = 0;
+				}
 				pred[ActionSpace.YAW] = InverseDynamics.nearestBin(wrapDeg(pP1.oppFacing - p0.oppFacing), ActionSpace.YAW_BINS);
 				pred[ActionSpace.PITCH] = InverseDynamics.nearestBin(pP1.oppPitch - p0.oppPitch, ActionSpace.PITCH_BINS);
 				byte[] ab = new byte[ActionSpace.HEADS];

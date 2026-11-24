@@ -123,6 +123,8 @@ class VisionTest {
 		assertEquals(MaskExtractor.NONE, MaskExtractor.classify(72, 181, 24), "leaves");
 		assertEquals(MaskExtractor.NONE, MaskExtractor.classify(60, 220, 215), "diamond sword");
 		assertEquals(MaskExtractor.NONE, MaskExtractor.classify(128, 128, 128), "stone");
+		assertEquals(MaskExtractor.NONE, MaskExtractor.classify(10, 60, 10), "dark green arena block");
+		assertEquals(MaskExtractor.NONE, MaskExtractor.classify(10, 10, 60), "dark blue arena block");
 		assertEquals(MaskExtractor.NONE, MaskExtractor.classify(0, 0, 20), "too dark");
 	}
 
