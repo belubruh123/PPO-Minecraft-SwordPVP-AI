@@ -43,6 +43,7 @@ echo "=== Carpet PvP (run/carpet-pvp.on): $(bash "$S/carpet-pvp-switch.sh" post)
 powershell -NoProfile -Command "Start-Process -FilePath conhost.exe -ArgumentList '--headless','cmd.exe','/c','D:\swordai\run\start-school.cmd'"
 for i in $(seq 1 120); do grep -aq "joined the game" $L 2>/dev/null && break; sleep 5; done
 grep -aq "joined the game" $L || { echo "=== $(date +%H:%M:%S) world never loaded"; exit 1; }
+powershell -NoProfile -ExecutionPolicy Bypass -File D:/swordai/tools/training-window.ps1 hide   # off the taskbar
 sleep 10
 printf '%s\r\n' "$CMD" > /d/swordai/run/swordai/inbox.txt
 sleep 15
