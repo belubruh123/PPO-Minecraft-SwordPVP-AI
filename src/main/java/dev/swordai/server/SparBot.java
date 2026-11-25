@@ -87,7 +87,9 @@ public final class SparBot {
 
 		float charge = bot.getAttackStrengthScale(0f);
 		boolean onGround = bot.onGround();
-		boolean falling = !onGround && bot.getDeltaMovement().y < -0.05;
+		// Vanilla Player.canCriticalAttack requires fallDistance > 0 (FakeFall) and !serverSprinting; deltaMovement.y < -0.05 fires 1 tick too early at apex!
+		boolean falling = !onGround && bot.fallDistance > 0.0;
+		boolean serverSprint = body.serverSprinting();
 		boolean aimed = body.aimedAt(bot, opp);
 		boolean ready = charge >= 0.92f;
 		boolean oppAir = !opp.onGround();
@@ -123,8 +125,8 @@ public final class SparBot {
 				}
 				if (!onGround) {
 					sprint = 0;
-					if (bot.isSprinting() || falling || dist < 2.6f) fwd = 0;
-					attack = (falling && ready && aimed && !bot.isSprinting()) ? 1 : 0;
+					if (bot.isSprinting() || serverSprint || falling || dist < 2.6f) fwd = 0;
+					attack = (falling && ready && aimed && !serverSprint) ? 1 : 0;
 				} else {
 					attack = (ready && aimed && (dist > 2.7f || charge >= 0.98f)) ? 1 : 0;
 				}
@@ -138,8 +140,8 @@ public final class SparBot {
 				} else if (!onGround) {
 					sprint = 0;
 					// Must release W once airborne so ClientSprint clears sprinting before the falling crit!
-					fwd = (bot.isSprinting() || falling || dist < 2.9f) ? 0 : 1;
-					attack = (falling && ready && aimed && !bot.isSprinting()) ? 1 : 0;
+					fwd = (bot.isSprinting() || serverSprint || falling || dist < 2.9f) ? 0 : 1;
+					attack = (falling && ready && aimed && !serverSprint) ? 1 : 0;
 				} else {
 					if (sinceHitDealt <= 4 && dist < 2.8f) {
 						fwd = 2; // S-spacing out on cooldown before next jump-in crit
@@ -150,7 +152,7 @@ public final class SparBot {
 			}
 			case COMBO_PLAYER, MIXER -> {
 				// 3-block W-tap / S-tap spacing + T10 uppercuts after stuns + jump resets + falling punish crits.
-				boolean risingOrPeak = !onGround && bot.getDeltaMovement().y > -0.08;
+				boolean risingOrPeak = !onGround && !falling;
 				if (sinceHitTaken == 1 && onGround && dist < 3.4f && rng.nextFloat() < 0.70f) {
 					jump = 1; // T9 jump reset
 				} else if (ownCombo >= 1 && sinceHitDealt >= 2 && sinceHitDealt <= 5 && onGround && dist >= 2.6f && dist <= 4.2f) {
@@ -170,9 +172,9 @@ public final class SparBot {
 				if (!onGround && risingOrPeak && ownCombo >= 1 && ready && aimed) {
 					attack = 1; // T10 uppercut sprint-hit near peak
 				} else if (!onGround && falling && ready && aimed) {
-					fwd = bot.isSprinting() ? 0 : fwd;
+					fwd = (bot.isSprinting() || serverSprint) ? 0 : fwd;
 					sprint = 0;
-					attack = !bot.isSprinting() ? 1 : 0;
+					attack = !serverSprint ? 1 : 0;
 				} else if (onGround && ready && aimed) {
 					attack = 1;
 				}

@@ -12,7 +12,7 @@ public final class MoveSearch {
 		CURRENT_POLICY(-1, -1, -1, -1, -1, 0),
 		SPRINT_HIT_STRAFE_L(1, 1, 1, 0, 1, 4),
 		SPRINT_HIT_STRAFE_R(1, 2, 1, 0, 1, 4),
-		JUMP_CRIT_FORWARD(1, 0, 0, 1, 1, 8),
+		JUMP_CRIT_FORWARD(1, 0, 0, 1, 1, 10),
 		WAIT_DEFLECT(0, 0, 0, 0, 0, 4),
 		S_FLY_OUT(2, 0, 0, 1, 1, 4),
 		UPPERCUT_CHASE(1, 0, 1, 1, 1, 6);

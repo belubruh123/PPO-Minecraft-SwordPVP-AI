@@ -193,7 +193,7 @@ final class LeaguePilots {
 			prevDist = dist;
 			policy.act(state, 0.85f, rng, action);
 			// If human policy dropped sprint in mid-air to crit, release W for 1 tick so vanilla ClientSprint clears sprinting.
-			if (!bot.onGround() && bot.isSprinting() && action[ActionSpace.SPRINT] == 0 && action[ActionSpace.FORWARD] == 1) {
+			if (!bot.onGround() && (bot.isSprinting() || body.serverSprinting()) && action[ActionSpace.SPRINT] == 0 && action[ActionSpace.FORWARD] == 1) {
 				action[ActionSpace.FORWARD] = 0;
 			}
 			// Human-like tight tracking aim so cloned playstyle movement/timing actually lands hits in checks.

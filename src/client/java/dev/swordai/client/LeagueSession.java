@@ -334,7 +334,8 @@ final class LeagueSession implements AgentSession {
 		MoveSearch.Candidate cand = activeSearch.currentCandidate();
 		if (searchTick < cand.macroTicks) {
 			boolean canHit = me.getAttackStrengthScale(0f) >= 0.92f && facts.onBody && facts.reachDist <= 3.05f;
-			cand.apply(dec.action, searchTick, canHit, !me.onGround() && me.getY() < me.yo);
+			boolean critWindow = !me.onGround() && me.fallDistance > 0.0 && !me.isSprinting();
+			cand.apply(dec.action, searchTick, canHit, critWindow);
 		}
 		if (searchTick == 0) activeSearch.noteFirstStep(obs, learner.lastHistIn(), learner.lastSeenIn(), learner.lastHiddenIn(), dec.action);
 		System.arraycopy(dec.action, 0, lastAction, 0, ActionSpace.HEADS); hasPrev = true;
