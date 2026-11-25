@@ -207,8 +207,10 @@ final class LeagueTest {
 			for (HumanImitation.HumanPolicy hp : hi.opponents()) {
 				assertTrue(hp.trainingTicks >= 1000, "Each playstyle cluster should be data-rich: " + hp.name + "=" + hp.trainingTicks);
 				hp.probs(st, pr);
-				float sumAtk = pr[ActionSpace.OFFSETS[ActionSpace.ATTACK]] + pr[ActionSpace.OFFSETS[ActionSpace.ATTACK] + 1];
+				float pAtk = pr[ActionSpace.OFFSETS[ActionSpace.ATTACK] + 1];
+				float sumAtk = pr[ActionSpace.OFFSETS[ActionSpace.ATTACK]] + pAtk;
 				assertEquals(1.0f, sumAtk, 1e-4f);
+				assertTrue(pAtk > 0.15f, "Charged falling in-reach human clone must swing: " + hp.name + " pAtk=" + pAtk);
 			}
 		}
 	}

@@ -184,7 +184,10 @@ public final class HumanImitation {
 				InverseDynamics.packWindow(tk[0], tk[1], tk[2], tk[3], tk[4], p0.aiDealt || pM1.aiDealt, win);
 				idm.predict(win, pred);
 				// Direct physics labels compensate for 3-tick RemoteView glide (which lags bounce-jump oppUp to t+3) and exact swing start.
-				if (!pM1.oppSwing && p0.oppSwing) pred[ActionSpace.ATTACK] = 1;
+				// At tick t before a swing, oppSwing is 0 and oppSword is ~0.96-1.00; on t+1 oppSwing turns 1 and oppSword resets to 0.
+				if ((!p0.oppSwing && pP1.oppSwing) || (pP1.oppSword < p0.oppSword - 0.15f && p0.oppSword >= 0.85f)) {
+					pred[ActionSpace.ATTACK] = 1;
+				}
 				boolean knockedUp = p0.aiDealt || pM1.aiDealt;
 				float futureUp = Math.max(pP1.oppUp, Math.max(pP2.oppUp, pP3.oppUp));
 				boolean tookOff = (p0.oppGround && !pP1.oppGround) || (pM1.oppUp < -0.10f && p0.oppUp > pM1.oppUp + 0.08f);
