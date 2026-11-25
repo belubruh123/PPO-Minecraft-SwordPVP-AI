@@ -18,8 +18,8 @@ import java.util.zip.GZIPInputStream;
 public final class HumanImitation {
 	public static final int STATE_DIM = 20;
 	public static final String[] CLUSTERS = {"uppercut-spacer", "crit-pressure", "deflect-combo", "all-humans"};
-	private static final int MIN_TICKS = 80, MAX_CLUSTER_SAMPLES = 16_384;
-	private static final float ATTACK_POS_WEIGHT = 2.5f;
+	private static final int MIN_TICKS = 80, MAX_CLUSTER_SAMPLES = 16_384, MAX_STRONG_ROUNDS = 72;
+	private static final float ATTACK_POS_WEIGHT = 2.5f, JUMP_POS_WEIGHT = 1.6f;
 
 	public static final class RoundTick {
 		public float dist, mySword, oppSword, myHp, oppHp, oppUp, oppToward, oppSideS, myToward, oppFacing, oppPitch;
@@ -37,7 +37,7 @@ public final class HumanImitation {
 		/** Movement, sprint, jump, and attack heads used for Human-KL RL anchoring (leaves aim to SwordNet). */
 		public static final int STYLE_HEADS = (1 << ActionSpace.FORWARD) | (1 << ActionSpace.STRAFE)
 				| (1 << ActionSpace.SPRINT) | (1 << ActionSpace.JUMP) | (1 << ActionSpace.ATTACK);
-		private static final int HIDDEN = 96;
+		private static final int HIDDEN = 128;
 		public final String name;
 		public final int trainingTicks;
 		public final ParamSet params = new ParamSet();
@@ -93,7 +93,8 @@ public final class HumanImitation {
 						for (int h = 0; h < ActionSpace.HEADS; h++) {
 							int off = ActionSpace.OFFSETS[h], sz = ActionSpace.SIZES[h], a = y[h];
 							Policy.softmax(logits, off, sz, probs);
-							float w = (h == ActionSpace.ATTACK && a == 1) ? ATTACK_POS_WEIGHT : 1f;
+							float w = (h == ActionSpace.ATTACK && a == 1) ? ATTACK_POS_WEIGHT
+									: (h == ActionSpace.JUMP && a == 1) ? JUMP_POS_WEIGHT : 1f;
 							for (int i = 0; i < sz; i++) dLogits[off + i] = w * (probs[off + i] - (i == a ? 1f : 0f));
 						}
 						out.backward(h2, 0, dLogits, 0, dH2, 0, grads); gate(dH2, h2);
@@ -150,6 +151,12 @@ public final class HumanImitation {
 		if (strong.isEmpty()) {
 			for (Round r : rounds) { strong.add(r); rawScores.add(new float[] {0f, 0f, 0f}); }
 		}
+		// Keep a rolling window of the newest strong rounds so ancient weak-AI losses don't dilute modern high-rank opponents.
+		if (strong.size() > MAX_STRONG_ROUNDS) {
+			int drop = strong.size() - MAX_STRONG_ROUNDS;
+			strong = new ArrayList<>(strong.subList(drop, strong.size()));
+			rawScores = new ArrayList<>(rawScores.subList(drop, rawScores.size()));
+		}
 		int[] clusterOf = assignPlaystyles(rawScores);
 
 		Map<String, List<float[]>> byX = new LinkedHashMap<>();
@@ -163,10 +170,12 @@ public final class HumanImitation {
 		for (int ri = 0; ri < strong.size(); ri++) {
 			Round r = strong.get(ri);
 			String cl = CLUSTERS[clusterOf[ri]];
-			int n = r.ticks.size(); if (n < 6) continue;
+			int n = r.ticks.size(); if (n < 7) continue;
+			int copies = r.humanWon ? 2 : 1;
 			int sinceD = 1000, sinceT = 1000, ownC = 0, oppC = 0;
-			for (int t = 2; t < n - 2; t++) {
-				RoundTick pM1 = r.ticks.get(t - 1), p0 = r.ticks.get(t), pP1 = r.ticks.get(t + 1);
+			for (int t = 2; t < n - 3; t++) {
+				RoundTick pM1 = r.ticks.get(t - 1), p0 = r.ticks.get(t), pP1 = r.ticks.get(t + 1),
+						pP2 = r.ticks.get(t + 2), pP3 = r.ticks.get(t + 3);
 				if (p0.aiTaken) { sinceD = 0; ownC++; oppC = 0; } else sinceD = Math.min(1000, sinceD + 1);
 				if (p0.aiDealt) { sinceT = 0; oppC++; ownC = 0; } else sinceT = Math.min(1000, sinceT + 1);
 				if (p0.dist > 8.5f) continue;
@@ -174,6 +183,12 @@ public final class HumanImitation {
 				for (int w = 0; w < InverseDynamics.WINDOW; w++) packKin(r.ticks.get(t - 2 + w), tk[w]);
 				InverseDynamics.packWindow(tk[0], tk[1], tk[2], tk[3], tk[4], p0.aiDealt || pM1.aiDealt, win);
 				idm.predict(win, pred);
+				// Direct physics labels compensate for 3-tick RemoteView glide (which lags bounce-jump oppUp to t+3) and exact swing start.
+				if (!pM1.oppSwing && p0.oppSwing) pred[ActionSpace.ATTACK] = 1;
+				boolean knockedUp = p0.aiDealt || pM1.aiDealt;
+				float futureUp = Math.max(pP1.oppUp, Math.max(pP2.oppUp, pP3.oppUp));
+				boolean tookOff = (p0.oppGround && !pP1.oppGround) || (pM1.oppUp < -0.10f && p0.oppUp > pM1.oppUp + 0.08f);
+				if (!knockedUp && tookOff && futureUp > 0.05f) pred[ActionSpace.JUMP] = 1;
 				// Vanilla Minecraft only clears ClientSprint mid-air when W (FORWARD) is released; kinematic IDM misses 1-tick air W-releases.
 				if (!p0.oppGround && !p0.oppSprint && (pM1.oppSprint || p0.oppUp < 0.08f)) {
 					if (pred[ActionSpace.FORWARD] == 1) pred[ActionSpace.FORWARD] = 0;
@@ -191,15 +206,17 @@ public final class HumanImitation {
 				HumanPolicy.packLiveState(p0.dist, p0.oppSword, p0.mySword, p0.oppGround, p0.myGround, p0.oppSprint,
 						ef, er, p0.oppUp, p0.myToward, 0f, p0.oppHp / 20f, p0.myHp / 20f, sinceD, sinceT, ownC, oppC,
 						-p0.oppFacing, p0.oppPitch, pM1.dist, st);
-				byX.get(cl).add(st); byY.get(cl).add(ab);
-				byX.get("all-humans").add(st); byY.get("all-humans").add(ab);
+				for (int c = 0; c < copies; c++) {
+					byX.get(cl).add(st); byY.get(cl).add(ab);
+					byX.get("all-humans").add(st); byY.get("all-humans").add(ab);
+				}
 			}
 		}
 		for (String name : CLUSTERS) {
 			List<float[]> xs = byX.get(name);
 			if (xs.size() >= MIN_TICKS || ("all-humans".equals(name) && !xs.isEmpty())) {
 				HumanPolicy hp = new HumanPolicy(name, xs.size(), rng.nextLong());
-				hp.train(xs, byY.get(name), 8, 128, 2e-3f, rng);
+				hp.train(xs, byY.get(name), 14, 128, 2e-3f, rng);
 				opponents.add(hp);
 			}
 		}

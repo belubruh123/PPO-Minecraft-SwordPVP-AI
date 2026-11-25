@@ -28,7 +28,7 @@ final class LeagueSession implements AgentSession {
 
 	private static final int ROLLOUT = 4096, MAX_EP_TICKS = 600, SETTLE = 4, SEARCH_EVERY = 25;
 	private static final int SNAP_EVERY = 8, STAGE5_SNAP_EVERY = 25, DUEL_SYNC_EVERY = 200, MILESTONE_EVERY = 300, PRIOR_REFRESH_EVERY = 400, MAX_MILESTONES = 24;
-	private static final float PRIOR_KL = 0.02f, STAGE4_PRIOR_KL = 0.015f, HUMAN_STYLE_KL = 0.08f;
+	private static final float PRIOR_KL = 0.02f, STAGE4_PRIOR_KL = 0.015f, HUMAN_STYLE_KL = 0.12f;
 
 	private final Minecraft mc;
 	private final MinecraftServer server;
@@ -149,6 +149,11 @@ final class LeagueSession implements AgentSession {
 				var h = hps.get(i % hps.size());
 				String c = h.name.toLowerCase(Locale.ROOT).replaceAll("[^a-z]+", "-").replaceAll("^-|-$", "");
 				pool.add(new CheckOpp("human-" + (c.isEmpty() ? "real" : c), null, h, null));
+			}
+			try { league.loadPool(SwordFiles.leaguePoolDir()); } catch (IOException ignored) {}
+			for (League.Snapshot hs : league.hardestHumanSnapshots(2)) {
+				String tag = hs.id.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
+				pool.add(new CheckOpp("rl-" + (tag.isEmpty() ? "hum" : tag), null, null, hs.net));
 			}
 			pool.add(new CheckOpp("crit-spammer", League.SparStyle.CRIT_SPAMMER, null, null));
 			pool.add(new CheckOpp("jump-in-critter", League.SparStyle.JUMP_IN_CRITTER, null, null));

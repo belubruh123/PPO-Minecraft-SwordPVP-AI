@@ -203,7 +203,7 @@ final class LeagueTest {
 			hi.buildFromRealRounds(idm, 7L);
 			assertEquals(4, hi.opponents().size(), "Should build 3 playstyle clusters + all-humans");
 			float[] st = new float[HumanImitation.STATE_DIM], pr = new float[ActionSpace.TOTAL_LOGITS];
-			HumanImitation.HumanPolicy.packLiveState(2.6f, 1.0f, 0.5f, true, true, true, 0.2f, 0f, 0f, 0.1f, 0f, 1f, 1f, 20, 4, 0, 1, 0f, 0f, 2.8f, st);
+			HumanImitation.HumanPolicy.packLiveState(2.2f, 0.96f, 0.5f, false, true, false, 0.1f, 0f, -0.1f, 0.1f, 0f, 0.8f, 0.8f, 12, 6, 1, 0, 0f, 0f, 2.4f, st);
 			for (HumanImitation.HumanPolicy hp : hi.opponents()) {
 				assertTrue(hp.trainingTicks >= 1000, "Each playstyle cluster should be data-rich: " + hp.name + "=" + hp.trainingTicks);
 				hp.probs(st, pr);

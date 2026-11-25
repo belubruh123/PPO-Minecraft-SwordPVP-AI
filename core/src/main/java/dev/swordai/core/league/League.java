@@ -122,7 +122,7 @@ public final class League {
 			return new Match(OpponentKind.PAST_SNAPSHOT, "snap-" + s.id, s, null, null, start);
 		}
 		float v = rng.nextFloat();
-		if (!humans.isEmpty() && v < 0.50f) {
+		if (!humans.isEmpty() && v < 0.55f) {
 			HumanImitation.HumanPolicy h = humans.get(rng.nextInt(humans.size()));
 			return new Match(OpponentKind.HUMAN_CLONE, "human-" + h.name, null, h, null, start);
 		}
@@ -153,6 +153,14 @@ public final class League {
 	public void resetHumanChallengerStats() { humanWr = 0.5f; }
 	/** Returns a random frozen snapshot from PFSP (for strong Exploiter resets), or null if empty. */
 	public SwordNet randomSnapshot(Random rng) { return snapshots.isEmpty() ? null : snapshots.get(rng.nextInt(snapshots.size())).net; }
+
+	/** Hardest frozen Human-KL RL challengers in the PFSP pool (lowest Main win rate first), for honest evaluation. */
+	public List<Snapshot> hardestHumanSnapshots(int maxCount) {
+		List<Snapshot> out = new ArrayList<>();
+		for (Snapshot s : snapshots) if (s.id.startsWith("hum-")) out.add(s);
+		out.sort(Comparator.comparingDouble(s -> s.winRate));
+		return out.size() <= maxCount ? out : out.subList(0, maxCount);
+	}
 
 	public float demoWeight() {
 		float progress = Math.max(0f, Math.min(1f, (overallWr - 0.45f) / 0.30f));
