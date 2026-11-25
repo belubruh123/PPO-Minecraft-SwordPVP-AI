@@ -23,6 +23,10 @@ final class SwordFiles {
 	static Path exploiterCheckpoint() { return schoolDir().resolve("exploiter.bin"); }
 	static Path humanChallengerCheckpoint() { return schoolDir().resolve("human-challenger.bin"); }
 	static Path idmCheckpoint() { return schoolDir().resolve("inverse-dynamics.bin"); }
+	static Path leaguePoolDir() { return schoolDir().resolve("league-pool"); }
+	static Path milestonesDir() { return schoolDir().resolve("milestones"); }
+	static Path livePriorCheckpoint() { return schoolDir().resolve("prior-live.bin"); }
+	static Path duelSyncConfig() { return dir().resolve("duel-sync-dir.txt"); }
 	static Path leagueStageFile() { return dir().resolve("league-stage.txt"); }
 	static Path realFightsDir() { Path rf = dir().resolve("real-fights"); return Files.isDirectory(rf) ? rf : fightsDir(); }
 	static Path fightsDir() { return dir().resolve("fights"); }
@@ -32,6 +36,34 @@ final class SwordFiles {
 	static Path config() { return dir().resolve("config.json"); }
 	static Path optionsBackup() { return dir().resolve("options-backup.properties"); }
 	static Path lastError() { return dir().resolve("last-error.txt"); }
+
+	/** Copies completed new .txt.gz duels from the folder listed in duel-sync-dir.txt into real-fights/. */
+	static int syncExternalDuels() {
+		Path cfgFile = duelSyncConfig();
+		if (!Files.exists(cfgFile)) return 0;
+		int copied = 0;
+		try {
+			String raw = Files.readString(cfgFile, StandardCharsets.UTF_8).strip();
+			if (raw.isEmpty()) return 0;
+			Path src = Path.of(raw);
+			if (!Files.isDirectory(src)) return 0;
+			Path dstDir = dir().resolve("real-fights");
+			Files.createDirectories(dstDir);
+			long cutoff = System.currentTimeMillis() - 60_000L;
+			try (var stream = Files.list(src)) {
+				for (Path p : stream.toList()) {
+					String name = p.getFileName().toString();
+					if (!name.endsWith(".txt.gz")) continue;
+					Path dst = dstDir.resolve(name);
+					if (Files.exists(dst)) continue;
+					if (Files.size(p) < 256L || Files.getLastModifiedTime(p).toMillis() > cutoff) continue;
+					Files.copy(p, dst);
+					copied++;
+				}
+			}
+		} catch (IOException | InvalidPathException ignored) {}
+		return copied;
+	}
 
 	static int readLeagueStage() {
 		Path f = leagueStageFile();

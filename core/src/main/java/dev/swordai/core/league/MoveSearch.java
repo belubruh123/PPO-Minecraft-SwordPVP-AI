@@ -9,24 +9,27 @@ public final class MoveSearch {
 	public enum Kind { AFTER_PUNISH_CRIT, COMBO_START, HOLD_COMBO, COUNTER_CRIT }
 
 	public enum Candidate {
-		CURRENT_POLICY(-1, -1, -1, -1, -1),
-		SPRINT_HIT_STRAFE_L(1, 1, 1, 0, 1),
-		SPRINT_HIT_STRAFE_R(1, 2, 1, 0, 1),
-		JUMP_CRIT_FORWARD(1, 0, 0, 1, 1),
-		W_TAP_HOLD(0, 1, 0, 0, 0),
-		S_BACK_COUNTER(2, 0, 0, 0, 1),
-		JUMP_RESET_SWING(1, 0, 1, 1, 1);
+		CURRENT_POLICY(-1, -1, -1, -1, -1, 0),
+		SPRINT_HIT_STRAFE_L(1, 1, 1, 0, 1, 4),
+		SPRINT_HIT_STRAFE_R(1, 2, 1, 0, 1, 4),
+		JUMP_CRIT_FORWARD(1, 0, 0, 1, 1, 8),
+		WAIT_DEFLECT(0, 0, 0, 0, 0, 4),
+		S_FLY_OUT(2, 0, 0, 1, 1, 4),
+		UPPERCUT_CHASE(1, 0, 1, 1, 1, 6);
 
-		public final int forward, strafe, sprint, jump, attack;
-		Candidate(int f, int st, int sp, int j, int a) { forward = f; strafe = st; sprint = sp; jump = j; attack = a; }
+		public final int forward, strafe, sprint, jump, attack, macroTicks;
+		Candidate(int f, int st, int sp, int j, int a, int mt) {
+			forward = f; strafe = st; sprint = sp; jump = j; attack = a; macroTicks = mt;
+		}
 
-		public void apply(int[] action, int tick, boolean ready, boolean falling) {
+		/** Applies macro on movement/jump/attack heads (leaves aim untouched); JUMP_CRIT_FORWARD releases W mid-air so ClientSprint clears. */
+		public void apply(int[] action, int tick, boolean canHit, boolean falling) {
 			if (forward < 0) return;
-			action[ActionSpace.FORWARD] = forward;
+			action[ActionSpace.FORWARD] = (this == JUMP_CRIT_FORWARD && tick >= 1) ? 0 : forward;
 			action[ActionSpace.STRAFE] = strafe;
 			action[ActionSpace.SPRINT] = sprint;
 			action[ActionSpace.JUMP] = (jump == 1 && tick == 0) ? 1 : 0;
-			action[ActionSpace.ATTACK] = (this == JUMP_CRIT_FORWARD ? (falling && ready) : (attack == 1 && ready)) ? 1 : 0;
+			action[ActionSpace.ATTACK] = (this == JUMP_CRIT_FORWARD ? (falling && canHit) : (attack == 1 && canHit)) ? 1 : 0;
 		}
 	}
 
@@ -47,14 +50,18 @@ public final class MoveSearch {
 
 	public static final class SearchJob {
 		public final Moment moment;
+		public final int lag;
+		public final SwordNet opponent;
 		private final Candidate[] cands = Candidate.values();
 		private final double[] scoreSum = new double[Candidate.values().length];
 		private final int[] trials = new int[Candidate.values().length];
 		private final byte[][] firstAct = new byte[Candidate.values().length][ActionSpace.HEADS];
 		private final boolean[] hasFirst = new boolean[Candidate.values().length];
+		private byte[] stepPeri, stepFovea;
+		private float[] stepVec, stepHist, stepSeen, stepHPrev;
 		private int ci, ri;
 
-		SearchJob(Moment m) { this.moment = m; }
+		SearchJob(Moment m, int lag, SwordNet opponent) { this.moment = m; this.lag = lag; this.opponent = opponent; }
 		public boolean finished() { return ci >= cands.length; }
 		public Candidate currentCandidate() { return cands[Math.min(ci, cands.length - 1)]; }
 
@@ -62,8 +69,16 @@ public final class MoveSearch {
 			if (!hasFirst[ci]) { for (int h = 0; h < ActionSpace.HEADS; h++) firstAct[ci][h] = (byte) a[h]; hasFirst[ci] = true; }
 		}
 
-		public void finishTrial(float dealt, float taken, boolean koD, boolean koT, int ownC, int oppC) {
-			scoreSum[ci] += (dealt - taken) + (koD ? 10f : 0f) - (koT ? 10f : 0f) + 1.5f * (ownC - oppC);
+		public void noteFirstStep(Obs obs, float[] histIn, float[] seenIn, float[] hIn, int[] a) {
+			if (stepVec == null && obs != null) {
+				stepPeri = obs.peri.clone(); stepFovea = obs.fovea.clone(); stepVec = obs.vec.clone();
+				stepHist = histIn.clone(); stepSeen = seenIn.clone(); stepHPrev = hIn.clone();
+			}
+			noteFirstAction(a);
+		}
+
+		public void finishTrial(float dealt, float taken, boolean koD, boolean koT) {
+			scoreSum[ci] += (dealt - taken) + (koD ? 10f : 0f) - (koT ? 10f : 0f);
 			trials[ci]++;
 			if (++ri >= REPEATS) { ri = 0; ci++; }
 		}
@@ -115,7 +130,11 @@ public final class MoveSearch {
 		return null;
 	}
 
-	public SearchJob startSearch(Random rng) { Moment m = sampleMoment(rng); return m == null ? null : new SearchJob(m); }
+	public SearchJob startSearch(Random rng) { return startSearch(rng, 0, null); }
+	public SearchJob startSearch(Random rng, int lag, SwordNet opponent) {
+		Moment m = sampleMoment(rng);
+		return m == null ? null : new SearchJob(m, lag, opponent);
+	}
 
 	public boolean commitSearch(SearchJob job) {
 		if (job == null || !job.finished()) return false;
@@ -123,12 +142,18 @@ public final class MoveSearch {
 		int win = job.winningCandidate();
 		if (win < 0) return false;
 		Moment m = job.moment; int i = tNext;
-		System.arraycopy(m.peri, 0, tPeri[i], 0, ObsSpec.PERI_SIZE);
-		System.arraycopy(m.fovea, 0, tFovea[i], 0, ObsSpec.FOVEA_SIZE);
-		System.arraycopy(m.vec, 0, tVec[i], 0, ObsSpec.VEC);
-		System.arraycopy(m.hist, 0, tHist[i], 0, ObsMemory.HIST);
-		System.arraycopy(m.seen, 0, tSeen[i], 0, ObsMemory.SEEN);
-		System.arraycopy(m.hPrev, 0, tHPrev[i], 0, ObsMemory.GRU_HIDDEN);
+		byte[] peri = job.stepPeri != null ? job.stepPeri : m.peri;
+		byte[] fovea = job.stepFovea != null ? job.stepFovea : m.fovea;
+		float[] vec = job.stepVec != null ? job.stepVec : m.vec;
+		float[] hist = job.stepHist != null ? job.stepHist : m.hist;
+		float[] seen = job.stepSeen != null ? job.stepSeen : m.seen;
+		float[] hPrev = job.stepHPrev != null ? job.stepHPrev : m.hPrev;
+		System.arraycopy(peri, 0, tPeri[i], 0, ObsSpec.PERI_SIZE);
+		System.arraycopy(fovea, 0, tFovea[i], 0, ObsSpec.FOVEA_SIZE);
+		System.arraycopy(vec, 0, tVec[i], 0, ObsSpec.VEC);
+		System.arraycopy(hist, 0, tHist[i], 0, ObsMemory.HIST);
+		System.arraycopy(seen, 0, tSeen[i], 0, ObsMemory.SEEN);
+		System.arraycopy(hPrev, 0, tHPrev[i], 0, ObsMemory.GRU_HIDDEN);
 		System.arraycopy(job.candidateAction(win), 0, tAction[i], 0, ActionSpace.HEADS);
 		tNext = (tNext + 1) % TARGET_CAP; tSize = Math.min(tSize + 1, TARGET_CAP); targetsFound++;
 		return true;
@@ -143,7 +168,8 @@ public final class MoveSearch {
 				bPeri[i] = tPeri[idx]; bFovea[i] = tFovea[idx]; bVec[i] = tVec[idx];
 				bHist[i] = tHist[idx]; bSeen[i] = tSeen[idx]; bHPrev[i] = tHPrev[idx]; bAct[i] = tAction[idx];
 			}
-			ceSum += ppo.supervisedStep(actor, bPeri, bFovea, bVec, bHist, bSeen, bHPrev, bAct, n, lr);
+			// Supervise only STYLE_HEADS (movement/sprint/jump/attack) so MoveSearch never disturbs YAW/PITCH aim.
+			ceSum += ppo.supervisedStep(actor, bPeri, bFovea, bVec, bHist, bSeen, bHPrev, bAct, n, lr, HumanImitation.HumanPolicy.STYLE_HEADS);
 		}
 		return ceSum / steps;
 	}

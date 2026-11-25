@@ -7,11 +7,33 @@ printf 'swordai stop\r\n' > /d/swordai/run/swordai/inbox.txt
 sleep 8
 powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { (\$_.Name -in 'cmd.exe','java.exe') -and \$_.CommandLine -match 'start-school\.cmd|start-dev\.cmd|GradleWrapperMain|GradleDaemon|fabric\.dli\.' } | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force -ErrorAction SilentlyContinue }"
 sleep 3
-cmd //c "set JAVA_HOME=C:\Users\jerem\.gradle\jdks\eclipse_adoptium-25-amd64-windows.2&& D:\swordai\gradlew.bat -p D:\swordai build -x test --no-daemon --console=plain $(bash "$S/carpet-pvp-switch.sh" pre) < NUL" < /dev/null > "$S/build-school.log" 2>&1
-echo "=== build: $(grep -a 'BUILD' "$S/build-school.log" | tail -1)"
-grep -aq "BUILD SUCCESSFUL" "$S/build-school.log" || { grep -a "error:" -A2 "$S/build-school.log" | head -20; exit 1; }
-V=$(ls -t /d/swordai/core/build/libs/swordai-core-*.jar | head -1 | xargs basename)
-sed -i "s/swordai-core-[0-9.]*\.jar/$V/" /d/swordai/build/loom-cache/argFiles/runClient
+# Skip slow Gradle build on unattended crash restarts when compiled classes & Loom launch jars are already intact and up to date.
+CORE_JAR=$(ls -t /d/swordai/core/build/libs/swordai-core-*.jar 2>/dev/null | head -1)
+NEED_BUILD=0
+[ -z "$CORE_JAR" ] || [ ! -d /d/swordai/build/classes/java/client ] && NEED_BUILD=1
+[ "$NEED_BUILD" = "0" ] && [ -n "$(find /d/swordai/src /d/swordai/core/src -name '*.java' -newer "$CORE_JAR" -print -quit 2>/dev/null)" ] && NEED_BUILD=1
+if [ "$NEED_BUILD" = "1" ]; then
+  cmd //c "set JAVA_HOME=C:\Users\jerem\.gradle\jdks\eclipse_adoptium-25-amd64-windows.2&& D:\swordai\gradlew.bat -p D:\swordai build -x test --no-daemon -Dorg.gradle.jvmargs=-Xmx1024m $(bash "$S/carpet-pvp-switch.sh" pre) < NUL" < /dev/null > "$S/build-school.log" 2>&1
+  echo "=== build: $(grep -a 'BUILD' "$S/build-school.log" | tail -1)"
+  grep -aq "BUILD SUCCESSFUL" "$S/build-school.log" || { grep -a "error:" -A2 "$S/build-school.log" | head -20; exit 1; }
+  V=$(ls -t /d/swordai/core/build/libs/swordai-core-*.jar | head -1 | xargs basename)
+  sed -i "s/swordai-core-[0-9.]*\.jar/$V/" /d/swordai/build/loom-cache/argFiles/runClient
+else
+  echo "=== build: up-to-date (skipped)"
+fi
+# Self-heal Gradle 7-day cache GC if dev-launch-injector or fabric-log4j-util was pruned from ~/.gradle/caches.
+DLI_JAR=$(tr ';' '\n' < /d/swordai/build/loom-cache/argFiles/runClient 2>/dev/null | grep -E 'dev-launch-injector|fabric-log4j-util')
+MISSING_DLI=0
+for j in $DLI_JAR; do
+  jp=$(cygpath -u "$j" 2>/dev/null || echo "$j")
+  [ ! -f "$jp" ] && MISSING_DLI=1
+done
+if [ "$MISSING_DLI" = "1" ]; then
+  echo "=== restoring pruned Loom launch jars via Gradle"
+  printf 'allprojects { afterEvaluate { tasks.register("resolveLoomDev") { doLast { configurations.findByName("loomDevelopmentDependencies")?.resolve() } } } }\n' > /d/swordai/run/resolve-loom.gradle
+  cmd //c "set JAVA_HOME=C:\Users\jerem\.gradle\jdks\eclipse_adoptium-25-amd64-windows.2&& D:\swordai\gradlew.bat -p D:\swordai resolveLoomDev --init-script D:\swordai\run\resolve-loom.gradle --no-daemon -Dorg.gradle.jvmargs=-Xmx1024m < NUL" < /dev/null >> "$S/build-school.log" 2>&1
+  rm -f /d/swordai/run/resolve-loom.gradle
+fi
 echo "=== Carpet PvP (run/carpet-pvp.on): $(bash "$S/carpet-pvp-switch.sh" post)"
 [ -f $L ] && cp $L /d/swordai/run/school-client-$(date +%m%d-%H%M).log
 : > $L

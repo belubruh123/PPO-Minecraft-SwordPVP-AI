@@ -34,6 +34,15 @@ public final class LeagueLearner {
 	}
 
 	public void resetEpisode() { memory.reset(); }
+	public void restoreMemory(float[] hist, float[] seen, float[] hidden) {
+		if (hist != null) System.arraycopy(hist, 0, memory.hist, 0, ObsMemory.HIST);
+		if (seen != null) System.arraycopy(seen, 0, memory.seen, 0, ObsMemory.SEEN);
+		if (hidden != null) System.arraycopy(hidden, 0, memory.hidden, 0, ObsMemory.GRU_HIDDEN);
+	}
+	public boolean hasNonFiniteWeights() {
+		for (Param p : actor.params.params()) for (float v : p.w) if (!Float.isFinite(v)) return true;
+		return false;
+	}
 	public float[] lastHistIn() { return lastHistIn; }
 	public float[] lastSeenIn() { return lastSeenIn; }
 	public float[] lastHiddenIn() { return lastHIn; }
@@ -139,6 +148,18 @@ public final class LeagueLearner {
 			readParams(in, actor.params, savedVec); readParams(in, critic.params, savedVec);
 		}
 		return true;
+	}
+
+	public static void saveActorOnly(SwordNet net, Path path) throws IOException {
+		Files.createDirectories(path.getParent());
+		Path tmp = path.resolveSibling(path.getFileName() + ".tmp");
+		try (DataOutputStream out = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(tmp)))) {
+			out.writeInt(MAGIC); out.writeInt(FORMAT); out.writeInt(ObsSpec.VEC); out.writeInt(ObsSpec.PRIV);
+			out.writeInt(ObsMemory.GRU_HIDDEN); out.writeInt(ActionSpace.TOTAL_LOGITS);
+			out.writeLong(0L); out.writeLong(0L); out.writeFloat(0f);
+			writeParams(out, net.params);
+		}
+		Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 	}
 
 	public static SwordNet loadActorOnly(Path path) throws IOException {

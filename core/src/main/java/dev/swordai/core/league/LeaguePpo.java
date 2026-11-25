@@ -169,7 +169,15 @@ public final class LeaguePpo {
 
 	public float supervisedStep(SwordNet actor, byte[][] peri, byte[][] fovea, float[][] vec, float[][] hist, float[][] seen,
 			float[][] hPrev, byte[][] targetAction, int count, float stepLr) {
+		return supervisedStep(actor, peri, fovea, vec, hist, seen, hPrev, targetAction, count, stepLr, ActionSpace.ALL_HEADS);
+	}
+
+	public float supervisedStep(SwordNet actor, byte[][] peri, byte[][] fovea, float[][] vec, float[][] hist, float[][] seen,
+			float[][] hPrev, byte[][] targetAction, int count, float stepLr, int headMask) {
 		if (count <= 0) return 0f;
+		int nHeads = 0;
+		for (int h = 0; h < ActionSpace.HEADS; h++) if (ActionSpace.unlocked(headMask, h)) nHeads++;
+		if (nHeads == 0) return 0f;
 		ParamSet.zeroGrads(actorWs.grads);
 		double sumCe = 0;
 		for (int i = 0; i < count; i++) {
@@ -178,11 +186,11 @@ public final class LeaguePpo {
 			actor.condition(actorWs, actorWs.step, targetAction[i]);
 			Policy.allProbs(actorWs.step.logits, probs);
 			Arrays.fill(actorWs.dLogits, 0f);
-			sumCe += addCeGrad(ActionSpace.ALL_HEADS, targetAction[i], probs, 1f, actorWs.dLogits);
+			sumCe += addCeGrad(headMask, targetAction[i], probs, 1f, actorWs.dLogits);
 			actor.backward(actorWs, actorWs.step, peri[i], fovea[i], vec[i], hist[i], seen[i], null, null);
 		}
 		Adam.step(actor.params, actorWs.grads, stepLr, 1f / count, MAX_GRAD_NORM);
-		return (float) (sumCe / (count * ActionSpace.HEADS));
+		return (float) (sumCe / (count * nHeads));
 	}
 
 	private static float addCeGrad(int headMask, byte[] target, float[] probs, float w, float[] dLogits) {

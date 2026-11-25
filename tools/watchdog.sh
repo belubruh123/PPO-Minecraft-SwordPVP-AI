@@ -79,6 +79,11 @@ echo "$(date '+%m-%d %H:%M') log age $age s, last school line ${last:-none}" >> 
 # "the server did not start the next fight"): a restart then only pushes the user's programs onto the disk. Wait for
 # memory while the client is up; restart as before once 1.2 GB is available (or the client is gone).
 if [ $age -ge 600 ]; then
+  usermc=$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process | Where-Object { \$_.Name -in 'javaw.exe','java.exe' -and \$_.CommandLine -match 'ModrinthApp|DRL AI' }).Count" | tr -d '\r')
+  if [ "$usermc" != "0" ]; then
+    echo "$(date '+%m-%d %H:%M') user Minecraft is open: waiting to restart training" >> $LOG
+    exit 0
+  fi
   avail=$(powershell -NoProfile -Command "[math]::Round((Get-Counter '\Memory\Available MBytes').CounterSamples[0].CookedValue)" | tr -d '\r')
   # Only a client that is still alive: at 21:13 the frozen one had exited but could not be cleared away (one thread stuck,
   # its log file still locked), and it counted as up.
@@ -97,7 +102,7 @@ if [ $age -ge 600 ]; then
   bash "$S/school-restart.sh" >> $LOG 2>&1
   rm -f $LOCK
 fi
-if [ "$(cycles | tr -d '\r')" = "0" ] && [ ! -f /d/swordai/run/school-cycle.stop ]; then
+if [ "$(cycles | tr -d '\r')" = "0" ] && [ ! -f /d/swordai/run/school-cycle.stop ] && [ ! -f /d/swordai/run/no-hourly-check ]; then
   echo "$(date '+%m-%d %H:%M') no hourly check loop: starting it" >> $LOG
   detach /d/swordai/run/school-cycle.out "cd /d/swordai/run && bash $S/schoolcycle.sh"
 fi

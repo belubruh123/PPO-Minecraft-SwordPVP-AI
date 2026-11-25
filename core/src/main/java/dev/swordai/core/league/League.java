@@ -1,5 +1,8 @@
 package dev.swordai.core.league;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
 import java.util.*;
 
 /** AlphaStar-style opponent league: 50% latest self, 30% PFSP snapshots, 20% varied (humans main, exploiter, tiny SparBot). */
@@ -42,15 +45,71 @@ public final class League {
 		if (list != null) humans.addAll(list);
 	}
 
-	public void addSnapshot(String id, SwordNet current) {
+	public int addSnapshot(String id, SwordNet current) {
 		SwordNet copy = new SwordNet(snapshots.size() + 101L);
 		LeagueLearner.copyWeights(current, copy);
 		copy.gruEnabled = current.gruEnabled;
 		Snapshot snap = new Snapshot(id, copy);
-		if (snapshots.size() < MAX_SNAPSHOTS) { snapshots.add(snap); return; }
+		if (snapshots.size() < MAX_SNAPSHOTS) { snapshots.add(snap); return snapshots.size() - 1; }
 		int easiest = 0;
 		for (int i = 1; i < snapshots.size(); i++) if (snapshots.get(i).winRate > snapshots.get(easiest).winRate) easiest = i;
 		snapshots.set(easiest, snap);
+		return easiest;
+	}
+
+	public float overallWinRate() { return overallWr; }
+	public int snapshotCount() { return snapshots.size(); }
+
+	/** Persists a single updated PFSP snapshot slot + pool metadata so multi-week runs never lose frozen opponents across restarts. */
+	public void saveSnapshotSlot(Path dir, int idx) throws IOException {
+		if (idx < 0 || idx >= snapshots.size()) return;
+		Files.createDirectories(dir);
+		LeagueLearner.saveActorOnly(snapshots.get(idx).net, dir.resolve(String.format(Locale.ROOT, "snap-%02d.bin", idx)));
+		savePoolMeta(dir);
+	}
+
+	public void savePool(Path dir) throws IOException {
+		Files.createDirectories(dir);
+		for (int i = 0; i < snapshots.size(); i++) {
+			LeagueLearner.saveActorOnly(snapshots.get(i).net, dir.resolve(String.format(Locale.ROOT, "snap-%02d.bin", i)));
+		}
+		savePoolMeta(dir);
+	}
+
+	public void savePoolMeta(Path dir) throws IOException {
+		Files.createDirectories(dir);
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < snapshots.size(); i++) {
+			Snapshot s = snapshots.get(i);
+			String cleanId = s.id.replace('\t', '_').replace('\n', '_').replace('\r', '_');
+			sb.append(String.format(Locale.ROOT, "%d\t%s\t%.5f\t%d\t%d%n", i, cleanId, s.winRate, s.games, s.net.gruEnabled ? 1 : 0));
+		}
+		Path tmp = dir.resolve("meta.txt.tmp"), meta = dir.resolve("meta.txt");
+		Files.writeString(tmp, sb.toString(), StandardCharsets.UTF_8);
+		Files.move(tmp, meta, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+	}
+
+	public int loadPool(Path dir) throws IOException {
+		Path meta = dir.resolve("meta.txt");
+		if (!Files.exists(meta)) return 0;
+		snapshots.clear();
+		for (String line : Files.readAllLines(meta, StandardCharsets.UTF_8)) {
+			if (line.isBlank() || snapshots.size() >= MAX_SNAPSHOTS) continue;
+			String[] parts = line.split("\t");
+			if (parts.length < 4) continue;
+			try {
+				int idx = Integer.parseInt(parts[0].trim());
+				Path f = dir.resolve(String.format(Locale.ROOT, "snap-%02d.bin", idx));
+				if (!Files.exists(f)) continue;
+				SwordNet net = LeagueLearner.loadActorOnly(f);
+				net.gruEnabled = parts.length >= 5 ? "1".equals(parts[4].trim()) : net.gruWeightNorm() > 0f;
+				Snapshot s = new Snapshot(parts[1].trim(), net);
+				s.winRate = Float.parseFloat(parts[2].trim());
+				s.games = Integer.parseInt(parts[3].trim());
+				snapshots.add(s);
+			} catch (NumberFormatException | IOException ignored) {}
+		}
+		return snapshots.size();
 	}
 
 	public Match sampleMatch(Random rng, MoveSearch moments, boolean hasExploiter) {

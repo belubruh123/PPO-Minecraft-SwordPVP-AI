@@ -270,22 +270,37 @@ final class LeagueTest {
 	}
 
 	@Test
-	void moveSearchSelectsBestOutcomeAndSupervisesActor() {
+	void moveSearchSelectsBestOutcomePreservesAimAndReleasesWMidAir() {
+		// Verify JUMP_CRIT_FORWARD releases W mid-air so vanilla ClientSprint clears, and only attacks when falling && canHit.
+		int[] a = {7, 5, 1, 2, 1, 0, 1};
+		MoveSearch.Candidate.JUMP_CRIT_FORWARD.apply(a, 0, true, false);
+		assertEquals(1, a[ActionSpace.FORWARD]); assertEquals(0, a[ActionSpace.SPRINT]);
+		assertEquals(1, a[ActionSpace.JUMP]); assertEquals(0, a[ActionSpace.ATTACK]);
+		assertEquals(7, a[ActionSpace.YAW]); assertEquals(5, a[ActionSpace.PITCH]);
+		MoveSearch.Candidate.JUMP_CRIT_FORWARD.apply(a, 2, true, false);
+		assertEquals(0, a[ActionSpace.FORWARD], "Mid-air tick must release W so ClientSprint drops sprint");
+		assertEquals(0, a[ActionSpace.JUMP]); assertEquals(0, a[ActionSpace.ATTACK]);
+		MoveSearch.Candidate.JUMP_CRIT_FORWARD.apply(a, 6, true, true);
+		assertEquals(0, a[ActionSpace.FORWARD]); assertEquals(1, a[ActionSpace.ATTACK], "Falling + canHit must swing crit");
+		MoveSearch.Candidate.JUMP_CRIT_FORWARD.apply(a, 6, false, true);
+		assertEquals(0, a[ActionSpace.ATTACK], "Out-of-reach or uncharged must not swing");
+
 		MoveSearch ms = new MoveSearch();
 		LeagueLearner learner = new LeagueLearner(64, 5L);
 		Random rng = new Random(5L);
 		Obs obs = randomObs(rng);
 		double[] state = new double[28];
-		ms.recordMoment(MoveSearch.Kind.AFTER_PUNISH_CRIT, state, obs, learner.lastHistIn(), learner.lastSeenIn(), learner.lastHiddenIn());
+		ms.recordMoment(MoveSearch.Kind.AFTER_PUNISH_CRIT, state, obs, learner.memory.hist, learner.memory.seen, learner.memory.hidden);
 
-		MoveSearch.SearchJob job = ms.startSearch(rng);
+		MoveSearch.SearchJob job = ms.startSearch(rng, 2, learner.actor);
 		assertNotNull(job);
+		assertEquals(2, job.lag);
 		int[] dummyAct = {7, 5, 1, 0, 0, 1, 1};
 		while (!job.finished()) {
 			MoveSearch.Candidate c = job.currentCandidate();
-			job.noteFirstAction(dummyAct);
+			job.noteFirstStep(obs, learner.lastHistIn(), learner.lastSeenIn(), learner.lastHiddenIn(), dummyAct);
 			float dmgDealt = c == MoveSearch.Candidate.JUMP_CRIT_FORWARD ? 12f : 4f;
-			job.finishTrial(dmgDealt, 4f, c == MoveSearch.Candidate.JUMP_CRIT_FORWARD, false, 2, 0);
+			job.finishTrial(dmgDealt, 4f, c == MoveSearch.Candidate.JUMP_CRIT_FORWARD, false);
 		}
 		assertEquals(MoveSearch.Candidate.JUMP_CRIT_FORWARD.ordinal(), job.winningCandidate());
 		assertTrue(ms.commitSearch(job));
@@ -294,9 +309,33 @@ final class LeagueTest {
 		for (int i = 0; i < 10; i++) {
 			ms.addTarget(obs, learner.memory, learner.lastHiddenIn(), dummyAct);
 		}
+		// Verify trainActor supervises STYLE_HEADS cleanly and lowers CE without NaN.
 		float ceBefore = ms.trainActor(learner.actor, learner.ppo, 1, 1e-3f, rng);
 		float ceAfter = ms.trainActor(learner.actor, learner.ppo, 15, 2e-3f, rng);
 		assertTrue(ceAfter < ceBefore, "Supervised search targets should decrease actor CE: " + ceBefore + " -> " + ceAfter);
+		assertFalse(learner.hasNonFiniteWeights());
+	}
+
+	@Test
+	void leaguePfspPoolPersistsAndReloadsAcrossRestarts(@TempDir Path tmp) throws Exception {
+		League league = new League();
+		SwordNet n1 = new SwordNet(101L); n1.gruEnabled = true;
+		SwordNet n2 = new SwordNet(202L); n2.gruEnabled = false;
+		int idx0 = league.addSnapshot("exp0", n1);
+		int idx1 = league.addSnapshot("hum-crit-g1", n2);
+		assertEquals(0, idx0); assertEquals(1, idx1);
+		Path poolDir = tmp.resolve("league-pool");
+		league.saveSnapshotSlot(poolDir, idx0);
+		league.saveSnapshotSlot(poolDir, idx1);
+
+		League reloaded = new League();
+		assertEquals(2, reloaded.loadPool(poolDir));
+		assertEquals(2, reloaded.snapshotCount());
+		SwordNet picked = reloaded.randomSnapshot(new Random(3L));
+		assertNotNull(picked);
+		// Verify exact weights persisted via actor-only save/load.
+		SwordNet checkN1 = LeagueLearner.loadActorOnly(poolDir.resolve("snap-00.bin"));
+		assertArrayEquals(n1.params.params().get(0).w, checkN1.params.params().get(0).w, 1e-6f);
 	}
 
 	@Test
