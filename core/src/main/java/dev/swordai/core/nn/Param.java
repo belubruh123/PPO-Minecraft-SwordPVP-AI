@@ -4,8 +4,8 @@ package dev.swordai.core.nn;
 public final class Param {
 	public final String name;
 	public final float[] w;
-	public final float[] m;
-	public final float[] v;
+	public float[] m;
+	public float[] v;
 	/** Index into the gradient buffers handed out by {@link ParamSet#newGrads()}. */
 	public final int id;
 	/**

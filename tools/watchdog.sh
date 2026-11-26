@@ -16,11 +16,8 @@ detach() {  # detach LOGFILE COMMAND...: the command run by Git's bash from /d/s
   printf 'cd /d/swordai\n%s > %s 2>&1\nrm -f %s\n' "$*" "$log" "$f" > "$f"
   powershell -NoProfile -Command "Start-Process -WindowStyle Hidden -FilePath 'C:\\Program Files\\Git\\bin\\bash.exe' -ArgumentList '-l','$f'"
 }
-# The progress panel (tools/dashboard, port 8765, 6 Nov): started again when nothing answers there, so it outlives the app.
-if ! curl -s -m 5 -o /dev/null http://localhost:8765/; then
-  echo "$(date '+%m-%d %H:%M') the panel does not answer: starting it" >> $LOG
-  detach /d/swordai/run/panel.out C:/Python38/python.exe tools/dashboard/server.py
-fi
+# Clean up stray detach wrappers older than 10 min; do NOT respawn the legacy broken dashboard (Technique.java was removed in Stage 2).
+find /d/swordai/run -maxdepth 1 -name 'detach-*.sh' -mmin +10 -delete 2>/dev/null
 # A redeploy asked for (7 Nov): run/redeploy-request (its text: optional VAR=value settings for it). Run from here, the client
 # and the hourly loop it starts outlive the Claude app (on 6 Nov a client started from a session died with it at 07:13).
 # A redeploy is going on only while its log is under 30 minutes old and has not printed its last line (7 Nov: the script stays
@@ -75,24 +72,30 @@ fi
 # One line a run (8 Nov: the client froze at 15:58 on a sound error, its log kept new by "Can't keep up" lines, and no run
 # restarted it for 90 minutes): whether the runs reach this check at all, and what they saw.
 echo "$(date '+%m-%d %H:%M') log age $age s, last school line ${last:-none}" >> /d/swordai/run/watchdog-trace.log
-# The PC out of memory (8 Nov 18:33-19:08: the user's programs left 0.4 GB free, the server stood still for seconds,
-# "the server did not start the next fight"): a restart then only pushes the user's programs onto the disk. Wait for
-# memory while the client is up; restart as before once 1.2 GB is available (or the client is gone).
+# Hard anti-softlock RAM guard (26 Nov): if Windows available RAM drops below 900 MB while training is up, immediately stop
+# training so Windows DWM/mouse can NEVER freeze; and never start/restart training unless >= 1800 MB is available.
+read -r avail up hung usermc <<< "$(powershell -NoProfile -Command "
+  \$av = [math]::Round((Get-Counter '\Memory\Available MBytes').CounterSamples[0].CookedValue)
+  \$procs = @(Get-CimInstance Win32_Process -Filter \"Name='java.exe' OR Name='javaw.exe'\")
+  \$dev = @(\$procs | Where-Object { \$_.CommandLine -match 'fabric\.dli\.' } | ForEach-Object { Get-Process -Id \$_.ProcessId -ErrorAction SilentlyContinue } | Where-Object { -not \$_.HasExited })
+  \$hu = @(\$dev | Where-Object { -not \$_.Responding }).Count
+  \$um = @(\$procs | Where-Object { \$_.CommandLine -match 'ModrinthApp|DRL AI' }).Count
+  Write-Output \"\$av \$(\$dev.Count) \$hu \$um\"
+" | tr -d '\r')"
+if [ -n "$avail" ] && [ "$up" != "0" ] && [ "$avail" -lt 900 ]; then
+  echo "$(date '+%m-%d %H:%M') LOW MEMORY GUARD ($avail MB free): stopping training to protect PC" >> $LOG
+  printf 'swordai stop\r\n' > /d/swordai/run/swordai/inbox.txt
+  sleep 6
+  powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { (\$_.Name -in 'cmd.exe','java.exe') -and \$_.CommandLine -match 'start-school\.cmd|fabric\.dli\.' } | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force -ErrorAction SilentlyContinue }"
+  exit 0
+fi
 if [ $age -ge 600 ]; then
-  usermc=$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process | Where-Object { \$_.Name -in 'javaw.exe','java.exe' -and \$_.CommandLine -match 'ModrinthApp|DRL AI' }).Count" | tr -d '\r')
   if [ "$usermc" != "0" ]; then
     echo "$(date '+%m-%d %H:%M') user Minecraft is open: waiting to restart training" >> $LOG
     exit 0
   fi
-  avail=$(powershell -NoProfile -Command "[math]::Round((Get-Counter '\Memory\Available MBytes').CounterSamples[0].CookedValue)" | tr -d '\r')
-  # Only a client that is still alive: at 21:13 the frozen one had exited but could not be cleared away (one thread stuck,
-  # its log file still locked), and it counted as up.
-  up=$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process | Where-Object { \$_.Name -eq 'java.exe' -and \$_.CommandLine -match 'fabric\.dli\.' } | ForEach-Object { Get-Process -Id \$_.ProcessId -ErrorAction SilentlyContinue } | Where-Object { -not \$_.HasExited }).Count" | tr -d '\r')
-  # 9 Nov 20:41: the client itself froze (Windows: not responding) and held 2.7 GB, so the wait for memory never ended.
-  # A frozen client is restarted at once (the restart ends it and gives its memory back).
-  hung=$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process | Where-Object { \$_.Name -eq 'java.exe' -and \$_.CommandLine -match 'fabric\.dli\.' } | ForEach-Object { Get-Process -Id \$_.ProcessId } | Where-Object { -not \$_.Responding }).Count" | tr -d '\r')
-  if [ "$up" != "0" ] && [ "$hung" = "0" ] && [ -n "$avail" ] && [ "$avail" -lt 1200 ]; then
-    echo "$(date '+%m-%d %H:%M') training stopped but only $avail MB of memory available: waiting for memory, not restarting" >> $LOG
+  if [ -n "$avail" ] && [ "$avail" -lt 1800 ]; then
+    echo "$(date '+%m-%d %H:%M') only $avail MB free (need 1800 MB): waiting before restarting training" >> $LOG
     exit 0
   fi
 fi

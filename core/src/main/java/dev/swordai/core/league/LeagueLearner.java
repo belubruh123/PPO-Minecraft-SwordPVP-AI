@@ -173,6 +173,7 @@ public final class LeagueLearner {
 			in.readLong(); in.readLong(); in.readFloat();
 			readParams(in, net.params, savedVec);
 		}
+		net.params.dropOptimizerState();
 		return net;
 	}
 
@@ -181,8 +182,8 @@ public final class LeagueLearner {
 		for (Param p : ps.params()) {
 			out.writeUTF(p.name); out.writeInt(p.w.length);
 			for (float v : p.w) out.writeFloat(v);
-			for (float v : p.m) out.writeFloat(v);
-			for (float v : p.v) out.writeFloat(v);
+			if (p.m != null) for (float v : p.m) out.writeFloat(v); else for (int k = 0; k < p.w.length; k++) out.writeFloat(0f);
+			if (p.v != null) for (float v : p.v) out.writeFloat(v); else for (int k = 0; k < p.w.length; k++) out.writeFloat(0f);
 		}
 	}
 

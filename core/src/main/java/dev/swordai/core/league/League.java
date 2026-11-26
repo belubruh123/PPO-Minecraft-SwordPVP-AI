@@ -49,6 +49,7 @@ public final class League {
 		SwordNet copy = new SwordNet(snapshots.size() + 101L);
 		LeagueLearner.copyWeights(current, copy);
 		copy.gruEnabled = current.gruEnabled;
+		copy.params.dropOptimizerState();
 		Snapshot snap = new Snapshot(id, copy);
 		if (snapshots.size() < MAX_SNAPSHOTS) { snapshots.add(snap); return snapshots.size() - 1; }
 		int easiest = 0;

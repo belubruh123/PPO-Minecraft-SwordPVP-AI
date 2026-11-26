@@ -19,6 +19,11 @@ public final class ParamSet {
 		return params;
 	}
 
+	/** Frees Adam moment buffers on inference-only networks (PFSP snapshots, priorNet, selfNet), cutting RAM by 3x. */
+	public void dropOptimizerState() {
+		for (Param p : params) { p.m = null; p.v = null; }
+	}
+
 	public int totalSize() {
 		int n = 0;
 		for (Param p : params) n += p.w.length;

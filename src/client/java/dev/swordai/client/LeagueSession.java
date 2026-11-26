@@ -60,7 +60,7 @@ final class LeagueSession implements AgentSession {
 
 	private League.Match currentMatch;
 	private MoveSearch.SearchJob activeSearch;
-	private int searchTick, checkPair, waitingEp, expectedPutBack, settleLeft, epTicks, epDone, activeLag, badUpdates;
+	private int searchTick, checkPair, waitingEp, expectedPutBack, settleLeft, epTicks, epDone, activeLag, badUpdates, lowRamHits;
 	private int ownCombo, oppCombo, critChain, ownSwingsSeen = OwnSwing.count();
 	private int statClose, statOnBody, statClicks, statLowChg, statWhiffs, statSwings;
 	private final int[] chkClose = new int[2], chkOnBody = new int[2], chkClicks = new int[2], chkLowChg = new int[2], chkWhiffs = new int[2];
@@ -90,6 +90,7 @@ final class LeagueSession implements AgentSession {
 			if (priorNet != null) priorNet.gruEnabled = priorNet.gruWeightNorm() > 0f;
 			selfNet = new SwordNet(2L); selfNet.gruEnabled = learner.actor.gruEnabled;
 			LeagueLearner.copyWeights(learner.actor, selfNet);
+			selfNet.params.dropOptimizerState();
 			int loadedPool = 0;
 			try { loadedPool = league.loadPool(SwordFiles.leaguePoolDir()); } catch (IOException ignored) {}
 			if (loadedPool == 0) addAndPersistSnapshot("start", learner.actor);
@@ -464,6 +465,17 @@ final class LeagueSession implements AgentSession {
 					learner.updates, emaAim * 100f, emaLow * 100f, emaWhf * 100f, league.overallWinRate() * 100f));
 		}
 		saveAll();
+		long freeRamMb = freeSystemRamMb();
+		if (freeRamMb >= 0 && freeRamMb < 550) {
+			if (++lowRamHits >= 2) {
+				SwordAi.LOGGER.warn("[RAM-GUARD] OS free physical RAM dropped to {} MB — saving and exiting dev client to protect PC", freeRamMb);
+				stop("low system RAM (" + freeRamMb + " MB)");
+				mc.stop();
+				return;
+			}
+		} else {
+			lowRamHits = 0;
+		}
 		double secs = Math.max(1.0, (System.currentTimeMillis() - startedMs) / 1000.0);
 		SwordAi.LOGGER.info(String.format(Locale.ROOT,
 				"league update %d (stage %d), %d steps (%.0f/s): pol %.4f val %.4f kl %.4f ent %.3f pKl %.3f ev %.2f lr %.1e aim %.0f%% low %.1f%% whf %.1f%% gru|w| %.2f idm %.0f%% hStyle %s search %d/%d(ce %.2f) | %s",
@@ -578,6 +590,12 @@ final class LeagueSession implements AgentSession {
 				SwordAi.LOGGER.warn("[AUTO-RECOVERY] {} -> rolled back to {}", reason, fallback.getFileName());
 			}
 		} catch (IOException e) { SwordAi.LOGGER.error("[AUTO-RECOVERY] rollback failed", e); }
+	}
+
+	private static long freeSystemRamMb() {
+		var bean = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
+		if (bean instanceof com.sun.management.OperatingSystemMXBean os) return os.getFreeMemorySize() / (1024L * 1024L);
+		return -1L;
 	}
 
 	private void saveAll() {
