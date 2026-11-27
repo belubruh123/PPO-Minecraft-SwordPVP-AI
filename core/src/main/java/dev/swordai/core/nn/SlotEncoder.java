@@ -34,10 +34,10 @@ public final class SlotEncoder {
 		Arrays.fill(slotIn.bias.w, 0.05f);
 		slotKey = new Dense(ps, name + ".key", SLOT_DIM, SLOT_DIM, rng, 1f);
 		slotAttn = new Dense(ps, name + ".attn", SLOT_DIM, 1, rng, 0.1f);
-		// Zero-init pointer query & keep weights (+2.5f keep bias) for Net2Net preservation from Sword-only checkpoints.
+		// Zero-init pointer query & keep weights (+4.8f keep bias -> ~93% keep per 20Hz tick) for clean Net2Net preservation.
 		ptrQuery = new Dense(ps, name + ".ptrQ", topWidth, SLOT_DIM, rng, 0f);
 		ptrKeep = new Dense(ps, name + ".ptrKeep", topWidth, 1, rng, 0f);
-		ptrKeep.bias.w[0] = 2.5f;
+		ptrKeep.bias.w[0] = 4.8f;
 	}
 
 	public final class Cache {

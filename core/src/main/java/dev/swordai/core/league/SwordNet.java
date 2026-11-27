@@ -77,13 +77,13 @@ public final class SwordNet {
 		initNeutralSmpBiases();
 	}
 
-	/** Calm initial biases on newly added SMP heads so tick-0 Net2Net surgery does not spam right-click / F / E. */
+	/** Calm 20Hz initial biases on newly added SMP heads so tick-0 Net2Net surgery explores without spamming slots/F/use. */
 	void initNeutralSmpBiases() {
-		heads.bias.w[ActionSpace.OFFSETS[ActionSpace.USE_ITEM]] = 1.5f;
+		heads.bias.w[ActionSpace.OFFSETS[ActionSpace.USE_ITEM]] = 2.6f;
 		heads.bias.w[ActionSpace.OFFSETS[ActionSpace.USE_ITEM] + 1] = 0f;
-		heads.bias.w[ActionSpace.OFFSETS[ActionSpace.OFFHAND_SWAP]] = 2.5f;
+		heads.bias.w[ActionSpace.OFFSETS[ActionSpace.OFFHAND_SWAP]] = 4.5f;
 		heads.bias.w[ActionSpace.OFFSETS[ActionSpace.OFFHAND_SWAP] + 1] = 0f;
-		heads.bias.w[ActionSpace.OFFSETS[ActionSpace.INVENTORY]] = 3.0f;
+		heads.bias.w[ActionSpace.OFFSETS[ActionSpace.INVENTORY]] = 4.5f;
 		heads.bias.w[ActionSpace.OFFSETS[ActionSpace.INVENTORY] + 1] = 0f;
 	}
 
