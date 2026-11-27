@@ -7,12 +7,25 @@ import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 
-/** Unified recurrent policy network (periphery+fovea CNNs, vector branch, dual ResBlocks, 128-unit GRU, autoregressive heads). */
+/**
+ * Unified generalist multi-kit recurrent policy network (Sword -> SMP/UHC Phases 1-3):
+ * - Periphery + Fovea CNNs + Observable Vector branch (exact Net2Net from sword-master.bin)
+ * - AlphaStar Slot-Attention Encoder + permutation-equivariant Pointer Head for hotbar keys 1..9
+ * - ANYmal-style 5x5 egocentric terrain heightmap + hazard encoder
+ * - 256-unit GRU memory (Net2Net block-expanded from 128)
+ * - 4-Expert Soft-Gated Mixture of Experts (DeepMind ICML 2024 + Switch Transformer load balance)
+ * - Factorised + autoregressive heads (11 heads, 54 logits)
+ */
 public final class SwordNet {
-	static final int BRANCH = 64, BLOCK_HIDDEN = 256, AR_JUMP = 5, AR_ATTACK = 7;
+	static final int BRANCH = 64, BLOCK_HIDDEN = 256, AR_JUMP = 5, AR_ATTACK = 7, TERRAIN_DIM = 32;
 	public static final int OLD = 128, NEW = 128, TOP = OLD + NEW, CAT = 3 * BRANCH;
 	private static final int JUMP_AT = ActionSpace.OFFSETS[ActionSpace.JUMP];
 	private static final int ATTACK_AT = ActionSpace.OFFSETS[ActionSpace.ATTACK];
+	private static final int HOTBAR_AT = ActionSpace.OFFSETS[ActionSpace.HOTBAR_SLOT];
+	private static final int HOTBAR_SZ = ActionSpace.SIZES[ActionSpace.HOTBAR_SLOT];
+	private static final int MOE_ROUTER_IN = TOP + SlotEncoder.KIT_DIM;
+	private static final float[] EMPTY_SLOTS = new float[ObsSpec.SLOTS_SIZE];
+	private static final float[] EMPTY_TERRAIN = new float[ObsSpec.TERRAIN_SIZE];
 
 	public final ParamSet params = new ParamSet();
 	private final Conv2d periConv1, periConv2, foveaConv1, foveaConv2;
@@ -20,6 +33,11 @@ public final class SwordNet {
 	private final Dense histIn, histHeads, seenIn, seenHeads, gruNew, gruHeads, heads, arJump, arAttack;
 	private final ResBlock[] oldBlocks = new ResBlock[2], newBlocks = new ResBlock[3];
 	private final Gru gru;
+	// Frontier AI-lab generalist additions (all zero-output at init for exact bit-for-bit Net2Net from sword-master.bin)
+	public final SlotEncoder slotEncoder;
+	private final Dense kitNew, kitHeads;
+	private final Dense terrIn, terrNew, terrHeads;
+	public final MoEBlock moe;
 	public boolean gruEnabled = true;
 
 	public SwordNet(long seed) {
@@ -48,14 +66,37 @@ public final class SwordNet {
 		gru = new Gru(params, "gru", CAT, ObsMemory.GRU_HIDDEN, rng);
 		gruNew = new Dense(params, "gru.new", ObsMemory.GRU_HIDDEN, NEW, rng, 0f);
 		gruHeads = new Dense(params, "gru.heads", ObsMemory.GRU_HIDDEN, ActionSpace.TOTAL_LOGITS, rng, 0f);
+
+		slotEncoder = new SlotEncoder(params, "slot", TOP, rng);
+		kitNew = new Dense(params, "kit.new", SlotEncoder.KIT_DIM, NEW, rng, 0f);
+		kitHeads = new Dense(params, "kit.heads", SlotEncoder.KIT_DIM, ActionSpace.TOTAL_LOGITS, rng, 0f);
+		terrIn = new Dense(params, "terr.in", ObsSpec.TERRAIN_SIZE, TERRAIN_DIM, rng, relu);
+		terrNew = new Dense(params, "terr.new", TERRAIN_DIM, NEW, rng, 0f);
+		terrHeads = new Dense(params, "terr.heads", TERRAIN_DIM, ActionSpace.TOTAL_LOGITS, rng, 0f);
+		moe = new MoEBlock(params, "moe", TOP, BLOCK_HIDDEN, MOE_ROUTER_IN, rng);
+		initNeutralSmpBiases();
+	}
+
+	/** Calm initial biases on newly added SMP heads so tick-0 Net2Net surgery does not spam right-click / F / E. */
+	void initNeutralSmpBiases() {
+		heads.bias.w[ActionSpace.OFFSETS[ActionSpace.USE_ITEM]] = 1.5f;
+		heads.bias.w[ActionSpace.OFFSETS[ActionSpace.USE_ITEM] + 1] = 0f;
+		heads.bias.w[ActionSpace.OFFSETS[ActionSpace.OFFHAND_SWAP]] = 2.5f;
+		heads.bias.w[ActionSpace.OFFSETS[ActionSpace.OFFHAND_SWAP] + 1] = 0f;
+		heads.bias.w[ActionSpace.OFFSETS[ActionSpace.INVENTORY]] = 3.0f;
+		heads.bias.w[ActionSpace.OFFSETS[ActionSpace.INVENTORY] + 1] = 0f;
 	}
 
 	public final class StepCache {
 		final float[] p1 = new float[periConv1.outSize()], p2 = new float[periConv2.outSize()];
 		final float[] f1 = new float[foveaConv1.outSize()], f2 = new float[foveaConv2.outSize()];
 		final float[] cat = new float[CAT], wide = new float[64], oldT = new float[OLD], newT = new float[NEW];
-		final float[] top = new float[TOP], hOut = new float[ObsMemory.GRU_HIDDEN];
+		final float[] terrH = new float[TERRAIN_DIM];
+		final float[] topPre = new float[TOP], moeRouterIn = new float[MOE_ROUTER_IN], top = new float[TOP];
+		final float[] hOut = new float[ObsMemory.GRU_HIDDEN];
 		final Gru.StepCache gruCache = gru.newStepCache();
+		final SlotEncoder.Cache slotCache = slotEncoder.newCache();
+		public final MoEBlock.Cache moeCache = moe.newCache();
 		final ResBlock.Cache[] oldCaches = new ResBlock.Cache[oldBlocks.length], newCaches = new ResBlock.Cache[newBlocks.length];
 		final float[] base = new float[ActionSpace.TOTAL_LOGITS], arJumpIn = new float[AR_JUMP], arAttackIn = new float[AR_ATTACK];
 		public final float[] logits = new float[ActionSpace.TOTAL_LOGITS];
@@ -64,21 +105,32 @@ public final class SwordNet {
 			for (int b = 0; b < oldBlocks.length; b++) oldCaches[b] = oldBlocks[b].newCache();
 			for (int b = 0; b < newBlocks.length; b++) newCaches[b] = newBlocks[b].newCache();
 		}
+
+		public float[] kitCtx() { return slotCache.kitCtx; }
 	}
 
 	public final class Workspace {
 		public final StepCache step = new StepCache();
 		final float[] widePre = new float[OLD], oldPre = new float[OLD], newPre = new float[NEW];
 		final float[] histPre = new float[NEW], seenPre = new float[NEW], gruPre = new float[NEW];
+		final float[] kitPre = new float[NEW], terrPre = new float[NEW];
 		final float[] histLogits = new float[ActionSpace.TOTAL_LOGITS], seenLogits = new float[ActionSpace.TOTAL_LOGITS];
-		final float[] gruLogits = new float[ActionSpace.TOTAL_LOGITS], arOut = new float[2], probs = new float[ActionSpace.TOTAL_LOGITS];
+		final float[] gruLogits = new float[ActionSpace.TOTAL_LOGITS], kitLogits = new float[ActionSpace.TOTAL_LOGITS];
+		final float[] terrLogits = new float[ActionSpace.TOTAL_LOGITS];
+		final float[] arOut = new float[2], probs = new float[ActionSpace.TOTAL_LOGITS];
 		final int[] act = new int[ActionSpace.HEADS];
-		final float[] dTop = new float[TOP], dOld = new float[OLD], dNew = new float[NEW];
+		final float[] dBaseLogits = new float[ActionSpace.TOTAL_LOGITS];
+		final float[] dTop = new float[TOP], dTopPre = new float[TOP], dMoeRouterIn = new float[MOE_ROUTER_IN];
+		final float[] dOld = new float[OLD], dNew = new float[NEW];
+		final float[] dKitCtx = new float[SlotEncoder.KIT_DIM], dKitTmp = new float[SlotEncoder.KIT_DIM];
+		final float[] dTerrH = new float[TERRAIN_DIM], dTerrTmp = new float[TERRAIN_DIM];
 		final float[] dCat = new float[CAT], dCatPart = new float[CAT], dCatGru = new float[CAT];
 		final float[] dH = new float[ObsMemory.GRU_HIDDEN], dHPart = new float[ObsMemory.GRU_HIDDEN], dWide = new float[64];
 		final float[] dP1 = new float[step.p1.length], dP2 = new float[step.p2.length];
 		final float[] dF1 = new float[step.f1.length], dF2 = new float[step.f2.length];
 		final Gru.Scratch gruScratch = gru.newScratch();
+		final SlotEncoder.Scratch slotScratch = slotEncoder.newScratch();
+		final MoEBlock.Scratch moeScratch = moe.newScratch();
 		public final float[] dLogits = new float[ActionSpace.TOTAL_LOGITS];
 		public final float[][] grads = params.newGrads();
 	}
@@ -86,8 +138,17 @@ public final class SwordNet {
 	public Workspace newWorkspace() { return new Workspace(); }
 	public StepCache newStepCache() { return new StepCache(); }
 
+	/** Convenience overload with empty slots/terrain (for legacy sword-only probes/tests). */
 	public void forward(Workspace ws, StepCache sc, byte[] peri, byte[] fovea, float[] vec, float[] hist, float[] seen,
 			float[] hPrev, float[] hOut) {
+		forward(ws, sc, peri, fovea, vec, EMPTY_SLOTS, EMPTY_TERRAIN, hist, seen, hPrev, hOut);
+	}
+
+	public void forward(Workspace ws, StepCache sc, byte[] peri, byte[] fovea, float[] vec, float[] slots, float[] terrain,
+			float[] hist, float[] seen, float[] hPrev, float[] hOut) {
+		float[] sl = slots != null ? slots : EMPTY_SLOTS;
+		float[] tr = terrain != null ? terrain : EMPTY_TERRAIN;
+
 		periConv1.forwardBytes(peri, sc.p1); relu(sc.p1);
 		periConv2.forward(sc.p1, sc.p2); relu(sc.p2);
 		periDense.forward(sc.p2, 0, sc.cat, 0);
@@ -96,6 +157,9 @@ public final class SwordNet {
 		foveaDense.forward(sc.f2, 0, sc.cat, BRANCH);
 		vecDense.forward(vec, 0, sc.cat, 2 * BRANCH);
 		relu(sc.cat);
+
+		slotEncoder.encodeSlots(sl, sc.slotCache, ws.slotScratch);
+		terrIn.forward(tr, 0, sc.terrH, 0); relu(sc.terrH);
 
 		if (gruEnabled) gru.forward(sc.cat, 0, hPrev, sc.hOut, sc.gruCache);
 		else Arrays.fill(sc.hOut, 0f);
@@ -109,19 +173,34 @@ public final class SwordNet {
 		newTrunk.forward(sc.cat, 0, ws.newPre, 0);
 		histIn.forward(hist, 0, ws.histPre, 0);
 		seenIn.forward(seen, 0, ws.seenPre, 0);
+		kitNew.forward(sc.slotCache.kitCtx, 0, ws.kitPre, 0);
+		terrNew.forward(sc.terrH, 0, ws.terrPre, 0);
 		if (gruEnabled) gruNew.forward(sc.hOut, 0, ws.gruPre, 0); else Arrays.fill(ws.gruPre, 0f);
-		for (int i = 0; i < NEW; i++) sc.newT[i] = Math.max(0f, ws.newPre[i] + ws.histPre[i] + ws.seenPre[i] + ws.gruPre[i]);
+		for (int i = 0; i < NEW; i++) {
+			sc.newT[i] = Math.max(0f, ws.newPre[i] + ws.histPre[i] + ws.seenPre[i] + ws.gruPre[i] + ws.kitPre[i] + ws.terrPre[i]);
+		}
 
-		System.arraycopy(sc.oldT, 0, sc.top, 0, OLD);
-		for (int b = 0; b < oldBlocks.length; b++) oldBlocks[b].forward(sc.top, 0, sc.oldCaches[b]);
-		System.arraycopy(sc.newT, 0, sc.top, OLD, NEW);
-		for (int b = 0; b < newBlocks.length; b++) newBlocks[b].forward(sc.top, OLD, sc.newCaches[b]);
+		System.arraycopy(sc.oldT, 0, sc.topPre, 0, OLD);
+		for (int b = 0; b < oldBlocks.length; b++) oldBlocks[b].forward(sc.topPre, 0, sc.oldCaches[b]);
+		System.arraycopy(sc.newT, 0, sc.topPre, OLD, NEW);
+		for (int b = 0; b < newBlocks.length; b++) newBlocks[b].forward(sc.topPre, OLD, sc.newCaches[b]);
+
+		// Soft-Gated 4-Expert MoE reading [topPre, kitCtx] (zero-down init -> exact Net2Net identity on tick 0)
+		System.arraycopy(sc.topPre, 0, sc.moeRouterIn, 0, TOP);
+		System.arraycopy(sc.slotCache.kitCtx, 0, sc.moeRouterIn, TOP, SlotEncoder.KIT_DIM);
+		moe.forward(sc.topPre, sc.moeRouterIn, sc.top, sc.moeCache);
 
 		heads.forward(sc.top, 0, sc.base, 0);
 		histHeads.forward(hist, 0, ws.histLogits, 0);
 		seenHeads.forward(seen, 0, ws.seenLogits, 0);
+		kitHeads.forward(sc.slotCache.kitCtx, 0, ws.kitLogits, 0);
+		terrHeads.forward(sc.terrH, 0, ws.terrLogits, 0);
 		if (gruEnabled) gruHeads.forward(sc.hOut, 0, ws.gruLogits, 0); else Arrays.fill(ws.gruLogits, 0f);
-		for (int i = 0; i < ActionSpace.TOTAL_LOGITS; i++) sc.base[i] += ws.histLogits[i] + ws.seenLogits[i] + ws.gruLogits[i];
+		for (int i = 0; i < ActionSpace.TOTAL_LOGITS; i++) {
+			sc.base[i] += ws.histLogits[i] + ws.seenLogits[i] + ws.gruLogits[i] + ws.kitLogits[i] + ws.terrLogits[i];
+		}
+		// AlphaStar Pointer Head EXCLUSIVELY owns HOTBAR_SLOT logits -> strictly permutation-equivariant to hotbar order!
+		slotEncoder.writePointerLogits(sc.top, sc.base, sc.slotCache);
 		System.arraycopy(sc.base, 0, sc.logits, 0, ActionSpace.TOTAL_LOGITS);
 	}
 
@@ -150,13 +229,18 @@ public final class SwordNet {
 		conditionAttack(ws, sc, ws.act);
 	}
 
-	public static final float[] PLAY_TEMP = {0.20f, 0.20f, 0.60f, 0.60f, 0.60f, 0.50f, 0.15f};
+	public static final float[] PLAY_TEMP = {0.20f, 0.20f, 0.60f, 0.60f, 0.60f, 0.50f, 0.15f, 0.25f, 0.25f, 0.25f, 0.25f};
 
 	public float samplePlay(Workspace ws, StepCache sc, Random rng, int[] actionOut) {
+		return samplePlay(ws, sc, ActionSpace.PHASE1_HEADS, rng, actionOut);
+	}
+
+	public float samplePlay(Workspace ws, StepCache sc, int headMask, Random rng, int[] actionOut) {
 		float logp = 0f;
 		for (int h = 0; h < ActionSpace.HEADS; h++) {
 			if (h == ActionSpace.JUMP) conditionJump(ws, sc, actionOut);
 			else if (h == ActionSpace.ATTACK) conditionAttack(ws, sc, actionOut);
+			if (!ActionSpace.unlocked(headMask, h)) { actionOut[h] = ActionSpace.DEFAULTS[h]; continue; }
 			int off = ActionSpace.OFFSETS[h], n = ActionSpace.SIZES[h];
 			float invT = 1f / PLAY_TEMP[h];
 			for (int i = 0; i < n; i++) ws.probs[off + i] = sc.logits[off + i] * invT;
@@ -195,23 +279,62 @@ public final class SwordNet {
 		return logp;
 	}
 
-	public void backward(Workspace ws, StepCache sc, byte[] peri, byte[] fovea, float[] vec, float[] hist, float[] seen,
-			float[] dHNext, float[] dHPrevOut) {
+	public void backward(Workspace ws, StepCache sc, byte[] peri, byte[] fovea, float[] vec, float[] slots, float[] terrain,
+			float[] hist, float[] seen, float[] dHNext, float[] dHPrevOut, float[] dMoeGateBalance) {
+		float[] sl = slots != null ? slots : EMPTY_SLOTS;
+		float[] tr = terrain != null ? terrain : EMPTY_TERRAIN;
+
 		arJump.backward(sc.arJumpIn, 0, ws.dLogits, JUMP_AT, null, 0, ws.grads);
 		arAttack.backward(sc.arAttackIn, 0, ws.dLogits, ATTACK_AT, null, 0, ws.grads);
-		heads.backward(sc.top, 0, ws.dLogits, 0, ws.dTop, 0, ws.grads);
-		histHeads.backward(hist, 0, ws.dLogits, 0, null, 0, ws.grads);
-		seenHeads.backward(seen, 0, ws.dLogits, 0, null, 0, ws.grads);
-		if (gruEnabled) gruHeads.backward(sc.hOut, 0, ws.dLogits, 0, ws.dH, 0, ws.grads);
+
+		// Non-pointer heads ignore HOTBAR_SLOT (owned exclusively by SlotEncoder's Pointer Head).
+		System.arraycopy(ws.dLogits, 0, ws.dBaseLogits, 0, ActionSpace.TOTAL_LOGITS);
+		Arrays.fill(ws.dBaseLogits, HOTBAR_AT, HOTBAR_AT + HOTBAR_SZ, 0f);
+
+		heads.backward(sc.top, 0, ws.dBaseLogits, 0, ws.dTop, 0, ws.grads);
+		histHeads.backward(hist, 0, ws.dBaseLogits, 0, null, 0, ws.grads);
+		seenHeads.backward(seen, 0, ws.dBaseLogits, 0, null, 0, ws.grads);
+		kitHeads.backward(sc.slotCache.kitCtx, 0, ws.dBaseLogits, 0, ws.dKitCtx, 0, ws.grads);
+		terrHeads.backward(sc.terrH, 0, ws.dBaseLogits, 0, ws.dTerrH, 0, ws.grads);
+		if (gruEnabled) gruHeads.backward(sc.hOut, 0, ws.dBaseLogits, 0, ws.dH, 0, ws.grads);
 		else Arrays.fill(ws.dH, 0f);
 
-		for (int b = newBlocks.length - 1; b >= 0; b--) newBlocks[b].backward(ws.dTop, OLD, sc.newCaches[b], ws.grads);
-		for (int b = oldBlocks.length - 1; b >= 0; b--) oldBlocks[b].backward(ws.dTop, 0, sc.oldCaches[b], ws.grads);
-		System.arraycopy(ws.dTop, 0, ws.dOld, 0, OLD); gate(ws.dOld, sc.oldT);
-		System.arraycopy(ws.dTop, OLD, ws.dNew, 0, NEW); gate(ws.dNew, sc.newT);
+		// Pointer head contributes directly into dTop (must happen BEFORE MoE backward!), while kitCtx backward happens AFTER MoE+kitNew accumulate into dKitCtx!
+		// Split Pointer-query backward vs SlotEncoder-kitCtx backward cleanly by running MoE -> trunks -> kitNew FIRST?
+		// WAIT: SlotEncoder.backward reads dTop (accumulates into it) AND dKitCtx! So run ptrKeep+ptrQuery into dTop first?
+		// No — MoE backward needs COMPLETE dTop (from BOTH heads AND ptrKeep/ptrQuery), and SlotEncoder needs COMPLETE dKitCtx (from kitHeads + MoE router + kitNew)!
+		// Let's handle that cleanly: compute ptrKeep/ptrQuery -> dTop BEFORE MoE, OR pass dTop through MoE after adding pointer's dTop!
+		// Wait: ptrKeep & ptrQuery depend on sc.top (post-MoE), while kitCtx feeds INTO MoE router and kitNew (pre-MoE)!
+		// So the EXACT topological reverse order is:
+		//   1. ptrKeep & ptrQuery -> accumulate into ws.dTop (and grads)
+		//   2. MoE.backward(ws.dTop) -> ws.dTopPre + ws.dMoeRouterIn ([dTopPre, dKitCtx])
+		//   3. oldBlocks / newBlocks / kitNew / terrNew -> accumulate into ws.dKitCtx, ws.dTerrH
+		//   4. SlotEncoder slot-body backward (from ws.dLogits[HOTBAR] + complete ws.dKitCtx) -> grads!
+		//   5. terrIn backward (from complete ws.dTerrH) -> grads!
+		backwardPointerTop(ws, sc);
+
+		Arrays.fill(ws.dTopPre, 0f);
+		moe.backward(sc.moeRouterIn, ws.dTop, dMoeGateBalance, sc.moeCache, ws.moeScratch, ws.dTopPre, ws.dMoeRouterIn, ws.grads);
+		for (int i = 0; i < TOP; i++) ws.dTopPre[i] += ws.dMoeRouterIn[i];
+		for (int i = 0; i < SlotEncoder.KIT_DIM; i++) ws.dKitCtx[i] += ws.dMoeRouterIn[TOP + i];
+
+		for (int b = newBlocks.length - 1; b >= 0; b--) newBlocks[b].backward(ws.dTopPre, OLD, sc.newCaches[b], ws.grads);
+		for (int b = oldBlocks.length - 1; b >= 0; b--) oldBlocks[b].backward(ws.dTopPre, 0, sc.oldCaches[b], ws.grads);
+		System.arraycopy(ws.dTopPre, 0, ws.dOld, 0, OLD); gate(ws.dOld, sc.oldT);
+		System.arraycopy(ws.dTopPre, OLD, ws.dNew, 0, NEW); gate(ws.dNew, sc.newT);
 
 		histIn.backward(hist, 0, ws.dNew, 0, null, 0, ws.grads);
 		seenIn.backward(seen, 0, ws.dNew, 0, null, 0, ws.grads);
+		kitNew.backward(sc.slotCache.kitCtx, 0, ws.dNew, 0, ws.dKitTmp, 0, ws.grads);
+		for (int i = 0; i < SlotEncoder.KIT_DIM; i++) ws.dKitCtx[i] += ws.dKitTmp[i];
+		terrNew.backward(sc.terrH, 0, ws.dNew, 0, ws.dTerrTmp, 0, ws.grads);
+		for (int i = 0; i < TERRAIN_DIM; i++) ws.dTerrH[i] += ws.dTerrTmp[i];
+
+		// Now dKitCtx and dTerrH are 100% complete! Finish SlotEncoder slot-body and terrIn backward:
+		backwardSlotBody(ws, sc, sl);
+		gate(ws.dTerrH, sc.terrH);
+		terrIn.backward(tr, 0, ws.dTerrH, 0, null, 0, ws.grads);
+
 		if (gruEnabled) {
 			gruNew.backward(sc.hOut, 0, ws.dNew, 0, ws.dHPart, 0, ws.grads);
 			for (int i = 0; i < ObsMemory.GRU_HIDDEN; i++) ws.dH[i] += ws.dHPart[i] + (dHNext != null ? dHNext[i] : 0f);
@@ -243,49 +366,12 @@ public final class SwordNet {
 		periConv1.backwardBytes(peri, ws.dP1, ws.grads);
 	}
 
-	/** Net2Net weight surgery from a legacy distilled SWSC checkpoint into SwordNet. */
-	public long takeOverFromSchool(Path schoolCheckpoint) throws IOException {
-		Map<String, float[]> saved = new HashMap<>();
-		int oldVec;
-		try (DataInputStream in = new DataInputStream(new BufferedInputStream(Files.newInputStream(schoolCheckpoint)))) {
-			if (in.readInt() != 0x53575343) throw new IOException("not an SWSC checkpoint: " + schoolCheckpoint);
-			in.readInt(); oldVec = in.readInt();
-			in.readInt(); in.readInt(); in.readInt(); in.readInt();
-			in.readLong(); in.readLong(); in.readLong();
-			int n = in.readInt();
-			for (int i = 0; i < n; i++) {
-				String name = in.readUTF();
-				int len = in.readInt();
-				float[] w = new float[len];
-				for (int k = 0; k < len; k++) w[k] = in.readFloat();
-				int skip = 8 * len;
-				while (skip > 0) { int s = in.skipBytes(skip); if (s <= 0) throw new IOException("EOF"); skip -= s; }
-				saved.put(name, w);
-			}
-		}
-		int inserted = ObsSpec.VEC - oldVec;
-		int insertAt = ObsSpec.VEC_SCALARS + (ObsSpec.SCALARS - Math.max(0, inserted));
-		long copied = 0;
-		for (Param p : params.params()) {
-			float[] from = saved.get(p.name);
-			if (from == null) continue;
-			if (from.length == p.w.length) {
-				System.arraycopy(from, 0, p.w, 0, from.length);
-				copied += from.length;
-			} else if (inserted > 0 && (p.name.equals("vec.dense.w") || p.name.equals("vec.wide.w"))) {
-				int cols = p.w.length / ObsSpec.VEC;
-				if (from.length == oldVec * cols) {
-					Arrays.fill(p.w, 0f);
-					System.arraycopy(from, 0, p.w, 0, insertAt * cols);
-					System.arraycopy(from, insertAt * cols, p.w, (insertAt + inserted) * cols, from.length - insertAt * cols);
-					copied += from.length;
-				}
-			} else if ((p.name.equals("trunk.w") || p.name.equals("new.trunk.w")) && from.length > p.w.length) {
-				System.arraycopy(from, 0, p.w, 0, p.w.length);
-				copied += p.w.length;
-			}
-		}
-		return copied;
+	private void backwardPointerTop(Workspace ws, StepCache sc) {
+		slotEncoder.backwardPointerTop(sc.top, ws.dLogits, sc.slotCache, ws.slotScratch, ws.dTop, ws.grads);
+	}
+
+	private void backwardSlotBody(Workspace ws, StepCache sc, float[] sl) {
+		slotEncoder.backwardSlots(sl, ws.dLogits, ws.dKitCtx, sc.slotCache, ws.slotScratch, ws.grads);
 	}
 
 	public float gruWeightNorm() {
@@ -295,13 +381,19 @@ public final class SwordNet {
 		return (float) Math.sqrt(s);
 	}
 
-	/** Marks untrained GRU parameters as born at {@code adamStep} so Adam bias-correction avoids a 3x cold-start jump. */
+	/** Marks untrained GRU parameters as born at {@code adamStep} so Adam bias-correction avoids a cold-start jump. */
 	public void markGruBorn(long adamStep) {
 		for (Param p : params.params()) {
-			if (p.name.startsWith("gru.")) {
+			if (p.name.startsWith("gru.")) p.bornAt = adamStep;
+		}
+	}
+
+	/** Marks all newly added SMP/MoE/Slot/Terrain parameters as born at {@code adamStep} after Net2Net surgery. */
+	public void markSmpBorn(long adamStep) {
+		for (Param p : params.params()) {
+			if (p.name.startsWith("slot.") || p.name.startsWith("kit.")
+					|| p.name.startsWith("terr.") || p.name.startsWith("moe.")) {
 				p.bornAt = adamStep;
-				Arrays.fill(p.m, 0f);
-				Arrays.fill(p.v, 0f);
 			}
 		}
 	}

@@ -4,7 +4,7 @@ import dev.swordai.core.rl.ObsBuilder;
 import dev.swordai.core.rl.ObsSpec;
 import dev.swordai.core.vision.ViewGeometry;
 
-/** Client-observable body and opponent state packed into {@link ObsSpec} scalars. */
+/** Client-observable body, opponent, item/shield, and GUI cursor state packed into {@link ObsSpec} scalars. */
 public final class BodyState {
 	public static final float VELOCITY_SCALE = 5f;
 	public static final float EVENT_FADE_TICKS = 20f;
@@ -17,6 +17,17 @@ public final class BodyState {
 	public int ticksSinceHitDealt = 1000, ticksSinceHitTaken = 1000, oppTicksSinceSwing = 1000;
 	public float oppVelRight, oppVelUp, oppVelForward;
 	public int hitsDealtRow, exchangeOwnHits, exchangeOppHits, critChain;
+
+	// SMP human-observable item, shield, and Phase-2 GUI cursor state
+	public boolean ownUsingItem, ownHeldSword = true, ownHeldAxe;
+	public float ownUseTicks, ownShieldCooldown;
+	public boolean oppHeldSword = true, oppHeldAxe, oppUsingItem;
+	public float oppUseTicks, oppShieldDisabled;
+	public boolean invOpen;
+	public float cursorX, cursorY;
+	private boolean oppWasUsing;
+	private int oppUseCount, oppShieldDisabledTicks;
+
 	private boolean oppWasSwinging;
 	private int oppLastSwingTime, ticksSinceAnyHit = 1000;
 	private float styleAway, styleEdge, styleDist = 0.5f;
@@ -43,6 +54,28 @@ public final class BodyState {
 		oppLastSwingTime = swingTime;
 	}
 
+	/** Tracks visibly raised opponent shield/item duration and 5-second disable countdown after an axe break. */
+	public void noteOpponentItem(boolean heldSword, boolean heldAxe, boolean usingItem) {
+		this.oppHeldSword = heldSword;
+		this.oppHeldAxe = heldAxe;
+		this.oppUsingItem = usingItem;
+		if (usingItem) {
+			oppUseCount = oppWasUsing ? Math.min(oppUseCount + 1, 100) : 1;
+		} else {
+			oppUseCount = 0;
+		}
+		oppWasUsing = usingItem;
+		this.oppUseTicks = Math.min(1f, oppUseCount / 20f);
+		if (oppShieldDisabledTicks > 0) oppShieldDisabledTicks--;
+		this.oppShieldDisabled = oppShieldDisabledTicks / 100f;
+	}
+
+	/** Called when our axe visibly disables the opponent's raised shield (vanilla 100-tick = 5.0 s cooldown). */
+	public void noteOpponentShieldBroken() {
+		oppShieldDisabledTicks = 100;
+		oppShieldDisabled = 1f;
+	}
+
 	public void resetOpponentSwing() {
 		oppTicksSinceSwing = 1000;
 		oppWasSwinging = false;
@@ -54,6 +87,12 @@ public final class BodyState {
 		ticksSinceAnyHit = 1000;
 		styleAway = styleEdge = 0f;
 		styleDist = 0.5f;
+		ownUsingItem = false; ownUseTicks = 0f; ownShieldCooldown = 0f;
+		ownHeldSword = true; ownHeldAxe = false;
+		oppHeldSword = true; oppHeldAxe = false; oppUsingItem = false;
+		oppUseTicks = 0f; oppShieldDisabled = 0f;
+		oppWasUsing = false; oppUseCount = 0; oppShieldDisabledTicks = 0;
+		invOpen = false; cursorX = 0f; cursorY = 0f;
 	}
 
 	public void updateExchange(boolean dealtNow, boolean dealtCrit, boolean takenNow) {
@@ -106,6 +145,18 @@ public final class BodyState {
 		ObsBuilder.writeScalar(v, ObsSpec.SC_EXCHANGE_OWN_HITS, Math.min(5, exchangeOwnHits) / 5f);
 		ObsBuilder.writeScalar(v, ObsSpec.SC_EXCHANGE_OPP_HITS, Math.min(5, exchangeOppHits) / 5f);
 		ObsBuilder.writeScalar(v, ObsSpec.SC_CRIT_CHAIN, Math.min(4, critChain) / 4f);
+
+		// SMP human-observable scalars
+		ObsBuilder.writeScalar(v, ObsSpec.SC_OWN_USING, ownUsingItem ? 1f : 0f);
+		ObsBuilder.writeScalar(v, ObsSpec.SC_OWN_USE_TICKS, ownUseTicks);
+		ObsBuilder.writeScalar(v, ObsSpec.SC_OWN_SHIELD_CD, ownShieldCooldown);
+		ObsBuilder.writeScalar(v, ObsSpec.SC_OWN_HELD_SWORD, ownHeldSword ? 1f : 0f);
+		ObsBuilder.writeScalar(v, ObsSpec.SC_OWN_HELD_AXE, ownHeldAxe ? 1f : 0f);
+		ObsBuilder.writeScalar(v, ObsSpec.SC_OPP_SHIELD_DISABLED, oppShieldDisabled);
+		ObsBuilder.writeScalar(v, ObsSpec.SC_INV_OPEN, invOpen ? 1f : 0f);
+		ObsBuilder.writeScalar(v, ObsSpec.SC_CURSOR_X, cursorX);
+		ObsBuilder.writeScalar(v, ObsSpec.SC_CURSOR_Y, cursorY);
+
 		if (enemyVisible) {
 			ObsBuilder.writeScalar(v, ObsSpec.SC_REL_VEL_FORWARD, (oppVelForward - velForward) * VELOCITY_SCALE);
 			ObsBuilder.writeScalar(v, ObsSpec.SC_REL_VEL_RIGHT, (oppVelRight - velRight) * VELOCITY_SCALE);
@@ -113,6 +164,10 @@ public final class BodyState {
 			ObsBuilder.writeScalar(v, ObsSpec.SC_OPP_ON_GROUND, oppOnGround ? 1f : 0f);
 			ObsBuilder.writeScalar(v, ObsSpec.SC_OPP_VEL_UP, oppVelUp * VELOCITY_SCALE);
 			ObsBuilder.writeScalar(v, ObsSpec.SC_OPP_FALLING, (!oppOnGround && oppVelUp < -0.02f) ? 1f : 0f);
+			ObsBuilder.writeScalar(v, ObsSpec.SC_OPP_HELD_SWORD, oppHeldSword ? 1f : 0f);
+			ObsBuilder.writeScalar(v, ObsSpec.SC_OPP_HELD_AXE, oppHeldAxe ? 1f : 0f);
+			ObsBuilder.writeScalar(v, ObsSpec.SC_OPP_USING, oppUsingItem ? 1f : 0f);
+			ObsBuilder.writeScalar(v, ObsSpec.SC_OPP_USE_TICKS, oppUseTicks);
 			float dist = Math.min(8f, apparentDistance(v));
 			float away = oppVelForward * VELOCITY_SCALE;
 			boolean edge = dist >= 3f && dist <= 4.6f && Math.abs(away) < 0.3f;

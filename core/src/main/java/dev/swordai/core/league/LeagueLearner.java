@@ -7,9 +7,12 @@ import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 
-/** Trainable recurrent agent facade: owns SwordNet, SwordCritic, ObsMemory, LeagueRollout, LeaguePpo, SWLG persistence. */
+/**
+ * Trainable recurrent generalist agent facade: owns SwordNet (MoE + 256-GRU + AlphaStar SlotPointer + Terrain),
+ * SwordCritic, ObsMemory, LeagueRollout, LeaguePpo, and exact OpenAI-Five-style Net2Net SWLG surgery.
+ */
 public final class LeagueLearner {
-	private static final int MAGIC = 0x53574C47, FORMAT = 1;
+	private static final int MAGIC = 0x53574C47, FORMAT = 2;
 
 	public final SwordNet actor;
 	public final SwordCritic critic;
@@ -53,17 +56,20 @@ public final class LeagueLearner {
 	}
 
 	public void decide(Obs obs, boolean greedy, float temperature, Decision out) {
+		decide(obs, ActionSpace.PHASE1_HEADS, greedy, temperature, out);
+	}
+
+	public void decide(Obs obs, int headMask, boolean greedy, float temperature, Decision out) {
 		memory.pushSeen(obs.vec);
 		System.arraycopy(memory.hist, 0, lastHistIn, 0, ObsMemory.HIST);
 		System.arraycopy(memory.seen, 0, lastSeenIn, 0, ObsMemory.SEEN);
 		System.arraycopy(memory.hidden, 0, lastHIn, 0, ObsMemory.GRU_HIDDEN);
-		actor.forward(actorWs, actorWs.step, obs.peri, obs.fovea, obs.vec, lastHistIn, lastSeenIn, lastHIn, memory.hidden);
-		out.logp = actor.sample(actorWs, actorWs.step, ActionSpace.ALL_HEADS, greedy, temperature, rng, out.action);
-		out.value = critic.forward(criticWs, obs.vec, obs.priv, memory.hidden);
+		actor.forward(actorWs, actorWs.step, obs.peri, obs.fovea, obs.vec, obs.slots, obs.terrain, lastHistIn, lastSeenIn, lastHIn, memory.hidden);
+		out.logp = actor.sample(actorWs, actorWs.step, headMask, greedy, temperature, rng, out.action);
+		out.value = critic.forward(criticWs, obs.vec, obs.priv, memory.hidden, actorWs.step.kitCtx(), obs.terrain);
 		memory.pushAction(out.action);
 	}
 
-	/** Activates or deactivates GRU memory cleanly: exact Net2Net continuity on Stage 2 -> Stage 3 transition. */
 	public void setGruEnabled(boolean enabled) {
 		actor.gruEnabled = enabled;
 		if (enabled && actor.gruWeightNorm() == 0f) {
@@ -73,7 +79,7 @@ public final class LeagueLearner {
 	}
 
 	public float bootstrapValue(Obs obs) {
-		if (!actor.gruEnabled) return critic.forward(criticWs, obs.vec, obs.priv, memory.hidden);
+		if (!actor.gruEnabled) return critic.forward(criticWs, obs.vec, obs.priv, memory.hidden, actorWs.step.kitCtx(), obs.terrain);
 		System.arraycopy(memory.seen, 0, bootSeen, ObsMemory.SEEN_PER, ObsMemory.SEEN - ObsMemory.SEEN_PER);
 		int s = ObsSpec.VEC_STATS, c = ObsSpec.VEC_SCALARS;
 		bootSeen[0] = obs.vec[s + ObsSpec.ST_HEAD_VISIBLE]; bootSeen[1] = obs.vec[s + ObsSpec.ST_HEAD_X];
@@ -81,12 +87,16 @@ public final class LeagueLearner {
 		bootSeen[4] = obs.vec[s + ObsSpec.ST_ANY_AREA]; bootSeen[5] = obs.vec[c + ObsSpec.SC_REL_VEL_FORWARD];
 		bootSeen[6] = obs.vec[c + ObsSpec.SC_REL_VEL_UP]; bootSeen[7] = obs.vec[c + ObsSpec.SC_OPP_CHARGE];
 		bootSeen[8] = obs.vec[c + ObsSpec.SC_TURNED_YAW]; bootSeen[9] = obs.vec[c + ObsSpec.SC_TURNED_PITCH];
-		actor.forward(actorWs, actorWs.step, obs.peri, obs.fovea, obs.vec, memory.hist, bootSeen, memory.hidden, bootHOut);
-		return critic.forward(criticWs, obs.vec, obs.priv, bootHOut);
+		actor.forward(actorWs, actorWs.step, obs.peri, obs.fovea, obs.vec, obs.slots, obs.terrain, memory.hist, bootSeen, memory.hidden, bootHOut);
+		return critic.forward(criticWs, obs.vec, obs.priv, bootHOut, actorWs.step.kitCtx(), obs.terrain);
 	}
 
 	public void record(Obs obs, Decision dec, float reward, boolean done, int[] demoAction, float demoWeight) {
-		rollout.add(obs, lastHistIn, lastSeenIn, lastHIn, ActionSpace.ALL_HEADS, dec.action, dec.logp, dec.value, reward, done, demoAction, demoWeight);
+		record(obs, ActionSpace.PHASE1_HEADS, dec, reward, done, demoAction, demoWeight);
+	}
+
+	public void record(Obs obs, int headMask, Decision dec, float reward, boolean done, int[] demoAction, float demoWeight) {
+		rollout.add(obs, lastHistIn, lastSeenIn, lastHIn, headMask, dec.action, dec.logp, dec.value, reward, done, demoAction, demoWeight);
 		totalSteps++;
 		if (done) memory.reset();
 	}
@@ -107,7 +117,6 @@ public final class LeagueLearner {
 		}
 	}
 
-	/** AlphaStar Main Exploiter reset: copy seed actor, reset Adam moments & critic, and re-apply GRU Net2Net setup. */
 	public void resetForExploiter(SwordNet seed, boolean enableGru) {
 		copyWeights(seed, actor);
 		actor.params.adamSteps = 0;
@@ -138,14 +147,18 @@ public final class LeagueLearner {
 
 	public boolean load(Path path) throws IOException {
 		if (!Files.exists(path)) return false;
-		int magic;
-		try (DataInputStream p = new DataInputStream(new BufferedInputStream(Files.newInputStream(path)))) { magic = p.readInt(); }
-		if (magic == 0x53575343) { actor.takeOverFromSchool(path); return true; }
-		if (magic != MAGIC) throw new IOException("unknown magic in " + path);
 		try (DataInputStream in = new DataInputStream(new BufferedInputStream(Files.newInputStream(path)))) {
-			in.readInt(); in.readInt(); int savedVec = in.readInt(); in.readInt(); in.readInt(); in.readInt();
+			int magic = in.readInt();
+			if (magic != MAGIC) throw new IOException("unknown magic in " + path);
+			in.readInt(); // format
+			int savedVec = in.readInt(), savedPriv = in.readInt(), savedGru = in.readInt(), savedLogits = in.readInt();
 			totalSteps = in.readLong(); updates = in.readLong(); ppo.lr = in.readFloat();
-			readParams(in, actor.params, savedVec); readParams(in, critic.params, savedVec);
+			boolean didSurgery = readActorParams(in, actor, savedVec, savedGru, savedLogits);
+			readCriticParams(in, critic, savedVec, savedPriv, savedGru);
+			if (didSurgery) {
+				actor.initNeutralSmpBiases();
+				actor.markSmpBorn(actor.params.adamSteps);
+			}
 		}
 		return true;
 	}
@@ -164,17 +177,27 @@ public final class LeagueLearner {
 
 	public static SwordNet loadActorOnly(Path path) throws IOException {
 		SwordNet net = new SwordNet(1L);
-		int magic;
-		try (DataInputStream p = new DataInputStream(new BufferedInputStream(Files.newInputStream(path)))) { magic = p.readInt(); }
-		if (magic == 0x53575343) { net.takeOverFromSchool(path); return net; }
-		if (magic != MAGIC) throw new IOException("unknown magic in " + path);
 		try (DataInputStream in = new DataInputStream(new BufferedInputStream(Files.newInputStream(path)))) {
-			in.readInt(); in.readInt(); int savedVec = in.readInt(); in.readInt(); in.readInt(); in.readInt();
+			int magic = in.readInt();
+			if (magic != MAGIC) throw new IOException("unknown magic in " + path);
+			in.readInt();
+			int savedVec = in.readInt(); in.readInt(); int savedGru = in.readInt(); int savedLogits = in.readInt();
 			in.readLong(); in.readLong(); in.readFloat();
-			readParams(in, net.params, savedVec);
+			boolean didSurgery = readActorParams(in, net, savedVec, savedGru, savedLogits);
+			if (didSurgery) net.initNeutralSmpBiases();
 		}
 		net.params.dropOptimizerState();
 		return net;
+	}
+
+	/** Whether this actor has non-zero SMP/MoE/Pointer weights (false on freshly surgeried Stage 5 sword-master.bin). */
+	public static boolean hasSmpWeights(SwordNet net) {
+		for (Param p : net.params.params()) {
+			if (p.name.equals("slot.ptrQ.w") || p.name.equals("moe.e0.down.w") || p.name.equals("kit.heads.w")) {
+				for (float v : p.w) if (Math.abs(v) > 1e-6f) return true;
+			}
+		}
+		return false;
 	}
 
 	private static void writeParams(DataOutputStream out, ParamSet ps) throws IOException {
@@ -187,7 +210,7 @@ public final class LeagueLearner {
 		}
 	}
 
-	private static void readParams(DataInputStream in, ParamSet ps, int savedVec) throws IOException {
+	private static Map<String, float[][]> readParamMap(DataInputStream in, ParamSet ps) throws IOException {
 		ps.adamSteps = in.readLong(); int n = in.readInt();
 		Map<String, float[][]> loaded = new HashMap<>();
 		for (int i = 0; i < n; i++) {
@@ -198,21 +221,142 @@ public final class LeagueLearner {
 			for (int k = 0; k < len; k++) v[k] = in.readFloat();
 			loaded.put(name, new float[][] {w, m, v});
 		}
-		int inserted = ObsSpec.VEC - savedVec, insertAt = ObsSpec.VEC_SCALARS + (ObsSpec.SCALARS - Math.max(0, inserted));
-		for (Param p : ps.params()) {
-			float[][] a = loaded.get(p.name); if (a == null) continue;
-			if (a[0].length == p.w.length) {
+		return loaded;
+	}
+
+	/**
+	 * Exact OpenAI-Five / Net2Net function-preserving weight surgery from Stage 5 Sword checkpoints
+	 * ({@code vec=115, gru=128, logits=38}) into the SMP Generalist network ({@code vec=148, gru=256, logits=54}).
+	 */
+	private static boolean readActorParams(DataInputStream in, SwordNet actor, int savedVec, int savedGru, int savedLogits) throws IOException {
+		Map<String, float[][]> loaded = readParamMap(in, actor.params);
+		boolean surgery = (savedVec != ObsSpec.VEC || savedGru != ObsMemory.GRU_HIDDEN || savedLogits != ActionSpace.TOTAL_LOGITS);
+		int newH = ObsMemory.GRU_HIDDEN;
+
+		for (Param p : actor.params.params()) {
+			float[][] a = loaded.get(p.name);
+			if (a == null) continue;
+			float[] sw = a[0], sm = a[1], sv = a[2];
+			if (sw.length == p.w.length) {
+				System.arraycopy(sw, 0, p.w, 0, p.w.length);
+				System.arraycopy(sm, 0, p.m, 0, p.m.length);
+				System.arraycopy(sv, 0, p.v, 0, p.v.length);
+				continue;
+			}
+			// 1. Vec input layers (vec.dense.w, vec.wide.w): map [stats(32), oldScalars(38), oldLastAct(38), oldMask(7)] -> new 148 layout
+			if ((p.name.equals("vec.dense.w") || p.name.equals("vec.wide.w")) && savedVec == ObsSpec.LEGACY_VEC) {
+				int cols = p.w.length / ObsSpec.VEC;
+				if (sw.length == savedVec * cols) {
+					zeroParam(p);
+					// stats(32) + old scalars(38) -> [0 .. 70)
+					copyRows(sw, sm, sv, p, 0, 0, ObsSpec.VEC_SCALARS + ObsSpec.LEGACY_SCALARS, cols);
+					// old lastAction(38) -> [VEC_LAST_ACTION .. VEC_LAST_ACTION+38)
+					copyRows(sw, sm, sv, p, ObsSpec.LEGACY_VEC_LAST_ACTION, ObsSpec.VEC_LAST_ACTION, ActionSpace.LEGACY_TOTAL_LOGITS, cols);
+					// old headMask(7) -> [VEC_HEAD_MASK .. VEC_HEAD_MASK+7)
+					copyRows(sw, sm, sv, p, ObsSpec.LEGACY_VEC_HEAD_MASK, ObsSpec.VEC_HEAD_MASK, ActionSpace.LEGACY_HEADS, cols);
+				}
+			}
+			// 2. GRU 128 -> 256 block-preserving surgery (old units 0..127 keep exact dynamics; new units 128..255 decoupled at tick 0)
+			else if (p.name.equals("gru.in.w") && savedGru < newH && sw.length == SwordNet.CAT * 3 * savedGru) {
+				zeroMoments(p);
+				for (int row = 0; row < SwordNet.CAT; row++) {
+					for (int g = 0; g < 3; g++) {
+						int srcOff = row * (3 * savedGru) + g * savedGru;
+						int dstOff = row * (3 * newH) + g * newH;
+						System.arraycopy(sw, srcOff, p.w, dstOff, savedGru);
+						System.arraycopy(sm, srcOff, p.m, dstOff, savedGru);
+						System.arraycopy(sv, srcOff, p.v, dstOff, savedGru);
+					}
+				}
+			} else if (p.name.equals("gru.in.b") && savedGru < newH && sw.length == 3 * savedGru) {
+				zeroMoments(p);
+				for (int g = 0; g < 3; g++) {
+					System.arraycopy(sw, g * savedGru, p.w, g * newH, savedGru);
+					System.arraycopy(sm, g * savedGru, p.m, g * newH, savedGru);
+					System.arraycopy(sv, g * savedGru, p.v, g * newH, savedGru);
+				}
+			} else if (p.name.equals("gru.hid.w") && savedGru < newH && sw.length == savedGru * 3 * savedGru) {
+				zeroMoments(p);
+				// Copy old 128x128 gate sub-blocks and ZERO cross-weights from new units (128..255) into old units (0..127)
+				for (int row = 0; row < savedGru; row++) {
+					for (int g = 0; g < 3; g++) {
+						int srcOff = row * (3 * savedGru) + g * savedGru;
+						int dstOff = row * (3 * newH) + g * newH;
+						System.arraycopy(sw, srcOff, p.w, dstOff, savedGru);
+						System.arraycopy(sm, srcOff, p.m, dstOff, savedGru);
+						System.arraycopy(sv, srcOff, p.v, dstOff, savedGru);
+					}
+				}
+				for (int row = savedGru; row < newH; row++) {
+					for (int g = 0; g < 3; g++) {
+						Arrays.fill(p.w, row * (3 * newH) + g * newH, row * (3 * newH) + g * newH + savedGru, 0f);
+					}
+				}
+			} else if (p.name.equals("gru.hid.b") && savedGru < newH && sw.length == 3 * savedGru) {
+				zeroMoments(p);
+				for (int g = 0; g < 3; g++) {
+					System.arraycopy(sw, g * savedGru, p.w, g * newH, savedGru);
+					System.arraycopy(sm, g * savedGru, p.m, g * newH, savedGru);
+					System.arraycopy(sv, g * savedGru, p.v, g * newH, savedGru);
+				}
+			} else if (p.name.equals("gru.new.w") && savedGru < newH && sw.length == savedGru * SwordNet.NEW) {
+				zeroParam(p);
+				copyRows(sw, sm, sv, p, 0, 0, savedGru, SwordNet.NEW);
+			}
+			// 3. Policy output heads (38 -> 54 logits; plus gru.heads 128x38 -> 256x54)
+			else if (p.name.equals("gru.heads.w") && sw.length == savedGru * savedLogits) {
+				zeroParam(p);
+				int rows = Math.min(savedGru, newH), cols = Math.min(savedLogits, ActionSpace.TOTAL_LOGITS);
+				for (int r = 0; r < rows; r++) {
+					System.arraycopy(sw, r * savedLogits, p.w, r * ActionSpace.TOTAL_LOGITS, cols);
+					System.arraycopy(sm, r * savedLogits, p.m, r * ActionSpace.TOTAL_LOGITS, cols);
+					System.arraycopy(sv, r * savedLogits, p.v, r * ActionSpace.TOTAL_LOGITS, cols);
+				}
+			} else if ((p.name.equals("heads.w") || p.name.equals("hist.heads.w") || p.name.equals("seen.heads.w"))
+					&& savedLogits < ActionSpace.TOTAL_LOGITS) {
+				int rows = p.w.length / ActionSpace.TOTAL_LOGITS;
+				if (sw.length == rows * savedLogits) {
+					zeroParam(p);
+					for (int r = 0; r < rows; r++) {
+						System.arraycopy(sw, r * savedLogits, p.w, r * ActionSpace.TOTAL_LOGITS, savedLogits);
+						System.arraycopy(sm, r * savedLogits, p.m, r * ActionSpace.TOTAL_LOGITS, savedLogits);
+						System.arraycopy(sv, r * savedLogits, p.v, r * ActionSpace.TOTAL_LOGITS, savedLogits);
+					}
+				}
+			} else if ((p.name.equals("heads.b") || p.name.equals("hist.heads.b") || p.name.equals("seen.heads.b") || p.name.equals("gru.heads.b"))
+					&& savedLogits < ActionSpace.TOTAL_LOGITS && sw.length == savedLogits) {
+				zeroParam(p);
+				System.arraycopy(sw, 0, p.w, 0, savedLogits);
+				System.arraycopy(sm, 0, p.m, 0, savedLogits);
+				System.arraycopy(sv, 0, p.v, 0, savedLogits);
+			}
+		}
+		return surgery;
+	}
+
+	private static void readCriticParams(DataInputStream in, SwordCritic critic, int savedVec, int savedPriv, int savedGru) throws IOException {
+		Map<String, float[][]> loaded = readParamMap(in, critic.params);
+		boolean exact = (savedVec == ObsSpec.VEC && savedPriv == ObsSpec.PRIV && savedGru == ObsMemory.GRU_HIDDEN);
+		if (!exact) {
+			// OpenAI Five surgery protocol: when critic architecture widens (256 -> 384 + kit + terrain), keep fresh critic & warm up with high prior KL.
+			critic.params.adamSteps = 0;
+			return;
+		}
+		for (Param p : critic.params.params()) {
+			float[][] a = loaded.get(p.name);
+			if (a != null && a[0].length == p.w.length) {
 				System.arraycopy(a[0], 0, p.w, 0, p.w.length);
 				System.arraycopy(a[1], 0, p.m, 0, p.m.length);
 				System.arraycopy(a[2], 0, p.v, 0, p.v.length);
-			} else if (inserted > 0 && (p.name.equals("vec.dense.w") || p.name.equals("vec.wide.w"))) {
-				int cols = p.w.length / ObsSpec.VEC;
-				if (a[0].length == savedVec * cols) {
-					Arrays.fill(p.w, 0f); Arrays.fill(p.m, 0f); Arrays.fill(p.v, 0f);
-					System.arraycopy(a[0], 0, p.w, 0, insertAt * cols);
-					System.arraycopy(a[0], insertAt * cols, p.w, (insertAt + inserted) * cols, a[0].length - insertAt * cols);
-				}
 			}
 		}
+	}
+
+	private static void zeroParam(Param p) { Arrays.fill(p.w, 0f); Arrays.fill(p.m, 0f); Arrays.fill(p.v, 0f); }
+	private static void zeroMoments(Param p) { Arrays.fill(p.m, 0f); Arrays.fill(p.v, 0f); }
+	private static void copyRows(float[] sw, float[] sm, float[] sv, Param dst, int srcRow, int dstRow, int nRows, int cols) {
+		System.arraycopy(sw, srcRow * cols, dst.w, dstRow * cols, nRows * cols);
+		System.arraycopy(sm, srcRow * cols, dst.m, dstRow * cols, nRows * cols);
+		System.arraycopy(sv, srcRow * cols, dst.v, dstRow * cols, nRows * cols);
 	}
 }

@@ -9,17 +9,19 @@ import dev.swordai.core.rl.ObsBuilder;
 import dev.swordai.core.rl.SightTracker;
 import dev.swordai.core.vision.MaskFrame;
 import dev.swordai.core.vision.ViewGeometry;
+import dev.swordai.server.InventoryObs;
 import dev.swordai.server.Sightline;
 import dev.swordai.server.Truth;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Builds the actor observation (pixels + own/observable body scalars) and training-only privileged
- * critic inputs for one client tick.
+ * Builds the actor observation (pixels + own/observable body scalars + AlphaStar slots + 5x5 terrain)
+ * and training-only privileged critic inputs for one client tick.
  */
 final class Observer {
 	final MaskFrame frame = new MaskFrame();
@@ -34,30 +36,18 @@ final class Observer {
 		body.resetOpponentSwing();
 	}
 
-	void simulateLostSight(int side) {
-		sight.resetJustLost(side);
-	}
-
-	BodyState body() {
-		return body;
-	}
+	void simulateLostSight(int side) { sight.resetJustLost(side); }
+	BodyState body() { return body; }
 
 	boolean capture(FrameGrabber grabber) {
-		if (!grabber.extract(frame)) {
-			return false;
-		}
+		if (!grabber.extract(frame)) return false;
 		stale = frame.sequence == lastSequence;
 		lastSequence = frame.sequence;
 		return true;
 	}
 
-	boolean stale() {
-		return stale;
-	}
-
-	boolean late() {
-		return sight.frameIsLate();
-	}
+	boolean stale() { return stale; }
+	boolean late() { return sight.frameIsLate(); }
 
 	void fillGeometry(StepFacts facts, LocalPlayer me, Player bot) {
 		Sightline.fill(facts, me.getEyePosition(), me.getYRot(), me.getXRot(), me.getLookAngle(),
@@ -66,26 +56,35 @@ final class Observer {
 		facts.falling = !me.onGround() && me.getY() < me.yo;
 	}
 
-	void fillBody(BodyState b, LocalPlayer me, Player opponent, double floorY) {
+	void fillBody(BodyState b, LocalPlayer me, Player opponent, double localGroundY) {
 		b.yaw = me.getYRot();
 		b.pitch = me.getXRot();
-		b.height = (float) (me.getY() - floorY);
+		b.height = (float) (me.getY() - localGroundY);
 		b.onGround = me.onGround();
 		b.oppOnGround = opponent.onGround();
 		b.setMotion(me.getX() - me.xo, me.getY() - me.yo, me.getZ() - me.zo);
 		b.setOpponentMotion(opponent.getX() - opponent.xo, opponent.getY() - opponent.yo, opponent.getZ() - opponent.zo);
 		b.charge = me.getAttackStrengthScale(0f);
 		b.noteOpponentSwing(opponent.swinging, opponent.swingTime);
+		ItemStack oppMain = opponent.getMainHandItem();
+		b.noteOpponentItem(InventoryObs.isSword(oppMain), InventoryObs.isAxe(oppMain), opponent.isUsingItem());
 		b.oppHurt = Math.min(1f, opponent.hurtTime / 10f);
 		b.onTarget = Minecraft.getInstance().hitResult instanceof EntityHitResult hit && hit.getEntity() == opponent;
-		b.setHealth(me.getHealth() / Math.max(1f, me.getMaxHealth()));
+		b.setHealth((me.getHealth() + me.getAbsorptionAmount()) / Math.max(1f, me.getMaxHealth()));
 		b.sprinting = me.isSprinting();
 		b.stale = stale;
+		b.ownUsingItem = me.isUsingItem();
+		b.ownUseTicks = me.isUsingItem() ? Math.min(1f, me.getTicksUsingItem() / 20f) : 0f;
+		b.ownShieldCooldown = InventoryObs.shieldCooldown(me);
+		b.ownHeldSword = InventoryObs.isSword(me.getMainHandItem());
+		b.ownHeldAxe = InventoryObs.isAxe(me.getMainHandItem());
 	}
 
-	void fillActorOnly(Obs obs, LocalPlayer me, Player opponent, double floorY, SessionClock clock,
+	void fillActorOnly(Obs obs, LocalPlayer me, Player opponent, double fallbackFloorY, SessionClock clock,
 			AimMotor motor, int[] lastAction, int headMask) {
-		fillBody(body, me, opponent, floorY);
+		InventoryObs.fillSlots(me, obs.slots);
+		double localGroundY = InventoryObs.fillTerrain(me, obs.terrain);
+		fillBody(body, me, opponent, localGroundY);
 		body.ticksSinceHitDealt = clock.ticksSinceHitDealt;
 		body.ticksSinceHitTaken = clock.ticksSinceHitTaken;
 		body.hitsTakenInRow = clock.takenStreak.shown();
@@ -99,6 +98,8 @@ final class Observer {
 		ViewGeometry.toYawFrame(bot.getX() - eye.x, bot.getEyeY() - eye.y, bot.getZ() - eye.z, me.getYRot(), view);
 		boolean inReach = facts.onBody && facts.reachDist <= me.entityInteractionRange();
 		ObsBuilder.writePrivileged(obs.priv, facts, body, view[0], view[1], view[2],
-				truth.botHealth(), truth.botCharge(), truth.botSprinting(), truth.botOnGround(), inReach, clock, 0);
+				truth.botHealth(), truth.botCharge(), truth.botSprinting(), truth.botOnGround(), inReach, clock, 0,
+				truth.botShieldUp(), truth.botShieldCd(), truth.agentShieldUp(), truth.agentShieldCd(),
+				truth.kitHasShield(), truth.kitHasAxe());
 	}
 }

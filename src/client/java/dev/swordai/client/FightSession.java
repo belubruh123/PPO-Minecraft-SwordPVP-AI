@@ -7,6 +7,7 @@ import dev.swordai.core.env.*;
 import dev.swordai.core.league.*;
 import dev.swordai.core.rl.*;
 import dev.swordai.core.vision.ViewGeometry;
+import dev.swordai.server.InventoryObs;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.player.LocalPlayer;
@@ -19,7 +20,7 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
 
-/** Pure neural-network play session (/swordai fight): zero play-time rules, zero guards, zero overrides. */
+/** Pure generalist neural-network play session (/swordai fight): zero rules, zero coded kit switches. */
 final class FightSession implements AgentSession {
 	private static final float LOST_ROUND_HP = 4f;
 
@@ -46,7 +47,8 @@ final class FightSession implements AgentSession {
 	private double groundY;
 	private float lastHealth = -1f;
 	private int lastOwnHurt, lastOppHurt, ownSwingsSeen = OwnSwing.count(), kills, deaths;
-	private boolean hasLastAction, stopped, handedBack, actedThisTick, clicked, clickResolved, deathCounted, killCounted, oppSpecCounted;
+	private boolean hasLastAction, stopped, handedBack, actedThisTick, clicked, usingItem, clickResolved, deathCounted, killCounted, oppSpecCounted;
+	private boolean oppWasBlockingOnSwing;
 	private float turnYaw, turnPitch;
 	private long ticks;
 
@@ -62,9 +64,10 @@ final class FightSession implements AgentSession {
 		KeyedSkin.setTarget(null); KeyedSkin.setShowReal(cfg.showOpponentSkin); KeyedSkin.setActive(false);
 	}
 
-	String skillLine() { return "Pure neural policy (zero play-time rules)."; }
+	String skillLine() { return "Pure neural generalist policy (zero play-time rules)."; }
 	@Override public boolean stopped() { return stopped; }
 	@Override public boolean inControl() { return !stopped && !handedBack; }
+	@Override public boolean wantsUseItem() { return usingItem; }
 	@Override public void worldDrawn() { if (!stopped && !handedBack) grabber.worldDrawn(mc); }
 	@Override public float viewYawLag(float pt) { return -(1f - pt) * turnYaw; }
 	@Override public float viewPitchLag(float pt) { return -(1f - pt) * turnPitch; }
@@ -119,11 +122,11 @@ final class FightSession implements AgentSession {
 		lastOwnHurt = me.hurtTime; lastOppHurt = opponent.hurtTime;
 		if (tNow) { clock.hitTaken(); observer.body().updateExchange(false, false, true); }
 		clock.tick();
-		observer.fillActorOnly(obs, me, opponent, groundY, clock, motor, hasLastAction ? lastAction : null, ActionSpace.ALL_HEADS);
+		observer.fillActorOnly(obs, me, opponent, groundY, clock, motor, hasLastAction ? lastAction : null, ActionSpace.PHASE1_HEADS);
 
 		memory.pushSeen(obs.vec);
-		net.forward(ws, ws.step, obs.peri, obs.fovea, obs.vec, memory.hist, memory.seen, memory.hidden, memory.hidden);
-		net.samplePlay(ws, ws.step, rng, action);
+		net.forward(ws, ws.step, obs.peri, obs.fovea, obs.vec, obs.slots, obs.terrain, memory.hist, memory.seen, memory.hidden, memory.hidden);
+		net.samplePlay(ws, ws.step, ActionSpace.PHASE1_HEADS, rng, action);
 		memory.pushAction(action);
 
 		motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));
@@ -132,7 +135,10 @@ final class FightSession implements AgentSession {
 		if (!rounds.open()) rounds.start(opponentName);
 		rounds.tick(me, opponent, observer.body(), action, dNow, tNow);
 		System.arraycopy(action, 0, lastAction, 0, ActionSpace.HEADS); hasLastAction = true;
-		clicked = action[ActionSpace.ATTACK] == 1; clickResolved = false; actedThisTick = true; ticks++;
+		clicked = action[ActionSpace.ATTACK] == 1;
+		usingItem = action[ActionSpace.USE_ITEM] == 1 && !clicked;
+		oppWasBlockingOnSwing = clicked && opponent.isUsingItem() && InventoryObs.isAxe(me.getMainHandItem());
+		clickResolved = false; actedThisTick = true; ticks++;
 		observer.fillGeometry(facts, me, opponent);
 		if (KeyedSkin.showReal() && blind.note(facts)) KeyedSkin.setShowReal(false);
 	}
@@ -145,10 +151,10 @@ final class FightSession implements AgentSession {
 		String kind = made != ownSwingsSeen ? OwnSwing.lastKind() : "miss";
 		if (made != ownSwingsSeen) ownSwingsSeen = made;
 		rounds.swing(kind);
-		// Tell the network immediately on connect (matching 0 ms training), not 2-4 ticks later when hurtTime returns from the server.
 		if (opponent != null && mc.hitResult instanceof EntityHitResult hit && hit.getEntity() == opponent) {
 			clock.hitDealt();
 			observer.body().updateExchange(true, "crit".equals(kind), false);
+			if (oppWasBlockingOnSwing) observer.body().noteOpponentShieldBroken();
 		}
 	}
 
@@ -170,8 +176,8 @@ final class FightSession implements AgentSession {
 		if (mc.player != null) mc.player.displayClientMessage(Component.literal("[SwordAI] Stopped (" + reason + ")."), false);
 	}
 
-	private void resetEpisodeState() { memory.reset(); motor.reset(); clock.reset(); observer.resetEpisode(); hasLastAction = false; }
-	private void handBack() { clicked = false; if (!handedBack) { handedBack = true; AgentController.release(mc); } }
+	private void resetEpisodeState() { memory.reset(); motor.reset(); clock.reset(); observer.resetEpisode(); hasLastAction = false; usingItem = false; }
+	private void handBack() { clicked = false; usingItem = false; if (!handedBack) { handedBack = true; AgentController.release(mc); } }
 	private boolean spectating(UUID id) {
 		return mc.getConnection() != null && mc.getConnection().getPlayerInfo(id) != null
 				&& mc.getConnection().getPlayerInfo(id).getGameMode() == GameType.SPECTATOR;

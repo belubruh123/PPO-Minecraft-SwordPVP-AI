@@ -53,11 +53,13 @@ final class LeaguePilots {
 			BodyState st = body.state();
 			st.ticksSinceHitDealt = clock.ticksSinceHitDealt; st.ticksSinceHitTaken = clock.ticksSinceHitTaken;
 			st.hitsTakenInRow = clock.takenStreak.shown();
-			ObsBuilder.writeActor(obs, body.frame(), sight, st, motor, hasLast ? lastAction : null, ActionSpace.ALL_HEADS);
+			System.arraycopy(body.slots(), 0, obs.slots, 0, ObsSpec.SLOTS_SIZE);
+			System.arraycopy(body.terrain(), 0, obs.terrain, 0, ObsSpec.TERRAIN_SIZE);
+			ObsBuilder.writeActor(obs, body.frame(), sight, st, motor, hasLast ? lastAction : null, ActionSpace.PHASE1_HEADS);
 			memory.pushSeen(obs.vec);
-			net.forward(ws, ws.step, obs.peri, obs.fovea, obs.vec, memory.hist, memory.seen, memory.hidden, memory.hidden);
-			if (temp <= 0f) net.samplePlay(ws, ws.step, rng, action);
-			else net.sample(ws, ws.step, ActionSpace.ALL_HEADS, false, temp, rng, action);
+			net.forward(ws, ws.step, obs.peri, obs.fovea, obs.vec, obs.slots, obs.terrain, memory.hist, memory.seen, memory.hidden, memory.hidden);
+			if (temp <= 0f) net.samplePlay(ws, ws.step, ActionSpace.PHASE1_HEADS, rng, action);
+			else net.sample(ws, ws.step, ActionSpace.PHASE1_HEADS, false, temp, rng, action);
 			memory.pushAction(action);
 			recordIdm(idmRec, bot, opp, action);
 			motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));
@@ -116,24 +118,30 @@ final class LeaguePilots {
 			BodyState st = body.state();
 			st.ticksSinceHitDealt = clock.ticksSinceHitDealt; st.ticksSinceHitTaken = clock.ticksSinceHitTaken;
 			st.hitsTakenInRow = clock.takenStreak.shown();
-			ObsBuilder.writeActor(obs, body.frame(), sight, st, motor, hasPrev ? lastAction : null, ActionSpace.ALL_HEADS);
+			System.arraycopy(body.slots(), 0, obs.slots, 0, ObsSpec.SLOTS_SIZE);
+			System.arraycopy(body.terrain(), 0, obs.terrain, 0, ObsSpec.TERRAIN_SIZE);
+			ObsBuilder.writeActor(obs, body.frame(), sight, st, motor, hasPrev ? lastAction : null, ActionSpace.PHASE1_HEADS);
 			Vec3 rel = body.shownEyesFrom(bot, opp);
 			ViewGeometry.toYawFrame(rel.x, rel.y, rel.z, bot.getYRot(), view);
-			ObsBuilder.writePrivileged(obs.priv, facts, st, view[0], view[1], view[2], opp.getHealth(),
-					opp.getAttackStrengthScale(0f), opp.isSprinting(), opp.onGround(), facts.onBody && facts.reachDist <= 3f, clock, 0);
+			boolean hasShield = InventoryObs.hasShield(bot);
+			boolean hasAxe = InventoryObs.findHotbarSlot(bot, ObsSpec.SF_AXE) >= 0;
+			float myHp = bot.getHealth() + bot.getAbsorptionAmount(), oppHp = opp.getHealth() + opp.getAbsorptionAmount();
+			ObsBuilder.writePrivileged(obs.priv, facts, st, view[0], view[1], view[2], oppHp,
+					opp.getAttackStrengthScale(0f), opp.isSprinting(), opp.onGround(), facts.onBody && facts.reachDist <= 3f, clock, 0,
+					opp.isBlocking(), InventoryObs.shieldCooldown(opp), bot.isBlocking(), InventoryObs.shieldCooldown(bot),
+					hasShield, hasAxe);
 
-			float myHp = bot.getHealth(), oppHp = opp.getHealth();
 			float dd = Math.max(0f, lastOppHp - oppHp), dt = Math.max(0f, lastMyHp - myHp);
 			lastMyHp = myHp; lastOppHp = oppHp;
 			float phi = FixedReward.potential(myHp / 20f, oppHp / 20f, ownCombo, oppCombo, st.charge, opp.getAttackStrengthScale(0f), facts.reachDist, done);
 			if (hasPrev) {
-				learner.record(prevObs, prevDec, FixedReward.step(dd, dt, koD, koT, prevPhi, phi), done, null, 0f);
+				learner.record(prevObs, ActionSpace.PHASE1_HEADS, prevDec, FixedReward.step(dd, dt, koD, koT, prevPhi, phi), done, null, 0f);
 				if (hasPrevStyle && styleKl > 0f) learner.recordStyle(prevStyleProbs, styleKl);
 				if (learner.rollout.isFull()) learner.update(done ? 0f : learner.bootstrapValue(obs), priorNet, priorNet != null ? 0.01f : 0f, 0f);
 			}
 			prevPhi = phi;
 			if (done) { hasPrev = hasPrevStyle = false; return; }
-			learner.decide(obs, false, 1f, dec);
+			learner.decide(obs, ActionSpace.PHASE1_HEADS, false, 1f, dec);
 			HumanImitation.HumanPolicy sp = stylePrior;
 			if (sp != null && styleKl > 0f) {
 				Vec3 eye = bot.getEyePosition();
@@ -188,15 +196,17 @@ final class LeaguePilots {
 			float chg = bot.getAttackStrengthScale(0f);
 			HumanImitation.HumanPolicy.packLiveState(dist, chg, st.opponentCharge(),
 					bot.onGround(), opp.onGround(), bot.isSprinting(), st.velForward, st.velRight, st.velUp,
-					-st.oppVelForward, st.oppVelUp, bot.getHealth() / 20f, opp.getHealth() / 20f,
+					-st.oppVelForward, st.oppVelUp, (bot.getHealth() + bot.getAbsorptionAmount()) / 20f,
+					(opp.getHealth() + opp.getAbsorptionAmount()) / 20f,
 					sinceD, sinceT, ownC, oppC, yawErr, bot.getXRot(), prevDist, state);
 			prevDist = dist;
 			policy.act(state, 0.85f, rng, action);
-			// If human policy dropped sprint in mid-air to crit, release W for 1 tick so vanilla ClientSprint clears sprinting.
+			// Ensure human Sword clone switches to its sword slot if spawned in a randomized hotbar slot.
+			int swSlot = InventoryObs.findHotbarSlot(bot, ObsSpec.SF_SWORD);
+			action[ActionSpace.HOTBAR_SLOT] = (swSlot >= 0 && bot.getInventory().getSelectedSlot() != swSlot) ? (swSlot + 1) : 0;
 			if (!bot.onGround() && (bot.isSprinting() || body.serverSprinting()) && action[ActionSpace.SPRINT] == 0 && action[ActionSpace.FORWARD] == 1) {
 				action[ActionSpace.FORWARD] = 0;
 			}
-			// Human-like tight tracking aim so cloned playstyle movement/timing actually lands hits in checks.
 			if (Math.abs(yawErr) > 3f) action[ActionSpace.YAW] = InverseDynamics.nearestBin(yawErr + (rng.nextFloat() - 0.5f) * 2.5f, ActionSpace.YAW_BINS);
 			if (Math.abs(pitchErr) > 3f) action[ActionSpace.PITCH] = InverseDynamics.nearestBin(pitchErr + (rng.nextFloat() - 0.5f) * 2f, ActionSpace.PITCH_BINS);
 			if (action[ActionSpace.ATTACK] == 1 && (chg < 0.85f || !body.aimedAt(bot, opp))) action[ActionSpace.ATTACK] = 0;

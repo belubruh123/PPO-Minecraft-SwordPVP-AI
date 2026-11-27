@@ -179,6 +179,11 @@ public class SwordAiClient implements ClientModInitializer {
 		return s != null && !s.stopped() && s.beforePlayerMoves();
 	}
 
+	public static boolean agentWantsUseItem() {
+		AgentSession s = session;
+		return s != null && !s.stopped() && s.inControl() && s.wantsUseItem();
+	}
+
 	public static float viewYawLag(float partialTick) {
 		AgentSession s = session;
 		return s != null && s.inControl() ? s.viewYawLag(partialTick) : 0f;

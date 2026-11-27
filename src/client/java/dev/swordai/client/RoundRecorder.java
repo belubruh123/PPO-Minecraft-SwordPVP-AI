@@ -3,6 +3,7 @@ package dev.swordai.client;
 import dev.swordai.SwordAi;
 import dev.swordai.core.env.BodyState;
 import dev.swordai.core.rl.ActionSpace;
+import dev.swordai.server.InventoryObs;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
@@ -37,7 +38,8 @@ final class RoundRecorder {
 
 	private record Tick(float dist, float myCharge, float oppSword, float myHp, float oppHp, boolean myGround,
 			boolean oppGround, boolean oppSprint, float oppUp, float oppToward, float oppSide, float myToward,
-			String keys, float oppSideSigned, float oppFacing, float oppPitch, boolean oppSwinging, String event) {
+			String keys, float oppSideSigned, float oppFacing, float oppPitch, boolean oppSwinging, String event,
+			String myItem, String oppItem, boolean myUse, boolean oppUse) {
 	}
 
 	private final List<Tick> timeline = new ArrayList<>();
@@ -109,7 +111,9 @@ final class RoundRecorder {
 		}
 		timeline.add(new Tick(dist, myCharge, oppSword, myHp, oppHp, me.onGround(), opp.onGround(),
 				opp.isSprinting(), oppUp, oppToward, oppSide, myToward, keys(action),
-				oppSideSigned, oppFacing, oppPitch, opp.swinging, ev.toString().trim()));
+				oppSideSigned, oppFacing, oppPitch, opp.swinging, ev.toString().trim(),
+				InventoryObs.itemTag(me.getMainHandItem()), InventoryObs.itemTag(opp.getMainHandItem()),
+				me.isUsingItem(), opp.isUsingItem()));
 	}
 
 	void swing(String kind) {
@@ -121,7 +125,8 @@ final class RoundRecorder {
 		String ev = (t.event().isEmpty() ? "" : t.event() + " ") + "swing:" + kind;
 		timeline.add(new Tick(t.dist(), t.myCharge(), t.oppSword(), t.myHp(), t.oppHp(), t.myGround(),
 				t.oppGround(), t.oppSprint(), t.oppUp(), t.oppToward(), t.oppSide(), t.myToward(),
-				t.keys(), t.oppSideSigned(), t.oppFacing(), t.oppPitch(), t.oppSwinging(), ev));
+				t.keys(), t.oppSideSigned(), t.oppFacing(), t.oppPitch(), t.oppSwinging(), ev,
+				t.myItem(), t.oppItem(), t.myUse(), t.oppUse()));
 	}
 
 	String finish(String result, int oppPingMillis) {
@@ -170,15 +175,16 @@ final class RoundRecorder {
 		try (OutputStream out = new GZIPOutputStream(Files.newOutputStream(file));
 			 Writer w = new OutputStreamWriter(out, StandardCharsets.UTF_8)) {
 			w.write("SwordAI round, " + started.format(SHOWN) + "\n" + line + "\n\n");
-			w.write("tick,dist,mySword,oppSword,myHp,oppHp,me,opp,oppUp,oppToward,oppSide,myToward,keys,rules,oppSideS,oppFacing,oppPitch,oppSwing,event\n");
+			w.write("tick,dist,mySword,oppSword,myHp,oppHp,me,opp,oppUp,oppToward,oppSide,myToward,keys,rules,oppSideS,oppFacing,oppPitch,oppSwing,event,myItem,oppItem,myUse,oppUse\n");
 			for (int i = 0; i < timeline.size(); i++) {
 				Tick t = timeline.get(i);
 				w.write(String.format(Locale.ROOT,
-						"%d,%.2f,%.2f,%.2f,%.0f,%.0f,%s,%s%s,%.2f,%.2f,%.2f,%.2f,%s,,%.2f,%.0f,%.0f,%d,%s\n",
+						"%d,%.2f,%.2f,%.2f,%.0f,%.0f,%s,%s%s,%.2f,%.2f,%.2f,%.2f,%s,,%.2f,%.0f,%.0f,%d,%s,%s,%s,%d,%d\n",
 						i, t.dist(), t.myCharge(), t.oppSword(), t.myHp(), t.oppHp(),
 						t.myGround() ? "g" : "a", t.oppGround() ? "g" : "a", t.oppSprint() ? "s" : "",
 						t.oppUp(), t.oppToward(), t.oppSide(), t.myToward(), t.keys(),
-						t.oppSideSigned(), t.oppFacing(), t.oppPitch(), t.oppSwinging() ? 1 : 0, t.event()));
+						t.oppSideSigned(), t.oppFacing(), t.oppPitch(), t.oppSwinging() ? 1 : 0, t.event(),
+						t.myItem(), t.oppItem(), t.myUse() ? 1 : 0, t.oppUse() ? 1 : 0));
 			}
 		}
 	}

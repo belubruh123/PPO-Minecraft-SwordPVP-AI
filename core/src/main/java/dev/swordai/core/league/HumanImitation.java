@@ -67,7 +67,7 @@ public final class HumanImitation {
 			l1.forward(state, 0, h1, 0); relu(h1);
 			l2.forward(h1, 0, h2, 0); relu(h2);
 			out.forward(h2, 0, logits, 0);
-			Policy.sample(logits, ActionSpace.ALL_HEADS, false, temperature, rng, probs, actionOut);
+			Policy.sample(logits, ActionSpace.SWORD_HEADS, false, temperature, rng, probs, actionOut);
 		}
 
 		synchronized void train(List<float[]> xs, List<byte[]> ys, int epochs, int batchSize, float lr, Random rng) {

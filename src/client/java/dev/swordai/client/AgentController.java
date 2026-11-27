@@ -1,41 +1,44 @@
 package dev.swordai.client;
 
 import dev.swordai.core.rl.ActionSpace;
+import dev.swordai.core.rl.ObsSpec;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 
 /**
- * Turns the network's choice into the same inputs a person produces: the camera is turned through
- * the mouse-look path and keys are held through their key bindings. A swing is vanilla's own
- * attack, made from the client tick (see {@code MinecraftMixin}), so the crosshair pick, the reach
- * check and the cooldown decide what happens.
+ * Turns the network's choice into exact human Minecraft inputs: mouse-look turns, movement keys,
+ * hotbar key presses (1..9), offhand swap (F), right-click item use (Shield/Gap), and vanilla attack.
  */
 final class AgentController {
-	/** {@code Entity.turn} multiplies its arguments by this; dividing first makes the bins exact degrees. */
 	private static final double TURN_SCALE = 0.15;
 
 	private AgentController() {
 	}
 
-	/**
-	 * Start of the tick: turn first, so this tick's crosshair pick already uses the new view.
-	 *
-	 * @param yaw   degrees to turn this tick (what the hand model made of the chosen speed)
-	 * @param pitch degrees to look down this tick
-	 */
 	static void apply(Minecraft mc, int[] action, float yaw, float pitch) {
 		LocalPlayer player = mc.player;
-		if (player == null) {
-			return;
-		}
+		if (player == null) return;
 		if (yaw != 0f || pitch != 0f) {
 			player.turn(yaw / TURN_SCALE, pitch / TURN_SCALE);
+		}
+		int wantSlot = action[ActionSpace.HOTBAR_SLOT];
+		if (wantSlot >= 1 && wantSlot <= ObsSpec.HOTBAR_SLOTS) {
+			int idx = wantSlot - 1;
+			if (idx != player.getInventory().getSelectedSlot()) {
+				player.getInventory().setSelectedSlot(idx);
+			}
+		}
+		if (action[ActionSpace.OFFHAND_SWAP] == 1 && mc.getConnection() != null) {
+			mc.getConnection().send(new ServerboundPlayerActionPacket(
+					ServerboundPlayerActionPacket.Action.SWAP_ITEM_WITH_OFFHAND, BlockPos.ZERO, Direction.DOWN));
 		}
 		hold(mc, action);
 	}
 
-	/** Presses exactly the keys this action holds. Safe to repeat within a tick. */
 	static void hold(Minecraft mc, int[] action) {
 		Options o = mc.options;
 		o.keyUp.setDown(action[ActionSpace.FORWARD] == 1);
@@ -44,14 +47,11 @@ final class AgentController {
 		o.keyRight.setDown(action[ActionSpace.STRAFE] == 2);
 		o.keySprint.setDown(action[ActionSpace.SPRINT] == 1);
 		o.keyJump.setDown(action[ActionSpace.JUMP] == 1);
+		o.keyUse.setDown(action[ActionSpace.USE_ITEM] == 1 && action[ActionSpace.ATTACK] == 0);
 	}
 
-	/** Lets go of everything the agent might be holding. */
 	static void release(Minecraft mc) {
-		if (SwordAiClient.personPlays()) {
-			// The user plays and is recorded: the keys are theirs.
-			return;
-		}
+		if (SwordAiClient.personPlays()) return;
 		Options o = mc.options;
 		o.keyUp.setDown(false);
 		o.keyDown.setDown(false);
@@ -60,5 +60,9 @@ final class AgentController {
 		o.keySprint.setDown(false);
 		o.keyJump.setDown(false);
 		o.keyAttack.setDown(false);
+		o.keyUse.setDown(false);
+		if (mc.player != null && mc.player.isUsingItem() && mc.gameMode != null) {
+			mc.gameMode.releaseUsingItem(mc.player);
+		}
 	}
 }

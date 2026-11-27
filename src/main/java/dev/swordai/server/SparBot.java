@@ -4,18 +4,18 @@ import dev.swordai.core.league.InverseDynamics;
 import dev.swordai.core.league.League;
 import dev.swordai.core.rl.ActionSpace;
 import dev.swordai.core.rl.AimMotor;
+import dev.swordai.core.rl.ObsSpec;
 import dev.swordai.core.vision.ViewGeometry;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.Arrays;
 import java.util.Random;
 
 /**
- * Full-fight sparring opponent with four non-single-technique styles ({@link League.SparStyle}:
- * crit spammer, jump-in critter, combo player, mixer), driven through {@link ReplicaBody} so it
- * obeys exact client physics. Also emits ground-truth {@code (state_{t-1}, state_t, state_{t+1}) -> keys}
- * transitions to {@link InverseDynamics} (Follow-up #2) so the VPT key guesser trains on real
- * Minecraft physics.
+ * Full-fight sparring opponent supporting BOTH pure Sword styles (crit spammer, jump-in critter,
+ * combo player, mixer) AND SMP Phase 1 combat (shield blocking, axe 5 s disable -> sword crit,
+ * running away to eat Golden Apples when low HP, and jumping 1-block terraces).
  */
 public final class SparBot {
 	private final ReplicaBody body = new ReplicaBody(0.5f);
@@ -25,51 +25,33 @@ public final class SparBot {
 
 	private League.SparStyle style = League.SparStyle.MIXER;
 	private Random rng = new Random(1L);
-	private int strafeDir = 1;
-	private int strafeTimer;
-	private int sinceHitDealt = 100;
-	private int sinceHitTaken = 100;
-	private int ownCombo;
-	private int critChain;
+	private int strafeDir = 1, strafeTimer;
+	private int sinceHitDealt = 100, sinceHitTaken = 100, ownCombo, critChain;
+	private int shieldHoldTicks, gapRetreatTicks;
 
-	public void setInverseDynamics(InverseDynamics idm) {
-		this.idmRec.idm = idm;
-	}
+	public void setInverseDynamics(InverseDynamics idm) { this.idmRec.idm = idm; }
 
 	public void start(League.SparStyle style, long seed, int lagTicks) {
 		this.style = style == null ? League.SparStyle.MIXER : style;
 		this.rng = new Random(seed == 0L ? System.nanoTime() : seed);
-		this.body.reset();
-		this.body.setLag(lagTicks);
-		this.motor.reset();
+		this.body.reset(); this.body.setLag(lagTicks); this.motor.reset();
 		this.strafeDir = rng.nextBoolean() ? 1 : 2;
 		this.strafeTimer = 10 + rng.nextInt(20);
-		this.sinceHitDealt = 100;
-		this.sinceHitTaken = 100;
-		this.ownCombo = 0;
-		this.critChain = 0;
+		this.sinceHitDealt = 100; this.sinceHitTaken = 100;
+		this.ownCombo = 0; this.critChain = 0;
+		this.shieldHoldTicks = 0; this.gapRetreatTicks = 0;
 		this.idmRec.reset();
 	}
 
-	public void idle(ServerPlayer bot) {
-		body.idle(bot);
-	}
-
-	public void hitDealt() {
-		sinceHitDealt = 0;
-		ownCombo++;
-	}
-
-	public void hitTaken() {
-		sinceHitTaken = 0;
-		ownCombo = 0;
-		idmRec.tookHit = true;
-	}
+	public void idle(ServerPlayer bot) { body.idle(bot); }
+	public void hitDealt() { sinceHitDealt = 0; ownCombo++; }
+	public void hitTaken() { sinceHitTaken = 0; ownCombo = 0; idmRec.tookHit = true; }
 
 	public void tick(ServerPlayer bot, ServerPlayer opp, double floorY) {
 		body.sense(bot, opp, floorY);
 		sinceHitDealt = Math.min(1000, sinceHitDealt + 1);
 		sinceHitTaken = Math.min(1000, sinceHitTaken + 1);
+		Arrays.fill(action, 0);
 
 		Vec3 eye = bot.getEyePosition();
 		double dx = opp.getX() - eye.x;
@@ -78,51 +60,116 @@ public final class SparBot {
 		float dist = (float) Math.sqrt(opp.getBoundingBox().distanceToSqr(eye));
 		float yawErr = ViewGeometry.wrapDegrees(ViewGeometry.yawTo(dx, dz) - bot.getYRot());
 		float pitchErr = ViewGeometry.pitchTo(dx, dy, dz) - bot.getXRot();
-		// Slight human-like aim jitter so the bot is realistic.
+
+		int swordSlot = InventoryObs.findHotbarSlot(bot, ObsSpec.SF_SWORD);
+		int axeSlot = InventoryObs.findHotbarSlot(bot, ObsSpec.SF_AXE);
+		int gapSlot = InventoryObs.findHotbarSlot(bot, ObsSpec.SF_GAP);
+		int shieldHotbar = InventoryObs.findHotbarSlot(bot, ObsSpec.SF_SHIELD);
+		boolean hasOffhandShield = InventoryObs.isShield(bot.getOffhandItem());
+		boolean shieldReady = hasOffhandShield && InventoryObs.hasShieldReady(bot);
+		boolean smpKit = axeSlot >= 0 || gapSlot >= 0 || hasOffhandShield || shieldHotbar >= 0;
+		int selSlot = bot.getInventory().getSelectedSlot();
+		float effHp = bot.getHealth() + bot.getAbsorptionAmount();
+
+		// If shield spawned in hotbar, swap it to offhand once at fight start (just like a human pressing F)
+		if (!hasOffhandShield && shieldHotbar >= 0) {
+			if (selSlot != shieldHotbar) {
+				action[ActionSpace.HOTBAR_SLOT] = shieldHotbar + 1;
+			} else {
+				action[ActionSpace.OFFHAND_SWAP] = 1;
+			}
+		}
+
+		// SMP Gap-retreat behavior: when low HP and holding golden apples, turn away to sprint-jump create space then eat!
+		if (smpKit && gapSlot >= 0 && effHp <= 11f && gapRetreatTicks == 0 && !bot.isUsingItem() && sinceHitTaken <= 10) {
+			gapRetreatTicks = 52;
+		}
+		if (gapRetreatTicks > 0) {
+			gapRetreatTicks--;
+			if (gapSlot < 0 || effHp >= 17f) {
+				gapRetreatTicks = 0;
+			} else {
+				boolean eating = bot.isUsingItem() && InventoryObs.isGap(bot.getUseItem());
+				if (!eating && dist < 5.5f && gapRetreatTicks > 34) {
+					// Run away 180 deg + sprint-jump to create safe eating distance
+					float awayYawErr = ViewGeometry.wrapDegrees(ViewGeometry.yawTo(-dx, -dz) - bot.getYRot());
+					action[ActionSpace.YAW] = InverseDynamics.nearestBin(awayYawErr, ActionSpace.YAW_BINS);
+					action[ActionSpace.PITCH] = InverseDynamics.nearestBin(-bot.getXRot(), ActionSpace.PITCH_BINS);
+					action[ActionSpace.FORWARD] = 1;
+					action[ActionSpace.SPRINT] = 1;
+					action[ActionSpace.JUMP] = bot.onGround() ? 1 : 0;
+					if (selSlot != gapSlot) action[ActionSpace.HOTBAR_SLOT] = gapSlot + 1;
+				} else {
+					// Eat the Golden Apple while walking back/away
+					action[ActionSpace.YAW] = InverseDynamics.nearestBin(yawErr, ActionSpace.YAW_BINS);
+					action[ActionSpace.PITCH] = InverseDynamics.nearestBin(pitchErr, ActionSpace.PITCH_BINS);
+					action[ActionSpace.FORWARD] = 2;
+					if (selSlot != gapSlot) action[ActionSpace.HOTBAR_SLOT] = gapSlot + 1;
+					else action[ActionSpace.USE_ITEM] = 1;
+				}
+				motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));
+				body.act(bot, opp, action, motor.yawRate(), motor.pitchRate());
+				return;
+			}
+		}
+
 		yawErr += (rng.nextFloat() - 0.5f) * 3f;
 		pitchErr += (rng.nextFloat() - 0.5f) * 2f;
-
 		action[ActionSpace.YAW] = InverseDynamics.nearestBin(yawErr, ActionSpace.YAW_BINS);
 		action[ActionSpace.PITCH] = InverseDynamics.nearestBin(pitchErr, ActionSpace.PITCH_BINS);
 
 		float charge = bot.getAttackStrengthScale(0f);
 		boolean onGround = bot.onGround();
-		// Vanilla Player.canCriticalAttack requires fallDistance > 0 (FakeFall) and !serverSprinting; deltaMovement.y < -0.05 fires 1 tick too early at apex!
 		boolean falling = !onGround && bot.fallDistance > 0.0;
 		boolean serverSprint = body.serverSprinting();
 		boolean aimed = body.aimedAt(bot, opp);
 		boolean ready = charge >= 0.92f;
 		boolean oppAir = !opp.onGround();
+		boolean oppBlocking = opp.isBlocking() || (opp.isUsingItem() && InventoryObs.isShield(opp.getUseItem()));
 
 		if (--strafeTimer <= 0) {
 			strafeDir = rng.nextInt(3);
 			strafeTimer = 8 + rng.nextInt(20);
 		}
 
-		// Full-fight decision tuned to the active League.SparStyle archetype.
-		int fwd = 1;
-		int strafe = dist < 4.5f ? strafeDir : 0;
-		int sprint = 1;
-		int jump = 0;
-		int attack = 0;
+		// SMP Axe-break / Shield-block mindgames when SMP kit is active
+		if (smpKit && action[ActionSpace.OFFHAND_SWAP] == 0 && action[ActionSpace.HOTBAR_SLOT] == 0) {
+			if (oppBlocking && axeSlot >= 0 && dist < 4.5f) {
+				shieldHoldTicks = 0;
+				if (selSlot != axeSlot) action[ActionSpace.HOTBAR_SLOT] = axeSlot + 1;
+			} else if (shieldReady && shieldHoldTicks <= 0 && dist < 3.6f && !oppBlocking
+					&& ((oppAir && opp.fallDistance > 0.0 && charge < 0.85f) || (charge < 0.50f && rng.nextFloat() < 0.14f))) {
+				shieldHoldTicks = 7 + rng.nextInt(6);
+			} else if (swordSlot >= 0 && selSlot != swordSlot && (!oppBlocking || axeSlot < 0)) {
+				action[ActionSpace.HOTBAR_SLOT] = swordSlot + 1;
+			}
+		} else if (!smpKit && swordSlot >= 0 && selSlot != swordSlot) {
+			action[ActionSpace.HOTBAR_SLOT] = swordSlot + 1;
+		}
 
+		if (shieldHoldTicks > 0 && shieldReady && !oppBlocking) {
+			shieldHoldTicks--;
+			action[ActionSpace.FORWARD] = dist < 2.2f ? 2 : 0;
+			action[ActionSpace.STRAFE] = strafeDir;
+			action[ActionSpace.SPRINT] = 0;
+			action[ActionSpace.JUMP] = 0;
+			action[ActionSpace.ATTACK] = 0;
+			action[ActionSpace.USE_ITEM] = 1;
+			motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));
+			body.act(bot, opp, action, motor.yawRate(), motor.pitchRate());
+			return;
+		}
+		shieldHoldTicks = 0;
+
+		int fwd = 1, strafe = dist < 4.5f ? strafeDir : 0, sprint = 1, jump = 0, attack = 0;
 		League.SparStyle activeStyle = style == League.SparStyle.MIXER
-				? League.SparStyle.values()[(sinceHitDealt + sinceHitTaken + strafeTimer) % 3]
-				: style;
+				? League.SparStyle.values()[(sinceHitDealt + sinceHitTaken + strafeTimer) % 3] : style;
 
 		switch (activeStyle) {
 			case CRIT_SPAMMER -> {
-				// Close-range crit pressure, T1/T1c double crits, and K3 falling-crit spacing.
-				// Vanilla ClientSprint requires releasing W (fwd=0) for >=1 tick in air to cancel sprint so crits register!
 				if (dist < 3.1f && onGround && (charge >= 0.55f || sinceHitDealt <= 4)) {
-					jump = 1;
-					fwd = dist > 2.3f ? 1 : 0;
-					sprint = 0;
-					critChain++;
-				} else if (dist < 1.9f) {
-					fwd = 0;
-					sprint = 0;
-				}
+					jump = 1; fwd = dist > 2.3f ? 1 : 0; sprint = 0; critChain++;
+				} else if (dist < 1.9f) { fwd = 0; sprint = 0; }
 				if (!onGround) {
 					sprint = 0;
 					if (bot.isSprinting() || serverSprint || falling || dist < 2.6f) fwd = 0;
@@ -132,53 +179,48 @@ public final class SparBot {
 				}
 			}
 			case JUMP_IN_CRITTER -> {
-				// K3 jump-ins from 3.0-4.6 blocks: sprint-jump to carry momentum, release W mid-air so sprint cancels, land 1.5x crit falling!
 				if (onGround && dist >= 3.0f && dist <= 4.6f && charge >= 0.65f) {
-					jump = 1;
-					fwd = 1;
-					sprint = 1;
+					jump = 1; fwd = 1; sprint = 1;
 				} else if (!onGround) {
 					sprint = 0;
-					// Must release W once airborne so ClientSprint clears sprinting before the falling crit!
 					fwd = (bot.isSprinting() || serverSprint || falling || dist < 2.9f) ? 0 : 1;
 					attack = (falling && ready && aimed && !serverSprint) ? 1 : 0;
 				} else {
-					if (sinceHitDealt <= 4 && dist < 2.8f) {
-						fwd = 2; // S-spacing out on cooldown before next jump-in crit
-						sprint = 0;
-					}
+					if (sinceHitDealt <= 4 && dist < 2.8f) { fwd = 2; sprint = 0; }
 					attack = (ready && aimed) ? 1 : 0;
 				}
 			}
 			case COMBO_PLAYER, MIXER -> {
-				// 3-block W-tap / S-tap spacing + T10 uppercuts after stuns + jump resets + falling punish crits.
 				boolean risingOrPeak = !onGround && !falling;
 				if (sinceHitTaken == 1 && onGround && dist < 3.4f && rng.nextFloat() < 0.70f) {
-					jump = 1; // T9 jump reset
+					jump = 1;
 				} else if (ownCombo >= 1 && sinceHitDealt >= 2 && sinceHitDealt <= 5 && onGround && dist >= 2.6f && dist <= 4.2f) {
-					jump = 1; // T10 uppercut chase after stun
-					fwd = 1;
-					sprint = 1;
+					jump = 1; fwd = 1; sprint = 1;
 				} else if (ownCombo >= 1 && dist < 2.5f && charge < 0.85f) {
-					fwd = dist < 2.15f ? 2 : 0; // S-tap / W-tap to hold 2.7-3.0 block combo spacing
-					sprint = 0;
+					fwd = dist < 2.15f ? 2 : 0; sprint = 0;
 				} else if (sinceHitDealt <= 2) {
-					fwd = 0; // W-tap sprint reset
-					sprint = 0;
+					fwd = 0; sprint = 0;
 				} else if (oppAir && dist > 2.7f) {
-					fwd = 1;
-					sprint = 1;
+					fwd = 1; sprint = 1;
 				}
 				if (!onGround && risingOrPeak && ownCombo >= 1 && ready && aimed) {
-					attack = 1; // T10 uppercut sprint-hit near peak
+					attack = 1;
 				} else if (!onGround && falling && ready && aimed) {
-					fwd = (bot.isSprinting() || serverSprint) ? 0 : fwd;
-					sprint = 0;
+					fwd = (bot.isSprinting() || serverSprint) ? 0 : fwd; sprint = 0;
 					attack = !serverSprint ? 1 : 0;
 				} else if (onGround && ready && aimed) {
 					attack = 1;
 				}
 			}
+		}
+
+		// When opponent is holding up a shield and we hold an axe, swing right away to disable it!
+		if (oppBlocking && InventoryObs.isAxe(bot.getMainHandItem()) && aimed && charge >= 0.55f) {
+			attack = 1;
+		}
+		// Step up 1-block terraces cleanly when walking into a ledge
+		if (onGround && body.terrain()[3 * ObsSpec.TERRAIN_GRID + 2] >= 0.4f && fwd == 1) {
+			jump = 1;
 		}
 
 		action[ActionSpace.FORWARD] = fwd;
@@ -187,10 +229,10 @@ public final class SparBot {
 		action[ActionSpace.JUMP] = jump;
 		action[ActionSpace.ATTACK] = attack;
 
-		// Feed client-matched 3-tick RemoteView lagged 5-tick transition into InverseDynamics.
-		idmRec.record(bot.getX(), bot.getY(), bot.getZ(), bot.yBodyRot, bot.getYHeadRot(), bot.getXRot(),
-				bot.onGround(), bot.isSprinting(), bot.swinging, bot.swingTime, opp.getX(), opp.getY(), opp.getZ(), dist, action);
-
+		if (!smpKit) {
+			idmRec.record(bot.getX(), bot.getY(), bot.getZ(), bot.yBodyRot, bot.getYHeadRot(), bot.getXRot(),
+					bot.onGround(), bot.isSprinting(), bot.swinging, bot.swingTime, opp.getX(), opp.getY(), opp.getZ(), dist, action);
+		}
 		motor.step(ActionSpace.yawDegrees(action), ActionSpace.pitchDegrees(action));
 		body.act(bot, opp, action, motor.yawRate(), motor.pitchRate());
 	}

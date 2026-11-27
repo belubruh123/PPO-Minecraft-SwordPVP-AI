@@ -2,6 +2,8 @@ package dev.swordai.client.mixin;
 
 import dev.swordai.client.SwordAiClient;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.MultiPlayerGameMode;
+import net.minecraft.client.player.LocalPlayer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -10,15 +12,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Vanilla reads the keys only while no screen is open, and opening one lets go of all of them.
- * This runs right after that point of the tick and before the player moves, so the agent keeps
- * its keys and its swing while the chat is open. The swing itself is vanilla's own attack: same
- * crosshair pick, same reach, same cooldown.
+ * Runs the agent's exact vanilla left-click (attack) and right-click (Shield / Golden Apple use)
+ * right after vanilla's key handling and before player movement, using vanilla's own reach, cooldown,
+ * and item-use paths.
  */
 @Mixin(Minecraft.class)
 public abstract class MinecraftMixin {
 	@Shadow
 	public int missTime;
+
+	@Shadow
+	public LocalPlayer player;
+
+	@Shadow
+	public MultiPlayerGameMode gameMode;
 
 	@Shadow
 	private boolean startAttack() {
@@ -30,12 +37,11 @@ public abstract class MinecraftMixin {
 		throw new AssertionError();
 	}
 
-	/**
-	 * The game lets a server tick faster than twenty times a second but never its own client: a
-	 * player's movement is the client's, and vanilla keeps that at normal speed. Training faster
-	 * than real time needs both to speed up together, so while it does the client's tick is as short
-	 * as the server's.
-	 */
+	@Shadow
+	private void startUseItem() {
+		throw new AssertionError();
+	}
+
 	@Inject(method = "getTickTargetMillis", at = @At("HEAD"), cancellable = true)
 	private void swordai$fasterTicks(float normal, CallbackInfoReturnable<Float> cir) {
 		float millis = SwordAiClient.tickMillis();
@@ -46,13 +52,22 @@ public abstract class MinecraftMixin {
 
 	@Inject(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/GameRenderer;tick()V"))
 	private void swordai$agentInput(CallbackInfo ci) {
-		if (!SwordAiClient.beforePlayerMoves()) {
+		boolean wantAttack = SwordAiClient.beforePlayerMoves();
+		if (SwordAiClient.agentInControl() && this.player != null && this.gameMode != null) {
+			boolean wantUse = SwordAiClient.agentWantsUseItem() && !wantAttack;
+			if (wantUse) {
+				if (!this.player.isUsingItem()) {
+					this.startUseItem();
+				}
+			} else if (this.player.isUsingItem()) {
+				this.gameMode.releaseUsingItem(this.player);
+			}
+		}
+		if (!wantAttack || (this.player != null && this.player.isUsingItem())) {
 			return;
 		}
-		// This lock keeps a mouse click that closed a menu from also swinging; it is not meant for the agent.
 		this.missTime = 0;
 		this.startAttack();
-		// What vanilla does after a click whose button is not held: no miss delay, no block breaking.
 		this.continueAttack(false);
 	}
 }

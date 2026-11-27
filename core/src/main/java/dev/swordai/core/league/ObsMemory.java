@@ -9,8 +9,8 @@ import java.util.Arrays;
  * Per-episode short-term history and recurrent GRU state for one fighter:
  * - last {@link #HIST_TICKS} ticks of own body keys (10 ticks = 0.5 s),
  * - last {@link #SEEN_FRAMES} ticks of seen opponent state (8 ticks = 0.4 s),
- * - recurrent GRU hidden state ({@link #GRU_HIDDEN} units) carrying arbitrary-horizon fight timing
- *   (stuns, combos, sword cooldowns, crit-back chains).
+ * - recurrent GRU hidden state ({@link #GRU_HIDDEN} = 256 units, Net2Net-expanded from 128) carrying
+ *   arbitrary-horizon fight timing (stuns, combos, sword cooldowns, 5 s shield-disable timers).
  */
 public final class ObsMemory {
 	public static final int HIST_TICKS = 10;
@@ -21,7 +21,8 @@ public final class ObsMemory {
 	public static final int SEEN_PER = 10;
 	public static final int SEEN = SEEN_FRAMES * SEEN_PER;
 
-	public static final int GRU_HIDDEN = 128;
+	public static final int LEGACY_GRU_HIDDEN = 128;
+	public static final int GRU_HIDDEN = 256;
 
 	public final float[] hist = new float[HIST];
 	public final float[] seen = new float[SEEN];

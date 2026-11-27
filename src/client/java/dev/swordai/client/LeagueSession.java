@@ -20,13 +20,14 @@ import java.nio.file.*;
 import java.util.*;
 
 /**
- * Staged rule-free league training (/swordai school) and 200-pair evaluation (/swordai school check):
- * Stage 2 = fixed reward + league; Stage 3 = + GRU; Stage 4 = + lagged 5-tick IDM & Human-KL RL challengers; Stage 5 = + MoveSearch.
+ * Staged rule-free league training (/swordai school) and dual-kit paired evaluation (/swordai school check):
+ * Stage 2-5 = Pure Sword (distilled -> GRU -> VPT IDM + Human-KL -> MoveSearch);
+ * Stage 6 = SMP Phase 1 Generalist (AlphaStar Pointer + 4-Expert MoE + 256-GRU + 5x5 Terrain + Sword/Axe/Shield/Gaps + randomized hotbar + terraced arena).
  */
 final class LeagueSession implements AgentSession {
 	enum Mode { TRAIN, CHECK }
 
-	private static final int ROLLOUT = 4096, MAX_EP_TICKS = 600, SETTLE = 4, SEARCH_EVERY = 25;
+	private static final int ROLLOUT = 4096, SWORD_MAX_EP_TICKS = 600, SMP_MAX_EP_TICKS = 1100, SETTLE = 4, SEARCH_EVERY = 25;
 	private static final int SNAP_EVERY = 8, STAGE5_SNAP_EVERY = 25, DUEL_SYNC_EVERY = 200, MILESTONE_EVERY = 300, PRIOR_REFRESH_EVERY = 400, MAX_MILESTONES = 24;
 	private static final float PRIOR_KL = 0.02f, STAGE4_PRIOR_KL = 0.015f, HUMAN_STYLE_KL = 0.12f;
 
@@ -47,7 +48,7 @@ final class LeagueSession implements AgentSession {
 	private final RoundRecorder recorder = new RoundRecorder();
 
 	private final LeagueLearner learner;
-	private final SwordNet priorNet, selfNet, netA, netB;
+	private final SwordNet priorNet, selfNet, netA, netB, swordMasterAnchor;
 	private final SwordNet.Workspace wsA, wsB;
 	private final League league = new League();
 	private final InverseDynamics idm = new InverseDynamics(7L);
@@ -59,24 +60,30 @@ final class LeagueSession implements AgentSession {
 	private final Path benchDirA, benchDirB;
 
 	private League.Match currentMatch;
+	private EpisodePlan.KitMode currentKit = EpisodePlan.KitMode.SWORD_ONLY;
 	private MoveSearch.SearchJob activeSearch;
 	private int searchTick, checkPair, waitingEp, expectedPutBack, settleLeft, epTicks, epDone, activeLag, badUpdates, lowRamHits;
 	private int ownCombo, oppCombo, critChain, ownSwingsSeen = OwnSwing.count();
 	private int statClose, statOnBody, statClicks, statLowChg, statWhiffs, statSwings;
 	private final int[] chkClose = new int[2], chkOnBody = new int[2], chkClicks = new int[2], chkLowChg = new int[2], chkWhiffs = new int[2];
-	private float searchDealt, searchTaken, prevPhi, epDealt, epTaken, turnYaw, turnPitch;
+	private float searchStartMyHp, searchStartBotHp, prevPhi, epDealt, epTaken, turnYaw, turnPitch;
 	private float emaAim = 0.88f, emaLow = 0.05f, emaWhf = 0.05f;
-	private boolean checkSideB, stopped, arenaRequested, resetPending, waitingPutBack, hasPrev, actedThisTick, clicked, clickResolved, humansBuiltWithIdm;
+	private boolean checkSideB, stopped, arenaRequested, resetPending, waitingPutBack, hasPrev, actedThisTick, clicked, usingItem, clickResolved, humansBuiltWithIdm;
+	private boolean oppWasBlockingOnSwing;
 	private String checkOppName = "";
 	private long totalTicks;
 	private final long startedMs = System.currentTimeMillis();
 
-	private record CheckOpp(String name, League.SparStyle spar, HumanImitation.HumanPolicy human, SwordNet net) {}
+	private record CheckOpp(String name, League.SparStyle spar, HumanImitation.HumanPolicy human, SwordNet net,
+			EpisodePlan.KitMode kit, boolean terraced) {}
 
 	LeagueSession(Minecraft mc, Mode mode) throws IOException {
 		this.mc = mc; this.server = mc.getSingleplayerServer(); this.mode = mode;
 		this.stage = SwordFiles.readLeagueStage(); this.cfg = SwordFiles.loadConfig(); this.motor = new AimMotor(cfg.aimResponse);
 		Path ckpt = SwordFiles.schoolCheckpoint(), base = SwordFiles.baselineCheckpoint(), prior = SwordFiles.priorCheckpoint();
+		Path swMasterPath = SwordFiles.anchorsDir().resolve("sword-master.bin");
+		this.swordMasterAnchor = Files.exists(swMasterPath) ? LeagueLearner.loadActorOnly(swMasterPath) : null;
+		if (swordMasterAnchor != null) swordMasterAnchor.gruEnabled = swordMasterAnchor.gruWeightNorm() > 0f;
 
 		if (mode == Mode.TRAIN) {
 			learner = new LeagueLearner(ROLLOUT, System.nanoTime());
@@ -117,8 +124,9 @@ final class LeagueSession implements AgentSession {
 				humL.setGruEnabled(stage >= 3);
 				humanChallenger = new LeaguePilots.ExploiterPilot(humL, priorNet, cfg.aimResponse, logIdm);
 				if (!humans.opponents().isEmpty()) humanChallenger.setStylePrior(humans.opponents().get(0), HUMAN_STYLE_KL);
-				SwordAi.LOGGER.info("League Stage {}: {} real rounds (+{} synced) -> {} playstyle clusters, pool={} snaps, prior={} (idm steps={}, active={})",
-						stage, nReal, synced, humans.opponents().size(), league.snapshotCount(), priorPath.getFileName(), idm.trainedSteps(), humanChallenger.styleName());
+				SwordAi.LOGGER.info("League Stage {}: {} real rounds (+{} synced) -> {} clusters, pool={} snaps, prior={} (smpPrior={}), swordMaster={}",
+						stage, nReal, synced, humans.opponents().size(), league.snapshotCount(), priorPath.getFileName(),
+						priorNet != null && LeagueLearner.hasSmpWeights(priorNet), swordMasterAnchor != null);
 			} else {
 				humanChallenger = null;
 			}
@@ -132,34 +140,57 @@ final class LeagueSession implements AgentSession {
 			try { idm.load(SwordFiles.idmCheckpoint()); } catch (IOException ignored) {}
 			humans.loadDirectory(SwordFiles.realFightsDir()); humans.buildFromRealRounds(idm, 42L);
 			List<CheckOpp> pool = new ArrayList<>();
-			for (int i = 0; i < 4; i++) pool.add(new CheckOpp("baseline", null, null, netB));
-			Path ancDir = SwordFiles.anchorsDir();
-			if (Files.isDirectory(ancDir)) {
-				try (var s = Files.list(ancDir)) {
-					for (Path p : s.filter(f -> f.getFileName().toString().endsWith(".bin")).sorted().toList()) {
-						try {
-							String tag = p.getFileName().toString().replaceFirst("\\.bin$", "").toLowerCase(Locale.ROOT)
-									.replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
-							pool.add(new CheckOpp("anchor-" + (tag.isEmpty() ? "fixed" : tag), null, null, LeagueLearner.loadActorOnly(p)));
-						} catch (IOException ignored) {}
+			if (stage >= 6) {
+				// Dual-kit honest check: 50% Pure Sword (random slot, verifying zero regression vs sword-master) + 50% SMP Phase 1 (random slots + terraces)
+				for (int i = 0; i < 2; i++) pool.add(new CheckOpp("sword-baseline", null, null, netB, EpisodePlan.KitMode.SWORD_ONLY, false));
+				if (swordMasterAnchor != null) {
+					for (int i = 0; i < 2; i++) pool.add(new CheckOpp("sword-master", null, null, swordMasterAnchor, EpisodePlan.KitMode.SWORD_ONLY, false));
+				}
+				var hps = humans.opponents();
+				for (int i = 0; i < 2 && !hps.isEmpty(); i++) {
+					var h = hps.get(i % hps.size());
+					String c = h.name.toLowerCase(Locale.ROOT).replaceAll("[^a-z]+", "-").replaceAll("^-|-$", "");
+					pool.add(new CheckOpp("sword-human-" + (c.isEmpty() ? "real" : c), null, h, null, EpisodePlan.KitMode.SWORD_ONLY, false));
+				}
+				pool.add(new CheckOpp("sword-crit-spammer", League.SparStyle.CRIT_SPAMMER, null, null, EpisodePlan.KitMode.SWORD_ONLY, false));
+				pool.add(new CheckOpp("sword-jump-critter", League.SparStyle.JUMP_IN_CRITTER, null, null, EpisodePlan.KitMode.SWORD_ONLY, false));
+
+				// SMP Phase 1 kit slots (half flat, half 1-block terraced arena, randomized hotbar order!)
+				for (int i = 0; i < 4; i++) pool.add(new CheckOpp("smp-baseline", null, null, netB, EpisodePlan.KitMode.SMP_PHASE1, i % 2 == 1));
+				pool.add(new CheckOpp("smp-crit-spammer", League.SparStyle.CRIT_SPAMMER, null, null, EpisodePlan.KitMode.SMP_PHASE1, false));
+				pool.add(new CheckOpp("smp-jump-critter", League.SparStyle.JUMP_IN_CRITTER, null, null, EpisodePlan.KitMode.SMP_PHASE1, true));
+				pool.add(new CheckOpp("smp-combo-player", League.SparStyle.COMBO_PLAYER, null, null, EpisodePlan.KitMode.SMP_PHASE1, false));
+				pool.add(new CheckOpp("smp-mixer", League.SparStyle.MIXER, null, null, EpisodePlan.KitMode.SMP_PHASE1, true));
+			} else {
+				for (int i = 0; i < 4; i++) pool.add(new CheckOpp("baseline", null, null, netB, EpisodePlan.KitMode.SWORD_ONLY, false));
+				Path ancDir = SwordFiles.anchorsDir();
+				if (Files.isDirectory(ancDir)) {
+					try (var s = Files.list(ancDir)) {
+						for (Path p : s.filter(f -> f.getFileName().toString().endsWith(".bin")).sorted().toList()) {
+							try {
+								String tag = p.getFileName().toString().replaceFirst("\\.bin$", "").toLowerCase(Locale.ROOT)
+										.replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
+								pool.add(new CheckOpp("anchor-" + (tag.isEmpty() ? "fixed" : tag), null, null, LeagueLearner.loadActorOnly(p), EpisodePlan.KitMode.SWORD_ONLY, false));
+							} catch (IOException ignored) {}
+						}
 					}
 				}
+				var hps = humans.opponents();
+				for (int i = 0; i < 4 && !hps.isEmpty(); i++) {
+					var h = hps.get(i % hps.size());
+					String c = h.name.toLowerCase(Locale.ROOT).replaceAll("[^a-z]+", "-").replaceAll("^-|-$", "");
+					pool.add(new CheckOpp("human-" + (c.isEmpty() ? "real" : c), null, h, null, EpisodePlan.KitMode.SWORD_ONLY, false));
+				}
+				try { league.loadPool(SwordFiles.leaguePoolDir()); } catch (IOException ignored) {}
+				for (League.Snapshot hs : league.hardestHumanSnapshots(2)) {
+					String tag = hs.id.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
+					pool.add(new CheckOpp("rl-" + (tag.isEmpty() ? "hum" : tag), null, null, hs.net, EpisodePlan.KitMode.SWORD_ONLY, false));
+				}
+				pool.add(new CheckOpp("crit-spammer", League.SparStyle.CRIT_SPAMMER, null, null, EpisodePlan.KitMode.SWORD_ONLY, false));
+				pool.add(new CheckOpp("jump-in-critter", League.SparStyle.JUMP_IN_CRITTER, null, null, EpisodePlan.KitMode.SWORD_ONLY, false));
+				pool.add(new CheckOpp("combo-player", League.SparStyle.COMBO_PLAYER, null, null, EpisodePlan.KitMode.SWORD_ONLY, false));
+				pool.add(new CheckOpp("mixer", League.SparStyle.MIXER, null, null, EpisodePlan.KitMode.SWORD_ONLY, false));
 			}
-			var hps = humans.opponents();
-			for (int i = 0; i < 4 && !hps.isEmpty(); i++) {
-				var h = hps.get(i % hps.size());
-				String c = h.name.toLowerCase(Locale.ROOT).replaceAll("[^a-z]+", "-").replaceAll("^-|-$", "");
-				pool.add(new CheckOpp("human-" + (c.isEmpty() ? "real" : c), null, h, null));
-			}
-			try { league.loadPool(SwordFiles.leaguePoolDir()); } catch (IOException ignored) {}
-			for (League.Snapshot hs : league.hardestHumanSnapshots(2)) {
-				String tag = hs.id.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
-				pool.add(new CheckOpp("rl-" + (tag.isEmpty() ? "hum" : tag), null, null, hs.net));
-			}
-			pool.add(new CheckOpp("crit-spammer", League.SparStyle.CRIT_SPAMMER, null, null));
-			pool.add(new CheckOpp("jump-in-critter", League.SparStyle.JUMP_IN_CRITTER, null, null));
-			pool.add(new CheckOpp("combo-player", League.SparStyle.COMBO_PLAYER, null, null));
-			pool.add(new CheckOpp("mixer", League.SparStyle.MIXER, null, null));
 			checkPool = pool; benchDirA = SwordFiles.benchDir().resolve("A"); benchDirB = SwordFiles.benchDir().resolve("B");
 			Files.deleteIfExists(benchDirA.resolve("DONE"));
 			Files.deleteIfExists(benchDirB.resolve("DONE"));
@@ -184,12 +215,13 @@ final class LeagueSession implements AgentSession {
 
 	String startLine() {
 		return mode == Mode.TRAIN
-				? String.format(Locale.ROOT, "League training started (Stage %d, GRU=%s, humans=%d, steps=%d).", stage, stage >= 3, humans.opponents().size(), learner.totalSteps)
-				: String.format(Locale.ROOT, "Paired check started (A=%s vs B=%s, %d pool slots).", SwordFiles.schoolCheckpoint().getFileName(), SwordFiles.baselineCheckpoint().getFileName(), checkPool.size());
+				? String.format(Locale.ROOT, "League training started (Stage %d, GRU256=%s, MoE=4, humans=%d, steps=%d).", stage, stage >= 3, humans.opponents().size(), learner.totalSteps)
+				: String.format(Locale.ROOT, "Paired check started (A=%s vs B=%s, %d pool slots, stage %d).", SwordFiles.schoolCheckpoint().getFileName(), SwordFiles.baselineCheckpoint().getFileName(), checkPool.size(), stage);
 	}
 
 	@Override public boolean stopped() { return stopped; }
 	@Override public boolean inControl() { return !stopped && mc.screen == null; }
+	@Override public boolean wantsUseItem() { return usingItem; }
 	@Override public boolean requestDebugDump() { return false; }
 	@Override public String describe() { return mode == Mode.TRAIN ? ("league stage " + stage) : ("paired check pair " + checkPair); }
 	@Override public void endTick() {
@@ -198,8 +230,12 @@ final class LeagueSession implements AgentSession {
 		int made = OwnSwing.count();
 		boolean hit = made != ownSwingsSeen;
 		String kind = hit ? OwnSwing.lastKind() : "miss";
-		if (hit) { ownSwingsSeen = made; statSwings++; }
-		else { statWhiffs++; if (mode == Mode.CHECK) chkWhiffs[checkSideB ? 1 : 0]++; }
+		if (hit) {
+			ownSwingsSeen = made; statSwings++;
+			if (oppWasBlockingOnSwing) observer.body().noteOpponentShieldBroken();
+		} else {
+			statWhiffs++; if (mode == Mode.CHECK) chkWhiffs[checkSideB ? 1 : 0]++;
+		}
 		if (mode == Mode.CHECK) recorder.swing(kind);
 	}
 	@Override public void worldDrawn() { if (!stopped && mc.screen == null) grabber.worldDrawn(mc); }
@@ -253,7 +289,7 @@ final class LeagueSession implements AgentSession {
 		clock.tick();
 		observer.body().updateExchange(dNow, dCrit, tNow);
 		observer.fillGeometry(facts, me, bot);
-		observer.fillObs(obs, me, bot, truth, facts, hasPrev ? lastAction : null, ActionSpace.ALL_HEADS, clock, motor);
+		observer.fillObs(obs, me, bot, truth, facts, hasPrev ? lastAction : null, ActionSpace.PHASE1_HEADS, clock, motor);
 
 		if (mode == Mode.CHECK) tickCheck(me, bot, truth, dNow, tNow, koD, koT);
 		else if (activeSearch != null) tickSearch(me, truth, koD, koT);
@@ -261,24 +297,28 @@ final class LeagueSession implements AgentSession {
 		totalTicks++;
 	}
 
+	private int maxEpTicks() {
+		return currentKit == EpisodePlan.KitMode.SMP_PHASE1 ? SMP_MAX_EP_TICKS : SWORD_MAX_EP_TICKS;
+	}
+
 	private void tickTrain(LocalPlayer me, Truth truth, boolean dNow, boolean tNow, boolean dCrit, boolean koD, boolean koT) {
-		boolean done = koD || koT || epTicks >= MAX_EP_TICKS;
-		float phi = FixedReward.potential(me.getHealth() / 20f, truth.botHealth() / 20f, ownCombo, oppCombo,
+		boolean done = koD || koT || epTicks >= maxEpTicks();
+		float meEffHp = me.getHealth() + me.getAbsorptionAmount();
+		float phi = FixedReward.potential(meEffHp / 20f, truth.botHealth() / 20f, ownCombo, oppCombo,
 				me.getAttackStrengthScale(0f), truth.botCharge(), facts.reachDist, done);
 		if (hasPrev) {
-			learner.record(prevObs, prevDec, FixedReward.step(facts.damageDealt, facts.damageTaken, koD, koT, prevPhi, phi), done, null, 0f);
+			learner.record(prevObs, ActionSpace.PHASE1_HEADS, prevDec, FixedReward.step(facts.damageDealt, facts.damageTaken, koD, koT, prevPhi, phi), done, null, 0f);
 			if (learner.rollout.isFull()) runUpdate(done ? 0f : learner.bootstrapValue(obs));
 		}
 		prevPhi = phi;
-		if (stage >= 5 && !done && epTicks > 8 && facts.reachDist < 5.2f && me.getHealth() > 4f && truth.botHealth() > 4f) {
-			MoveSearch.Kind k = detectMoment(dCrit, dNow, tNow, truth);
-			if (k != null) moveSearch.recordMoment(k, ArenaServer.sceneAt(truth.tick()), obs,
-					learner.memory.hist, learner.memory.seen, learner.memory.hidden);
+		if (stage >= 5 && !done && epTicks > 8 && facts.reachDist < 6.0f && me.getHealth() > 3f && truth.botHealth() > 4f) {
+			MoveSearch.Kind k = detectMoment(me, dCrit, dNow, tNow, truth);
+			if (k != null) moveSearch.recordMoment(k, currentKit == EpisodePlan.KitMode.SMP_PHASE1,
+					ArenaServer.sceneAt(truth.tick()), obs, learner.memory.hist, learner.memory.seen, learner.memory.hidden);
 		}
 		if (done) {
 			if (currentMatch != null) {
 				league.recordOutcome(currentMatch, koD || (!koT && epDealt > epTaken));
-				// AlphaStar Main Exploiter freeze-and-reset: always reset to Main or a strong PFSP snapshot (never weak Stage 1 prior).
 				if (currentMatch.kind == League.OpponentKind.EXPLOITER && exploiter != null) {
 					exploiter.rounds++;
 					float expWr = league.exploiterWinRate();
@@ -322,34 +362,41 @@ final class LeagueSession implements AgentSession {
 			}
 			requestNextEpisode(truth); return;
 		}
-		learner.decide(obs, false, 1f, dec);
+		learner.decide(obs, ActionSpace.PHASE1_HEADS, false, 1f, dec);
 		prevObs.copyFrom(obs); System.arraycopy(dec.action, 0, prevDec.action, 0, ActionSpace.HEADS);
 		prevDec.logp = dec.logp; prevDec.value = dec.value;
 		System.arraycopy(dec.action, 0, lastAction, 0, ActionSpace.HEADS); hasPrev = true;
-		applyAction(dec.action); epTicks++;
+		applyAction(me, truth, dec.action); epTicks++;
 	}
 
 	private void tickSearch(LocalPlayer me, Truth truth, boolean koD, boolean koT) {
-		searchDealt += facts.damageDealt; searchTaken += facts.damageTaken;
-		if (koD || koT || searchTick >= MoveSearch.ROLLOUT_TICKS) {
-			activeSearch.finishTrial(searchDealt, searchTaken, koD, koT);
+		float myHpNow = me.getHealth() + me.getAbsorptionAmount();
+		float botHpNow = truth.botHealth();
+		if (searchTick == 0) { searchStartMyHp = myHpNow; searchStartBotHp = botHpNow; }
+		if (koD || koT || searchTick >= activeSearch.rolloutTicks()) {
+			float netHpGain = (myHpNow - searchStartMyHp) - (botHpNow - searchStartBotHp);
+			activeSearch.finishTrial(netHpGain, koD, koT);
 			if (activeSearch.finished()) { moveSearch.commitSearch(activeSearch); activeSearch = null; }
 			requestNextEpisode(truth); return;
 		}
-		learner.decide(obs, false, 1f, dec);
+		learner.decide(obs, ActionSpace.PHASE1_HEADS, false, 1f, dec);
 		MoveSearch.Candidate cand = activeSearch.currentCandidate();
 		if (searchTick < cand.macroTicks) {
-			boolean canHit = me.getAttackStrengthScale(0f) >= 0.92f && facts.onBody && facts.reachDist <= 3.05f;
+			boolean canHit = me.getAttackStrengthScale(0f) >= 0.90f && facts.onBody && facts.reachDist <= 3.05f;
 			boolean critWindow = !me.onGround() && me.fallDistance > 0.0 && !me.isSprinting();
-			cand.apply(dec.action, searchTick, canHit, critWindow);
+			int swSlot = InventoryObs.findHotbarSlot(me, ObsSpec.SF_SWORD);
+			int axSlot = InventoryObs.findHotbarSlot(me, ObsSpec.SF_AXE);
+			int gpSlot = InventoryObs.findHotbarSlot(me, ObsSpec.SF_GAP);
+			cand.apply(dec.action, searchTick, canHit, critWindow, swSlot, axSlot, gpSlot,
+					InventoryObs.hasShieldReady(me), truth.botShieldUp());
 		}
 		if (searchTick == 0) activeSearch.noteFirstStep(obs, learner.lastHistIn(), learner.lastSeenIn(), learner.lastHiddenIn(), dec.action);
 		System.arraycopy(dec.action, 0, lastAction, 0, ActionSpace.HEADS); hasPrev = true;
-		applyAction(dec.action); searchTick++; epTicks++;
+		applyAction(me, truth, dec.action); searchTick++; epTicks++;
 	}
 
 	private void tickCheck(LocalPlayer me, Player bot, Truth truth, boolean dNow, boolean tNow, boolean koD, boolean koT) {
-		if (koD || koT || epTicks >= MAX_EP_TICKS) {
+		if (koD || koT || epTicks >= maxEpTicks()) {
 			String side = checkSideB ? "B" : "A", ko = koD ? ", knockout" : koT ? ", knocked out" : "";
 			SwordAi.LOGGER.info(String.format(Locale.ROOT, "school pair %d %s %s: dealt %.1f, taken %.1f, ticks %d%s",
 					checkPair, side, checkOppName, epDealt, epTaken, epTicks, ko));
@@ -364,19 +411,22 @@ final class LeagueSession implements AgentSession {
 		}
 		SwordNet net = checkSideB ? netB : netA; SwordNet.Workspace ws = checkSideB ? wsB : wsA;
 		memCheck.pushSeen(obs.vec);
-		net.forward(ws, ws.step, obs.peri, obs.fovea, obs.vec, memCheck.hist, memCheck.seen, memCheck.hidden, memCheck.hidden);
-		net.samplePlay(ws, ws.step, rng, dec.action);
+		net.forward(ws, ws.step, obs.peri, obs.fovea, obs.vec, obs.slots, obs.terrain, memCheck.hist, memCheck.seen, memCheck.hidden, memCheck.hidden);
+		net.samplePlay(ws, ws.step, ActionSpace.PHASE1_HEADS, rng, dec.action);
 		memCheck.pushAction(dec.action);
 		System.arraycopy(dec.action, 0, lastAction, 0, ActionSpace.HEADS); hasPrev = true;
-		applyAction(dec.action); recorder.tick(me, bot, observer.body(), dec.action, dNow, tNow); epTicks++;
+		applyAction(me, truth, dec.action); recorder.tick(me, bot, observer.body(), dec.action, dNow, tNow); epTicks++;
 	}
 
-	private void applyAction(int[] a) {
+	private void applyAction(LocalPlayer me, Truth truth, int[] a) {
 		motor.step(ActionSpace.yawDegrees(a), ActionSpace.pitchDegrees(a));
 		turnYaw = motor.yawRate(); turnPitch = motor.pitchRate();
 		AgentController.apply(mc, a, turnYaw, turnPitch);
 		actedThisTick = true;
-		clicked = a[ActionSpace.ATTACK] == 1; clickResolved = false;
+		clicked = a[ActionSpace.ATTACK] == 1;
+		usingItem = a[ActionSpace.USE_ITEM] == 1 && !clicked;
+		oppWasBlockingOnSwing = clicked && truth.botShieldUp() && InventoryObs.isAxe(me.getMainHandItem());
+		clickResolved = false;
 		int si = checkSideB ? 1 : 0;
 		if (facts.reachDist < 4.5f) {
 			statClose++; if (facts.onBody) statOnBody++;
@@ -407,7 +457,8 @@ final class LeagueSession implements AgentSession {
 		if (statClicks >= 10) { emaLow += 0.10f * (lowRate - emaLow); emaWhf += 0.10f * (whfRate - emaWhf); }
 
 		float baseKl = stage >= 4 ? STAGE4_PRIOR_KL : PRIOR_KL;
-		float pKl = learner.updates < 6 ? 0.50f : baseKl;
+		// OpenAI Five surgery warmup: when critic is newly initialized/reset (adamSteps < 384 = ~6 updates), keep prior KL high so noisy initial values never perturb the actor.
+		float pKl = (learner.updates < 10 || learner.critic.params.adamSteps < 384) ? 0.50f : baseKl;
 		LeaguePpo.Stats s = learner.update(bootstrap, priorNet, pKl, 0f);
 
 		boolean nonFinite = !Float.isFinite(s.policyLoss) || !Float.isFinite(s.valueLoss) || learner.hasNonFiniteWeights();
@@ -461,7 +512,7 @@ final class LeagueSession implements AgentSession {
 			priorNet.gruEnabled = learner.actor.gruEnabled;
 			try { LeagueLearner.saveActorOnly(priorNet, SwordFiles.livePriorCheckpoint()); } catch (IOException ignored) {}
 			SwordAi.LOGGER.info(String.format(Locale.ROOT,
-					"Stage 5 priorNet promoted at u=%d (ema aim=%.0f%% low=%.1f%% whf=%.1f%% wr=%.0f%%)",
+					"PriorNet promoted at u=%d (ema aim=%.0f%% low=%.1f%% whf=%.1f%% wr=%.0f%%)",
 					learner.updates, emaAim * 100f, emaLow * 100f, emaWhf * 100f, league.overallWinRate() * 100f));
 		}
 		saveAll();
@@ -478,10 +529,10 @@ final class LeagueSession implements AgentSession {
 		}
 		double secs = Math.max(1.0, (System.currentTimeMillis() - startedMs) / 1000.0);
 		SwordAi.LOGGER.info(String.format(Locale.ROOT,
-				"league update %d (stage %d), %d steps (%.0f/s): pol %.4f val %.4f kl %.4f ent %.3f pKl %.3f ev %.2f lr %.1e aim %.0f%% low %.1f%% whf %.1f%% gru|w| %.2f idm %.0f%% hStyle %s search %d/%d(ce %.2f) | %s",
+				"league update %d (stage %d), %d steps (%.0f/s): pol %.4f val %.4f kl %.4f ent %.3f pKl %.3f ev %.2f lr %.1e aim %.0f%% low %.1f%% whf %.1f%% gru|w| %.2f moe [%d/%d/%d/%d%%] search %d/%d(ce %.2f) | %s",
 				learner.updates, stage, learner.totalSteps, totalTicks / secs, s.policyLoss, s.valueLoss, s.approxKl, s.entropy, s.priorKl,
-				s.explainedVar, s.lr, aimRate * 100f, lowRate * 100f, whfRate * 100f, learner.actor.gruWeightNorm(), idm.lastAccuracy() * 100f,
-				humanChallenger != null ? humanChallenger.styleName() : "off",
+				s.explainedVar, s.lr, aimRate * 100f, lowRate * 100f, whfRate * 100f, learner.actor.gruWeightNorm(),
+				Math.round(s.moeUsage[0] * 100f), Math.round(s.moeUsage[1] * 100f), Math.round(s.moeUsage[2] * 100f), Math.round(s.moeUsage[3] * 100f),
 				moveSearch.targetsFound(), moveSearch.searchesDone(), searchCe, league.summary()));
 		statClose = statOnBody = statClicks = statLowChg = statWhiffs = statSwings = 0;
 		server.execute(() -> ArenaServer.setIdle(false));
@@ -489,7 +540,7 @@ final class LeagueSession implements AgentSession {
 
 	private void requestNextEpisode(Truth truth) {
 		observer.resetEpisode(); clock.reset(); motor.reset(); if (learner != null) learner.resetEpisode(); memCheck.reset();
-		hasPrev = false; prevPhi = epDealt = epTaken = 0f; epTicks = ownCombo = oppCombo = critChain = 0;
+		hasPrev = false; usingItem = false; prevPhi = epDealt = epTaken = 0f; epTicks = ownCombo = oppCombo = critChain = 0;
 		EpisodePlan plan;
 		if (mode == Mode.CHECK) {
 			CheckOpp opp = checkPool.get(checkPair % checkPool.size()); checkOppName = opp.name();
@@ -497,41 +548,63 @@ final class LeagueSession implements AgentSession {
 			plan = opp.net() != null ? EpisodePlan.ofPilot(new LeaguePilots.NetPilot(opp.net(), cfg.aimResponse, 0f, seed + 1L, null), seed, true)
 					: opp.human() != null ? EpisodePlan.ofPilot(new LeaguePilots.HumanPilot(opp.human(), seed + 1L), seed, true)
 					: EpisodePlan.ofSpar(opp.spar(), seed, true);
-			// Balanced 0 ms / 100 ms lag across every checkPool slot whether checkPool.size() is odd or even.
+			plan.kitMode = opp.kit();
+			plan.randomizeSlots = stage >= 6;
+			plan.terraced = opp.terraced();
+			currentKit = plan.kitMode;
 			int lagBit = (checkPool.size() % 2 == 1) ? (checkPair % 2) : (((checkPair / checkPool.size()) + checkPair) % 2);
 			activeLag = (lagBit == 1) ? 2 : 0;
 			plan.agentLag = activeLag; plan.botLag = activeLag; plan.botPing = activeLag; plan.agentKnockLag = activeLag > 0 ? 1 : 0;
 			recorder.start(checkOppName);
 		} else if (activeSearch != null) {
-			searchTick = 0; searchDealt = searchTaken = 0f;
+			searchTick = 0;
 			activeLag = activeSearch.lag;
 			SwordNet sOpp = activeSearch.opponent != null ? activeSearch.opponent : selfNet;
 			plan = EpisodePlan.ofPilot(new LeaguePilots.NetPilot(sOpp, cfg.aimResponse, 1f, rng.nextLong(), null), 0xA1F0L + activeSearch.moment.kind.ordinal(), false);
+			plan.kitMode = activeSearch.moment.smpKit ? EpisodePlan.KitMode.SMP_PHASE1 : EpisodePlan.KitMode.SWORD_ONLY;
+			plan.randomizeSlots = stage >= 6;
+			plan.terraced = false;
+			currentKit = plan.kitMode;
 			plan.agentLag = activeLag; plan.botLag = activeLag; plan.botPing = activeLag;
 			plan.agentKnockLag = activeLag > 0 ? 1 : 0;
 			plan.scene = activeSearch.moment.arenaState;
 		} else {
 			currentMatch = league.sampleMatch(rng, stage >= 5 ? moveSearch : null, true);
 			InverseDynamics logIdm = stage >= 4 ? idm : null;
+
+			// Multi-kit curriculum in Stage 6: Human-KL challengers stay pure Sword (from banked human Sword fights);
+			// all other matches mix 75% SMP Phase 1 (Sword+Axe+Shield+Gaps, 50% terraced) + 25% pure Sword (random slots, anchor sword-master!).
+			boolean smpKit = stage >= 6 && currentMatch.kind != League.OpponentKind.HUMAN_CLONE && rng.nextFloat() < 0.75f;
+			if (stage >= 5 && currentMatch.startMoment != null) smpKit = currentMatch.startMoment.smpKit;
+			currentKit = smpKit ? EpisodePlan.KitMode.SMP_PHASE1 : EpisodePlan.KitMode.SWORD_ONLY;
+
+			SwordNet snapNet = currentMatch.snapshot != null ? currentMatch.snapshot.net : null;
+			// On pure Sword snapshot rounds in Stage 6, 35% face frozen anchors/sword-master.bin so Sword mastery never regresses!
+			if (!smpKit && stage >= 6 && swordMasterAnchor != null && currentMatch.kind == League.OpponentKind.PAST_SNAPSHOT && rng.nextFloat() < 0.35f) {
+				snapNet = swordMasterAnchor;
+			}
 			plan = switch (currentMatch.kind) {
-				case LATEST_SELF -> EpisodePlan.ofPilot(new LeaguePilots.NetPilot(selfNet, cfg.aimResponse, 1f, rng.nextLong(), logIdm), 0L, false);
-				case PAST_SNAPSHOT -> EpisodePlan.ofPilot(new LeaguePilots.NetPilot(currentMatch.snapshot.net, cfg.aimResponse, 1f, rng.nextLong(), logIdm), 0L, false);
+				case LATEST_SELF -> EpisodePlan.ofPilot(new LeaguePilots.NetPilot(selfNet, cfg.aimResponse, 1f, rng.nextLong(), smpKit ? null : logIdm), 0L, false);
+				case PAST_SNAPSHOT -> EpisodePlan.ofPilot(new LeaguePilots.NetPilot(snapNet != null ? snapNet : selfNet, cfg.aimResponse, 1f, rng.nextLong(), smpKit ? null : logIdm), 0L, false);
 				case EXPLOITER -> EpisodePlan.ofPilot(exploiter, 0L, false);
 				case HUMAN_CLONE -> EpisodePlan.ofPilot(humanChallenger != null ? humanChallenger : new LeaguePilots.HumanPilot(currentMatch.human, rng.nextLong()), 0L, false);
 				case SPAR_BOT -> EpisodePlan.ofSpar(currentMatch.sparStyle, 0L, false);
 			};
-			// Sim-to-real latency randomization: 80% realistic 50-150 ms server lag (where K3 falling crits & lagged KB punish K2 mistakes), 20% 0 ms.
+			plan.kitMode = currentKit;
+			plan.randomizeSlots = stage >= 6;
+			plan.terraced = stage >= 6 && (smpKit ? rng.nextFloat() < 0.50f : rng.nextFloat() < 0.20f);
+
 			activeLag = rng.nextFloat() < 0.80f ? (1 + rng.nextInt(3)) : 0;
 			plan.agentLag = activeLag; plan.botLag = activeLag; plan.botPing = activeLag;
 			plan.agentKnockLag = activeLag > 0 ? Math.max(1, activeLag - 1) : 0;
-			if (stage >= 5 && currentMatch.startMoment != null) {
+			if (stage >= 5 && currentMatch.startMoment != null && !plan.terraced) {
 				plan.scene = currentMatch.startMoment.arenaState;
 			} else if (rng.nextFloat() < 0.20f) {
-				// 20% 360-degree fresh spawns (including close 0.5-2.2 block pass-throughs with ticksSinceSeen=0) so the agent learns instant 180 turn-around.
+				// 20% 360-degree spawns including ultra-close (0.2-1.4 block) pass-through drills so lost-track vanishes.
 				plan.maxBearingDeg = 180f;
 				boolean passThrough = rng.nextBoolean();
-				plan.minDistance = passThrough ? 0.5f : 2.2f;
-				plan.maxDistance = passThrough ? 2.2f : 5.5f;
+				plan.minDistance = passThrough ? 0.2f : 2.2f;
+				plan.maxDistance = passThrough ? 1.4f : 5.5f;
 				observer.simulateLostSight(rng.nextInt(3) - 1);
 			}
 		}
@@ -540,7 +613,14 @@ final class LeagueSession implements AgentSession {
 		server.execute(() -> ArenaServer.reset(plan));
 	}
 
-	private MoveSearch.Kind detectMoment(boolean dCrit, boolean dNow, boolean tNow, Truth truth) {
+	private MoveSearch.Kind detectMoment(LocalPlayer me, boolean dCrit, boolean dNow, boolean tNow, Truth truth) {
+		if (stage >= 6 && currentKit == EpisodePlan.KitMode.SMP_PHASE1) {
+			if (truth.botShieldUp() && facts.reachDist < 4.8f && rng.nextFloat() < 0.25f) return MoveSearch.Kind.OPP_SHIELD_UP;
+			float meEffHp = me.getHealth() + me.getAbsorptionAmount();
+			if (meEffHp <= 11f && InventoryObs.findHotbarSlot(me, ObsSpec.SF_GAP) >= 0 && !me.isUsingItem() && rng.nextFloat() < 0.20f) {
+				return MoveSearch.Kind.LOW_HP_GAP;
+			}
+		}
 		if (dCrit && critChain >= 1) return MoveSearch.Kind.AFTER_PUNISH_CRIT;
 		if (truth.botFalling() && facts.reachDist < 4.5f) return MoveSearch.Kind.COUNTER_CRIT;
 		if (dNow && ownCombo >= 1 && ownCombo <= 3) return MoveSearch.Kind.HOLD_COMBO;
@@ -631,6 +711,6 @@ final class LeagueSession implements AgentSession {
 	@Override
 	public List<String> statusLines() {
 		return mode == Mode.CHECK ? List.of("Check pair " + checkPair + (checkSideB ? " B " : " A ") + checkOppName)
-				: List.of(String.format(Locale.ROOT, "Stage %d: %d updates, %d steps | %s", stage, learner.updates, learner.totalSteps, league.summary()));
+				: List.of(String.format(Locale.ROOT, "Stage %d (%s): %d updates, %d steps | %s", stage, currentKit, learner.updates, learner.totalSteps, league.summary()));
 	}
 }

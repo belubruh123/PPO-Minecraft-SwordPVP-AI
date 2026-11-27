@@ -12,6 +12,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.*;
 import net.minecraft.server.level.*;
 import net.minecraft.util.Unit;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.player.*;
@@ -22,9 +23,10 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.*;
 
-/** Integrated-server arena hosting league training, paired checks, scene replays, and MoveSearch. */
+/** Integrated-server arena hosting multi-kit league training, paired checks, scene replays, and MoveSearch. */
 public final class ArenaServer {
 	public static final String BOT_NAME = "SwordBot";
+	private static final ItemStack SHIELD_PROBE = new ItemStack(Items.SHIELD);
 	private static volatile Truth truth = Truth.INACTIVE;
 	private static ArenaServer active;
 	private static Arena standing;
@@ -46,6 +48,7 @@ public final class ArenaServer {
 	private Vec3 botLastPos, savedPos;
 	private int ticksWithoutBot, episodeId, hopId;
 	private SparPilot activePilot;
+	private EpisodePlan.KitMode activeKit = EpisodePlan.KitMode.SWORD_ONLY;
 	private double[] pendingScene;
 	private EpisodePlan pendingPlan;
 	private boolean idle = true;
@@ -115,7 +118,8 @@ public final class ArenaServer {
 		setRule(r, GameRules.FALL_DAMAGE, false); setRule(r, GameRules.PVP, true); setRule(r, GameRules.SHOW_DEATH_MESSAGES, false);
 		level.setDayTime(6000L); level.setWeatherParameters(6_000_000, 0, false, false);
 		agent.setGameMode(GameType.SURVIVAL); agent.removeAllEffects(); inv.clearContent();
-		equip(agent); agent.teleportTo(level, arena.centerX, arena.floorY, arena.centerZ, Set.of(), 0f, 0f, true); heal(agent);
+		equip(agent, EpisodePlan.KitMode.SWORD_ONLY, false, rng);
+		agent.teleportTo(level, arena.centerX, arena.floorY, arena.centerZ, Set.of(), 0f, 0f, true); heal(agent);
 		spawnFake(botName, 4);
 	}
 
@@ -156,6 +160,8 @@ public final class ArenaServer {
 		ServerPlayer agent = s.server.getPlayerList().getPlayer(s.agentId); if (agent == null) return;
 		if (plan.seed != 0L) s.rng.setSeed(plan.seed);
 		s.activePilot = plan.pilot;
+		s.activeKit = plan.kitMode != null ? plan.kitMode : EpisodePlan.KitMode.SWORD_ONLY;
+		s.arena.setTerraced(plan.terraced && plan.scene == null);
 		if (s.activePilot != null) { s.activePilot.reset(); s.activePilot.setLag(plan.botLag); }
 		else s.sparBot.start(plan.sparStyle, plan.seed != 0L ? plan.seed : s.rng.nextLong(), plan.botLag);
 		KnockbackLag.set(s.bot, plan.botPing, 1f);
@@ -165,11 +171,14 @@ public final class ArenaServer {
 		double span = s.arena.radius * 0.35;
 		double ax = s.arena.centerX + (s.rng.nextDouble() * 2 - 1) * span;
 		double az = s.arena.centerZ + (s.rng.nextDouble() * 2 - 1) * span;
+		double ay = s.arena.surfaceY(ax, az);
 		float yaw = Float.isNaN(plan.startYaw) ? ViewGeometry.wrapDegrees(agent.getYRot()) : plan.startYaw;
 		if (Float.isNaN(plan.startYaw) && plan.seedYaw && plan.seed != 0L) yaw = new Random(plan.seed ^ 0x5EED_9A3DL).nextFloat() * 360f - 180f;
 		plan.usedYaw = yaw;
-		agent.teleportTo(s.arena.level, ax, s.arena.floorY, az, Set.of(), yaw, 0f, true);
-		heal(agent); heal(s.bot); s.equip(agent); s.equip(s.bot);
+		agent.teleportTo(s.arena.level, ax, ay, az, Set.of(), yaw, 0f, true);
+		heal(agent); heal(s.bot);
+		s.equip(agent, s.activeKit, plan.randomizeSlots, s.rng);
+		s.equip(s.bot, s.activeKit, plan.randomizeSlots, s.rng);
 		s.placeBot(ax, az, yaw, plan.minDistance, plan.maxDistance, plan.maxBearingDeg);
 
 		if (plan.scene != null) {
@@ -217,8 +226,9 @@ public final class ArenaServer {
 			found = arena.inside(x, z, 1.5);
 		}
 		if (!found) { x = arena.clampX(x); z = arena.clampZ(z); }
+		double by = arena.surfaceY(x, z);
 		float yaw = ViewGeometry.yawTo(ax - x, az - z);
-		bot.teleportTo(arena.level, x, arena.floorY, z, Set.of(), yaw, 0f, true);
+		bot.teleportTo(arena.level, x, by, z, Set.of(), yaw, 0f, true);
 		botLastPos = null; bot.setDeltaMovement(Vec3.ZERO); bot.setYHeadRot(yaw); hopId++;
 	}
 
@@ -236,7 +246,8 @@ public final class ArenaServer {
 		if (bot == null || bot.isRemoved()) {
 			ServerPlayer c = server.getPlayerList().getPlayerByName(botName);
 			if (c instanceof EntityPlayerMPFake) {
-				c.setGameMode(GameType.SURVIVAL); c.getInventory().clearContent(); equip(c); heal(c);
+				c.setGameMode(GameType.SURVIVAL); c.getInventory().clearContent();
+				equip(c, activeKit, false, rng); heal(c);
 				bot = c; ticksWithoutBot = 0; placeBot(arena.centerX, arena.centerZ, 0f, 4f, 4f, 0f);
 			} else {
 				if (++ticksWithoutBot > 400) shutdown("sparring bot never appeared");
@@ -255,42 +266,90 @@ public final class ArenaServer {
 
 	private void upkeep(ServerPlayer p) {
 		p.getFoodData().setFoodLevel(20); p.getFoodData().setSaturation(5f);
-		if (p.getY() < arena.floorY - 3) p.teleportTo(arena.level, arena.centerX, arena.floorY, arena.centerZ, Set.of(), p.getYRot(), 0f, true);
+		if (p.getY() < arena.floorY - 4) p.teleportTo(arena.level, arena.centerX, arena.surfaceY(arena.centerX, arena.centerZ), arena.centerZ, Set.of(), p.getYRot(), 0f, true);
 	}
 
-	private void equip(ServerPlayer p) {
+	/**
+	 * Equips either pure Sword-only or SMP Phase 1 (Sword + Axe + Shield + 3 Golden Apples),
+	 * shuffling hotbar slots 0..8 when {@code randomSlots} is true so the AlphaStar Pointer Head
+	 * learns true order-invariant item selection across any layout.
+	 */
+	private void equip(ServerPlayer p, EpisodePlan.KitMode kit, boolean randomSlots, Random r) {
+		Inventory inv = p.getInventory();
+		inv.clearContent();
+		p.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
+
 		Identifier sid = Identifier.tryParse(cfg.kitSword == null ? "" : cfg.kitSword);
 		Item sw = sid == null ? Items.AIR : BuiltInRegistries.ITEM.getValue(sid);
-		ItemStack ws = kitItem(sw == Items.AIR ? Items.DIAMOND_SWORD : sw);
-		if (!ItemStack.matches(p.getInventory().getItem(0), ws)) p.getInventory().setItem(0, ws);
-		p.getInventory().setSelectedSlot(0);
-		Item[] armor = switch (cfg.kitArmor == null ? "iron" : cfg.kitArmor) {
+		ItemStack sword = kitItem(sw == Items.AIR ? Items.DIAMOND_SWORD : sw);
+
+		int[] slots = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+		if (randomSlots) {
+			for (int i = slots.length - 1; i > 0; i--) {
+				int j = r.nextInt(i + 1), t = slots[i]; slots[i] = slots[j]; slots[j] = t;
+			}
+		}
+		int swordSlot = slots[0];
+		inv.setItem(swordSlot, sword);
+
+		if (kit == EpisodePlan.KitMode.SMP_PHASE1) {
+			inv.setItem(slots[1], kitItem(Items.DIAMOND_AXE));
+			inv.setItem(slots[2], new ItemStack(Items.GOLDEN_APPLE, 3));
+			ItemStack shield = kitItem(Items.SHIELD);
+			if (!randomSlots || r.nextFloat() < 0.85f) {
+				p.setItemInHand(InteractionHand.OFF_HAND, shield);
+			} else {
+				inv.setItem(slots[3], shield);
+			}
+			// Start on sword 60% of the time, or another slot 40% so pointer-switching gets immediate experience.
+			inv.setSelectedSlot((!randomSlots || r.nextFloat() < 0.60f) ? swordSlot : slots[1 + r.nextInt(3)]);
+		} else {
+			inv.setSelectedSlot(swordSlot);
+		}
+
+		Item[] armor = switch (cfg.kitArmor == null ? "diamond" : cfg.kitArmor) {
 			case "diamond" -> new Item[] {Items.DIAMOND_HELMET, Items.DIAMOND_CHESTPLATE, Items.DIAMOND_LEGGINGS, Items.DIAMOND_BOOTS};
 			case "netherite" -> new Item[] {Items.NETHERITE_HELMET, Items.NETHERITE_CHESTPLATE, Items.NETHERITE_LEGGINGS, Items.NETHERITE_BOOTS};
 			case "iron" -> new Item[] {Items.IRON_HELMET, Items.IRON_CHESTPLATE, Items.IRON_LEGGINGS, Items.IRON_BOOTS};
 			default -> null;
 		};
-		EquipmentSlot[] slots = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
-		for (int i = 0; i < slots.length; i++) {
+		EquipmentSlot[] eq = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
+		for (int i = 0; i < eq.length; i++) {
 			ItemStack want = armor == null ? ItemStack.EMPTY : kitItem(armor[i]);
-			if (!ItemStack.matches(p.getItemBySlot(slots[i]), want)) p.setItemSlot(slots[i], want);
+			if (!ItemStack.matches(p.getItemBySlot(eq[i]), want)) p.setItemSlot(eq[i], want);
 		}
 	}
 
 	private static ItemStack kitItem(Item item) { ItemStack s = new ItemStack(item); s.set(DataComponents.UNBREAKABLE, Unit.INSTANCE); return s; }
+
 	private static void heal(ServerPlayer p) {
-		p.setHealth(p.getMaxHealth()); p.getFoodData().setFoodLevel(20); p.getFoodData().setSaturation(5f);
-		p.invulnerableTime = 0; p.hurtTime = 0; p.resetFallDistance();
+		p.stopUsingItem();
+		p.removeAllEffects();
+		p.setAbsorptionAmount(0f);
+		p.setHealth(p.getMaxHealth());
+		p.getFoodData().setFoodLevel(20);
+		p.getFoodData().setSaturation(5f);
+		p.invulnerableTime = 0;
+		p.hurtTime = 0;
+		p.resetFallDistance();
+		p.getCooldowns().removeCooldown(p.getCooldowns().getCooldownGroup(SHIELD_PROBE));
 	}
 
 	private void publish() {
 		ServerPlayer agent = server.getPlayerList().getPlayer(agentId);
 		if (bot != null && agent != null) scenes.note(server.getTickCount(), agent, bot);
+		boolean botShUp = bot != null && bot.isBlocking();
+		float botShCd = bot != null ? InventoryObs.shieldCooldown(bot) : 0f;
+		boolean agShUp = agent != null && agent.isBlocking();
+		float agShCd = agent != null ? InventoryObs.shieldCooldown(agent) : 0f;
+		boolean hasSh = activeKit == EpisodePlan.KitMode.SMP_PHASE1;
+		float botEffHp = bot == null ? 0f : (bot.getHealth() + bot.getAbsorptionAmount());
 		truth = new Truth(true, bot != null, bot == null ? null : bot.getUUID(), episodeId, hopId,
 				arena.centerX, arena.floorY, arena.centerZ, arena.radius,
-				bot == null ? 0f : bot.getHealth(), bot == null ? 0f : bot.getAttackStrengthScale(0f),
+				botEffHp, bot == null ? 0f : bot.getAttackStrengthScale(0f),
 				bot != null && bot.isSprinting(), bot != null && bot.onGround(),
 				bot != null && !bot.onGround() && bot.getY() < bot.yo, agent != null && agent.isSprinting(),
+				botShUp, botShCd, agShUp, agShCd, hasSh, hasSh,
 				server.getTickCount(), -1, 0, null);
 	}
 

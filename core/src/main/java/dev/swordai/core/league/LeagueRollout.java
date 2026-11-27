@@ -8,14 +8,15 @@ import java.util.Arrays;
 
 /**
  * Contiguous on-policy rollout buffer storing exact tick order for truncated recurrent BPTT
- * (see {@link LeaguePpo}), plus optional demonstration action targets for fading kickstarting
- * (Schmitt et al. 2018) and AlphaStar-style human imitation.
+ * (see {@link LeaguePpo}), inventory slots, local terrain heightmaps, and optional demo/style targets.
  */
 public final class LeagueRollout {
 	public final int capacity;
 	public final byte[][] peri;
 	public final byte[][] fovea;
 	public final float[][] vec;
+	public final float[][] slots;
+	public final float[][] terrain;
 	public final float[][] priv;
 	public final float[][] hist;
 	public final float[][] seen;
@@ -27,10 +28,8 @@ public final class LeagueRollout {
 	public final float[] value;
 	public final float[] reward;
 	public final boolean[] done;
-	/** Optional demonstration target (from teacher or human replay) for kickstarting. */
 	public final byte[][] demoAction;
 	public final float[] demoWeight;
-	/** Optional per-step human style probability anchor for Human-KL RL challengers (lazily allocated). */
 	public float[][] styleProbs;
 	public final float[] styleWeight;
 
@@ -44,6 +43,8 @@ public final class LeagueRollout {
 		this.peri = new byte[capacity][ObsSpec.PERI_SIZE];
 		this.fovea = new byte[capacity][ObsSpec.FOVEA_SIZE];
 		this.vec = new float[capacity][ObsSpec.VEC];
+		this.slots = new float[capacity][ObsSpec.SLOTS_SIZE];
+		this.terrain = new float[capacity][ObsSpec.TERRAIN_SIZE];
 		this.priv = new float[capacity][ObsSpec.PRIV];
 		this.hist = new float[capacity][ObsMemory.HIST];
 		this.seen = new float[capacity][ObsMemory.SEEN];
@@ -61,43 +62,31 @@ public final class LeagueRollout {
 		this.returns = new float[capacity];
 	}
 
-	public int size() {
-		return size;
-	}
-
-	public boolean isFull() {
-		return size >= capacity;
-	}
-
-	public void clear() {
-		size = 0;
-	}
+	public int size() { return size; }
+	public boolean isFull() { return size >= capacity; }
+	public void clear() { size = 0; }
 
 	public void add(Obs obs, float[] histIn, float[] seenIn, float[] hIn, int headMask, int[] action, float logp, float value,
 			float reward, boolean done, int[] demoAction, float demoWeight) {
-		if (size >= capacity) {
-			return;
-		}
+		if (size >= capacity) return;
 		int i = size++;
 		System.arraycopy(obs.peri, 0, peri[i], 0, ObsSpec.PERI_SIZE);
 		System.arraycopy(obs.fovea, 0, fovea[i], 0, ObsSpec.FOVEA_SIZE);
 		System.arraycopy(obs.vec, 0, vec[i], 0, ObsSpec.VEC);
+		System.arraycopy(obs.slots, 0, slots[i], 0, ObsSpec.SLOTS_SIZE);
+		System.arraycopy(obs.terrain, 0, terrain[i], 0, ObsSpec.TERRAIN_SIZE);
 		System.arraycopy(obs.priv, 0, priv[i], 0, ObsSpec.PRIV);
 		System.arraycopy(histIn, 0, hist[i], 0, ObsMemory.HIST);
 		System.arraycopy(seenIn, 0, seen[i], 0, ObsMemory.SEEN);
 		System.arraycopy(hIn, 0, hPrev[i], 0, ObsMemory.GRU_HIDDEN);
-		for (int h = 0; h < ActionSpace.HEADS; h++) {
-			this.action[i][h] = (byte) action[h];
-		}
+		for (int h = 0; h < ActionSpace.HEADS; h++) this.action[i][h] = (byte) action[h];
 		this.headMask[i] = headMask;
 		this.oldLogp[i] = logp;
 		this.value[i] = value;
 		this.reward[i] = reward;
 		this.done[i] = done;
 		if (demoAction != null && demoWeight > 0f) {
-			for (int h = 0; h < ActionSpace.HEADS; h++) {
-				this.demoAction[i][h] = (byte) demoAction[h];
-			}
+			for (int h = 0; h < ActionSpace.HEADS; h++) this.demoAction[i][h] = (byte) demoAction[h];
 			this.demoWeight[i] = demoWeight;
 		} else {
 			Arrays.fill(this.demoAction[i], (byte) 0);
@@ -106,7 +95,6 @@ public final class LeagueRollout {
 		this.styleWeight[i] = 0f;
 	}
 
-	/** Attaches a per-step human style probability target to the most recently added rollout step. */
 	public void setStyle(float[] probs, float weight) {
 		if (size <= 0 || probs == null || weight <= 0f) return;
 		if (styleProbs == null) styleProbs = new float[capacity][ActionSpace.TOTAL_LOGITS];
@@ -114,7 +102,6 @@ public final class LeagueRollout {
 		styleWeight[size - 1] = weight;
 	}
 
-	/** Computes Generalised Advantage Estimation (GAE-lambda) and value targets. */
 	public void computeGae(float lastValue, float gamma, float lambda) {
 		float gae = 0f;
 		for (int t = size - 1; t >= 0; t--) {

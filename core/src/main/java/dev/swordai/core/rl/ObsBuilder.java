@@ -12,7 +12,6 @@ public final class ObsBuilder {
 	private ObsBuilder() {
 	}
 
-	/** Copies the masks and writes the statistics of the current and previous frame. */
 	public static void writeVision(Obs obs, MaskFrame current, float[] previousStats) {
 		System.arraycopy(current.peri, 0, obs.peri, 0, ObsSpec.PERI_SIZE);
 		System.arraycopy(current.fovea, 0, obs.fovea, 0, ObsSpec.FOVEA_SIZE);
@@ -46,17 +45,7 @@ public final class ObsBuilder {
 		}
 	}
 
-	/**
-	 * Writes everything the acting network gets for one decision: the picture, where the opponent is
-	 * on it (shifted by however far the camera has turned since the picture was taken), its own body,
-	 * the camera hand, its plan, its last action and its controls. The same for a body on the screen
-	 * and a body without one; only how {@code frame} and {@code body} were filled differs.
-	 *
-	 * <p>Call once per decision: the sight tracker remembers the last sighting.
-	 *
-	 * @param body       its own state now, with the hit clocks set
-	 * @param lastAction the action taken on the previous tick, or null at the start of an episode
-	 */
+	/** Writes everything the acting network gets for one decision (slots & terrain are filled by the caller). */
 	public static void writeActor(Obs obs, MaskFrame frame, SightTracker sight, BodyState body, AimMotor motor,
 			int[] lastAction, int headMask) {
 		Arrays.fill(obs.vec, 0f);
@@ -64,22 +53,22 @@ public final class ObsBuilder {
 		System.arraycopy(frame.fovea, 0, obs.fovea, 0, ObsSpec.FOVEA_SIZE);
 		sight.update(frame.stats, frame.viewYaw, frame.viewPitch, body.yaw, body.pitch);
 		sight.write(obs.vec);
-		// Relative velocity is something a player reads off the screen, so it is only written while
-		// the opponent is actually on screen.
 		body.write(obs.vec, frame.enemyVisible());
 		motor.write(obs.vec);
 		writeLastAction(obs.vec, lastAction);
 		writeHeadMask(obs.vec, headMask);
 	}
 
-	/**
-	 * Writes what only the critic gets: ground truth about the opponent. Never reaches the acting network.
-	 *
-	 * @param relRight,relUp,relForward the opponent's eyes relative to the agent's, in the agent's horizontal view frame, blocks
-	 * @param inReach                   the crosshair is on the opponent and it is within reach
-	 */
+	/** Writes training-only privileged critic inputs (never reaches the acting network). */
 	public static void writePrivileged(float[] p, StepFacts facts, BodyState body, float relRight, float relUp, float relForward,
 			float botHealth, float botCharge, boolean botSprinting, boolean botOnGround, boolean inReach, SessionClock clock, int stageIndex) {
+		writePrivileged(p, facts, body, relRight, relUp, relForward, botHealth, botCharge, botSprinting, botOnGround,
+				inReach, clock, stageIndex, false, 0f, false, 0f, false, false);
+	}
+
+	public static void writePrivileged(float[] p, StepFacts facts, BodyState body, float relRight, float relUp, float relForward,
+			float botHealth, float botCharge, boolean botSprinting, boolean botOnGround, boolean inReach, SessionClock clock, int stageIndex,
+			boolean botShieldUp, float botShieldCd, boolean ownShieldUp, float ownShieldCd, boolean kitHasShield, boolean kitHasAxe) {
 		Arrays.fill(p, 0f);
 		p[ObsSpec.PV_YAW_ERR] = facts.yawErrDeg / 180f;
 		p[ObsSpec.PV_PITCH_ERR] = facts.pitchErrDeg / 90f;
@@ -102,12 +91,14 @@ public final class ObsBuilder {
 		p[ObsSpec.PV_COMBO] = Math.min(5, clock.combo) / 5f;
 		p[ObsSpec.PV_BOT_ATTACKS] = clock.botAttacks ? 1f : 0f;
 		writeStage(p, stageIndex);
+		p[ObsSpec.PV_BOT_SHIELD_UP] = botShieldUp ? 1f : 0f;
+		p[ObsSpec.PV_BOT_SHIELD_CD] = botShieldCd;
+		p[ObsSpec.PV_OWN_SHIELD_UP] = ownShieldUp ? 1f : 0f;
+		p[ObsSpec.PV_OWN_SHIELD_CD] = ownShieldCd;
+		p[ObsSpec.PV_KIT_HAS_SHIELD] = kitHasShield ? 1f : 0f;
+		p[ObsSpec.PV_KIT_HAS_AXE] = kitHasAxe ? 1f : 0f;
 	}
 
-	/**
-	 * Which task is being played, for the critic. The first eight stages are a one-hot; the ninth is
-	 * no slot set and the tenth is every slot set, which keeps all ten apart in eight slots.
-	 */
 	public static void writeStage(float[] priv, int stageIndex) {
 		boolean all = stageIndex > ObsSpec.PV_STAGE_SLOTS;
 		Arrays.fill(priv, ObsSpec.PV_STAGE, ObsSpec.PV_STAGE + ObsSpec.PV_STAGE_SLOTS, all ? 1f : 0f);

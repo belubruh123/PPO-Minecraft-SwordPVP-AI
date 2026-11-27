@@ -5,18 +5,27 @@ import dev.swordai.core.rl.*;
 
 import java.util.*;
 
-/** Truncated-BPTT recurrent PPO with AlphaStar prior KL pull, fading kickstarting, and supervised MoveSearch steps. */
+/**
+ * Truncated-BPTT recurrent PPO with AlphaStar prior KL pull, fading kickstarting,
+ * supervised MoveSearch steps, and Switch-Transformer MoE auxiliary load-balancing loss
+ * (Fedus et al., JMLR 2022; Obando-Ceron et al., ICML 2024).
+ */
 public final class LeaguePpo {
 	public static final int CHUNK = 32, EPOCHS = 4, CHUNKS_PER_BATCH = 8;
 	public static final float GAMMA = FixedReward.GAMMA, LAMBDA = 0.95f, CLIP = 0.2f, VALUE_COEF = 0.5f, MAX_GRAD_NORM = 0.5f;
-	// Low entropy on precision heads (YAW, PITCH, invalid ATTACK) prevents aim dithering and spam-click floors;
-	// modest ATTACK entropy on valid ready-in-reach ticks preserves hit-selecting / waiting exploration (T4).
-	private static final float[] ENTROPY_COEF = {0.001f, 0.001f, 0.006f, 0.006f, 0.006f, 0.004f, 0.001f};
+	/** Switch-Transformer auxiliary load-balancing coefficient on MoE router gates (not a reward term). */
+	public static final float MOE_BALANCE_COEF = 0.01f;
+	// Precision heads (YAW/PITCH/invalid ATTACK) keep low entropy; movement & SMP item heads keep healthy exploration.
+	private static final float[] ENTROPY_COEF = {
+			0.001f, 0.001f, 0.006f, 0.006f, 0.006f, 0.004f, 0.001f,
+			0.004f, 0.005f, 0.002f, 0.002f
+	};
 	private static final float READY_ATTACK_ENTROPY = 0.004f;
 
 	public static final class Stats {
 		public int steps, epochsRun;
 		public float policyLoss, valueLoss, approxKl, clipFrac, entropy, priorKl, demoCe, explainedVar, lr;
+		public final float[] moeUsage = new float[MoEBlock.EXPERTS];
 	}
 
 	public float lr = 1.5e-4f, minLr = 3e-5f, maxLr = 3e-4f, targetKl = 0.025f, klStop = 0.06f;
@@ -30,6 +39,7 @@ public final class LeaguePpo {
 	private final float[] styleBuf = new float[ActionSpace.TOTAL_LOGITS];
 	private final float[] stepEnt = ENTROPY_COEF.clone();
 	private final float[][] chunkLogitsGrad = new float[CHUNK][ActionSpace.TOTAL_LOGITS];
+	private final float[] moeGateGrad = new float[MoEBlock.EXPERTS];
 	private final Random rng;
 
 	public LeaguePpo(SwordNet actor, SwordCritic critic, long seed) {
@@ -56,12 +66,14 @@ public final class LeaguePpo {
 		for (int i = 0; i < n; i++) adv[i] = (float) ((r.advantage[i] - mean) * invStd);
 
 		float[][] cachedPrior = null;
+		boolean priorHasSmp = priorNet != null && LeagueLearner.hasSmpWeights(priorNet);
+		int priorMaskLimit = priorHasSmp ? ActionSpace.ALL_HEADS : ActionSpace.SWORD_HEADS;
 		if (priorNet != null && priorWeight > 0f) {
 			cachedPrior = new float[n][ActionSpace.TOTAL_LOGITS];
 			float[] hp = new float[ObsMemory.GRU_HIDDEN];
 			for (int t = 0; t < n; t++) {
 				if (t == 0 || r.done[t - 1]) Arrays.fill(hp, 0f);
-				priorNet.forward(priorWs, priorWs.step, r.peri[t], r.fovea[t], r.vec[t], r.hist[t], r.seen[t], hp, hp);
+				priorNet.forward(priorWs, priorWs.step, r.peri[t], r.fovea[t], r.vec[t], r.slots[t], r.terrain[t], r.hist[t], r.seen[t], hp, hp);
 				priorNet.condition(priorWs, priorWs.step, r.action[t]);
 				Policy.allProbs(priorWs.step.logits, cachedPrior[t]);
 				if (r.vec[t][ObsSpec.VEC_SCALARS + ObsSpec.SC_ATTACK_CHARGE] < 0.85f || r.priv[t][ObsSpec.PV_IN_REACH] < 0.5f) {
@@ -77,6 +89,7 @@ public final class LeaguePpo {
 		for (int i = 0; i < numChunks; i++) order[i] = i;
 
 		double sumPol = 0, sumVal = 0, sumKl = 0, sumClip = 0, sumEnt = 0, sumPrior = 0, sumDemo = 0;
+		double[] sumMoe = new double[MoEBlock.EXPERTS];
 		long count = 0, demoCount = 0;
 		boolean stopped = false;
 
@@ -89,30 +102,41 @@ public final class LeaguePpo {
 				ParamSet.zeroGrads(criticWs.grads);
 				int batchSteps = 0;
 				double batchKl = 0;
+				int[] chunkTop = new int[MoEBlock.EXPERTS];
 
 				for (int ci = b; ci < bEnd; ci++) {
 					int start = order[ci] * CHUNK, len = Math.min(CHUNK, n - start);
 					if (len <= 0) continue;
+					Arrays.fill(chunkTop, 0);
 					System.arraycopy(r.hPrev[start], 0, hCur, 0, ObsMemory.GRU_HIDDEN);
 					for (int k = 0; k < len; k++) {
 						int t = start + k;
 						if (k > 0 && r.done[t - 1]) Arrays.fill(hCur, 0f);
 						SwordNet.StepCache sc = caches[k];
-						actor.forward(actorWs, sc, r.peri[t], r.fovea[t], r.vec[t], r.hist[t], r.seen[t], hCur, hCur);
+						actor.forward(actorWs, sc, r.peri[t], r.fovea[t], r.vec[t], r.slots[t], r.terrain[t], r.hist[t], r.seen[t], hCur, hCur);
 						actor.condition(actorWs, sc, r.action[t]);
 
-						float newLogp = Policy.evaluate(sc.logits, r.headMask[t], r.action[t], probs, headEnt);
+						int bestE = 0;
+						for (int e = 0; e < MoEBlock.EXPERTS; e++) {
+							sumMoe[e] += sc.moeCache.gate[e];
+							if (sc.moeCache.gate[e] > sc.moeCache.gate[bestE]) bestE = e;
+						}
+						chunkTop[bestE]++;
+
+						int hm = r.headMask[t];
+						float newLogp = Policy.evaluate(sc.logits, hm, r.action[t], probs, headEnt);
 						float logRatio = newLogp - r.oldLogp[t];
 						float ratio = (float) Math.exp(Math.max(-20f, Math.min(20f, logRatio)));
 						float a = adv[t], s1 = ratio * a, s2 = Math.max(1f - CLIP, Math.min(1f + CLIP, ratio)) * a;
 						boolean clipped = (a >= 0f && ratio > 1f + CLIP) || (a < 0f && ratio < 1f - CLIP);
 						boolean readyHit = r.vec[t][ObsSpec.VEC_SCALARS + ObsSpec.SC_ATTACK_CHARGE] >= 0.85f && r.priv[t][ObsSpec.PV_IN_REACH] >= 0.5f;
 						stepEnt[ActionSpace.ATTACK] = readyHit ? READY_ATTACK_ENTROPY : ENTROPY_COEF[ActionSpace.ATTACK];
-						Policy.gradient(r.headMask[t], r.action[t], probs, headEnt, clipped ? 0f : -ratio * a, stepEnt, chunkLogitsGrad[k]);
+						Policy.gradient(hm, r.action[t], probs, headEnt, clipped ? 0f : -ratio * a, stepEnt, chunkLogitsGrad[k]);
 
 						if (cachedPrior != null) {
-							sumPrior += Policy.kl(r.headMask[t], cachedPrior[t], probs);
-							Policy.addKlGradient(r.headMask[t], cachedPrior[t], probs, priorWeight, chunkLogitsGrad[k]);
+							int pm = hm & priorMaskLimit;
+							sumPrior += Policy.kl(pm, cachedPrior[t], probs);
+							Policy.addKlGradient(pm, cachedPrior[t], probs, priorWeight, chunkLogitsGrad[k]);
 						}
 						if (r.styleProbs != null && r.styleWeight[t] > 0f) {
 							System.arraycopy(r.styleProbs[t], 0, styleBuf, 0, ActionSpace.TOTAL_LOGITS);
@@ -121,14 +145,14 @@ public final class LeaguePpo {
 								styleBuf[aOff] = 1f;
 								styleBuf[aOff + 1] = 0f;
 							}
-							int sMask = r.headMask[t] & HumanImitation.HumanPolicy.STYLE_HEADS;
+							int sMask = hm & HumanImitation.HumanPolicy.STYLE_HEADS;
 							Policy.addKlGradient(sMask, styleBuf, probs, r.styleWeight[t], chunkLogitsGrad[k]);
 						}
 						if (kickWeight > 0f && r.demoWeight[t] > 0f) {
-							sumDemo += addCeGrad(r.headMask[t], r.demoAction[t], probs, kickWeight * r.demoWeight[t], chunkLogitsGrad[k]);
+							sumDemo += addCeGrad(hm, r.demoAction[t], probs, kickWeight * r.demoWeight[t], chunkLogitsGrad[k]);
 							demoCount++;
 						}
-						float vErr = critic.forward(criticWs, r.vec[t], r.priv[t], sc.hOut) - r.returns[t];
+						float vErr = critic.forward(criticWs, r.vec[t], r.priv[t], sc.hOut, sc.kitCtx(), r.terrain[t]) - r.returns[t];
 						critic.backward(criticWs, VALUE_COEF * vErr);
 
 						float kl = (ratio - 1f) - logRatio;
@@ -137,12 +161,18 @@ public final class LeaguePpo {
 						for (int h = 0; h < ActionSpace.HEADS; h++) sumEnt += headEnt[h];
 						batchSteps++; count++;
 					}
+					// Switch-Transformer load-balancing gradient w.r.t. router probabilities g_{t,e}: alpha * E * f_e
+					for (int e = 0; e < MoEBlock.EXPERTS; e++) {
+						float fe = (float) chunkTop[e] / len;
+						moeGateGrad[e] = MOE_BALANCE_COEF * MoEBlock.EXPERTS * fe;
+					}
 					Arrays.fill(dHNext, 0f);
 					for (int k = len - 1; k >= 0; k--) {
 						int t = start + k;
 						if (r.done[t]) Arrays.fill(dHNext, 0f);
 						System.arraycopy(chunkLogitsGrad[k], 0, actorWs.dLogits, 0, ActionSpace.TOTAL_LOGITS);
-						actor.backward(actorWs, caches[k], r.peri[t], r.fovea[t], r.vec[t], r.hist[t], r.seen[t], dHNext, dHPrev);
+						actor.backward(actorWs, caches[k], r.peri[t], r.fovea[t], r.vec[t], r.slots[t], r.terrain[t],
+								r.hist[t], r.seen[t], dHNext, dHPrev, moeGateGrad);
 						System.arraycopy(dHPrev, 0, dHNext, 0, ObsMemory.GRU_HIDDEN);
 					}
 				}
@@ -160,6 +190,7 @@ public final class LeaguePpo {
 			st.entropy = (float) (sumEnt / (count * ActionSpace.HEADS));
 			st.priorKl = cachedPrior != null ? (float) (sumPrior / count) : 0f;
 			st.demoCe = demoCount > 0 ? (float) (sumDemo / demoCount) : 0f;
+			for (int e = 0; e < MoEBlock.EXPERTS; e++) st.moeUsage[e] = (float) (sumMoe[e] / count);
 		}
 		if (st.approxKl > targetKl * 1.5f) lr = Math.max(minLr, lr * 0.8f);
 		else if (st.approxKl < targetKl * 0.5f && !stopped) lr = Math.min(maxLr, lr * 1.1f);
@@ -167,13 +198,8 @@ public final class LeaguePpo {
 		return st;
 	}
 
-	public float supervisedStep(SwordNet actor, byte[][] peri, byte[][] fovea, float[][] vec, float[][] hist, float[][] seen,
-			float[][] hPrev, byte[][] targetAction, int count, float stepLr) {
-		return supervisedStep(actor, peri, fovea, vec, hist, seen, hPrev, targetAction, count, stepLr, ActionSpace.ALL_HEADS);
-	}
-
-	public float supervisedStep(SwordNet actor, byte[][] peri, byte[][] fovea, float[][] vec, float[][] hist, float[][] seen,
-			float[][] hPrev, byte[][] targetAction, int count, float stepLr, int headMask) {
+	public float supervisedStep(SwordNet actor, byte[][] peri, byte[][] fovea, float[][] vec, float[][] slots, float[][] terrain,
+			float[][] hist, float[][] seen, float[][] hPrev, byte[][] targetAction, int count, float stepLr, int headMask) {
 		if (count <= 0) return 0f;
 		int nHeads = 0;
 		for (int h = 0; h < ActionSpace.HEADS; h++) if (ActionSpace.unlocked(headMask, h)) nHeads++;
@@ -182,12 +208,14 @@ public final class LeaguePpo {
 		double sumCe = 0;
 		for (int i = 0; i < count; i++) {
 			float[] hp = (hPrev != null && hPrev[i] != null) ? hPrev[i] : hZero;
-			actor.forward(actorWs, actorWs.step, peri[i], fovea[i], vec[i], hist[i], seen[i], hp, null);
+			float[] sl = slots != null ? slots[i] : null;
+			float[] tr = terrain != null ? terrain[i] : null;
+			actor.forward(actorWs, actorWs.step, peri[i], fovea[i], vec[i], sl, tr, hist[i], seen[i], hp, null);
 			actor.condition(actorWs, actorWs.step, targetAction[i]);
 			Policy.allProbs(actorWs.step.logits, probs);
 			Arrays.fill(actorWs.dLogits, 0f);
 			sumCe += addCeGrad(headMask, targetAction[i], probs, 1f, actorWs.dLogits);
-			actor.backward(actorWs, actorWs.step, peri[i], fovea[i], vec[i], hist[i], seen[i], null, null);
+			actor.backward(actorWs, actorWs.step, peri[i], fovea[i], vec[i], sl, tr, hist[i], seen[i], null, null, null);
 		}
 		Adam.step(actor.params, actorWs.grads, stepLr, 1f / count, MAX_GRAD_NORM);
 		return (float) (sumCe / (count * nHeads));

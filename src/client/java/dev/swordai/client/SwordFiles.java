@@ -68,10 +68,10 @@ final class SwordFiles {
 	static int readLeagueStage() {
 		Path f = leagueStageFile();
 		if (Files.exists(f)) {
-			try { return Math.max(2, Math.min(5, Integer.parseInt(Files.readString(f, StandardCharsets.UTF_8).strip()))); }
+			try { return Math.max(2, Math.min(6, Integer.parseInt(Files.readString(f, StandardCharsets.UTF_8).strip()))); }
 			catch (IOException | NumberFormatException ignored) {}
 		}
-		return 5;
+		return 6;
 	}
 
 	static Config loadConfig() {

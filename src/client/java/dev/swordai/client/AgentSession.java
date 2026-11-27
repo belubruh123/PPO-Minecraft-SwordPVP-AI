@@ -39,6 +39,11 @@ interface AgentSession {
 	/** Middle of the client tick, after vanilla's key handling. Returns whether the network swings now. */
 	boolean beforePlayerMoves();
 
+	/** True when the network wants right-click USE_ITEM held this tick (Shield block / Golden Apple eat). */
+	default boolean wantsUseItem() {
+		return false;
+	}
+
 	/** Degrees to add to the drawn view so that this tick's turn glides in instead of snapping. */
 	float viewYawLag(float partialTick);
 
