@@ -18,6 +18,8 @@ public final class EpisodePlan {
 	public boolean terraced = false;
 	/** Optional exact arena state captured by {@link SceneRecorder} for key-moment starts or MoveSearch. */
 	public double[] scene;
+	/** When > 0 (e.g. OPP_SHIELD_UP MoveSearch trials), SparBot raises and holds its offhand Shield from tick 0. */
+	public int forceBotShieldTicks;
 	public float minDistance = 2.6f;
 	public float maxDistance = 5.5f;
 	public float maxBearingDeg = 35f;

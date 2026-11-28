@@ -231,9 +231,16 @@ public final class LeagueLearner {
 	private static boolean readActorParams(DataInputStream in, SwordNet actor, int savedVec, int savedGru, int savedLogits) throws IOException {
 		Map<String, float[][]> loaded = readParamMap(in, actor.params);
 		boolean surgery = (savedVec != ObsSpec.VEC || savedGru != ObsMemory.GRU_HIDDEN || savedLogits != ActionSpace.TOTAL_LOGITS);
+		float[][] oldPtrQ = loaded.get("slot.ptrQ.w");
+		boolean ptrReset = oldPtrQ != null && oldPtrQ[0].length != SwordNet.PTR_IN * SlotEncoder.SLOT_DIM;
 		int newH = ObsMemory.GRU_HIDDEN;
 
 		for (Param p : actor.params.params()) {
+			if (ptrReset && (p.name.startsWith("slot.ptrQ.") || p.name.startsWith("slot.ptrKeep."))) {
+				// Warm-starting from an older pointer width (256 -> 334): cleanly reset pointer head while preserving Shield/MoE/Terrain/GRU/Critic!
+				p.bornAt = actor.params.adamSteps;
+				continue;
+			}
 			float[][] a = loaded.get(p.name);
 			if (a == null) continue;
 			float[] sw = a[0], sm = a[1], sv = a[2];

@@ -268,6 +268,15 @@ final class LeagueSession implements AgentSession {
 			if (m != null) {
 				((LivingEntityAccessor) me).swordai$setAttackStrengthTicker(SceneRecorder.agentTicker(m.arenaState));
 				me.setSprinting(m.arenaState[13] > 0.5);
+				int cat = SceneRecorder.agentItemCat(m.arenaState);
+				if (cat > 0) {
+					int idx = InventoryObs.findHotbarSlot(me, cat);
+					if (idx >= 0) me.getInventory().setSelectedSlot(idx);
+				} else if (cat == 0) {
+					for (int i = 0; i < ObsSpec.HOTBAR_SLOTS; i++) {
+						if (me.getInventory().getItem(i).isEmpty()) { me.getInventory().setSelectedSlot(i); break; }
+					}
+				}
 				if (learner != null) learner.restoreMemory(m.hist, m.seen, m.hPrev);
 			}
 			return;
@@ -411,10 +420,13 @@ final class LeagueSession implements AgentSession {
 			int swSlot = InventoryObs.findHotbarSlot(me, ObsSpec.SF_SWORD);
 			int axSlot = InventoryObs.findHotbarSlot(me, ObsSpec.SF_AXE);
 			int gpSlot = InventoryObs.findHotbarSlot(me, ObsSpec.SF_GAP);
-			int awayYawBin = facts.reachDist < 5.5f
+			boolean seenOppUsing = obs.vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_OPP_USING] >= 0.5f;
+			boolean facingEnemy = Math.abs(facts.yawErrDeg) < 90f;
+			boolean gapDone = me.getAbsorptionAmount() >= 3.0f;
+			int awayYawBin = facts.reachDist < 6.0f
 					? InverseDynamics.nearestBin(ViewGeometry.wrapDegrees(facts.yawErrDeg + 180f), ActionSpace.YAW_BINS) : -1;
 			cand.apply(dec.action, searchTick, canHit, inReachAimed, critWindow, curSlot, swSlot, axSlot, gpSlot,
-					InventoryObs.hasShieldReady(me), truth.botShieldUp(), awayYawBin);
+					InventoryObs.hasShieldReady(me), truth.botShieldUp(), seenOppUsing, facingEnemy, gapDone, awayYawBin);
 			activeSearch.noteStep(searchTick, obs, learner.lastHistIn(), learner.lastSeenIn(), learner.lastHiddenIn(), dec.action);
 		} else if (searchTick == 0) {
 			activeSearch.noteFirstStep(obs, learner.lastHistIn(), learner.lastSeenIn(), learner.lastHiddenIn(), dec.action);
@@ -533,8 +545,8 @@ final class LeagueSession implements AgentSession {
 			}
 		}
 		if (stage >= 5 && moveSearch.targetCount() >= 8) {
-			int searchSteps = stage >= 6 ? 2 : 1;
-			float searchLr = stage >= 6 ? Math.max(6e-5f, learner.ppo.lr * 0.5f) : learner.ppo.lr * 0.25f;
+			int searchSteps = stage >= 6 ? 3 : 1;
+			float searchLr = stage >= 6 ? Math.max(8e-5f, learner.ppo.lr * 0.75f) : learner.ppo.lr * 0.25f;
 			searchCe = moveSearch.trainActor(learner.actor, learner.ppo, searchSteps, searchLr, rng);
 		}
 		int snapEvery = stage >= 5 ? STAGE5_SNAP_EVERY : SNAP_EVERY;
@@ -566,12 +578,12 @@ final class LeagueSession implements AgentSession {
 		double secs = Math.max(1.0, (System.currentTimeMillis() - startedMs) / 1000.0);
 		float shPct = 100f * statShieldTicks / Math.max(1, statSmpTicks);
 		SwordAi.LOGGER.info(String.format(Locale.ROOT,
-				"league update %d (stage %d), %d steps (%.0f/s): pol %.4f val %.4f kl %.4f ent %.3f pKl %.3f ev %.2f lr %.1e aim %.0f%% low %.1f%% whf %.1f%% gru|w| %.2f moe [%d/%d/%d/%d%%] smp(sw=%d sh=%.0f%% axBrk=%d gap=%d) search %d/%d(ce %.2f) | %s",
+				"league update %d (stage %d), %d steps (%.0f/s): pol %.4f val %.4f kl %.4f ent %.3f pKl %.3f ev %.2f lr %.1e aim %.0f%% low %.1f%% whf %.1f%% gru|w| %.2f moe [%d/%d/%d/%d%%] smp(sw=%d sh=%.0f%% axBrk=%d gap=%d) search %d/%d(%s ce %.2f) | %s",
 				learner.updates, stage, learner.totalSteps, totalTicks / secs, s.policyLoss, s.valueLoss, s.approxKl, s.entropy, s.priorKl,
 				s.explainedVar, s.lr, aimRate * 100f, lowRate * 100f, whfRate * 100f, learner.actor.gruWeightNorm(),
 				Math.round(s.moeUsage[0] * 100f), Math.round(s.moeUsage[1] * 100f), Math.round(s.moeUsage[2] * 100f), Math.round(s.moeUsage[3] * 100f),
 				statSlotSw, shPct, statAxeBreaks, statGapsEaten,
-				moveSearch.targetsFound(), moveSearch.searchesDone(), searchCe, league.summary()));
+				moveSearch.targetsFound(), moveSearch.searchesDone(), moveSearch.smpWinsSummary(), searchCe, league.summary()));
 		statClose = statOnBody = statClicks = statLowChg = statWhiffs = statSwings = 0;
 		statSmpTicks = statSlotSw = statShieldTicks = statAxeBreaks = statGapsEaten = 0;
 		server.execute(() -> ArenaServer.setIdle(false));
@@ -600,8 +612,14 @@ final class LeagueSession implements AgentSession {
 		} else if (activeSearch != null) {
 			searchTick = 0;
 			activeLag = activeSearch.lag;
-			SwordNet sOpp = activeSearch.opponent != null ? activeSearch.opponent : selfNet;
-			plan = EpisodePlan.ofPilot(new LeaguePilots.NetPilot(sOpp, cfg.aimResponse, 1f, rng.nextLong(), null), 0xA1F0L + activeSearch.moment.kind.ordinal(), false);
+			if (activeSearch.moment.kind == MoveSearch.Kind.OPP_SHIELD_UP) {
+				// Replay OPP_SHIELD_UP against shield-holding SparBot with shield forced up from tick 0 so AXE_BREAK_SWORD_CRIT faces a real blocking shield!
+				plan = EpisodePlan.ofSpar(League.SparStyle.MIXER, 0xA1F0L + activeSearch.moment.kind.ordinal(), false);
+				plan.forceBotShieldTicks = 18;
+			} else {
+				SwordNet sOpp = activeSearch.opponent != null ? activeSearch.opponent : selfNet;
+				plan = EpisodePlan.ofPilot(new LeaguePilots.NetPilot(sOpp, cfg.aimResponse, 1f, rng.nextLong(), null), 0xA1F0L + activeSearch.moment.kind.ordinal(), false);
+			}
 			plan.kitMode = activeSearch.moment.smpKit ? EpisodePlan.KitMode.SMP_PHASE1 : EpisodePlan.KitMode.SWORD_ONLY;
 			plan.randomizeSlots = stage >= 6;
 			plan.terraced = false;
@@ -659,13 +677,13 @@ final class LeagueSession implements AgentSession {
 		if (stage >= 6 && currentKit == EpisodePlan.KitMode.SMP_PHASE1) {
 			if (truth.botShieldUp() && facts.reachDist < 5.2f && rng.nextFloat() < 0.50f) return MoveSearch.Kind.OPP_SHIELD_UP;
 			float meEffHp = me.getHealth() + me.getAbsorptionAmount();
-			if (meEffHp <= 13f && InventoryObs.findHotbarSlot(me, ObsSpec.SF_GAP) >= 0 && !me.isUsingItem() && rng.nextFloat() < 0.30f) {
+			if (meEffHp <= 13f && InventoryObs.findHotbarSlot(me, ObsSpec.SF_GAP) >= 0 && !me.isUsingItem() && rng.nextFloat() < 0.35f) {
 				return MoveSearch.Kind.LOW_HP_GAP;
 			}
 			var mh = me.getMainHandItem();
-			if (!InventoryObs.isSword(mh) && !InventoryObs.isAxe(mh) && facts.reachDist < 5.2f
-					&& InventoryObs.findHotbarSlot(me, ObsSpec.SF_SWORD) >= 0 && rng.nextFloat() < 0.30f) {
-				return MoveSearch.Kind.COMBO_START;
+			if (!InventoryObs.isSword(mh) && !InventoryObs.isAxe(mh) && facts.reachDist < 6.0f
+					&& InventoryObs.findHotbarSlot(me, ObsSpec.SF_SWORD) >= 0 && rng.nextFloat() < 0.60f) {
+				return MoveSearch.Kind.DRAW_SWORD;
 			}
 		}
 		if (dCrit && critChain >= 1) return MoveSearch.Kind.AFTER_PUNISH_CRIT;

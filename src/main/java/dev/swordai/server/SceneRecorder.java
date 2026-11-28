@@ -1,8 +1,10 @@
 package dev.swordai.server;
 
+import dev.swordai.core.rl.ObsSpec;
 import dev.swordai.mixin.LivingEntityAccessor;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Set;
@@ -16,8 +18,8 @@ import java.util.Set;
 public final class SceneRecorder {
 	/** How far back a scene can start. */
 	public static final int TICKS = 240;
-	/** Numbers kept for each fighter: position, motion, look, sword clock, health, hurt and grace ticks, fall, sprint. */
-	static final int BODY = 14;
+	/** Numbers kept for each fighter: position, motion, look, sword clock, health, hurt/grace, fall, sprint, shielding, held item category. */
+	static final int BODY = 16;
 
 	private final long[] at = new long[TICKS];
 	private final double[][] state = new double[TICKS][2 * BODY];
@@ -118,6 +120,8 @@ public final class SceneRecorder {
 		s[o + 11] = p.invulnerableTime;
 		s[o + 12] = p.fallDistance;
 		s[o + 13] = p.isSprinting() ? 1 : 0;
+		s[o + 14] = (p.isUsingItem() && InventoryObs.isShield(p.getUseItem())) ? 1 : 0;
+		s[o + 15] = InventoryObs.categoryOf(p.getMainHandItem());
 	}
 
 	/** Puts a fighter where {@code s} (from {@link #at}) had it: {@code o} 0 for the agent, BODY for the bot. */
@@ -132,6 +136,20 @@ public final class SceneRecorder {
 		} else {
 			p.hurtMarked = true;
 		}
+		if (s.length >= o + BODY) {
+			int cat = (int) Math.round(s[o + 15]);
+			if (cat > 0) {
+				int idx = InventoryObs.findHotbarSlot(p, cat);
+				if (idx >= 0) p.getInventory().setSelectedSlot(idx);
+			} else {
+				for (int i = 0; i < ObsSpec.HOTBAR_SLOTS; i++) {
+					if (p.getInventory().getItem(i).isEmpty()) { p.getInventory().setSelectedSlot(i); break; }
+				}
+			}
+			if (s[o + 14] > 0.5 && InventoryObs.isShield(p.getOffhandItem()) && !p.getCooldowns().isOnCooldown(p.getOffhandItem())) {
+				p.startUsingItem(InteractionHand.OFF_HAND);
+			}
+		}
 		((LivingEntityAccessor) p).swordai$setAttackStrengthTicker((int) s[o + 8]);
 		p.setHealth((float) Math.max(1.0, s[o + 9]));
 		p.hurtTime = (int) s[o + 10];
@@ -143,5 +161,10 @@ public final class SceneRecorder {
 	/** The agent's sword clock in {@code s}: its client keeps its own and is set to this. */
 	public static int agentTicker(double[] s) {
 		return (int) s[8];
+	}
+
+	/** The agent's mainhand item category in {@code s} (0 = empty, SF_SWORD/AXE/GAP...), or -1 on legacy scenes. */
+	public static int agentItemCat(double[] s) {
+		return s != null && s.length >= BODY ? (int) Math.round(s[15]) : -1;
 	}
 }

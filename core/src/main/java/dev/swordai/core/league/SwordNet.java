@@ -25,6 +25,9 @@ public final class SwordNet {
 	private static final int HOTBAR_AT = ActionSpace.OFFSETS[ActionSpace.HOTBAR_SLOT];
 	private static final int HOTBAR_SZ = ActionSpace.SIZES[ActionSpace.HOTBAR_SLOT];
 	private static final int MOE_ROUTER_IN = TOP + SlotEncoder.KIT_DIM;
+	/** Direct pointer query context: [top(256), kitCtx(64), SC_HEALTH(1), SMP scalars(13)] = 334 floats so HOTBAR_SLOT sees held/opp items in 1 hop. */
+	public static final int PTR_SMP_SCALARS = 14;
+	public static final int PTR_IN = TOP + SlotEncoder.KIT_DIM + PTR_SMP_SCALARS;
 	/** AlphaStar autoregressive sampling order: movement -> item switches -> USE_ITEM -> ATTACK (prevents switch+swing collisions). */
 	private static final int[] SAMPLE_ORDER = {
 			ActionSpace.YAW, ActionSpace.PITCH, ActionSpace.FORWARD, ActionSpace.STRAFE, ActionSpace.SPRINT, ActionSpace.JUMP,
@@ -74,7 +77,7 @@ public final class SwordNet {
 		gruNew = new Dense(params, "gru.new", ObsMemory.GRU_HIDDEN, NEW, rng, 0f);
 		gruHeads = new Dense(params, "gru.heads", ObsMemory.GRU_HIDDEN, ActionSpace.TOTAL_LOGITS, rng, 0f);
 
-		slotEncoder = new SlotEncoder(params, "slot", TOP, rng);
+		slotEncoder = new SlotEncoder(params, "slot", PTR_IN, rng);
 		kitNew = new Dense(params, "kit.new", SlotEncoder.KIT_DIM, NEW, rng, 0f);
 		kitHeads = new Dense(params, "kit.heads", SlotEncoder.KIT_DIM, ActionSpace.TOTAL_LOGITS, rng, 0f);
 		terrIn = new Dense(params, "terr.in", ObsSpec.TERRAIN_SIZE, TERRAIN_DIM, rng, relu);
@@ -99,7 +102,7 @@ public final class SwordNet {
 		final float[] f1 = new float[foveaConv1.outSize()], f2 = new float[foveaConv2.outSize()];
 		final float[] cat = new float[CAT], wide = new float[64], oldT = new float[OLD], newT = new float[NEW];
 		final float[] terrH = new float[TERRAIN_DIM];
-		final float[] topPre = new float[TOP], moeRouterIn = new float[MOE_ROUTER_IN], top = new float[TOP];
+		final float[] topPre = new float[TOP], moeRouterIn = new float[MOE_ROUTER_IN], top = new float[TOP], ptrIn = new float[PTR_IN];
 		final float[] hOut = new float[ObsMemory.GRU_HIDDEN];
 		final Gru.StepCache gruCache = gru.newStepCache();
 		final SlotEncoder.Cache slotCache = slotEncoder.newCache();
@@ -127,7 +130,7 @@ public final class SwordNet {
 		final float[] arOut = new float[2], probs = new float[ActionSpace.TOTAL_LOGITS];
 		final int[] act = new int[ActionSpace.HEADS];
 		final float[] dBaseLogits = new float[ActionSpace.TOTAL_LOGITS];
-		final float[] dTop = new float[TOP], dTopPre = new float[TOP], dMoeRouterIn = new float[MOE_ROUTER_IN];
+		final float[] dTop = new float[TOP], dTopPre = new float[TOP], dMoeRouterIn = new float[MOE_ROUTER_IN], dPtrIn = new float[PTR_IN];
 		final float[] dOld = new float[OLD], dNew = new float[NEW];
 		final float[] dKitCtx = new float[SlotEncoder.KIT_DIM], dKitTmp = new float[SlotEncoder.KIT_DIM];
 		final float[] dTerrH = new float[TERRAIN_DIM], dTerrTmp = new float[TERRAIN_DIM];
@@ -207,7 +210,12 @@ public final class SwordNet {
 			sc.base[i] += ws.histLogits[i] + ws.seenLogits[i] + ws.gruLogits[i] + ws.kitLogits[i] + ws.terrLogits[i];
 		}
 		// AlphaStar Pointer Head EXCLUSIVELY owns HOTBAR_SLOT logits -> strictly permutation-equivariant to hotbar order!
-		slotEncoder.writePointerLogits(sc.top, sc.base, sc.slotCache);
+		// Reads [top, kitCtx, SC_HEALTH, SC_OWN_USING..SC_CURSOR_Y] directly so held-item & opp-shield cues reach pointer in 1 hop.
+		System.arraycopy(sc.top, 0, sc.ptrIn, 0, TOP);
+		System.arraycopy(sc.slotCache.kitCtx, 0, sc.ptrIn, TOP, SlotEncoder.KIT_DIM);
+		sc.ptrIn[TOP + SlotEncoder.KIT_DIM] = vec[ObsSpec.VEC_SCALARS + ObsSpec.SC_HEALTH];
+		System.arraycopy(vec, ObsSpec.VEC_SCALARS + ObsSpec.SC_OWN_USING, sc.ptrIn, TOP + SlotEncoder.KIT_DIM + 1, 13);
+		slotEncoder.writePointerLogits(sc.ptrIn, sc.base, sc.slotCache);
 		System.arraycopy(sc.base, 0, sc.logits, 0, ActionSpace.TOTAL_LOGITS);
 	}
 
@@ -399,7 +407,10 @@ public final class SwordNet {
 	}
 
 	private void backwardPointerTop(Workspace ws, StepCache sc) {
-		slotEncoder.backwardPointerTop(sc.top, ws.dLogits, sc.slotCache, ws.slotScratch, ws.dTop, ws.grads);
+		Arrays.fill(ws.dPtrIn, 0f);
+		slotEncoder.backwardPointerTop(sc.ptrIn, ws.dLogits, sc.slotCache, ws.slotScratch, ws.dPtrIn, ws.grads);
+		for (int i = 0; i < TOP; i++) ws.dTop[i] += ws.dPtrIn[i];
+		for (int i = 0; i < SlotEncoder.KIT_DIM; i++) ws.dKitCtx[i] += ws.dPtrIn[TOP + i];
 	}
 
 	private void backwardSlotBody(Workspace ws, StepCache sc, float[] sl) {

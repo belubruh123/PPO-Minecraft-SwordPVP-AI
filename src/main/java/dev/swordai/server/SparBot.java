@@ -44,6 +44,7 @@ public final class SparBot {
 	}
 
 	public void idle(ServerPlayer bot) { body.idle(bot); }
+	public void forceShield(int ticks) { this.shieldHoldTicks = Math.max(this.shieldHoldTicks, ticks); }
 	public void hitDealt() { sinceHitDealt = 0; ownCombo++; }
 	public void hitTaken() { sinceHitTaken = 0; ownCombo = 0; idmRec.tookHit = true; }
 

@@ -163,7 +163,10 @@ public final class ArenaServer {
 		s.activeKit = plan.kitMode != null ? plan.kitMode : EpisodePlan.KitMode.SWORD_ONLY;
 		s.arena.setTerraced(plan.terraced && plan.scene == null);
 		if (s.activePilot != null) { s.activePilot.reset(); s.activePilot.setLag(plan.botLag); }
-		else s.sparBot.start(plan.sparStyle, plan.seed != 0L ? plan.seed : s.rng.nextLong(), plan.botLag);
+		else {
+			s.sparBot.start(plan.sparStyle, plan.seed != 0L ? plan.seed : s.rng.nextLong(), plan.botLag);
+			if (plan.forceBotShieldTicks > 0) s.sparBot.forceShield(plan.forceBotShieldTicks);
+		}
 		KnockbackLag.set(s.bot, plan.botPing, 1f);
 		KnockbackLag.setAgent(agent, plan.agentKnockLag);
 		s.setIdleNow(false);
@@ -179,12 +182,17 @@ public final class ArenaServer {
 		heal(agent); heal(s.bot);
 		s.equip(agent, s.activeKit, plan.randomizeSlots, s.rng);
 		s.equip(s.bot, s.activeKit, plan.randomizeSlots, s.rng);
+		if (plan.forceBotShieldTicks > 0 && !InventoryObs.isShield(s.bot.getOffhandItem())) {
+			int sh = InventoryObs.findHotbarSlot(s.bot, dev.swordai.core.rl.ObsSpec.SF_SHIELD);
+			if (sh >= 0) { s.bot.setItemInHand(InteractionHand.OFF_HAND, s.bot.getInventory().getItem(sh).copy()); s.bot.getInventory().setItem(sh, ItemStack.EMPTY); }
+		}
 		s.placeBot(ax, az, yaw, plan.minDistance, plan.maxDistance, plan.maxBearingDeg);
 
 		if (plan.scene != null) {
 			double[] sc = placed(plan.scene, s.arena, plan.seed == 0L);
 			SceneRecorder.apply(s.arena.level, agent, sc, 0);
 			SceneRecorder.apply(s.arena.level, s.bot, sc, SceneRecorder.BODY);
+			if (plan.forceBotShieldTicks > 0 && InventoryObs.isShield(s.bot.getOffhandItem())) s.bot.startUsingItem(InteractionHand.OFF_HAND);
 			s.pendingScene = sc; s.pendingPlan = plan; s.setIdleNow(true); s.botLastPos = null;
 		} else { s.pendingScene = null; s.pendingPlan = null; }
 		CombatLog.clear(); s.episodeId++; s.publish();
@@ -199,7 +207,13 @@ public final class ArenaServer {
 		SceneRecorder.apply(s.arena.level, agent, sc, 0);
 		SceneRecorder.apply(s.arena.level, s.bot, sc, SceneRecorder.BODY);
 		if (s.activePilot != null) s.activePilot.reset();
-		else if (plan != null) s.sparBot.start(plan.sparStyle, plan.seed != 0L ? plan.seed : s.rng.nextLong(), plan.botLag);
+		else if (plan != null) {
+			s.sparBot.start(plan.sparStyle, plan.seed != 0L ? plan.seed : s.rng.nextLong(), plan.botLag);
+			if (plan.forceBotShieldTicks > 0) {
+				s.sparBot.forceShield(plan.forceBotShieldTicks);
+				if (InventoryObs.isShield(s.bot.getOffhandItem())) s.bot.startUsingItem(InteractionHand.OFF_HAND);
+			}
+		}
 		agentTickerSetAt = s.server.getTickCount(); s.botLastPos = null; s.setIdleNow(false); scenesPutBack++;
 	}
 

@@ -4,9 +4,9 @@ import dev.swordai.core.rl.*;
 
 import java.util.*;
 
-/** AlphaZero-style arena outcome search + key-moment scene pool (Sword + SMP Shield/Axe/Gap macros). */
+/** AlphaZero-style arena outcome search + key-moment scene pool (Sword + SMP Shield/Axe/Gap/DrawSword macros). */
 public final class MoveSearch {
-	public enum Kind { AFTER_PUNISH_CRIT, COMBO_START, HOLD_COMBO, COUNTER_CRIT, OPP_SHIELD_UP, LOW_HP_GAP }
+	public enum Kind { AFTER_PUNISH_CRIT, COMBO_START, HOLD_COMBO, COUNTER_CRIT, OPP_SHIELD_UP, LOW_HP_GAP, DRAW_SWORD }
 
 	/** Supervised heads: movement, sprint, jump, attack, use-item, pointer hotbar (never disturbs YAW/PITCH aim). */
 	public static final int SUPERVISE_HEADS = HumanImitation.HumanPolicy.STYLE_HEADS
@@ -22,8 +22,8 @@ public final class MoveSearch {
 		UPPERCUT_CHASE(1, 0, 1, 1, 1, 6),
 		// SMP Phase 1 macros (only tested when kit contains the required item; evaluated purely by arena dmg/KO outcome)
 		RAISE_SHIELD(2, 0, 0, 0, 0, 10),
-		AXE_BREAK_SWORD_CRIT(1, 0, 1, 0, 1, 18),
-		BACK_AND_EAT_GAP(2, 0, 0, 1, 0, 48);
+		AXE_BREAK_SWORD_CRIT(1, 0, 1, 0, 1, 22),
+		BACK_AND_EAT_GAP(2, 0, 0, 1, 0, 52);
 
 		public final int forward, strafe, sprint, jump, attack, macroTicks;
 		Candidate(int f, int st, int sp, int j, int a, int mt) {
@@ -36,15 +36,16 @@ public final class MoveSearch {
 
 		/** Legacy sword-only helper (no item slots). */
 		public void apply(int[] action, int tick, boolean canHit, boolean falling) {
-			apply(action, tick, canHit, canHit, falling, -1, -1, -1, -1, false, false, -1);
+			apply(action, tick, canHit, canHit, falling, -1, -1, -1, -1, false, false, false, true, false, -1);
 		}
 
 		/**
-		 * Applies macro on movement/item heads (leaves aim untouched except retreat-turn during BACK_AND_EAT_GAP).
-		 * {@code curSlot, swordSlot, axeSlot, gapSlot} are 0..8 hotbar indices (or -1 if absent in current randomized kit).
+		 * Applies macro on movement/item heads (leaves aim untouched except escape-turn during BACK_AND_EAT_GAP).
+		 * {@code seenOppUsing} comes from the actor's own delayed observation so supervised Axe switches match real cues.
 		 */
 		public void apply(int[] action, int tick, boolean canHit, boolean inReachAimed, boolean falling,
-				int curSlot, int swordSlot, int axeSlot, int gapSlot, boolean hasShield, boolean oppShieldUp, int awayYawBin) {
+				int curSlot, int swordSlot, int axeSlot, int gapSlot, boolean hasShield, boolean oppShieldUp,
+				boolean seenOppUsing, boolean facingEnemy, boolean gapDone, int awayYawBin) {
 			if (forward < 0) return;
 			action[ActionSpace.USE_ITEM] = 0;
 			action[ActionSpace.HOTBAR_SLOT] = 0;
@@ -65,13 +66,14 @@ public final class MoveSearch {
 				action[ActionSpace.STRAFE] = 0;
 				action[ActionSpace.SPRINT] = 1;
 				action[ActionSpace.JUMP] = 0;
-				if (oppShieldUp && axeSlot >= 0) {
+				if ((seenOppUsing || oppShieldUp) && axeSlot >= 0) {
 					if (curSlot != axeSlot) {
-						action[ActionSpace.HOTBAR_SLOT] = axeSlot + 1;
+						// Switch to Axe once actor observation sees SC_OPP_USING=1 (human reaction delay consistent!).
+						if (seenOppUsing || tick >= 4) action[ActionSpace.HOTBAR_SLOT] = axeSlot + 1;
 						action[ActionSpace.ATTACK] = 0;
 					} else {
 						// Vanilla Minecraft disables a raised shield on ANY axe hit (no 0.90 charge wait needed!).
-						action[ActionSpace.ATTACK] = inReachAimed ? 1 : 0;
+						action[ActionSpace.ATTACK] = (oppShieldUp && inReachAimed) ? 1 : 0;
 					}
 				} else {
 					if (swordSlot >= 0 && curSlot != swordSlot) {
@@ -84,8 +86,23 @@ public final class MoveSearch {
 				return;
 			}
 			if (this == BACK_AND_EAT_GAP) {
+				if (gapDone) {
+					// Golden Apple finished -> draw Sword immediately and re-engage!
+					action[ActionSpace.FORWARD] = 1;
+					action[ActionSpace.STRAFE] = 0;
+					action[ActionSpace.SPRINT] = 1;
+					action[ActionSpace.JUMP] = 0;
+					action[ActionSpace.USE_ITEM] = 0;
+					if (swordSlot >= 0 && curSlot != swordSlot) {
+						action[ActionSpace.HOTBAR_SLOT] = swordSlot + 1;
+						action[ActionSpace.ATTACK] = 0;
+					} else {
+						action[ActionSpace.ATTACK] = canHit ? 1 : 0;
+					}
+					return;
+				}
 				if (tick < 12 && awayYawBin >= 0) {
-					// Sprint-jump away first to create safe Golden Apple eating distance (like SparBot / real SMP).
+					// Sprint-jump 180 deg away first to create safe Golden Apple eating distance.
 					action[ActionSpace.YAW] = awayYawBin;
 					action[ActionSpace.FORWARD] = 1;
 					action[ActionSpace.STRAFE] = 0;
@@ -94,7 +111,8 @@ public final class MoveSearch {
 					action[ActionSpace.ATTACK] = 0;
 					if (tick == 0 && gapSlot >= 0 && curSlot != gapSlot) action[ActionSpace.HOTBAR_SLOT] = gapSlot + 1;
 				} else {
-					action[ActionSpace.FORWARD] = 2;
+					// Always move AWAY from opponent while eating (S if facing them, W if facing away!).
+					action[ActionSpace.FORWARD] = facingEnemy ? 2 : 1;
 					action[ActionSpace.STRAFE] = 0;
 					action[ActionSpace.SPRINT] = 0;
 					action[ActionSpace.JUMP] = 0;
@@ -127,7 +145,7 @@ public final class MoveSearch {
 		}
 	}
 
-	public static final int MACRO_TICKS = 4, ROLLOUT_TICKS = 32, GAP_ROLLOUT_TICKS = 64, REPEATS = 3, MAX_KEYFRAMES = 4;
+	public static final int MACRO_TICKS = 4, ROLLOUT_TICKS = 32, GAP_ROLLOUT_TICKS = 68, REPEATS = 3, MAX_KEYFRAMES = 5;
 	public static final float MIN_MARGIN = 1.0f;
 
 	public static final class Moment {
@@ -191,6 +209,11 @@ public final class MoveSearch {
 						Candidate.CURRENT_POLICY, Candidate.BACK_AND_EAT_GAP, Candidate.RAISE_SHIELD, Candidate.S_FLY_OUT
 				};
 			}
+			if (m.kind == Kind.DRAW_SWORD) {
+				return new Candidate[] {
+						Candidate.CURRENT_POLICY, Candidate.SPRINT_HIT_STRAFE_L, Candidate.JUMP_CRIT_FORWARD, Candidate.RAISE_SHIELD
+				};
+			}
 			return new Candidate[] {
 					Candidate.CURRENT_POLICY, Candidate.SPRINT_HIT_STRAFE_L, Candidate.JUMP_CRIT_FORWARD,
 					Candidate.WAIT_DEFLECT, Candidate.RAISE_SHIELD, Candidate.AXE_BREAK_SWORD_CRIT
@@ -207,14 +230,15 @@ public final class MoveSearch {
 			noteStep(0, obs, histIn, seenIn, hIn, a);
 		}
 
-		/** Captures tick-0 plus multi-step SMP transition keyframes (slot switch, axe break swing, gap/shield use sustain). */
+		/** Captures tick-0 plus multi-step SMP transition keyframes (slot switch, axe break swing, continuous gap/shield hold). */
 		public void noteStep(int tick, Obs obs, float[] histIn, float[] seenIn, float[] hIn, int[] a) {
 			if (ci >= cands.length || ri > 0 || kfCount[ci] >= MAX_KEYFRAMES || obs == null) return;
 			Candidate c = cands[ci];
-			boolean take = (tick == 0)
-					|| (tick > 0 && a[ActionSpace.HOTBAR_SLOT] != 0)
-					|| (tick > 0 && c == Candidate.AXE_BREAK_SWORD_CRIT && a[ActionSpace.ATTACK] == 1)
-					|| (a[ActionSpace.USE_ITEM] == 1 && (tick == 2 || tick == 14));
+			boolean skipWaitTick0 = (tick == 0 && c == Candidate.AXE_BREAK_SWORD_CRIT && a[ActionSpace.HOTBAR_SLOT] == 0 && a[ActionSpace.ATTACK] == 0);
+			boolean take = (tick == 0 && !skipWaitTick0)
+					|| (a[ActionSpace.HOTBAR_SLOT] != 0)
+					|| (c == Candidate.AXE_BREAK_SWORD_CRIT && a[ActionSpace.ATTACK] == 1)
+					|| (a[ActionSpace.USE_ITEM] == 1 && (tick == 2 || tick == 14 || tick == 22 || tick == 32));
 			if (!take) return;
 			int k = kfCount[ci]++;
 			kfPeri[ci][k] = obs.peri.clone();
@@ -266,6 +290,7 @@ public final class MoveSearch {
 	private final float[][] bHist = new float[BATCH][], bSeen = new float[BATCH][], bHPrev = new float[BATCH][];
 	private int tSize, tNext;
 	private long searchesDone, targetsFound;
+	private final long[] kindWins = new long[Kind.values().length];
 
 	public void recordMoment(Kind kind, double[] state, Obs obs, float[] histIn, float[] seenIn, float[] hIn) {
 		recordMoment(kind, false, state, obs, histIn, seenIn, hIn);
@@ -283,6 +308,11 @@ public final class MoveSearch {
 	public int targetCount() { return tSize; }
 	public long searchesDone() { return searchesDone; }
 	public long targetsFound() { return targetsFound; }
+	public String smpWinsSummary() {
+		return "ax=" + kindWins[Kind.OPP_SHIELD_UP.ordinal()]
+				+ " gp=" + kindWins[Kind.LOW_HP_GAP.ordinal()]
+				+ " drw=" + kindWins[Kind.DRAW_SWORD.ordinal()];
+	}
 
 	public Moment sampleMoment(Random rng) {
 		int nonEmpty = 0; for (int c : mSize) if (c > 0) nonEmpty++;
@@ -317,6 +347,7 @@ public final class MoveSearch {
 			tNext = (tNext + 1) % TARGET_CAP; tSize = Math.min(tSize + 1, TARGET_CAP);
 		}
 		targetsFound++;
+		kindWins[job.moment.kind.ordinal()]++;
 		return true;
 	}
 

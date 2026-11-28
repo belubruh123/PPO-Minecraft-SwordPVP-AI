@@ -288,15 +288,27 @@ final class LeagueTest {
 		MoveSearch.Candidate.JUMP_CRIT_FORWARD.apply(a, 6, false, true);
 		assertEquals(0, a[ActionSpace.ATTACK], "Out-of-reach or uncharged must not swing");
 
-		// Verify SMP AXE_BREAK_SWORD_CRIT breaks shield on ANY axe hit (no 0.90 wait!) and swaps back to Sword cleanly!
-		MoveSearch.Candidate.AXE_BREAK_SWORD_CRIT.apply(a, 0, false, true, false, 6, 6, 3, 8, true, true, -1);
-		assertEquals(4, a[ActionSpace.HOTBAR_SLOT], "Tick 0 holding sword should select axe slot 3 -> key 4");
+		// Verify SMP AXE_BREAK_SWORD_CRIT waits for seenOppUsing, breaks shield at ANY charge, and swaps back to Sword cleanly!
+		MoveSearch.Candidate.AXE_BREAK_SWORD_CRIT.apply(a, 0, false, true, false, 6, 6, 3, 8, true, true, false, true, false, -1);
+		assertEquals(0, a[ActionSpace.HOTBAR_SLOT], "Must wait until actor's delayed observation sees SC_OPP_USING=1");
+		MoveSearch.Candidate.AXE_BREAK_SWORD_CRIT.apply(a, 3, false, true, false, 6, 6, 3, 8, true, true, true, true, false, -1);
+		assertEquals(4, a[ActionSpace.HOTBAR_SLOT], "Once seenOppUsing=true, select axe slot 3 -> key 4");
 		assertEquals(0, a[ActionSpace.ATTACK], "Switch tick must not swing simultaneously");
-		MoveSearch.Candidate.AXE_BREAK_SWORD_CRIT.apply(a, 1, false, true, false, 3, 6, 3, 8, true, true, -1);
+		MoveSearch.Candidate.AXE_BREAK_SWORD_CRIT.apply(a, 4, false, true, false, 3, 6, 3, 8, true, true, true, true, false, -1);
 		assertEquals(0, a[ActionSpace.HOTBAR_SLOT], "Already holding axe should keep slot");
 		assertEquals(1, a[ActionSpace.ATTACK], "Vanilla axe must swing to disable shield even below 0.90 charge!");
-		MoveSearch.Candidate.AXE_BREAK_SWORD_CRIT.apply(a, 2, false, true, false, 3, 6, 3, 8, true, false, -1);
+		MoveSearch.Candidate.AXE_BREAK_SWORD_CRIT.apply(a, 6, false, true, false, 3, 6, 3, 8, true, false, false, true, false, -1);
 		assertEquals(7, a[ActionSpace.HOTBAR_SLOT], "After shield breaks, switch to sword slot 6 -> key 7");
+
+		// Verify BACK_AND_EAT_GAP keeps moving AWAY from opponent (W when facing away, S when facing enemy) & draws Sword when done!
+		MoveSearch.Candidate.BACK_AND_EAT_GAP.apply(a, 14, false, false, false, 8, 6, 3, 8, true, false, false, false, false, -1);
+		assertEquals(1, a[ActionSpace.FORWARD], "Facing away while eating must walk FORWARD (away), never S back into opponent!");
+		assertEquals(1, a[ActionSpace.USE_ITEM], "Must hold USE_ITEM while eating Gap");
+		MoveSearch.Candidate.BACK_AND_EAT_GAP.apply(a, 14, false, false, false, 8, 6, 3, 8, true, false, false, true, false, -1);
+		assertEquals(2, a[ActionSpace.FORWARD], "Facing enemy while eating must walk BACKWARD (away)");
+		MoveSearch.Candidate.BACK_AND_EAT_GAP.apply(a, 46, false, false, false, 8, 6, 3, 8, true, false, false, true, true, -1);
+		assertEquals(7, a[ActionSpace.HOTBAR_SLOT], "Once Gap eaten (gapDone=true), switch back to sword slot 6 -> key 7");
+		assertEquals(0, a[ActionSpace.USE_ITEM]);
 
 		// Verify BodyState biological 3-tick (150 ms) opponent shield/item visual reaction delay!
 		dev.swordai.core.env.BodyState bs = new dev.swordai.core.env.BodyState();

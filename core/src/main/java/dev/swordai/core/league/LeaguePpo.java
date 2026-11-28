@@ -15,10 +15,10 @@ public final class LeaguePpo {
 	public static final float GAMMA = FixedReward.GAMMA, LAMBDA = 0.95f, CLIP = 0.2f, VALUE_COEF = 0.5f, MAX_GRAD_NORM = 0.5f;
 	/** Switch-Transformer auxiliary load-balancing coefficient on MoE router gates (not a reward term). */
 	public static final float MOE_BALANCE_COEF = 0.01f;
-	// Precision heads (YAW/PITCH/invalid ATTACK) keep low entropy; movement & SMP item heads keep healthy exploration.
+	// Precision heads (YAW/PITCH/invalid ATTACK) keep low entropy; 10-way HOTBAR_SLOT keeps healthy exploration so it never deadlocks on keep.
 	private static final float[] ENTROPY_COEF = {
 			0.001f, 0.001f, 0.006f, 0.006f, 0.006f, 0.004f, 0.001f,
-			0.004f, 0.005f, 0.002f, 0.002f
+			0.005f, 0.015f, 0.002f, 0.002f
 	};
 	private static final float READY_ATTACK_ENTROPY = 0.004f;
 
