@@ -65,8 +65,10 @@ final class LeagueSession implements AgentSession {
 	private int searchTick, checkPair, waitingEp, expectedPutBack, settleLeft, epTicks, epDone, activeLag, badUpdates, lowRamHits;
 	private int ownCombo, oppCombo, critChain, ownSwingsSeen = OwnSwing.count();
 	private int statClose, statOnBody, statClicks, statLowChg, statWhiffs, statSwings;
+	private int statSmpTicks, statSlotSw, statShieldTicks, statAxeBreaks, statGapsEaten;
 	private final int[] chkClose = new int[2], chkOnBody = new int[2], chkClicks = new int[2], chkLowChg = new int[2], chkWhiffs = new int[2];
-	private float searchStartMyHp, searchStartBotHp, prevPhi, epDealt, epTaken, turnYaw, turnPitch;
+	private final int[] chkSmpTicks = new int[2], chkSlotSw = new int[2], chkShieldTicks = new int[2], chkAxeBreaks = new int[2], chkGapsEaten = new int[2];
+	private float searchStartMyHp, searchStartBotHp, prevPhi, epDealt, epTaken, turnYaw, turnPitch, prevAbsorption, prevBotShieldCd;
 	private float emaAim = 0.88f, emaLow = 0.05f, emaWhf = 0.05f;
 	private boolean checkSideB, stopped, arenaRequested, resetPending, waitingPutBack, hasPrev, actedThisTick, clicked, usingItem, clickResolved, humansBuiltWithIdm;
 	private boolean oppWasBlockingOnSwing;
@@ -288,6 +290,25 @@ final class LeagueSession implements AgentSession {
 		if (tNow) { clock.hitTaken(); oppCombo++; ownCombo = 0; critChain = 0; }
 		clock.tick();
 		observer.body().updateExchange(dNow, dCrit, tNow);
+		// Exact ground-truth SMP telemetry: Golden Apple eaten (+4 absorption) & Axe shield break (botShieldCd jumps 0 -> 1)
+		int si = checkSideB ? 1 : 0;
+		float absNow = me.getAbsorptionAmount();
+		if (absNow > prevAbsorption + 1.0f) {
+			statGapsEaten++; if (mode == Mode.CHECK) chkGapsEaten[si]++;
+		}
+		prevAbsorption = absNow;
+		float botCdNow = truth.botShieldCd();
+		if (botCdNow > prevBotShieldCd + 0.5f) {
+			observer.body().noteOpponentShieldBroken();
+			statAxeBreaks++; if (mode == Mode.CHECK) chkAxeBreaks[si]++;
+		}
+		prevBotShieldCd = botCdNow;
+		if (currentKit == EpisodePlan.KitMode.SMP_PHASE1) {
+			statSmpTicks++; if (mode == Mode.CHECK) chkSmpTicks[si]++;
+			if (me.isBlocking() || (me.isUsingItem() && InventoryObs.isShield(me.getUseItem()))) {
+				statShieldTicks++; if (mode == Mode.CHECK) chkShieldTicks[si]++;
+			}
+		}
 		observer.fillGeometry(facts, me, bot);
 		observer.fillObs(obs, me, bot, truth, facts, hasPrev ? lastAction : null, ActionSpace.PHASE1_HEADS, clock, motor);
 
@@ -355,7 +376,8 @@ final class LeagueSession implements AgentSession {
 					}
 				}
 			}
-			if (stage >= 5 && ++epDone % SEARCH_EVERY == 0 && moveSearch.totalMoments() >= 4) {
+			int searchEvery = stage >= 6 ? 15 : SEARCH_EVERY;
+			if (stage >= 5 && ++epDone % searchEvery == 0 && moveSearch.totalMoments() >= 4) {
 				int sLag = rng.nextFloat() < 0.80f ? (1 + rng.nextInt(2)) : 0;
 				SwordNet sOpp = rng.nextBoolean() ? league.randomSnapshot(rng) : null;
 				activeSearch = moveSearch.startSearch(rng, sLag, sOpp != null ? sOpp : selfNet);
@@ -382,15 +404,21 @@ final class LeagueSession implements AgentSession {
 		learner.decide(obs, ActionSpace.PHASE1_HEADS, false, 1f, dec);
 		MoveSearch.Candidate cand = activeSearch.currentCandidate();
 		if (searchTick < cand.macroTicks) {
-			boolean canHit = me.getAttackStrengthScale(0f) >= 0.90f && facts.onBody && facts.reachDist <= 3.05f;
+			boolean inReachAimed = facts.onBody && facts.reachDist <= 3.05f;
+			boolean canHit = me.getAttackStrengthScale(0f) >= 0.90f && inReachAimed;
 			boolean critWindow = !me.onGround() && me.fallDistance > 0.0 && !me.isSprinting();
+			int curSlot = me.getInventory().getSelectedSlot();
 			int swSlot = InventoryObs.findHotbarSlot(me, ObsSpec.SF_SWORD);
 			int axSlot = InventoryObs.findHotbarSlot(me, ObsSpec.SF_AXE);
 			int gpSlot = InventoryObs.findHotbarSlot(me, ObsSpec.SF_GAP);
-			cand.apply(dec.action, searchTick, canHit, critWindow, swSlot, axSlot, gpSlot,
-					InventoryObs.hasShieldReady(me), truth.botShieldUp());
+			int awayYawBin = facts.reachDist < 5.5f
+					? InverseDynamics.nearestBin(ViewGeometry.wrapDegrees(facts.yawErrDeg + 180f), ActionSpace.YAW_BINS) : -1;
+			cand.apply(dec.action, searchTick, canHit, inReachAimed, critWindow, curSlot, swSlot, axSlot, gpSlot,
+					InventoryObs.hasShieldReady(me), truth.botShieldUp(), awayYawBin);
+			activeSearch.noteStep(searchTick, obs, learner.lastHistIn(), learner.lastSeenIn(), learner.lastHiddenIn(), dec.action);
+		} else if (searchTick == 0) {
+			activeSearch.noteFirstStep(obs, learner.lastHistIn(), learner.lastSeenIn(), learner.lastHiddenIn(), dec.action);
 		}
-		if (searchTick == 0) activeSearch.noteFirstStep(obs, learner.lastHistIn(), learner.lastSeenIn(), learner.lastHiddenIn(), dec.action);
 		System.arraycopy(dec.action, 0, lastAction, 0, ActionSpace.HEADS); hasPrev = true;
 		applyAction(me, truth, dec.action); searchTick++; epTicks++;
 	}
@@ -419,6 +447,11 @@ final class LeagueSession implements AgentSession {
 	}
 
 	private void applyAction(LocalPlayer me, Truth truth, int[] a) {
+		int wantSlot = a[ActionSpace.HOTBAR_SLOT];
+		int si = checkSideB ? 1 : 0;
+		if (wantSlot >= 1 && wantSlot <= ObsSpec.HOTBAR_SLOTS && wantSlot - 1 != me.getInventory().getSelectedSlot()) {
+			statSlotSw++; if (mode == Mode.CHECK) chkSlotSw[si]++;
+		}
 		motor.step(ActionSpace.yawDegrees(a), ActionSpace.pitchDegrees(a));
 		turnYaw = motor.yawRate(); turnPitch = motor.pitchRate();
 		AgentController.apply(mc, a, turnYaw, turnPitch);
@@ -427,7 +460,6 @@ final class LeagueSession implements AgentSession {
 		usingItem = a[ActionSpace.USE_ITEM] == 1 && !clicked;
 		oppWasBlockingOnSwing = clicked && truth.botShieldUp() && InventoryObs.isAxe(me.getMainHandItem());
 		clickResolved = false;
-		int si = checkSideB ? 1 : 0;
 		if (facts.reachDist < 4.5f) {
 			statClose++; if (facts.onBody) statOnBody++;
 			if (mode == Mode.CHECK) { chkClose[si]++; if (facts.onBody) chkOnBody[si]++; }
@@ -442,10 +474,12 @@ final class LeagueSession implements AgentSession {
 
 	private void logCheckMechanics() {
 		SwordAi.LOGGER.info(String.format(Locale.ROOT,
-				"check mechanics @ pair %d | A: aim %.1f%% lowChg %.1f%% whiff %.1f%% (%d clicks) | B: aim %.1f%% lowChg %.1f%% whiff %.1f%% (%d clicks)",
+				"check mechanics @ pair %d | A: aim %.1f%% lowChg %.1f%% whiff %.1f%% (%d clicks) smp(sw=%d sh=%.0f%% axBrk=%d gap=%d) | B: aim %.1f%% lowChg %.1f%% whiff %.1f%% (%d clicks) smp(sw=%d sh=%.0f%% axBrk=%d gap=%d)",
 				checkPair,
 				100f * chkOnBody[0] / Math.max(1, chkClose[0]), 100f * chkLowChg[0] / Math.max(1, chkClicks[0]), 100f * chkWhiffs[0] / Math.max(1, chkClicks[0]), chkClicks[0],
-				100f * chkOnBody[1] / Math.max(1, chkClose[1]), 100f * chkLowChg[1] / Math.max(1, chkClicks[1]), 100f * chkWhiffs[1] / Math.max(1, chkClicks[1]), chkClicks[1]));
+				chkSlotSw[0], 100f * chkShieldTicks[0] / Math.max(1, chkSmpTicks[0]), chkAxeBreaks[0], chkGapsEaten[0],
+				100f * chkOnBody[1] / Math.max(1, chkClose[1]), 100f * chkLowChg[1] / Math.max(1, chkClicks[1]), 100f * chkWhiffs[1] / Math.max(1, chkClicks[1]), chkClicks[1],
+				chkSlotSw[1], 100f * chkShieldTicks[1] / Math.max(1, chkSmpTicks[1]), chkAxeBreaks[1], chkGapsEaten[1]));
 	}
 
 	private void runUpdate(float bootstrap) {
@@ -499,7 +533,9 @@ final class LeagueSession implements AgentSession {
 			}
 		}
 		if (stage >= 5 && moveSearch.targetCount() >= 8) {
-			searchCe = moveSearch.trainActor(learner.actor, learner.ppo, 1, learner.ppo.lr * 0.25f, rng);
+			int searchSteps = stage >= 6 ? 2 : 1;
+			float searchLr = stage >= 6 ? Math.max(6e-5f, learner.ppo.lr * 0.5f) : learner.ppo.lr * 0.25f;
+			searchCe = moveSearch.trainActor(learner.actor, learner.ppo, searchSteps, searchLr, rng);
 		}
 		int snapEvery = stage >= 5 ? STAGE5_SNAP_EVERY : SNAP_EVERY;
 		if (learner.updates % snapEvery == 0) addAndPersistSnapshot("u" + learner.updates, learner.actor);
@@ -528,19 +564,24 @@ final class LeagueSession implements AgentSession {
 			lowRamHits = 0;
 		}
 		double secs = Math.max(1.0, (System.currentTimeMillis() - startedMs) / 1000.0);
+		float shPct = 100f * statShieldTicks / Math.max(1, statSmpTicks);
 		SwordAi.LOGGER.info(String.format(Locale.ROOT,
-				"league update %d (stage %d), %d steps (%.0f/s): pol %.4f val %.4f kl %.4f ent %.3f pKl %.3f ev %.2f lr %.1e aim %.0f%% low %.1f%% whf %.1f%% gru|w| %.2f moe [%d/%d/%d/%d%%] search %d/%d(ce %.2f) | %s",
+				"league update %d (stage %d), %d steps (%.0f/s): pol %.4f val %.4f kl %.4f ent %.3f pKl %.3f ev %.2f lr %.1e aim %.0f%% low %.1f%% whf %.1f%% gru|w| %.2f moe [%d/%d/%d/%d%%] smp(sw=%d sh=%.0f%% axBrk=%d gap=%d) search %d/%d(ce %.2f) | %s",
 				learner.updates, stage, learner.totalSteps, totalTicks / secs, s.policyLoss, s.valueLoss, s.approxKl, s.entropy, s.priorKl,
 				s.explainedVar, s.lr, aimRate * 100f, lowRate * 100f, whfRate * 100f, learner.actor.gruWeightNorm(),
 				Math.round(s.moeUsage[0] * 100f), Math.round(s.moeUsage[1] * 100f), Math.round(s.moeUsage[2] * 100f), Math.round(s.moeUsage[3] * 100f),
+				statSlotSw, shPct, statAxeBreaks, statGapsEaten,
 				moveSearch.targetsFound(), moveSearch.searchesDone(), searchCe, league.summary()));
 		statClose = statOnBody = statClicks = statLowChg = statWhiffs = statSwings = 0;
+		statSmpTicks = statSlotSw = statShieldTicks = statAxeBreaks = statGapsEaten = 0;
 		server.execute(() -> ArenaServer.setIdle(false));
 	}
 
 	private void requestNextEpisode(Truth truth) {
-		observer.resetEpisode(); clock.reset(); motor.reset(); if (learner != null) learner.resetEpisode(); memCheck.reset();
-		hasPrev = false; usingItem = false; prevPhi = epDealt = epTaken = 0f; epTicks = ownCombo = oppCombo = critChain = 0;
+		observer.resetEpisode();
+		observer.body().setItemReactionTicks(mode == Mode.TRAIN ? (3 + rng.nextInt(2)) : 3);
+		clock.reset(); motor.reset(); if (learner != null) learner.resetEpisode(); memCheck.reset();
+		hasPrev = false; usingItem = false; prevPhi = epDealt = epTaken = prevAbsorption = prevBotShieldCd = 0f; epTicks = ownCombo = oppCombo = critChain = 0;
 		EpisodePlan plan;
 		if (mode == Mode.CHECK) {
 			CheckOpp opp = checkPool.get(checkPair % checkPool.size()); checkOppName = opp.name();
@@ -569,12 +610,13 @@ final class LeagueSession implements AgentSession {
 			plan.agentKnockLag = activeLag > 0 ? 1 : 0;
 			plan.scene = activeSearch.moment.arenaState;
 		} else {
-			currentMatch = league.sampleMatch(rng, stage >= 5 ? moveSearch : null, true);
+			currentMatch = league.sampleMatch(rng, stage >= 5 ? moveSearch : null, true, stage >= 6);
 			InverseDynamics logIdm = stage >= 4 ? idm : null;
 
 			// Multi-kit curriculum in Stage 6: Human-KL challengers stay pure Sword (from banked human Sword fights);
-			// all other matches mix 75% SMP Phase 1 (Sword+Axe+Shield+Gaps, 50% terraced) + 25% pure Sword (random slots, anchor sword-master!).
-			boolean smpKit = stage >= 6 && currentMatch.kind != League.OpponentKind.HUMAN_CLONE && rng.nextFloat() < 0.75f;
+			// SparBot runs 85% SMP (shield/axe/gap cold-start bootstrap), self/snaps/exploiter mix 75% SMP + 25% pure Sword anchored vs frozen sword-master!
+			float smpProb = currentMatch.kind == League.OpponentKind.SPAR_BOT ? 0.85f : 0.75f;
+			boolean smpKit = stage >= 6 && currentMatch.kind != League.OpponentKind.HUMAN_CLONE && rng.nextFloat() < smpProb;
 			if (stage >= 5 && currentMatch.startMoment != null) smpKit = currentMatch.startMoment.smpKit;
 			currentKit = smpKit ? EpisodePlan.KitMode.SMP_PHASE1 : EpisodePlan.KitMode.SWORD_ONLY;
 
@@ -615,10 +657,15 @@ final class LeagueSession implements AgentSession {
 
 	private MoveSearch.Kind detectMoment(LocalPlayer me, boolean dCrit, boolean dNow, boolean tNow, Truth truth) {
 		if (stage >= 6 && currentKit == EpisodePlan.KitMode.SMP_PHASE1) {
-			if (truth.botShieldUp() && facts.reachDist < 4.8f && rng.nextFloat() < 0.25f) return MoveSearch.Kind.OPP_SHIELD_UP;
+			if (truth.botShieldUp() && facts.reachDist < 5.2f && rng.nextFloat() < 0.50f) return MoveSearch.Kind.OPP_SHIELD_UP;
 			float meEffHp = me.getHealth() + me.getAbsorptionAmount();
-			if (meEffHp <= 11f && InventoryObs.findHotbarSlot(me, ObsSpec.SF_GAP) >= 0 && !me.isUsingItem() && rng.nextFloat() < 0.20f) {
+			if (meEffHp <= 13f && InventoryObs.findHotbarSlot(me, ObsSpec.SF_GAP) >= 0 && !me.isUsingItem() && rng.nextFloat() < 0.30f) {
 				return MoveSearch.Kind.LOW_HP_GAP;
+			}
+			var mh = me.getMainHandItem();
+			if (!InventoryObs.isSword(mh) && !InventoryObs.isAxe(mh) && facts.reachDist < 5.2f
+					&& InventoryObs.findHotbarSlot(me, ObsSpec.SF_SWORD) >= 0 && rng.nextFloat() < 0.30f) {
+				return MoveSearch.Kind.COMBO_START;
 			}
 		}
 		if (dCrit && critChain >= 1) return MoveSearch.Kind.AFTER_PUNISH_CRIT;

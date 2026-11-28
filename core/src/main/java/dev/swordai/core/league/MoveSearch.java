@@ -22,8 +22,8 @@ public final class MoveSearch {
 		UPPERCUT_CHASE(1, 0, 1, 1, 1, 6),
 		// SMP Phase 1 macros (only tested when kit contains the required item; evaluated purely by arena dmg/KO outcome)
 		RAISE_SHIELD(2, 0, 0, 0, 0, 10),
-		AXE_BREAK_SWORD_CRIT(1, 0, 1, 0, 1, 10),
-		BACK_AND_EAT_GAP(2, 0, 0, 1, 0, 40);
+		AXE_BREAK_SWORD_CRIT(1, 0, 1, 0, 1, 18),
+		BACK_AND_EAT_GAP(2, 0, 0, 1, 0, 48);
 
 		public final int forward, strafe, sprint, jump, attack, macroTicks;
 		Candidate(int f, int st, int sp, int j, int a, int mt) {
@@ -36,15 +36,15 @@ public final class MoveSearch {
 
 		/** Legacy sword-only helper (no item slots). */
 		public void apply(int[] action, int tick, boolean canHit, boolean falling) {
-			apply(action, tick, canHit, falling, -1, -1, -1, false, false);
+			apply(action, tick, canHit, canHit, falling, -1, -1, -1, -1, false, false, -1);
 		}
 
 		/**
-		 * Applies macro on movement/item heads (leaves aim untouched).
-		 * {@code swordSlot, axeSlot, gapSlot} are 0..8 hotbar indices (or -1 if absent in current randomized kit).
+		 * Applies macro on movement/item heads (leaves aim untouched except retreat-turn during BACK_AND_EAT_GAP).
+		 * {@code curSlot, swordSlot, axeSlot, gapSlot} are 0..8 hotbar indices (or -1 if absent in current randomized kit).
 		 */
-		public void apply(int[] action, int tick, boolean canHit, boolean falling,
-				int swordSlot, int axeSlot, int gapSlot, boolean hasShield, boolean oppShieldUp) {
+		public void apply(int[] action, int tick, boolean canHit, boolean inReachAimed, boolean falling,
+				int curSlot, int swordSlot, int axeSlot, int gapSlot, boolean hasShield, boolean oppShieldUp, int awayYawBin) {
 			if (forward < 0) return;
 			action[ActionSpace.USE_ITEM] = 0;
 			action[ActionSpace.HOTBAR_SLOT] = 0;
@@ -65,32 +65,60 @@ public final class MoveSearch {
 				action[ActionSpace.STRAFE] = 0;
 				action[ActionSpace.SPRINT] = 1;
 				action[ActionSpace.JUMP] = 0;
-				if (tick == 0 && axeSlot >= 0) {
-					action[ActionSpace.HOTBAR_SLOT] = axeSlot + 1;
-					action[ActionSpace.ATTACK] = 0;
-				} else if (oppShieldUp && axeSlot >= 0) {
-					action[ActionSpace.ATTACK] = canHit ? 1 : 0;
+				if (oppShieldUp && axeSlot >= 0) {
+					if (curSlot != axeSlot) {
+						action[ActionSpace.HOTBAR_SLOT] = axeSlot + 1;
+						action[ActionSpace.ATTACK] = 0;
+					} else {
+						// Vanilla Minecraft disables a raised shield on ANY axe hit (no 0.90 charge wait needed!).
+						action[ActionSpace.ATTACK] = inReachAimed ? 1 : 0;
+					}
 				} else {
-					if (swordSlot >= 0 && tick >= 2) action[ActionSpace.HOTBAR_SLOT] = swordSlot + 1;
-					action[ActionSpace.ATTACK] = canHit ? 1 : 0;
+					if (swordSlot >= 0 && curSlot != swordSlot) {
+						action[ActionSpace.HOTBAR_SLOT] = swordSlot + 1;
+						action[ActionSpace.ATTACK] = 0;
+					} else {
+						action[ActionSpace.ATTACK] = canHit ? 1 : 0;
+					}
 				}
 				return;
 			}
 			if (this == BACK_AND_EAT_GAP) {
-				action[ActionSpace.FORWARD] = 2; // create spacing while eating
-				action[ActionSpace.STRAFE] = 0;
-				action[ActionSpace.SPRINT] = 0;
-				action[ActionSpace.JUMP] = (tick < 6 && tick % 3 == 0) ? 1 : 0;
-				action[ActionSpace.ATTACK] = 0;
-				if (tick == 0 && gapSlot >= 0) {
-					action[ActionSpace.HOTBAR_SLOT] = gapSlot + 1;
-					action[ActionSpace.USE_ITEM] = 0;
+				if (tick < 12 && awayYawBin >= 0) {
+					// Sprint-jump away first to create safe Golden Apple eating distance (like SparBot / real SMP).
+					action[ActionSpace.YAW] = awayYawBin;
+					action[ActionSpace.FORWARD] = 1;
+					action[ActionSpace.STRAFE] = 0;
+					action[ActionSpace.SPRINT] = 1;
+					action[ActionSpace.JUMP] = (tick % 3 == 0) ? 1 : 0;
+					action[ActionSpace.ATTACK] = 0;
+					if (tick == 0 && gapSlot >= 0 && curSlot != gapSlot) action[ActionSpace.HOTBAR_SLOT] = gapSlot + 1;
 				} else {
-					action[ActionSpace.USE_ITEM] = gapSlot >= 0 ? 1 : 0;
+					action[ActionSpace.FORWARD] = 2;
+					action[ActionSpace.STRAFE] = 0;
+					action[ActionSpace.SPRINT] = 0;
+					action[ActionSpace.JUMP] = 0;
+					action[ActionSpace.ATTACK] = 0;
+					if (gapSlot >= 0 && curSlot != gapSlot) {
+						action[ActionSpace.HOTBAR_SLOT] = gapSlot + 1;
+						action[ActionSpace.USE_ITEM] = 0;
+					} else {
+						action[ActionSpace.USE_ITEM] = gapSlot >= 0 ? 1 : 0;
+					}
 				}
 				return;
 			}
 
+			// If spawned/stuck holding a non-weapon (Gap/Empty) during a melee macro, draw Sword on tick 0 cleanly.
+			if (tick == 0 && swordSlot >= 0 && curSlot >= 0 && curSlot != swordSlot && curSlot != axeSlot) {
+				action[ActionSpace.HOTBAR_SLOT] = swordSlot + 1;
+				action[ActionSpace.FORWARD] = forward;
+				action[ActionSpace.STRAFE] = strafe;
+				action[ActionSpace.SPRINT] = sprint;
+				action[ActionSpace.JUMP] = 0;
+				action[ActionSpace.ATTACK] = 0;
+				return;
+			}
 			action[ActionSpace.FORWARD] = (this == JUMP_CRIT_FORWARD && tick >= 1) ? 0 : forward;
 			action[ActionSpace.STRAFE] = strafe;
 			action[ActionSpace.SPRINT] = sprint;
@@ -99,7 +127,7 @@ public final class MoveSearch {
 		}
 	}
 
-	public static final int MACRO_TICKS = 4, ROLLOUT_TICKS = 32, GAP_ROLLOUT_TICKS = 56, REPEATS = 3;
+	public static final int MACRO_TICKS = 4, ROLLOUT_TICKS = 32, GAP_ROLLOUT_TICKS = 64, REPEATS = 3, MAX_KEYFRAMES = 4;
 	public static final float MIN_MARGIN = 1.0f;
 
 	public static final class Moment {
@@ -123,19 +151,27 @@ public final class MoveSearch {
 		private final Candidate[] cands;
 		private final double[] scoreSum;
 		private final int[] trials;
-		private final byte[][] firstAct;
-		private final boolean[] hasFirst;
-		private byte[] stepPeri, stepFovea;
-		private float[] stepVec, stepSlots, stepTerrain, stepHist, stepSeen, stepHPrev;
+		private final int[] kfCount;
+		private final byte[][][] kfPeri, kfFovea, kfAct;
+		private final float[][][] kfVec, kfSlots, kfTerrain, kfHist, kfSeen, kfHPrev;
 		private int ci, ri;
 
 		SearchJob(Moment m, int lag, SwordNet opponent) {
 			this.moment = m; this.lag = lag; this.opponent = opponent;
 			this.cands = candidatesFor(m);
-			this.scoreSum = new double[cands.length];
-			this.trials = new int[cands.length];
-			this.firstAct = new byte[cands.length][ActionSpace.HEADS];
-			this.hasFirst = new boolean[cands.length];
+			int nc = cands.length;
+			this.scoreSum = new double[nc];
+			this.trials = new int[nc];
+			this.kfCount = new int[nc];
+			this.kfPeri = new byte[nc][MAX_KEYFRAMES][];
+			this.kfFovea = new byte[nc][MAX_KEYFRAMES][];
+			this.kfVec = new float[nc][MAX_KEYFRAMES][];
+			this.kfSlots = new float[nc][MAX_KEYFRAMES][];
+			this.kfTerrain = new float[nc][MAX_KEYFRAMES][];
+			this.kfHist = new float[nc][MAX_KEYFRAMES][];
+			this.kfSeen = new float[nc][MAX_KEYFRAMES][];
+			this.kfHPrev = new float[nc][MAX_KEYFRAMES][];
+			this.kfAct = new byte[nc][MAX_KEYFRAMES][ActionSpace.HEADS];
 		}
 
 		private static Candidate[] candidatesFor(Moment m) {
@@ -167,17 +203,29 @@ public final class MoveSearch {
 		public boolean finished() { return ci >= cands.length; }
 		public Candidate currentCandidate() { return cands[Math.min(ci, cands.length - 1)]; }
 
-		public void noteFirstAction(int[] a) {
-			if (!hasFirst[ci]) { for (int h = 0; h < ActionSpace.HEADS; h++) firstAct[ci][h] = (byte) a[h]; hasFirst[ci] = true; }
+		public void noteFirstStep(Obs obs, float[] histIn, float[] seenIn, float[] hIn, int[] a) {
+			noteStep(0, obs, histIn, seenIn, hIn, a);
 		}
 
-		public void noteFirstStep(Obs obs, float[] histIn, float[] seenIn, float[] hIn, int[] a) {
-			if (stepVec == null && obs != null) {
-				stepPeri = obs.peri.clone(); stepFovea = obs.fovea.clone(); stepVec = obs.vec.clone();
-				stepSlots = obs.slots.clone(); stepTerrain = obs.terrain.clone();
-				stepHist = histIn.clone(); stepSeen = seenIn.clone(); stepHPrev = hIn.clone();
-			}
-			noteFirstAction(a);
+		/** Captures tick-0 plus multi-step SMP transition keyframes (slot switch, axe break swing, gap/shield use sustain). */
+		public void noteStep(int tick, Obs obs, float[] histIn, float[] seenIn, float[] hIn, int[] a) {
+			if (ci >= cands.length || ri > 0 || kfCount[ci] >= MAX_KEYFRAMES || obs == null) return;
+			Candidate c = cands[ci];
+			boolean take = (tick == 0)
+					|| (tick > 0 && a[ActionSpace.HOTBAR_SLOT] != 0)
+					|| (tick > 0 && c == Candidate.AXE_BREAK_SWORD_CRIT && a[ActionSpace.ATTACK] == 1)
+					|| (a[ActionSpace.USE_ITEM] == 1 && (tick == 2 || tick == 14));
+			if (!take) return;
+			int k = kfCount[ci]++;
+			kfPeri[ci][k] = obs.peri.clone();
+			kfFovea[ci][k] = obs.fovea.clone();
+			kfVec[ci][k] = obs.vec.clone();
+			kfSlots[ci][k] = obs.slots.clone();
+			kfTerrain[ci][k] = obs.terrain.clone();
+			kfHist[ci][k] = histIn.clone();
+			kfSeen[ci][k] = seenIn.clone();
+			kfHPrev[ci][k] = hIn.clone();
+			for (int h = 0; h < ActionSpace.HEADS; h++) kfAct[ci][k][h] = (byte) a[h];
 		}
 
 		public void finishTrial(float netHpGain, boolean koD, boolean koT) {
@@ -194,14 +242,14 @@ public final class MoveSearch {
 			if (trials[0] == 0) return -1;
 			double bestMean = scoreSum[0] / trials[0] + MIN_MARGIN; int best = -1;
 			for (int i = 1; i < cands.length; i++) {
-				if (trials[i] > 0 && hasFirst[i]) {
+				if (trials[i] > 0 && kfCount[i] > 0) {
 					double m = scoreSum[i] / trials[i];
 					if (m > bestMean) { bestMean = m; best = i; }
 				}
 			}
 			return best;
 		}
-		public byte[] candidateAction(int i) { return firstAct[i]; }
+		public byte[] candidateAction(int i) { return kfAct[i][0]; }
 	}
 
 	private static final int PER_KIND = 48, TARGET_CAP = 2048, BATCH = 32;
@@ -254,26 +302,21 @@ public final class MoveSearch {
 		if (job == null || !job.finished()) return false;
 		searchesDone++;
 		int win = job.winningCandidate();
-		if (win < 0) return false;
-		Moment m = job.moment; int i = tNext;
-		byte[] peri = job.stepPeri != null ? job.stepPeri : m.peri;
-		byte[] fovea = job.stepFovea != null ? job.stepFovea : m.fovea;
-		float[] vec = job.stepVec != null ? job.stepVec : m.vec;
-		float[] slots = job.stepSlots != null ? job.stepSlots : m.slots;
-		float[] terrain = job.stepTerrain != null ? job.stepTerrain : m.terrain;
-		float[] hist = job.stepHist != null ? job.stepHist : m.hist;
-		float[] seen = job.stepSeen != null ? job.stepSeen : m.seen;
-		float[] hPrev = job.stepHPrev != null ? job.stepHPrev : m.hPrev;
-		System.arraycopy(peri, 0, tPeri[i], 0, ObsSpec.PERI_SIZE);
-		System.arraycopy(fovea, 0, tFovea[i], 0, ObsSpec.FOVEA_SIZE);
-		System.arraycopy(vec, 0, tVec[i], 0, ObsSpec.VEC);
-		System.arraycopy(slots, 0, tSlots[i], 0, ObsSpec.SLOTS_SIZE);
-		System.arraycopy(terrain, 0, tTerrain[i], 0, ObsSpec.TERRAIN_SIZE);
-		System.arraycopy(hist, 0, tHist[i], 0, ObsMemory.HIST);
-		System.arraycopy(seen, 0, tSeen[i], 0, ObsMemory.SEEN);
-		System.arraycopy(hPrev, 0, tHPrev[i], 0, ObsMemory.GRU_HIDDEN);
-		System.arraycopy(job.candidateAction(win), 0, tAction[i], 0, ActionSpace.HEADS);
-		tNext = (tNext + 1) % TARGET_CAP; tSize = Math.min(tSize + 1, TARGET_CAP); targetsFound++;
+		if (win < 0 || job.kfCount[win] <= 0) return false;
+		for (int k = 0; k < job.kfCount[win]; k++) {
+			int i = tNext;
+			System.arraycopy(job.kfPeri[win][k], 0, tPeri[i], 0, ObsSpec.PERI_SIZE);
+			System.arraycopy(job.kfFovea[win][k], 0, tFovea[i], 0, ObsSpec.FOVEA_SIZE);
+			System.arraycopy(job.kfVec[win][k], 0, tVec[i], 0, ObsSpec.VEC);
+			System.arraycopy(job.kfSlots[win][k], 0, tSlots[i], 0, ObsSpec.SLOTS_SIZE);
+			System.arraycopy(job.kfTerrain[win][k], 0, tTerrain[i], 0, ObsSpec.TERRAIN_SIZE);
+			System.arraycopy(job.kfHist[win][k], 0, tHist[i], 0, ObsMemory.HIST);
+			System.arraycopy(job.kfSeen[win][k], 0, tSeen[i], 0, ObsMemory.SEEN);
+			System.arraycopy(job.kfHPrev[win][k], 0, tHPrev[i], 0, ObsMemory.GRU_HIDDEN);
+			System.arraycopy(job.kfAct[win][k], 0, tAction[i], 0, ActionSpace.HEADS);
+			tNext = (tNext + 1) % TARGET_CAP; tSize = Math.min(tSize + 1, TARGET_CAP);
+		}
+		targetsFound++;
 		return true;
 	}
 

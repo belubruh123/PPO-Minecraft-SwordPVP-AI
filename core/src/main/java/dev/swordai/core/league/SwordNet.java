@@ -17,20 +17,26 @@ import java.util.*;
  * - Factorised + autoregressive heads (11 heads, 54 logits)
  */
 public final class SwordNet {
-	static final int BRANCH = 64, BLOCK_HIDDEN = 256, AR_JUMP = 5, AR_ATTACK = 7, TERRAIN_DIM = 32;
+	static final int BRANCH = 64, BLOCK_HIDDEN = 256, AR_JUMP = 5, AR_USE = 4, AR_ATTACK = 11, LEGACY_AR_ATTACK = 7, TERRAIN_DIM = 32;
 	public static final int OLD = 128, NEW = 128, TOP = OLD + NEW, CAT = 3 * BRANCH;
 	private static final int JUMP_AT = ActionSpace.OFFSETS[ActionSpace.JUMP];
+	private static final int USE_AT = ActionSpace.OFFSETS[ActionSpace.USE_ITEM];
 	private static final int ATTACK_AT = ActionSpace.OFFSETS[ActionSpace.ATTACK];
 	private static final int HOTBAR_AT = ActionSpace.OFFSETS[ActionSpace.HOTBAR_SLOT];
 	private static final int HOTBAR_SZ = ActionSpace.SIZES[ActionSpace.HOTBAR_SLOT];
 	private static final int MOE_ROUTER_IN = TOP + SlotEncoder.KIT_DIM;
+	/** AlphaStar autoregressive sampling order: movement -> item switches -> USE_ITEM -> ATTACK (prevents switch+swing collisions). */
+	private static final int[] SAMPLE_ORDER = {
+			ActionSpace.YAW, ActionSpace.PITCH, ActionSpace.FORWARD, ActionSpace.STRAFE, ActionSpace.SPRINT, ActionSpace.JUMP,
+			ActionSpace.HOTBAR_SLOT, ActionSpace.OFFHAND_SWAP, ActionSpace.USE_ITEM, ActionSpace.ATTACK, ActionSpace.INVENTORY
+	};
 	private static final float[] EMPTY_SLOTS = new float[ObsSpec.SLOTS_SIZE];
 	private static final float[] EMPTY_TERRAIN = new float[ObsSpec.TERRAIN_SIZE];
 
 	public final ParamSet params = new ParamSet();
 	private final Conv2d periConv1, periConv2, foveaConv1, foveaConv2;
 	private final Dense periDense, foveaDense, vecDense, oldTrunk, vecWideIn, vecWideOut, newTrunk;
-	private final Dense histIn, histHeads, seenIn, seenHeads, gruNew, gruHeads, heads, arJump, arAttack;
+	private final Dense histIn, histHeads, seenIn, seenHeads, gruNew, gruHeads, heads, arJump, arUse, arAttack;
 	private final ResBlock[] oldBlocks = new ResBlock[2], newBlocks = new ResBlock[3];
 	private final Gru gru;
 	// Frontier AI-lab generalist additions (all zero-output at init for exact bit-for-bit Net2Net from sword-master.bin)
@@ -62,6 +68,7 @@ public final class SwordNet {
 		seenHeads = new Dense(params, "seen.heads", ObsMemory.SEEN, ActionSpace.TOTAL_LOGITS, rng, 0f);
 		heads = new Dense(params, "heads", TOP, ActionSpace.TOTAL_LOGITS, rng, 0.01f);
 		arJump = new Dense(params, "ar.jump", AR_JUMP, ActionSpace.SIZES[ActionSpace.JUMP], rng, 0f);
+		arUse = new Dense(params, "ar.use", AR_USE, ActionSpace.SIZES[ActionSpace.USE_ITEM], rng, 0f);
 		arAttack = new Dense(params, "ar.attack", AR_ATTACK, ActionSpace.SIZES[ActionSpace.ATTACK], rng, 0f);
 		gru = new Gru(params, "gru", CAT, ObsMemory.GRU_HIDDEN, rng);
 		gruNew = new Dense(params, "gru.new", ObsMemory.GRU_HIDDEN, NEW, rng, 0f);
@@ -98,7 +105,7 @@ public final class SwordNet {
 		final SlotEncoder.Cache slotCache = slotEncoder.newCache();
 		public final MoEBlock.Cache moeCache = moe.newCache();
 		final ResBlock.Cache[] oldCaches = new ResBlock.Cache[oldBlocks.length], newCaches = new ResBlock.Cache[newBlocks.length];
-		final float[] base = new float[ActionSpace.TOTAL_LOGITS], arJumpIn = new float[AR_JUMP], arAttackIn = new float[AR_ATTACK];
+		final float[] base = new float[ActionSpace.TOTAL_LOGITS], arJumpIn = new float[AR_JUMP], arUseIn = new float[AR_USE], arAttackIn = new float[AR_ATTACK];
 		public final float[] logits = new float[ActionSpace.TOTAL_LOGITS];
 
 		StepCache() {
@@ -213,11 +220,24 @@ public final class SwordNet {
 		sc.logits[JUMP_AT + 1] = sc.base[JUMP_AT + 1] + ws.arOut[1];
 	}
 
+	public void conditionUse(Workspace ws, StepCache sc, int[] action) {
+		Arrays.fill(sc.arUseIn, 0f);
+		int switched = (action[ActionSpace.HOTBAR_SLOT] != 0 || action[ActionSpace.OFFHAND_SWAP] == 1) ? 1 : 0;
+		sc.arUseIn[switched] = 1f;
+		sc.arUseIn[2 + action[ActionSpace.OFFHAND_SWAP]] = 1f;
+		arUse.forward(sc.arUseIn, 0, ws.arOut, 0);
+		sc.logits[USE_AT] = sc.base[USE_AT] + ws.arOut[0];
+		sc.logits[USE_AT + 1] = sc.base[USE_AT + 1] + ws.arOut[1];
+	}
+
 	public void conditionAttack(Workspace ws, StepCache sc, int[] action) {
 		Arrays.fill(sc.arAttackIn, 0f);
+		int switched = (action[ActionSpace.HOTBAR_SLOT] != 0 || action[ActionSpace.OFFHAND_SWAP] == 1) ? 1 : 0;
 		sc.arAttackIn[action[ActionSpace.FORWARD]] = 1f;
 		sc.arAttackIn[3 + action[ActionSpace.SPRINT]] = 1f;
 		sc.arAttackIn[5 + action[ActionSpace.JUMP]] = 1f;
+		sc.arAttackIn[7 + switched] = 1f;
+		sc.arAttackIn[9 + action[ActionSpace.USE_ITEM]] = 1f;
 		arAttack.forward(sc.arAttackIn, 0, ws.arOut, 0);
 		sc.logits[ATTACK_AT] = sc.base[ATTACK_AT] + ws.arOut[0];
 		sc.logits[ATTACK_AT + 1] = sc.base[ATTACK_AT + 1] + ws.arOut[1];
@@ -226,6 +246,7 @@ public final class SwordNet {
 	public void condition(Workspace ws, StepCache sc, byte[] action) {
 		for (int h = 0; h < ActionSpace.HEADS; h++) ws.act[h] = action[h];
 		conditionJump(ws, sc, ws.act);
+		conditionUse(ws, sc, ws.act);
 		conditionAttack(ws, sc, ws.act);
 	}
 
@@ -237,8 +258,9 @@ public final class SwordNet {
 
 	public float samplePlay(Workspace ws, StepCache sc, int headMask, Random rng, int[] actionOut) {
 		float logp = 0f;
-		for (int h = 0; h < ActionSpace.HEADS; h++) {
+		for (int h : SAMPLE_ORDER) {
 			if (h == ActionSpace.JUMP) conditionJump(ws, sc, actionOut);
+			else if (h == ActionSpace.USE_ITEM) conditionUse(ws, sc, actionOut);
 			else if (h == ActionSpace.ATTACK) conditionAttack(ws, sc, actionOut);
 			if (!ActionSpace.unlocked(headMask, h)) { actionOut[h] = ActionSpace.DEFAULTS[h]; continue; }
 			int off = ActionSpace.OFFSETS[h], n = ActionSpace.SIZES[h];
@@ -246,8 +268,12 @@ public final class SwordNet {
 			for (int i = 0; i < n; i++) ws.probs[off + i] = sc.logits[off + i] * invT;
 			Policy.softmax(ws.probs, off, n, ws.probs);
 			float u = rng.nextFloat(), acc = 0f;
-			int choice = n - 1;
-			for (int i = 0; i < n; i++) { acc += ws.probs[off + i]; if (u < acc) { choice = i; break; } }
+			int choice = 0;
+			for (int i = 0; i < n; i++) {
+				if (ws.probs[off + i] > 0f) choice = i;
+				acc += ws.probs[off + i];
+				if (u < acc) { choice = i; break; }
+			}
 			actionOut[h] = choice;
 			logp += (float) Math.log(Math.max(ws.probs[off + choice], 1e-12f));
 		}
@@ -256,8 +282,9 @@ public final class SwordNet {
 
 	public float sample(Workspace ws, StepCache sc, int headMask, boolean greedy, float temperature, Random rng, int[] actionOut) {
 		float logp = 0f;
-		for (int h = 0; h < ActionSpace.HEADS; h++) {
+		for (int h : SAMPLE_ORDER) {
 			if (h == ActionSpace.JUMP) conditionJump(ws, sc, actionOut);
+			else if (h == ActionSpace.USE_ITEM) conditionUse(ws, sc, actionOut);
 			else if (h == ActionSpace.ATTACK) conditionAttack(ws, sc, actionOut);
 			if (!ActionSpace.unlocked(headMask, h)) { actionOut[h] = ActionSpace.DEFAULTS[h]; continue; }
 			int off = ActionSpace.OFFSETS[h], n = ActionSpace.SIZES[h];
@@ -265,13 +292,17 @@ public final class SwordNet {
 				for (int i = 0; i < n; i++) ws.probs[off + i] = sc.logits[off + i] / temperature;
 				Policy.softmax(ws.probs, off, n, ws.probs);
 			} else Policy.softmax(sc.logits, off, n, ws.probs);
-			int choice = n - 1;
+			int choice = 0;
 			if (greedy) {
 				float best = -1f;
 				for (int i = 0; i < n; i++) if (ws.probs[off + i] > best) { best = ws.probs[off + i]; choice = i; }
 			} else {
 				float u = rng.nextFloat(), acc = 0f;
-				for (int i = 0; i < n; i++) { acc += ws.probs[off + i]; if (u < acc) { choice = i; break; } }
+				for (int i = 0; i < n; i++) {
+					if (ws.probs[off + i] > 0f) choice = i;
+					acc += ws.probs[off + i];
+					if (u < acc) { choice = i; break; }
+				}
 			}
 			actionOut[h] = choice;
 			logp += (float) Math.log(Math.max(ws.probs[off + choice], 1e-12f));
@@ -285,6 +316,7 @@ public final class SwordNet {
 		float[] tr = terrain != null ? terrain : EMPTY_TERRAIN;
 
 		arJump.backward(sc.arJumpIn, 0, ws.dLogits, JUMP_AT, null, 0, ws.grads);
+		arUse.backward(sc.arUseIn, 0, ws.dLogits, USE_AT, null, 0, ws.grads);
 		arAttack.backward(sc.arAttackIn, 0, ws.dLogits, ATTACK_AT, null, 0, ws.grads);
 
 		// Non-pointer heads ignore HOTBAR_SLOT (owned exclusively by SlotEncoder's Pointer Head).
@@ -392,7 +424,8 @@ public final class SwordNet {
 	public void markSmpBorn(long adamStep) {
 		for (Param p : params.params()) {
 			if (p.name.startsWith("slot.") || p.name.startsWith("kit.")
-					|| p.name.startsWith("terr.") || p.name.startsWith("moe.")) {
+					|| p.name.startsWith("terr.") || p.name.startsWith("moe.")
+					|| p.name.startsWith("ar.use.")) {
 				p.bornAt = adamStep;
 			}
 		}

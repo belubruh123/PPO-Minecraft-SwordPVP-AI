@@ -27,6 +27,10 @@ public final class BodyState {
 	public float cursorX, cursorY;
 	private boolean oppWasUsing;
 	private int oppUseCount, oppShieldDisabledTicks;
+	// AlphaStar 150-200 ms (3-4 tick) biological visual reaction delay on opponent item/shield changes (no frame-1 superhuman breaks).
+	private static final int MAX_REACT = 6;
+	private final boolean[] reactSw = new boolean[MAX_REACT], reactAx = new boolean[MAX_REACT], reactUse = new boolean[MAX_REACT];
+	private int reactDelay = 3, reactHead, reactFill;
 
 	private boolean oppWasSwinging;
 	private int oppLastSwingTime, ticksSinceAnyHit = 1000;
@@ -54,17 +58,37 @@ public final class BodyState {
 		oppLastSwingTime = swingTime;
 	}
 
-	/** Tracks visibly raised opponent shield/item duration and 5-second disable countdown after an axe break. */
+	public void setItemReactionTicks(int ticks) {
+		this.reactDelay = Math.max(0, Math.min(MAX_REACT - 1, ticks));
+	}
+
+	/** Tracks visibly raised opponent shield/item duration (with biological visual reaction delay) and 5-second disable countdown. */
 	public void noteOpponentItem(boolean heldSword, boolean heldAxe, boolean usingItem) {
-		this.oppHeldSword = heldSword;
-		this.oppHeldAxe = heldAxe;
-		this.oppUsingItem = usingItem;
-		if (usingItem) {
+		boolean seenSw = heldSword, seenAx = heldAxe, seenUse = usingItem;
+		if (reactDelay > 0) {
+			reactSw[reactHead] = heldSword;
+			reactAx[reactHead] = heldAxe;
+			reactUse[reactHead] = usingItem;
+			if (reactFill < reactDelay) {
+				reactFill++;
+				seenSw = true; seenAx = false; seenUse = false;
+			} else {
+				int idx = (reactHead - reactDelay + MAX_REACT) % MAX_REACT;
+				seenSw = reactSw[idx];
+				seenAx = reactAx[idx];
+				seenUse = reactUse[idx];
+			}
+			reactHead = (reactHead + 1) % MAX_REACT;
+		}
+		this.oppHeldSword = seenSw;
+		this.oppHeldAxe = seenAx;
+		this.oppUsingItem = seenUse;
+		if (seenUse) {
 			oppUseCount = oppWasUsing ? Math.min(oppUseCount + 1, 100) : 1;
 		} else {
 			oppUseCount = 0;
 		}
-		oppWasUsing = usingItem;
+		oppWasUsing = seenUse;
 		this.oppUseTicks = Math.min(1f, oppUseCount / 20f);
 		if (oppShieldDisabledTicks > 0) oppShieldDisabledTicks--;
 		this.oppShieldDisabled = oppShieldDisabledTicks / 100f;
@@ -92,6 +116,7 @@ public final class BodyState {
 		oppHeldSword = true; oppHeldAxe = false; oppUsingItem = false;
 		oppUseTicks = 0f; oppShieldDisabled = 0f;
 		oppWasUsing = false; oppUseCount = 0; oppShieldDisabledTicks = 0;
+		reactHead = 0; reactFill = 0;
 		invOpen = false; cursorX = 0f; cursorY = 0f;
 	}
 

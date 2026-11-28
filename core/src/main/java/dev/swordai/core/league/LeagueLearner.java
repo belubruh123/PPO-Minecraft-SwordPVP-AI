@@ -329,6 +329,9 @@ public final class LeagueLearner {
 				System.arraycopy(sw, 0, p.w, 0, savedLogits);
 				System.arraycopy(sm, 0, p.m, 0, savedLogits);
 				System.arraycopy(sv, 0, p.v, 0, savedLogits);
+			} else if (p.name.equals("ar.attack.w") && sw.length == SwordNet.LEGACY_AR_ATTACK * 2) {
+				zeroParam(p);
+				copyRows(sw, sm, sv, p, 0, 0, SwordNet.LEGACY_AR_ATTACK, 2);
 			}
 		}
 		return surgery;

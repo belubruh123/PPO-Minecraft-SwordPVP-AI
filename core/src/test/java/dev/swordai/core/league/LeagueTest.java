@@ -288,11 +288,27 @@ final class LeagueTest {
 		MoveSearch.Candidate.JUMP_CRIT_FORWARD.apply(a, 6, false, true);
 		assertEquals(0, a[ActionSpace.ATTACK], "Out-of-reach or uncharged must not swing");
 
-		// Verify SMP AXE_BREAK_SWORD_CRIT dynamically switches to arbitrary randomized axe/sword slots!
-		MoveSearch.Candidate.AXE_BREAK_SWORD_CRIT.apply(a, 0, true, false, 6, 3, 8, true, true);
-		assertEquals(4, a[ActionSpace.HOTBAR_SLOT], "Tick 0 should select axe slot 3 -> key 4");
-		MoveSearch.Candidate.AXE_BREAK_SWORD_CRIT.apply(a, 3, true, false, 6, 3, 8, true, false);
+		// Verify SMP AXE_BREAK_SWORD_CRIT breaks shield on ANY axe hit (no 0.90 wait!) and swaps back to Sword cleanly!
+		MoveSearch.Candidate.AXE_BREAK_SWORD_CRIT.apply(a, 0, false, true, false, 6, 6, 3, 8, true, true, -1);
+		assertEquals(4, a[ActionSpace.HOTBAR_SLOT], "Tick 0 holding sword should select axe slot 3 -> key 4");
+		assertEquals(0, a[ActionSpace.ATTACK], "Switch tick must not swing simultaneously");
+		MoveSearch.Candidate.AXE_BREAK_SWORD_CRIT.apply(a, 1, false, true, false, 3, 6, 3, 8, true, true, -1);
+		assertEquals(0, a[ActionSpace.HOTBAR_SLOT], "Already holding axe should keep slot");
+		assertEquals(1, a[ActionSpace.ATTACK], "Vanilla axe must swing to disable shield even below 0.90 charge!");
+		MoveSearch.Candidate.AXE_BREAK_SWORD_CRIT.apply(a, 2, false, true, false, 3, 6, 3, 8, true, false, -1);
 		assertEquals(7, a[ActionSpace.HOTBAR_SLOT], "After shield breaks, switch to sword slot 6 -> key 7");
+
+		// Verify BodyState biological 3-tick (150 ms) opponent shield/item visual reaction delay!
+		dev.swordai.core.env.BodyState bs = new dev.swordai.core.env.BodyState();
+		bs.setItemReactionTicks(3);
+		bs.noteOpponentItem(true, false, true); // tick 0: opp raises shield
+		assertFalse(bs.oppUsingItem, "Tick 0 must not leak opponent shield instantaneously");
+		bs.noteOpponentItem(true, false, true); // tick 1
+		assertFalse(bs.oppUsingItem, "Tick 1 still within 150 ms reaction buffer");
+		bs.noteOpponentItem(true, false, true); // tick 2
+		assertFalse(bs.oppUsingItem, "Tick 2 still within 150 ms reaction buffer");
+		bs.noteOpponentItem(true, false, true); // tick 3 (150 ms elapsed!)
+		assertTrue(bs.oppUsingItem, "Tick 3 (150 ms) must observe opponent shield cleanly");
 
 		MoveSearch ms = new MoveSearch();
 		LeagueLearner learner = new LeagueLearner(64, 5L);
@@ -306,15 +322,17 @@ final class LeagueTest {
 		assertEquals(2, job.lag);
 		int[] dummyAct = new int[ActionSpace.HEADS];
 		dummyAct[ActionSpace.YAW] = 7; dummyAct[ActionSpace.PITCH] = 5; dummyAct[ActionSpace.FORWARD] = 1; dummyAct[ActionSpace.JUMP] = 1; dummyAct[ActionSpace.ATTACK] = 1;
+		int[] switchAct = dummyAct.clone(); switchAct[ActionSpace.HOTBAR_SLOT] = 4;
 		while (!job.finished()) {
 			MoveSearch.Candidate c = job.currentCandidate();
-			job.noteFirstStep(obs, learner.lastHistIn(), learner.lastSeenIn(), learner.lastHiddenIn(), dummyAct);
+			job.noteStep(0, obs, learner.lastHistIn(), learner.lastSeenIn(), learner.lastHiddenIn(), dummyAct);
+			job.noteStep(2, obs, learner.lastHistIn(), learner.lastSeenIn(), learner.lastHiddenIn(), switchAct);
 			float dmgDealt = c == MoveSearch.Candidate.JUMP_CRIT_FORWARD ? 12f : 4f;
 			job.finishTrial(dmgDealt, 4f, c == MoveSearch.Candidate.JUMP_CRIT_FORWARD, false);
 		}
 		assertEquals(MoveSearch.Candidate.JUMP_CRIT_FORWARD.ordinal(), job.winningCandidate());
 		assertTrue(ms.commitSearch(job));
-		assertEquals(1, ms.targetCount());
+		assertEquals(2, ms.targetCount(), "Multi-keyframe search commit must store tick-0 + slot-switch keyframes");
 
 		for (int i = 0; i < 10; i++) {
 			MoveSearch.SearchJob j2 = ms.startSearch(rng, 0, learner.actor);
@@ -573,7 +591,13 @@ final class LeagueTest {
 		int hbOff = ActionSpace.OFFSETS[ActionSpace.HOTBAR_SLOT];
 		float[] dKit = new float[dev.swordai.core.nn.SlotEncoder.KIT_DIM];
 		for (int i = 0; i < dKit.length; i++) dKit[i] = sc.kitCtx[i] - kitTgt[i];
-		for (int i = 0; i < 10; i++) dLogits[hbOff + i] = logits[hbOff + i] - ptrTgt[i];
+		// Verify AlphaStar invalid-action mask: empty slots & selected slot 1 are masked; unselected present slot 5 is active!
+		assertTrue(sc.masked[0] && sc.masked[1] && !sc.masked[5], "Empty & selected slots must be masked; unselected Axe slot 5 unmasked");
+		assertEquals(dev.swordai.core.nn.SlotEncoder.MASK_LOGIT, logits[hbOff + 1 + 0], 1e-3f);
+		assertEquals(dev.swordai.core.nn.SlotEncoder.MASK_LOGIT, logits[hbOff + 1 + 1], 1e-3f);
+		for (int i = 0; i < 10; i++) {
+			dLogits[hbOff + i] = (i == 0 || !sc.masked[i - 1]) ? (logits[hbOff + i] - ptrTgt[i]) : 0f;
+		}
 		se.backward(slots, top, dLogits, dKit, sc, ss, dTop, sgr);
 
 		double maxRelSlot = 0, wNum = 0, wAna = 0;
@@ -613,7 +637,9 @@ final class LeagueTest {
 		int hbOff = ActionSpace.OFFSETS[ActionSpace.HOTBAR_SLOT];
 		double l = 0;
 		for (int i = 0; i < kitTgt.length; i++) { double d = c.kitCtx[i] - kitTgt[i]; l += 0.5 * d * d; }
-		for (int i = 0; i < 10; i++) { double d = logits[hbOff + i] - ptrTgt[i]; l += 0.5 * d * d; }
+		for (int i = 0; i < 10; i++) {
+			if (i == 0 || !c.masked[i - 1]) { double d = logits[hbOff + i] - ptrTgt[i]; l += 0.5 * d * d; }
+		}
 		return l;
 	}
 
@@ -646,10 +672,11 @@ final class LeagueTest {
 
 		// Kit context must be strictly permutation-invariant
 		assertArrayEquals(wsA.step.kitCtx(), wsB.step.kitCtx(), 1e-5f, "Kit context must be permutation-invariant");
-		// Pointer logits for Sword (0->7), Axe (2->1), Gap (5->8) must swap identically!
+		// Pointer logits for selected Sword (masked!), Axe (2->1), and Gap (5->8) must swap identically!
 		int hb = ActionSpace.OFFSETS[ActionSpace.HOTBAR_SLOT];
 		assertEquals(wsA.step.logits[hb], wsB.step.logits[hb], 1e-5f, "Keep logit must be invariant");
-		assertEquals(wsA.step.logits[hb + 1 + 0], wsB.step.logits[hb + 1 + 7], 1e-5f, "Sword pointer logit must follow sword slot 0->7");
+		assertEquals(dev.swordai.core.nn.SlotEncoder.MASK_LOGIT, wsA.step.logits[hb + 1 + 0], 1e-3f, "Selected sword slot 0 must be masked");
+		assertEquals(dev.swordai.core.nn.SlotEncoder.MASK_LOGIT, wsB.step.logits[hb + 1 + 7], 1e-3f, "Selected sword slot 7 must be masked");
 		assertEquals(wsA.step.logits[hb + 1 + 2], wsB.step.logits[hb + 1 + 1], 1e-5f, "Axe pointer logit must follow axe slot 2->1");
 		assertEquals(wsA.step.logits[hb + 1 + 5], wsB.step.logits[hb + 1 + 8], 1e-5f, "Gap pointer logit must follow gap slot 5->8");
 	}

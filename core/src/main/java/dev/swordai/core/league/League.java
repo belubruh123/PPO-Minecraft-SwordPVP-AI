@@ -114,8 +114,38 @@ public final class League {
 	}
 
 	public Match sampleMatch(Random rng, MoveSearch moments, boolean hasExploiter) {
+		return sampleMatch(rng, moments, hasExploiter, false);
+	}
+
+	/**
+	 * Samples the next training opponent. When {@code smpColdStart} is true (Stage 6 SMP transition),
+	 * gives shield/axe/gap-capable {@code SPAR_BOT} a temporary 30% bootstrap share (tapering smoothly to 10%
+	 * by 10k rounds) so Main and Exploiter face real shields & gaps from minute 1 instead of self-play deadlock.
+	 */
+	public Match sampleMatch(Random rng, MoveSearch moments, boolean hasExploiter, boolean smpColdStart) {
 		MoveSearch.Moment start = (moments != null && moments.totalMoments() > 0 && rng.nextFloat() < KEY_MOMENT_START_SHARE)
 				? moments.sampleMoment(rng) : null;
+		if (smpColdStart) {
+			float sparShare = totalRounds < 3000 ? 0.30f : Math.max(0.10f, 0.30f - 0.20f * ((totalRounds - 3000f) / 7000f));
+			if (rng.nextFloat() < sparShare) {
+				SparStyle st = sampleSpar(rng);
+				return new Match(OpponentKind.SPAR_BOT, "spar-" + st.name().toLowerCase(), null, null, st, start);
+			}
+			float u = rng.nextFloat();
+			if (u < 0.40f) return new Match(OpponentKind.LATEST_SELF, "self-latest", null, null, null, start);
+			if (u < 0.65f && !snapshots.isEmpty()) {
+				Snapshot s = samplePfsp(rng);
+				return new Match(OpponentKind.PAST_SNAPSHOT, "snap-" + s.id, s, null, null, start);
+			}
+			if (hasExploiter && (humans.isEmpty() ? u < 1.0f : u < 0.83f)) {
+				return new Match(OpponentKind.EXPLOITER, "exploiter", null, null, null, start);
+			}
+			if (!humans.isEmpty()) {
+				HumanImitation.HumanPolicy h = humans.get(rng.nextInt(humans.size()));
+				return new Match(OpponentKind.HUMAN_CLONE, "human-" + h.name, null, h, null, start);
+			}
+			return new Match(OpponentKind.LATEST_SELF, "self-latest", null, null, null, start);
+		}
 		float u = rng.nextFloat();
 		if (u < SELF_SHARE) return new Match(OpponentKind.LATEST_SELF, "self-latest", null, null, null, start);
 		if (u < SELF_SHARE + SNAPSHOT_SHARE && !snapshots.isEmpty()) {

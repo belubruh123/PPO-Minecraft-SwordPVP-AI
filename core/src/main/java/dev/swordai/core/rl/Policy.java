@@ -34,13 +34,17 @@ public final class Policy {
 			} else {
 				softmax(logits, off, n, probs);
 			}
-			int pick = n - 1;
+			int pick = 0;
 			if (greedy) {
 				float best = -1f;
 				for (int i = 0; i < n; i++) if (probs[off + i] > best) { best = probs[off + i]; pick = i; }
 			} else {
 				float u = rng.nextFloat(), acc = 0f;
-				for (int i = 0; i < n; i++) { acc += probs[off + i]; if (u < acc) { pick = i; break; } }
+				for (int i = 0; i < n; i++) {
+					if (probs[off + i] > 0f) pick = i;
+					acc += probs[off + i];
+					if (u < acc) { pick = i; break; }
+				}
 			}
 			actionOut[h] = pick;
 			logp += (float) Math.log(Math.max(probs[off + pick], 1e-12f));

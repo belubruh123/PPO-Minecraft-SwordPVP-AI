@@ -18,6 +18,8 @@ import java.util.Random;
 public final class SlotEncoder {
 	public static final int SLOT_DIM = 32;
 	public static final int KIT_DIM = 2 * SLOT_DIM;
+	/** AlphaStar invalid-action mask logit for empty or already-held hotbar slots (finite even after /PLAY_TEMP). */
+	public static final float MASK_LOGIT = -1e6f;
 	private static final float INV_SQRT_D = (float) (1.0 / Math.sqrt(SLOT_DIM));
 	private static final int HOTBAR_OFF = ActionSpace.OFFSETS[ActionSpace.HOTBAR_SLOT];
 
@@ -34,15 +36,16 @@ public final class SlotEncoder {
 		Arrays.fill(slotIn.bias.w, 0.05f);
 		slotKey = new Dense(ps, name + ".key", SLOT_DIM, SLOT_DIM, rng, 1f);
 		slotAttn = new Dense(ps, name + ".attn", SLOT_DIM, 1, rng, 0.1f);
-		// Zero-init pointer query & keep weights (+4.8f keep bias -> ~93% keep per 20Hz tick) for clean Net2Net preservation.
+		// Zero-init pointer query & keep weights (+3.2f keep bias -> ~92% keep when 2 other items exist, 100% when only 1 item).
 		ptrQuery = new Dense(ps, name + ".ptrQ", topWidth, SLOT_DIM, rng, 0f);
 		ptrKeep = new Dense(ps, name + ".ptrKeep", topWidth, 1, rng, 0f);
-		ptrKeep.bias.w[0] = 4.8f;
+		ptrKeep.bias.w[0] = 3.2f;
 	}
 
 	public final class Cache {
 		final boolean[] encoded = new boolean[ObsSpec.TOTAL_SLOTS];
 		final boolean[] present = new boolean[ObsSpec.TOTAL_SLOTS];
+		public final boolean[] masked = new boolean[ObsSpec.HOTBAR_SLOTS];
 		final float[][] emb = new float[ObsSpec.TOTAL_SLOTS][SLOT_DIM];
 		final float[][] key = new float[ObsSpec.HOTBAR_SLOTS][SLOT_DIM];
 		final float[] attnLogit = new float[ObsSpec.TOTAL_SLOTS];
@@ -85,14 +88,19 @@ public final class SlotEncoder {
 			int off = i * ObsSpec.SLOT_FEATS;
 			boolean pres = slots[off + ObsSpec.SF_PRESENT] >= 0.5f;
 			c.present[i] = pres;
-			boolean need = (i < ObsSpec.HOTBAR_SLOTS) || pres;
+			if (i < ObsSpec.HOTBAR_SLOTS) {
+				boolean selected = slots[off + ObsSpec.SF_SELECTED] >= 0.5f;
+				// Mask empty bare-fist slots and the already-held slot so exploration only chooses real item switches.
+				c.masked[i] = !pres || selected;
+			}
+			boolean need = pres;
 			c.encoded[i] = need;
 			if (!need) continue;
 
 			float[] ei = c.emb[i];
 			slotIn.forward(slots, off, ei, 0);
 			for (int j = 0; j < SLOT_DIM; j++) if (ei[j] < 0f) ei[j] = 0f;
-			if (i < ObsSpec.HOTBAR_SLOTS) {
+			if (i < ObsSpec.HOTBAR_SLOTS && !c.masked[i]) {
 				slotKey.forward(ei, 0, c.key[i], 0);
 			}
 			if (pres) {
@@ -136,12 +144,16 @@ public final class SlotEncoder {
 		}
 	}
 
-	/** Writes the permutation-equivariant {@code HOTBAR_SLOT} logits (0=keep, 1..9=hotbar slots 0..8). */
+	/** Writes the permutation-equivariant {@code HOTBAR_SLOT} logits (0=keep, 1..9=hotbar slots 0..8, empty/selected masked). */
 	public void writePointerLogits(float[] top, float[] logitsOut, Cache c) {
 		ptrQuery.forward(top, 0, c.query, 0);
 		ptrKeep.forward(top, 0, c.keepOut, 0);
 		logitsOut[HOTBAR_OFF] = c.keepOut[0];
 		for (int sl = 0; sl < ObsSpec.HOTBAR_SLOTS; sl++) {
+			if (c.masked[sl]) {
+				logitsOut[HOTBAR_OFF + 1 + sl] = MASK_LOGIT;
+				continue;
+			}
 			float dot = 0f;
 			float[] ks = c.key[sl];
 			for (int j = 0; j < SLOT_DIM; j++) dot += c.query[j] * ks[j];
@@ -160,6 +172,7 @@ public final class SlotEncoder {
 
 		Arrays.fill(s.dQ, 0f);
 		for (int sl = 0; sl < ObsSpec.HOTBAR_SLOTS; sl++) {
+			if (c.masked[sl]) continue;
 			float dl = dLogits[HOTBAR_OFF + 1 + sl] * INV_SQRT_D;
 			float[] ks = c.key[sl];
 			for (int j = 0; j < SLOT_DIM; j++) s.dQ[j] += dl * ks[j];
@@ -191,7 +204,7 @@ public final class SlotEncoder {
 			Arrays.fill(s.dEmb, 0f);
 			float[] ei = c.emb[i];
 
-			if (i < ObsSpec.HOTBAR_SLOTS) {
+			if (i < ObsSpec.HOTBAR_SLOTS && !c.masked[i]) {
 				float dl = dLogits[HOTBAR_OFF + 1 + i] * INV_SQRT_D;
 				for (int j = 0; j < SLOT_DIM; j++) s.dKey[j] = dl * c.query[j];
 				slotKey.backward(ei, 0, s.dKey, 0, s.dEmbTmp, 0, grads);

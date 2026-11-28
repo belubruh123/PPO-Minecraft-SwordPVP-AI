@@ -80,6 +80,7 @@ public final class ReplicaBody {
 
 	public void reset() {
 		lag.clear(); latest = null; state.resetOpponentSwing();
+		state.setItemReactionTicks(3 + lagRng.nextInt(2));
 		shown.reset(); sprint.reset(); hasLast = false; clientCooldown = 1000;
 	}
 
